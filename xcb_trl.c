@@ -77,7 +77,6 @@ _xcb_die(const char *fmt, ...)
 static void
 _xcb_err_handler(XCBDisplay *display, XCBGenericError *err)
 {
-    printf("Fuck toyu");
     if(!err || !display)
     {
         return;
