@@ -10,17 +10,14 @@
 #define BETWEEN(X, A, B)        ((A) <= (X) && (X) <= (B))
 #define MOD(N,M)                ((N)%(M) < 0 ? (N)%(M) + (M) : (N)%(M))
 #define TRUNC(X,A,B)            (MAX((A), MIN((X), (B))))
-#define DIE(fmt, ...) \
-        fprintf(stderr, "[%s:%d] " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__); \
-        exit(1);
 
+#define DIE(fmt, ...)           do { fprintf(stderr, "[%s:%d] by %s(): " fmt "\n", __FILE__,__LINE__,__func__,__VA_ARGS__); exit(EXIT_FAILURE); } while (0)
 #define ENABLE_DEBUGGING 1   /* enable debbuging */
 
 #if (ENABLE_DEBUGGING)
-    #define DEBUG(fmt, ...) \
-         fprintf(stderr, "[%s:%d] " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__)
+#define DEBUG(fmt, ...) fprintf(stderr, "[%s:%d] by %s: " fmt "\n", __FILE__,__LINE__,__func__,__VA_ARGS__)
 #else
-    #define DEBUG(fmt, ...) ((void)0)
+#define DEBUG(fmt, ...) ((void)0)
 #endif
 
 void *ecalloc(size_t nmemb, size_t size);
