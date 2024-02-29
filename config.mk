@@ -32,7 +32,7 @@ CPPFLAGS = -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L ${XINERAMAF
 CCFLAGS  = ${CCVERSION} ${WARNINGFLAGS} ${INCS} ${CPPFLAGS} ${BINARY} ${PRELINKERFLAGS} ${SECTIONCODE} 
 RELEASEFLAGS = ${CCFLAGS} 
 
-DEBUG 	= ${DEBUGFLAGS} -O3
+DEBUG 	= ${DEBUGFLAGS} -O0
 
 SIZE  	= ${RELEASEFLAGS} -Os
 # This rarely saves a substantial amount of instructions
@@ -49,7 +49,7 @@ BUILDSELF = ${RELEASEFLAGS} ${XNATIVE} -O3
 # uncomment for debugging
 LINKERFLAGS = ${DYNAMICLINK} -Wl,--gc-sections
 # Set your options or presets (see above) ex: ${PRESETNAME} (Compiler used is on top)
-CFLAGS = ${DEBUG}
+CFLAGS = ${RELEASE}
 # Linker flags
 LDFLAGS =  ${LIBS} ${LINKERFLAGS} ${BINARY} 
 # Solaris

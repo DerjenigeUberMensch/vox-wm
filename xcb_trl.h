@@ -28,7 +28,73 @@
  * 4. I am Lazy.
  */
 
-
+/*
+ * Basic XCB Usage
+ *
+ * Cookies;
+ *
+ * Cookies are simply structures with ids.
+ * These cookies are mostly useless and just ids for xcb to use.
+ *
+ * However you can do 2 unique things with them.
+ *
+ * Self Spoofing;
+ *
+ * Events in xcb are quite different compared to Xlib and are much simpler in theory.
+ * Due to this we can self Spoof calls to our current event handler.
+ * This is sometimes useful when you dont want to receive an event back (for whatever reason).
+ * Or when you want to receive events back from yourself which can be useful most of the time.
+ *
+ * # This would send an event to the XServer that we want to map this window as a mapnotify (assuming we sent it).
+ * # and have to be handle by us.
+ *
+ * XCBMapWindow(dpy, cool_window);
+ *
+ * # <<< Event Generated >>> #
+ * 
+ *
+ * However we can "spoof" no reply and generate no event for ourselves.
+ *
+ * XCBCookie cookie;
+ * cookie = XCBMapWindow(dpy, cool_window);
+ * XCBDiscardReply(dpy, cookie);
+ *
+ * # <<< No Event Generated >>> #
+ *
+ * This may not "always" work due to how xcb works so, we must to call XCBDiscardReply() after our generated cookie.
+ * 
+ * XCBCookie cookie;
+ * cookie = XCBMapWindow(dpy, cool_window);
+ * # Sync the Display
+ * XCBSync(dpy) # or XCBFlush(dpy);
+ *
+ * # This does nothing because we flushed the buffer to the display using XCBSync()
+ * XCBDiscardReply(dpy, cookie);
+ *
+ * # Reply64
+ * # This really isnt too important and is mostly for 64 bit platforms
+ * XCBDiscardReply64(dpy, cookie);
+ *
+ *
+ * Reply backs;
+ *
+ * The second thing we can do is ask for a reply back from the XServer.
+ * This can be done manually using _XReply(), _XRead(), _XWrite() however xcb abstracts that away.
+ * Because of that we can use xcb_cool_function_ and then _reply() so xcb_cool_function_reply(XCBDisplay *display, XCBCookie cookie);
+ * Some xcb functions dont have a _reply() version and those are simply handled in the event queue;
+ * 
+ * Errors;
+ *
+ * Depending on the type of error a few things can occur.
+ *
+ * <<< XCBConnection Error >>> ;
+ * This type of error can happen out of the blue if you arent careful.
+ * To check if this error occured simply acces the display->has_error type;
+ * If you want a more clear approach you can simply call XCBHasConnectionError();
+ * 
+ * 
+ * 
+ */
 
 #ifndef XCB_PTL_TYPEDEF_H_
 #define XCB_PTL_TYPEDEF_H_
@@ -142,6 +208,7 @@ typedef xcb_drawable_t XCBDrawable;
 typedef xcb_point_t XCBPoint;
 typedef xcb_font_t XCBFont;
 typedef xcb_generic_event_t XCBGenericEvent;
+typedef xcb_generic_reply_t XCBGenericReply;
 typedef xcb_generic_error_t XCBGenericError;
 
 typedef xcb_query_pointer_cookie_t XCBPointerCookie;
@@ -303,14 +370,14 @@ uint8_t
 XCBDefaultDepth(
         XCBDisplay *display, 
         int screen);
-void
+XCBCookie
 XCBSelectInput(
         XCBDisplay *display, 
         XCBWindow window, 
         uint32_t mask);
 /*
  */
-void
+XCBCookie
 XCBChangeWindowAttributes(
         XCBDisplay *display, 
         XCBWindow window, 
@@ -346,14 +413,14 @@ void
 XCBSync(
         XCBDisplay *display);
 
-void
+XCBCookie
 XCBMoveWindow(
         XCBDisplay *display, 
         XCBWindow window, 
         int32_t x, 
         int32_t y);
 
-void
+XCBCookie
 XCBMoveResizeWindow(
         XCBDisplay *display, 
         XCBWindow window, 
@@ -362,38 +429,38 @@ XCBMoveResizeWindow(
         uint32_t width, 
         uint32_t height);
 
-void
+XCBCookie
 XCBRaiseWindow(
         XCBDisplay *display, 
         XCBWindow window);
 
-void 
+XCBCookie
 XCBMapRaised(
         XCBDisplay *display, 
         XCBWindow window);
 
-void 
+XCBCookie
 XCBLowerWindow(
         XCBDisplay *display, 
         XCBWindow window);
 
-void 
+XCBCookie
 XCBRaiseWindowIf(
         XCBDisplay *display, 
         XCBWindow window);
 
-void 
+XCBCookie
 XCBLowerWindowIf(
         XCBDisplay *display, 
         XCBWindow window);
 
-void 
+XCBCookie
 XCBSetWindowBorderWidth(
         XCBDisplay *display, 
         XCBWindow window, 
         uint32_t border_width);
 
-void 
+XCBCookie
 XCBSetSibling(
         XCBDisplay *display, 
         XCBWindow window, 
@@ -443,15 +510,26 @@ XCBCreateFontCursor(
         XCBDisplay *display, 
         int shape);
 
-void 
+XCBCookie
 XCBDefineCursor(
         XCBDisplay *display, 
         XCBWindow window, XCBCursor id);
 
-void 
+XCBCookie
 XCBFreeCursor(
         XCBDisplay *display, 
         XCBCursor cursor);
+
+XCBCookie
+XCBOpenFont(
+        XCBDisplay *display, 
+        XCBFont id, const char *name);
+
+XCBCookie
+XCBCloseFont(
+        XCBDisplay *display,
+        XCBFont id
+        );
 
 XCBPointerCookie 
 XCBQueryPointerCookie(
@@ -462,14 +540,7 @@ XCBPointerReply *
 XCBQueryPointerReply(
         XCBDisplay *display, 
         XCBPointerCookie cookie);
-/* fonts */
 /**/
-void 
-XCBOpenFont(
-        XCBDisplay *display, 
-        XCBFont id, const char *name);
-
-
 /* text props */
 XCBTextPropertyCookie 
 XCBGetTextPropertyCookie(
@@ -488,7 +559,10 @@ XCBGetTextPropertyReply(
         XCBTextPropertyCookie cookie, 
         XCBTextProperty *reply_return);
 
-void 
+/*
+ * RETURN: 1 on Success.
+ */
+int
 XCBFreeTextProperty(
         XCBTextProperty *prop);
 
@@ -534,7 +608,8 @@ XCBGetMaximumRequestLength(
 
 
 
-/* 
+/* Check if the display flag has set a connection error display->has_error;
+ * 
  * RETURN: XCB_CONN_ERROR, because of socket errors, pipe errors or other stream errors.
  * RETURN: XCB_CONN_CLOSED_EXT_NOTSUPPORTED, when extension not supported.
  * RETURN: XCB_CONN_CLOSED_MEM_INSUFFICIENT, when memory not available.
@@ -545,6 +620,43 @@ XCBGetMaximumRequestLength(
 int 
 XCBCheckDisplayError(
         XCBDisplay *display);
+/* Check if the display flag has set a connection error display->has_error;
+ * 
+ * RETURN: XCB_CONN_ERROR, because of socket errors, pipe errors or other stream errors.
+ * RETURN: XCB_CONN_CLOSED_EXT_NOTSUPPORTED, when extension not supported.
+ * RETURN: XCB_CONN_CLOSED_MEM_INSUFFICIENT, when memory not available.
+ * RETURN: XCB_CONN_CLOSED_REQ_LEN_EXCEED, exceeding request length that server accepts.
+ * RETURN: XCB_CONN_CLOSED_PARSE_ERR, error during parsing display string.
+ * RETURN: XCB_CONN_CLOSED_INVALID_SCREEN, because the server does not have a screen matching the display.
+ */
+int
+XCBCheckDisplayError(
+        XCBDisplay *display);
+/* Check if the display flag has set a connection error display->has_error;
+ * 
+ * RETURN: XCB_CONN_ERROR, because of socket errors, pipe errors or other stream errors.
+ * RETURN: XCB_CONN_CLOSED_EXT_NOTSUPPORTED, when extension not supported.
+ * RETURN: XCB_CONN_CLOSED_MEM_INSUFFICIENT, when memory not available.
+ * RETURN: XCB_CONN_CLOSED_REQ_LEN_EXCEED, exceeding request length that server accepts.
+ * RETURN: XCB_CONN_CLOSED_PARSE_ERR, error during parsing display string.
+ * RETURN: XCB_CONN_CLOSED_INVALID_SCREEN, because the server does not have a screen matching the display.
+ */
+int 
+XCBHasConnectionError(
+        XCBDisplay *display);
+/* Check if the display flag has set a connection error display->has_error;
+ * 
+ * RETURN: XCB_CONN_ERROR, because of socket errors, pipe errors or other stream errors.
+ * RETURN: XCB_CONN_CLOSED_EXT_NOTSUPPORTED, when extension not supported.
+ * RETURN: XCB_CONN_CLOSED_MEM_INSUFFICIENT, when memory not available.
+ * RETURN: XCB_CONN_CLOSED_REQ_LEN_EXCEED, exceeding request length that server accepts.
+ * RETURN: XCB_CONN_CLOSED_PARSE_ERR, error during parsing display string.
+ * RETURN: XCB_CONN_CLOSED_INVALID_SCREEN, because the server does not have a screen matching the display.
+ */
+int 
+XCBHasDisplayError(
+        XCBDisplay *display);
+
 
 /* NONFUNCTIONING
  * 1 -> Error handler set.
@@ -579,25 +691,29 @@ XCBGetErrorText(
 
 
 /* 
- * Gets and returns the next Event from the XServer
- * This returns a structure called xcb_generic_event_t
- * This Function Blocks until a request is received
+ * Gets and returns the next Event from the XServer.
+ * This returns a structure called xcb_generic_event_t.
+ * This Function Blocks until a request is received.
  *
- * event_return: XCBGenericEvent * on Success
- * event_return: XCBGenericError * on Error
- * event_return: NULL on I/O Error
+ * event_return: XCBGenericEvent * on Success.
+ * event_return: XCBGenericError * on Error.
+ * event_return: NULL on I/O Error.
+ *
+ * RETURN: 1 On Success.
+ * RETURN: 0 On Failure.
  */
-void
+int
 XCBNextEvent(
-        XCBDisplay *display, XCBGenericEvent **event_return);
+        XCBDisplay *display, 
+        XCBGenericEvent **event_return);
 /* 
- * Gets and returns the next Event from the XServer
- * This returns a structure called xcb_generic_event_t
- * This Function Blocks until a request is received
+ * Gets and returns the next Event from the XServer.
+ * This returns a structure called xcb_generic_event_t.
+ * This Function Blocks until a request is received.
  *
- * RETURN: XCBGenericEvent * on Success
- * RETURN: XCBGenericError * on Error
- * RETURN: NULL on I/O Error
+ * RETURN: XCBGenericEvent * on Success.
+ * RETURN: XCBGenericError * on Error.
+ * RETURN: NULL on I/O Error.
  */
 XCBGenericEvent *
 XCBWaitForEvent(
@@ -616,7 +732,7 @@ XCBWaitForEvent(
  */
 XCBGenericEvent *
 XCBPollForEvent(
-        xcb_connection_t *c);
+        XCBDisplay *display);
 /** <Straight from the documentation.>
  * @brief Returns the next event without reading from the connection.
  * @param c The connection to the X server.
@@ -633,8 +749,47 @@ XCBPollForEvent(
  */
 XCBGenericEvent *
 XCBPollForQueuedEvent(
-        xcb_connection_t *c);
-
+        XCBDisplay *display);
+/* Check if a specified cookie request has a reply available from the XServer.
+ * 
+ * RETURN: 1 On Success.
+ * RETURN: 0 On Not Avaible/Failure.
+ */
+int 
+XCBPollForReply(
+        XCBDisplay *display, 
+        XCBCookie request, 
+        void **reply);
+/* Check if a specified cookie request has a reply available from the XServer.
+ * This is different from XCBPollForReply() as it assumes the request has already be widened.
+ *
+ * RETURN: 1 On Success.
+ * RETURN: 0 On Not Avaible/Failure.
+ */
+int 
+XCBPollForReply64(
+        XCBDisplay *display, 
+        XCBCookie request, 
+        void **reply);
+/* Check if a specified cookie request has a reply available from the XServer.
+ * 
+ * RETURN: NULL On Not Avaible/Failure.
+ * RETURN: void * On Success.
+ */
+void *
+XCBCheckReply(
+        XCBDisplay *display, 
+        XCBCookie request);
+/* Check if a specified cookie request has a reply available from the XServer.
+ * This is different from XCBCheckReply() as it assumes the request has already be widened.
+ *
+ * RETURN: NULL On not Avaible/Failure.
+ * RETURN: void * On Success.
+ */
+void *
+XCBCheckReply64(
+        XCBDisplay *display, 
+        XCBCookie request);
 
 /* grabbing/grab */
 
@@ -652,7 +807,7 @@ XCBPollForQueuedEvent(
  *              XCB_MOD_MASK_5              ISO_LEVEL3_SHIFT 
  * grab_window: XCBWindow                   The window on which the grabbed key combination will be released.
  */
-void
+XCBCookie
 XCBUngrabKey(
         XCBDisplay *display,
         XCBKeyCode key,
@@ -678,7 +833,7 @@ XCBUngrabKey(
  *
  *  RETURN: Cookie to request.
  */
-void 
+XCBCookie
 XCBUngrabButton(
         XCBDisplay *display, 
         uint8_t button, 
@@ -721,7 +876,7 @@ XCBUngrabButton(
  *                  XCBCursor                   Specifies the cursor that should be displayed.
  * RETURN: Cookie to request.
  */
-void 
+XCBCookie
 XCBGrabButton(
         XCBDisplay *display, 
         uint8_t button, 
@@ -773,7 +928,7 @@ XCBGetKeyboardMappingReply(
  *
  * RETURN: Cookie to request.
  */
-void 
+XCBCookie
 XCBMapWindow(
         XCBDisplay *display, 
         XCBWindow window);
@@ -793,6 +948,18 @@ XCBCreateWindow(
         XCBVisual visual, 
         uint32_t valuemask, 
         const uint32_t *value_list);
+XCBWindow
+XCBCreateSimpleWindow(
+        XCBDisplay *display,
+        XCBWindow parent,
+        int x,
+        int y,
+        unsigned int width,
+        unsigned int height,
+        int border_width,
+        uint32_t border,
+        uint32_t background
+        );
 
 
 /* GC */
@@ -840,7 +1007,7 @@ XCBSetLineAttributes(
         uint32_t joinstyle);
 
 
-void 
+XCBCookie
 XCBChangeProperty(
         XCBDisplay *display,
         XCBWindow window, 
@@ -851,7 +1018,7 @@ XCBChangeProperty(
         const void *data, 
         uint32_t nelements);
 
-void
+XCBCookie
 XCBDeleteProperty(
         XCBDisplay *display, 
         XCBWindow window, 
@@ -861,9 +1028,9 @@ XCBDeleteProperty(
  *
  * NOTE: class_name does not protect against non terminating strings.
  *
- * RETURN: void.
+ * RETURN: A Cookie to request.
  */
-void 
+XCBCookie
 XCBSetClassHint(
         XCBDisplay *display, 
         XCBWindow window, 
@@ -894,14 +1061,14 @@ XCB_GC_DASH_OFFSET
 XCB_GC_DASH_LIST
 XCB_GC_ARC_MODE
 */
-void 
+XCBCookie
 XCBChangeGC(
         XCBDisplay *display, 
         XCBGC gc, 
         uint32_t valuemask, 
         const void *valuelist);
 
-void
+XCBCookie
 XCBDrawPoint(
         XCBDisplay *display,
         uint8_t coordinate_mode,

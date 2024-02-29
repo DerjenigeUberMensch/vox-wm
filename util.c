@@ -9,25 +9,6 @@
 
 #include "util.h"
 
-void
-die(const char *fmt, ...)
-{
-    va_list ap;
-
-    va_start(ap, fmt);
-    vfprintf(stderr, fmt, ap);
-    va_end(ap);
-
-    if (fmt[0] && fmt[strlen(fmt)-1] == ':')
-    {
-        fputc(' ', stderr);
-        perror(NULL);
-    }
-    else fputc('\n', stderr);
-
-    exit(1);
-}
-
 void *
 ecalloc(size_t nmemb, size_t size)
 {
@@ -37,7 +18,7 @@ ecalloc(size_t nmemb, size_t size)
     return p;
     if(p) return p;
     /* exit if calloc failed Likely OS is out of memory */
-    debug("FATAL: FAILED TO CALLOC MEMORY");
+    DEBUG("%s","FATAL: FAILED TO CALLOC MEMORY");
     exit(1);
 }
 char *
@@ -61,24 +42,6 @@ smprintf(char *fmt, ...)
     vsnprintf(ret, len, fmt, fmtargs);
     va_end(fmtargs);
     return ret;
-}
-/* Youll only really see these in a debugger such as gdb */
-void
-debug(char *fmt, ...)
-{
-    if(!ENABLE_DEBUGGING) 
-    {   return;
-    }
-    char *txt;
-    va_list args;
-    va_start(args, fmt);
-    txt = smprintf(fmt, args);
-    va_end(args);
-
-    perror(txt);
-    fprintf(stdout, "\n%s\n", txt);
-
-    free(txt);
 }
 
 unsigned int

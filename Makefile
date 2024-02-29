@@ -2,11 +2,11 @@
 
 include config.mk
 
-SRC = main.c xcb_trl.c util.c
-SRCH= *.h
+SRC = $(wildcard *.c)
+SRCH= $(wildcard *.h)
 OBJ = ${SRC:.c=.o}
 VERSION = XXX
-EXE = dwm 
+EXE = dwm
 all: options default
 
 options:
@@ -19,7 +19,7 @@ options:
 
 default: ${OBJ}
 	${CC} -o ${EXE} ${OBJ} ${LDFLAGS}
-	rm -f -- *.o
+	rm -f -- $(wildcard *.o)
 
 release:
 	rm -rf -f -- ${EXE}-${VERSION}

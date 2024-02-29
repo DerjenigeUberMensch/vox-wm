@@ -10,13 +10,21 @@
 #define BETWEEN(X, A, B)        ((A) <= (X) && (X) <= (B))
 #define MOD(N,M)                ((N)%(M) < 0 ? (N)%(M) + (M) : (N)%(M))
 #define TRUNC(X,A,B)            (MAX((A), MIN((X), (B))))
+#define DIE(fmt, ...) \
+        fprintf(stderr, "[%s:%d] " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__); \
+        exit(1);
 
-#define ENABLE_DEBUGGING            0       /* enable debug messages for gdb via debug()                */
+#define ENABLE_DEBUGGING 1   /* enable debbuging */
 
-void die(const char *fmt, ...);
+#if (ENABLE_DEBUGGING)
+    #define DEBUG(fmt, ...) \
+         fprintf(stderr, "[%s:%d] " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__)
+#else
+    #define DEBUG(fmt, ...) ((void)0)
+#endif
+
 void *ecalloc(size_t nmemb, size_t size);
 char *smprintf(char *fmt, ...);
-void debug(char *fmt, ...);
 unsigned int UIHash(unsigned int x);
 unsigned int UIUnHash(unsigned int x);
 uint64_t UI64Hash(uint64_t x);
