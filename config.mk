@@ -1,5 +1,5 @@
 # compiler 
-CC =gcc
+CC = gcc
 
 # paths
 PREFIX = /usr/local/
@@ -27,7 +27,7 @@ PRELINKERFLAGS = -flto -fprefetch-loop-arrays
 INLINELIMIT = 15
 LINKERFLAGS = ${DYNAMICLINK} -Wl,--gc-sections,--as-needed,--relax,--strip-all -finline-functions -finline-limit=${INLINELIMIT} -flto 
 
-BINARY = ${X64}
+BINARY = ${X32}
 CPPFLAGS = -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L ${XINERAMAFLAGS}
 CCFLAGS  = ${CCVERSION} ${WARNINGFLAGS} ${INCS} ${CPPFLAGS} ${BINARY} ${PRELINKERFLAGS} ${SECTIONCODE} 
 RELEASEFLAGS = ${CCFLAGS} 
@@ -49,7 +49,7 @@ BUILDSELF = ${RELEASEFLAGS} ${XNATIVE} -O3
 # uncomment for debugging
 LINKERFLAGS = ${DYNAMICLINK} -Wl,--gc-sections
 # Set your options or presets (see above) ex: ${PRESETNAME} (Compiler used is on top)
-CFLAGS = ${RELEASE}
+CFLAGS = ${RELEASES}
 # Linker flags
 LDFLAGS =  ${LIBS} ${LINKERFLAGS} ${BINARY} 
 # Solaris

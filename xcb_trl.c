@@ -445,7 +445,7 @@ XCBInternAtomReply(XCBDisplay *display, XCBAtomCookie cookie)
 
 
 inline XCBPixmap
-XCBCreatePixmap(XCBDisplay *display, XCBWindow root, unsigned int width, unsigned int height, unsigned short depth)
+XCBCreatePixmap(XCBDisplay *display, XCBWindow root, u16 width, u16 height, u8 depth)
 {
     const XCBPixmap id = xcb_generate_id(display);
     xcb_create_pixmap(display, depth, id, root, width, height);
@@ -474,8 +474,7 @@ XCBCreateFontCursor(XCBDisplay *display, int shape)
     const xcb_cursor_t id = xcb_generate_id(display);
     (void)xcb_create_glyph_cursor(display, id, font, font, shape, shape + 1,
                             fgred, fggreen, fgblue,
-                            bgred, bggreen, bgblue
-                            );
+                            bgred, bggreen, bgblue);
     return id;
 }
 
@@ -630,7 +629,13 @@ XCBPollForEvent(XCBDisplay *display)
    return  xcb_poll_for_event(display);
 }
 
-inline XCBCookie
+inline XCBGenericEvent *
+XCBPollForQueuedEvent(XCBDisplay *display)
+{
+    return xcb_poll_for_queued_event(display);
+}
+
+inline XCBCookie 
 XCBUngrabKey(XCBDisplay *display, XCBKeyCode key, u16 modifiers, XCBWindow grab_window)
 {
     return xcb_ungrab_key(display, key, grab_window, modifiers);
@@ -691,12 +696,6 @@ XCBGetKeyboardMappingReply(XCBDisplay *display, XCBKeyboardMappingCookie cookie)
     return reply;
 }
 
-inline XCBGenericEvent *
-XCBPollForQueuedEvent(XCBDisplay *display)
-{
-    return xcb_poll_for_queued_event(display);
-}
-
 inline XCBPointerCookie
 XCBQueryPointerCookie(XCBDisplay *display, XCBWindow window)
 {
@@ -720,9 +719,19 @@ XCBMapWindow(XCBDisplay *display, XCBWindow window)
 }
 
 inline XCBWindow 
-XCBCreateWindow(XCBDisplay *display, XCBWindow parent, 
-int x, int y, unsigned int width, unsigned int height, int border_width, 
-u8 depth, unsigned int class, XCBVisual visual, u32 valuemask, const u32 *value_list)
+XCBCreateWindow(
+        XCBDisplay *display, 
+        XCBWindow parent, 
+        i16 x, 
+        i16 y, 
+        u16 width, 
+        u16 height, 
+        u16 border_width, 
+        u8 depth, 
+        unsigned int class, 
+        XCBVisual visual, 
+        u32 valuemask, 
+        const u32 *value_list)
 {
     const XCBWindow id = xcb_generate_id(display);
     const void *used = NULL;
@@ -735,11 +744,11 @@ inline XCBWindow
 XCBCreateSimpleWindow(
         XCBDisplay *display,
         XCBWindow parent,
-        int x,
-        int y,
-        unsigned int width,
-        unsigned int height,
-        int border_width,
+        i16 x,
+        i16 y,
+        u16 width,
+        u16 height,
+        u16 border_width,
         uint32_t border_color,
         uint32_t background_color
         )
@@ -802,6 +811,15 @@ XCBDeleteProperty(XCBDisplay *display, XCBWindow window, XCBAtom property)
     return xcb_delete_property(display, window, property);
 }
 
+XCBCookie
+XCBConfigureWindow(
+        XCBDisplay *display, 
+        XCBWindow window,
+        uint32_t value_mask,
+        XCBWindowChanges *changes)
+{
+    return xcb_configure_window(display, window, value_mask, changes);
+}
 
 inline XCBCookie
 XCBSetClassHint(XCBDisplay *display, XCBWindow window, const char *class_name)

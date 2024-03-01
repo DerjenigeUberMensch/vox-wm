@@ -1,2 +1,1 @@
-# testing-wm
-test
+# XCB-TRL

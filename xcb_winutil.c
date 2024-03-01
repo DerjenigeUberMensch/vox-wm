@@ -5,9 +5,6 @@
 #include "xcb_winutil.h"
 
 
-
-#define LENGTH(X)               (sizeof X / sizeof X[0])
-
 void
 XCBInitAtoms(XCBDisplay *display, XCBAtom *wm_atom_return, XCBAtom *net_atom_return)
 {

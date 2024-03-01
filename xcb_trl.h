@@ -112,8 +112,6 @@
 #include <xcb/xcb_xrm.h>
 
 
-
-
 /* Ghosts */
 
 /*  FILE xcb_conn.c ;
@@ -179,6 +177,77 @@ typedef xcb_get_keyboard_mapping_reply_t XCBKeyboardMapping;
 typedef xcb_intern_atom_cookie_t XCBAtomCookie;
 typedef xcb_atom_t XCBAtom;
 
+/* Analagous to Xlib's XA_(type)
+ * XCB_ATOM_NONE = 0,
+ * XCB_ATOM_ANY = 0,
+ * XCB_ATOM_PRIMARY = 1,
+ * XCB_ATOM_SECONDARY = 2,
+ * XCB_ATOM_ARC = 3,
+ * XCB_ATOM_ATOM = 4,
+ * XCB_ATOM_BITMAP = 5,
+ * XCB_ATOM_CARDINAL = 6,
+ * XCB_ATOM_COLORMAP = 7,
+ * XCB_ATOM_CURSOR = 8,
+ * XCB_ATOM_CUT_BUFFER0 = 9,
+ * XCB_ATOM_CUT_BUFFER1 = 10,
+ * XCB_ATOM_CUT_BUFFER2 = 11,
+ * XCB_ATOM_CUT_BUFFER3 = 12,
+ * XCB_ATOM_CUT_BUFFER4 = 13,
+ * XCB_ATOM_CUT_BUFFER5 = 14,
+ * XCB_ATOM_CUT_BUFFER6 = 15,
+ * XCB_ATOM_CUT_BUFFER7 = 16,
+ * XCB_ATOM_DRAWABLE = 17,
+ * XCB_ATOM_FONT = 18,
+ * XCB_ATOM_INTEGER = 19,
+ * XCB_ATOM_PIXMAP = 20,
+ * XCB_ATOM_POINT = 21,
+ * XCB_ATOM_RECTANGLE = 22,
+ * XCB_ATOM_RESOURCE_MANAGER = 23,
+ * XCB_ATOM_RGB_COLOR_MAP = 24,
+ * XCB_ATOM_RGB_BEST_MAP = 25,
+ * XCB_ATOM_RGB_BLUE_MAP = 26,
+ * XCB_ATOM_RGB_DEFAULT_MAP = 27,
+ * XCB_ATOM_RGB_GRAY_MAP = 28,
+ * XCB_ATOM_RGB_GREEN_MAP = 29,
+ * XCB_ATOM_RGB_RED_MAP = 30,
+ * XCB_ATOM_STRING = 31,
+ * XCB_ATOM_VISUALID = 32,
+ * XCB_ATOM_WINDOW = 33,
+ * XCB_ATOM_WM_COMMAND = 34,
+ * XCB_ATOM_WM_HINTS = 35,
+ * XCB_ATOM_WM_CLIENT_MACHINE = 36,
+ * XCB_ATOM_WM_ICON_NAME = 37,
+ * XCB_ATOM_WM_ICON_SIZE = 38,
+ * XCB_ATOM_WM_NAME = 39,
+ * XCB_ATOM_WM_NORMAL_HINTS = 40,
+ * XCB_ATOM_WM_SIZE_HINTS = 41,
+ * XCB_ATOM_WM_ZOOM_HINTS = 42,
+ * XCB_ATOM_MIN_SPACE = 43,
+ * XCB_ATOM_NORM_SPACE = 44,
+ * XCB_ATOM_MAX_SPACE = 45,
+ * XCB_ATOM_END_SPACE = 46,
+ * XCB_ATOM_SUPERSCRIPT_X = 47,
+ * XCB_ATOM_SUPERSCRIPT_Y = 48,
+ * XCB_ATOM_SUBSCRIPT_X = 49,
+ * XCB_ATOM_SUBSCRIPT_Y = 50,
+ * XCB_ATOM_UNDERLINE_POSITION = 51,
+ * XCB_ATOM_UNDERLINE_THICKNESS = 52,
+ * XCB_ATOM_STRIKEOUT_ASCENT = 53,
+ * XCB_ATOM_STRIKEOUT_DESCENT = 54,
+ * XCB_ATOM_ITALIC_ANGLE = 55,
+ * XCB_ATOM_X_HEIGHT = 56,
+ * XCB_ATOM_QUAD_WIDTH = 57,
+ * XCB_ATOM_WEIGHT = 58,
+ * XCB_ATOM_POINT_SIZE = 59,
+ * XCB_ATOM_RESOLUTION = 60,
+ * XCB_ATOM_COPYRIGHT = 61,
+ * XCB_ATOM_NOTICE = 62,
+ * XCB_ATOM_FONT_NAME = 63,
+ * XCB_ATOM_FAMILY_NAME = 64,
+ * XCB_ATOM_FULL_NAME = 65,
+ * XCB_ATOM_CAP_HEIGHT = 66,
+*/
+typedef xcb_atom_enum_t XCBAtomType;
 typedef xcb_keysym_t XCBKeysym;
 typedef xcb_keycode_t XCBKeycode;
 typedef xcb_keycode_t XCBKeyCode;
@@ -191,6 +260,7 @@ typedef char XCBClassHint;
 
 
 typedef xcb_get_window_attributes_cookie_t XCBWindowAttributesCookie;
+typedef xcb_configure_window_value_list_t XCBWindowChanges;
 typedef xcb_get_window_attributes_cookie_t XCBAttributesCookie;
 typedef xcb_get_window_attributes_cookie_t XCBGetAttributesCookie;
 typedef xcb_get_geometry_cookie_t XCBGetGeometryCookie;
@@ -233,13 +303,31 @@ typedef xcb_xinerama_query_screens_cookie_t XCBXineramaQueryScreensCookie;
 /* 
  * Opens the display and returns a XCBDisplay* on Success.
  *
+ *
+ *
+ * display_name:                Pass in as ":X" where X is the number of the display to connect to.              
+ * *screen_number:              This returns the display screen number.
  * RETURN: NULL on Failure.
  * To check error use XCBGetErrorText() or see XCBCheckDisplayError() to get error number.
  */
 XCBDisplay *
 XCBOpenDisplay(
-        const char *displayName, 
-        int *screenNumber);
+        const char *display_name, 
+        int *screen_number_return);
+/* 
+ * Opens the display and returns a XCBDisplay* on Success.
+ * Unchecked, caller must check for connection error using XCBCheckDisplayError();
+ *
+ *
+ * display_name:                Pass in as ":X" where X is the number of the display to connect to.              
+ * *screen_number:              This returns the display screen number.
+ * RETURN: XCB Display *
+ * To check error use XCBGetErrorText() or see XCBCheckDisplayError() to get error number.
+ */
+XCBDisplay *
+XCBOpenConnection(
+        const char *display_name,
+        int *screen_number_return);
 /* 
  * Closes the connection Specified and Frees the data associated with connection.
  * No side effects if display is NULL.
@@ -259,7 +347,7 @@ XCBDisplayNumber(
  * return a connection number for the specified display. On a POSIX-conformant system, this is the file descriptor of the connection.
  */
 int 
-XCBDisplayNumber(
+XCBConnectionNumber(
         XCBDisplay *display);
 /*
  */
@@ -501,9 +589,9 @@ XCBPixmap
 XCBCreatePixmap(
         XCBDisplay *display, 
         XCBWindow root, 
-        unsigned int width, 
-        unsigned int height, 
-        unsigned short depth);
+        uint16_t width, 
+        uint16_t height, 
+        uint8_t depth);
 
 XCBCursor 
 XCBCreateFontCursor(
@@ -938,11 +1026,11 @@ XCBWindow
 XCBCreateWindow(
         XCBDisplay *display, 
         XCBWindow parent, 
-        int x, 
-        int y, 
-        unsigned int width, 
-        unsigned int height, 
-        int border_width, 
+        int16_t x, 
+        int16_t y, 
+        uint16_t width, 
+        uint16_t height, 
+        uint16_t border_width, 
         uint8_t depth, 
         unsigned int _class, 
         XCBVisual visual, 
@@ -952,11 +1040,11 @@ XCBWindow
 XCBCreateSimpleWindow(
         XCBDisplay *display,
         XCBWindow parent,
-        int x,
-        int y,
-        unsigned int width,
-        unsigned int height,
-        int border_width,
+        int16_t x,
+        int16_t y,
+        uint16_t width,
+        uint16_t height,
+        uint16_t border_width,
         uint32_t border,
         uint32_t background
         );
@@ -1006,7 +1094,13 @@ XCBSetLineAttributes(
         uint32_t capstyle, 
         uint32_t joinstyle);
 
-
+/*
+ * property:                    The atom property AKA XInternAtom(dpy, "my_cool_atom", False);
+ * type:        XCBAtom         Not often the case but specific atom require this, see above for type.
+ *              XCBAtomType     The XCB_ATOM_(sometype) of the property. (Xlib XA_(sometype))
+  *                     
+ * RETURN: Cookie to request.
+*/
 XCBCookie
 XCBChangeProperty(
         XCBDisplay *display,
@@ -1024,6 +1118,22 @@ XCBDeleteProperty(
         XCBWindow window, 
         XCBAtom property);
 
+/*
+ * value_mask:          XCB_CONFIG_WINDOW_X;
+                        XCB_CONFIG_WINDOW_Y;
+                        XCB_CONFIG_WINDOW_WIDTH;
+                        XCB_CONFIG_WINDOW_HEIGHT;
+                        XCB_CONFIG_WINDOW_BORDER_WIDTH;
+                        XCB_CONFIG_WINDOW_SIBLING;
+                        XCB_CONFIG_WINDOW_STACK_MODE;
+ * RETURN: Cookie to request.
+*/
+XCBCookie
+XCBConfigureWindow(
+        XCBDisplay *display, 
+        XCBWindow window,
+        uint32_t value_mask,
+        XCBWindowChanges *changes);
 /* Sets the classhint for a specified window with class_name as the name hint similiar to XSetClassHint()
  *
  * NOTE: class_name does not protect against non terminating strings.
@@ -1109,9 +1219,7 @@ XCBPrefetchMaximumRequestLength(
 
 
 
-
-
-
+/* Events */
 
 
 
@@ -1166,7 +1274,7 @@ XCBPrefetchMaximumRequestLength(
  * XCB_VISUAL_CLASS_TRUE_COLOR = 4,
  * XCB_VISUAL_CLASS_DIRECT_COLOR = 5
  *
- * Event
+ * Event 
  * --------------------
  * XCB_EVENT_MASK_NO_EVENT = 0,
  * XCB_EVENT_MASK_KEY_PRESS = 1,
@@ -1308,8 +1416,6 @@ XCBPrefetchMaximumRequestLength(
  * XCB_ATOM_FAMILY_NAME = 64,
  * XCB_ATOM_FULL_NAME = 65,
  * XCB_ATOM_CAP_HEIGHT = 66,
- *
- *
  *
  * Colormap State
  * ------------------------------
