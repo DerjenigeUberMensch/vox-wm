@@ -5,7 +5,7 @@ include config.mk
 SRC = $(wildcard *.c)
 SRCH= $(wildcard *.h)
 OBJ = ${SRC:.c=.o}
-VERSION = XXX
+VERSION = 1.0.0
 EXE = dwm
 all: options default
 
@@ -14,8 +14,9 @@ options:
 	@echo "CFLAGS   = ${CFLAGS}"
 	@echo "LDFLAGS  = ${LDFLAGS}"
 	@echo "CC       = ${CC}"
+
 .c.o:
-	${CC} -c ${CFLAGS} $<
+	${CC} -c ${CFLAGS} $< 
 
 default: ${OBJ}
 	${CC} -o ${EXE} ${OBJ} ${LDFLAGS}

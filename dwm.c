@@ -16,8 +16,10 @@
 #include "xcb_trl.h"
 #include "xcb_winutil.h"
 #include "util.h"
-
+#include "events.h"
 #include "dwm.h"
+
+#include "config.h"
 
 typedef uint8_t  u8;
 typedef uint16_t u16;
@@ -35,17 +37,15 @@ int sw;
 int sh;
 XCBWindow root;
 XCBDisplay *dpy;
+int numlockmask = 0;
 
 XCBAtom netatom[NetLast];
 XCBAtom wmatom[WMLast];
 
-Client baget[256];
-
-
 void
 exithandler(void)
 {
-    DEBUG("%s", "Process Terminated.");
+    DEBUG("%s", "Process Terminated Successfully.");
 }
 
 void
@@ -61,19 +61,94 @@ xerror(XCBDisplay *display, XCBGenericError *err)
 
 
 void
+argcvhandler(int argc, char *argv[])
+{
+    int i;
+    for(i = 0; i < argc; ++i)
+    {
+        if(!strcmp(argv[i], "-h"))
+        {
+            printf( "Usage: dwm [options]\n"
+                    "  -h           Help Information.\n"
+                    "  -v           Compiler Information.\n"
+                    );
+            exit(EXIT_SUCCESS);
+        }
+        else if (!strcmp(argv[i], "-v"))
+        {
+            char *compiler = "UNKNOWN";
+            int majorversion = -1;
+            int minorversion = -1;
+            int patchversion = -1;
+            #if __GNUC__
+            compiler = "GCC";
+            majorversion = __GNUC__;
+            minorversion = __GNUC_MINOR__;
+            patchversion = __GNUC_PATCHLEVEL__;
+            #endif
+            #if __clang__
+            compiler = "CLANG";
+            majorversion = __clang_major__;
+            minorversion = __clang_minor__;
+            patchversion = __clang_patchlevel__;
+            #endif
+            printf( "Compiling Information.\n"
+                    "  Compiled:        %s %s\n"
+                    "  Compiler:        [%s v%d.%d.%d]\n" 
+                    "  STDC:            [%d] [%lu]\n"
+                    "  BYTE_ORDER:      [%d]\n"
+                    "  POINTER_SIZE:    [%d]\n"
+                    "Version Information.\n"
+                    "  VERSION:         [%s]\n"
+                    , 
+                    __DATE__, __TIME__,
+                    compiler, majorversion, minorversion, patchversion,
+                    __STDC_HOSTED__, __STDC_VERSION__,
+                    __BYTE_ORDER__,
+                    __SIZEOF_POINTER__,
+                    VERSION
+                    );
+            exit(EXIT_SUCCESS);
+        }
+        else
+        {   
+            const char exec1 = '.';
+            const char exec2 = '/';
+            const char execcount = 3; /* not 2 because we need \0 */ /* +1 for the possible 1 letter name and +1 again for \0   */
+            if(argv[0] != NULL && strnlen(argv[0], execcount + 2) > execcount && argv[0][0] == exec1 && argv[0][1] == exec2)
+            {   
+                if(i > 1)
+                {
+                    printf("%s%s%s", "UNKNOWN COMMAND: '", argv[i], "'\n");
+                    printf( "Usage: dwm [options]\n"
+                            "  -h           Help Information.\n"
+                            "  -v           Compiler Information.\n"
+                          );
+                    exit(EXIT_SUCCESS);
+                }
+            }
+            else
+            {   
+            }
+        }
+    }
+}
+
+void
 checkotherwm(void)
 {
     XCBGenericEvent *ev = NULL;
+    int response;
     XCBSelectInput(dpy, XCBDefaultRootWindow(dpy, screen), XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT);
     XCBSync(dpy);  /* XCBFlush has different behaviour suprisingly, its undesired though */
     /* XCBPollForEvent calls the XServer itself for the event, So if we get a reply then a type of Window manager must be running */
     if((ev = XCBPollForEvent(dpy)))
     {   
-        if(ev->response_type == 0) 
-        {   
-            free(ev);
-            XCBCloseDisplay(dpy);
-            DIE("%s", "FATAL: ANOTHER WINDOW MANAGER IS RUNNING.");
+        response = ev->response_type;
+        free(ev);
+        XCBCloseDisplay(dpy);
+        if(response == 0) 
+        {   DIE("%s", "FATAL: ANOTHER WINDOW MANAGER IS RUNNING.");
         }
         /* UNREACHABLE */
         DIE("%s", "FATAL: UNKNOWN REPONSE_TYPE");
@@ -87,16 +162,87 @@ cleanup(void)
 {
 }
 
+void
+grabbuttons(XCBWindow win, int focused)
+{
+	updatenumlockmask();
+	{
+		unsigned int i, j;
+		unsigned int modifiers[4] = { 0, XCB_MOD_MASK_LOCK, numlockmask, numlockmask|XCB_MOD_MASK_LOCK};
+        XCBUngrabButton(dpy, XCB_BUTTON_INDEX_ANY, XCB_BUTTON_MASK_ANY, win);
+		if (!focused)
+        {
+            XCBGrabButton(dpy, XCB_BUTTON_INDEX_ANY, XCB_MOD_MASK_ANY, win, 0, BUTTONMASK, 
+                    XCB_GRAB_MODE_SYNC, XCB_GRAB_MODE_SYNC, XCB_NONE, XCB_NONE);
+        }
+		for (i = 0; i < LENGTH(buttons); i++)
+        {
+			if (buttons[i].click == ClkClientWin)
+            {
+				for (j = 0; j < LENGTH(modifiers); j++)
+                {
+                    XCBGrabButton(dpy, buttons[i].button, 
+                            buttons[i].mask | modifiers[j], 
+                            win, 0, BUTTONMASK, 
+                            XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_SYNC, 
+                            XCB_NONE, XCB_NONE);
+                }
+            }
+        }
+	}
+}
+
+void
+grabkeys(void)
+{
+	updatenumlockmask();
+	{
+		u32 i, j, k;
+		u32 modifiers[4] = { 0, XCB_MOD_MASK_LOCK, numlockmask, numlockmask|XCB_MOD_MASK_LOCK };
+        XCBKeyCode *keycodes;
+
+        XCBUngrabKey(dpy, XCB_GRAB_ANY, XCB_MOD_MASK_ANY, root);
+
+        for(i = 0; i < LENGTH(keys); ++i)
+        {   keycodes = XCBGetKeyCodes(dpy, keys[i].keysym);
+        }
+
+        for(j = 0; keycodes[j] != XCB_NO_SYMBOL; ++j)
+        {   
+            for(k = 0; k < LENGTH(modifiers); ++k)
+            {
+                XCBGrabKey(dpy, 
+                        keycodes[j], keys[i].mod | modifiers[k], 
+                        root, 1, 
+                        XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
+            }
+        }
+        free(keycodes);
+    }
+}
+
 void 
 run(void)
 {
     XCBGenericEvent *ev = NULL;
+    uint8_t cleanev = 0;
     while(running)
     {
         if(!(ev = XCBPollForQueuedEvent(dpy)))
         {   XCBNextEvent(dpy, &ev);
+            if(!ev)     /* Assume server is dead */
+            {   running = 0;
+                continue;
+            }
         }
-        switch(ev->response_type)
+        /* returns the enum type of the event */
+        cleanev = XCB_EVENT_RESPONSE_TYPE(ev);
+        if(handler[(cleanev)])
+        {   handler[cleanev](ev);
+            free(ev);
+            ev = NULL;
+        }
+        switch(cleanev)
         {
             case XCB_KEY_PRESS:
                 DEBUG("%s", "XCB_KEY_PRESS");
@@ -204,10 +350,8 @@ run(void)
                 DEBUG("%s", "AN ERROR OCCURED");
                 break;
             default:
-                DEBUG("%s[%d]", "UNKNOWN EVENT CODE: ", ev->response_type);
+                DEBUG("%s[%d]", "UNKNOWN EVENT CODE: ", cleanev);
         }
-        free(ev);
-        ev = NULL;
     }
 }
 
@@ -235,7 +379,7 @@ setup(void)
                             /* simple window */
     XCBWindow wmcheckwin = XCBCreateSimpleWindow(dpy, root, 0, 0, 1, 1, 0, 0, 0);
     XCBChangeProperty(dpy, wmcheckwin, netatom[NetSupportingWMCheck], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&wmcheckwin, 1);
-    XCBChangeProperty(dpy, wmcheckwin, netatom[NetWMName], utf8str, 8, XCB_PROP_MODE_REPLACE, WM_NAME, strlen(WM_NAME));
+    XCBChangeProperty(dpy, wmcheckwin, netatom[NetWMName], utf8str, 8, XCB_PROP_MODE_REPLACE, WM_NAME, LENGTH(WM_NAME));
     XCBChangeProperty(dpy, root, netatom[NetSupportingWMCheck], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&wmcheckwin, 1);
     /* EWMH support per view */
     XCBChangeProperty(dpy, root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&netatom, NetLast);
@@ -244,10 +388,15 @@ setup(void)
     
     XCBWindowAttributes wa;
     wa.event_mask = XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT|XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY|
-                    XCB_EVENT_MASK_BUTTON_PRESS|XCB_EVENT_MASK_POINTER_MOTION|XCB_EVENT_MASK_ENTER_WINDOW|
-                    XCB_EVENT_MASK_LEAVE_WINDOW|XCB_EVENT_MASK_STRUCTURE_NOTIFY|XCB_EVENT_MASK_PROPERTY_CHANGE;
+                    XCB_EVENT_MASK_KEY_PRESS|XCB_EVENT_MASK_KEY_RELEASE|
+                    XCB_EVENT_MASK_KEYMAP_STATE | 
+                    XCB_EVENT_MASK_BUTTON_PRESS|XCB_EVENT_MASK_BUTTON_RELEASE|
+                    XCB_EVENT_MASK_POINTER_MOTION|
+                    XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_LEAVE_WINDOW
+                    |XCB_EVENT_MASK_STRUCTURE_NOTIFY|XCB_EVENT_MASK_PROPERTY_CHANGE;
     XCBChangeWindowAttributes(dpy, root, XCB_CW_EVENT_MASK, &wa);
     XCBSelectInput(dpy, root, wa.event_mask);
+    grabkeys();
 }
 
 void
@@ -296,6 +445,7 @@ startup(void)
     if(!setlocale(LC_CTYPE, ""))
     {   fputs("WARN: NO_LOCALE_SUPPORT\n", stderr);
     }
+    /* XXX rember to set this to NULL when done testing */
     dpy = XCBOpenDisplay(":1", &screen);
     if(!dpy)
     {   DIE("%s", "FATAL: CANNOT_CONNECT_TO_X_SERVER");
@@ -304,9 +454,43 @@ startup(void)
     atexit(exithandler);
 }
 
-int
-main(int argc, char **argv)
+void
+updatenumlockmask(void)
 {
+    /* taken from i3 */
+    XCBKeyboardModifier *reply;
+    XCBGenericError *err;
+
+    reply = xcb_get_modifier_mapping_reply(dpy, xcb_get_modifier_mapping(dpy), &err);
+    if(err)
+    {   return;
+    }
+
+	xcb_keycode_t *codes = xcb_get_modifier_mapping_keycodes(reply);
+	xcb_keycode_t target, *temp = NULL;
+	unsigned int i, j;
+    static XCBKeySymbols *syms;
+    /* init syms before we grab keys */
+    syms = xcb_key_symbols_alloc(dpy);
+    if(!(temp = xcb_key_symbols_get_keycode(syms, XK_Num_Lock)))
+    {   free(reply);
+        return;
+    }
+
+	target = *temp;
+	free(temp);
+
+	for(i = 0; i < 8; i++)
+		for(j = 0; j < reply->keycodes_per_modifier; j++)
+			if(codes[i * reply->keycodes_per_modifier + j] == target)
+				numlockmask = (1 << i);
+    free(reply);
+}
+
+int
+main(int argc, char *argv[])
+{
+    argcvhandler(argc, argv);
     startup();
     setup();
 #ifdef __OpenBSD__

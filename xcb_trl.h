@@ -6,7 +6,7 @@
 /* compiling
  * xcb is dumb and sometimes doesnt find the required stuff so you just guess or search it up
  * but this shhould cover most if not all of xcb's libraries, atleast the ones used here
- * `pkg-config --cflags --libs xcb` -lxcb-util -lxcb-icccm
+ * `pkg-config --cflags --libs xcb` -lxcb-util -lxcb-icccm -lxcb-keysyms
  */
 
 
@@ -91,9 +91,12 @@
  * This type of error can happen out of the blue if you arent careful.
  * To check if this error occured simply acces the display->has_error type;
  * If you want a more clear approach you can simply call XCBHasConnectionError();
- * 
- * 
- * 
+ *
+ * <<< Reply Errors >>> ;
+ * By default Errors are handled in the event que.
+ * However reply backs, (ie any function that calls for a reply from a cookie).
+ * Instead uses the XCBErrorHandler(), this can be set by the client using XCBSetErrorHandler().
+ * By Default however is to simply call die() on errors, which may not be desirable.
  */
 
 #ifndef XCB_PTL_TYPEDEF_H_
@@ -165,6 +168,7 @@ typedef xcb_connection_t XCBDisplay;
  * u8 pad1[4] -> This should be considered READONLY ;
  */
 typedef xcb_setup_t XCBSetup;
+typedef xcb_key_symbols_t XCBKeySymbols;
 typedef xcb_screen_iterator_t XCBScreenIterator;
 typedef xcb_screen_t XCBScreen;
 typedef xcb_window_t XCBWindow;
@@ -174,6 +178,8 @@ typedef xcb_icccm_get_text_property_reply_t XCBTextProperty;
 typedef xcb_void_cookie_t XCBCookie;
 typedef xcb_get_keyboard_mapping_cookie_t XCBKeyboardMappingCookie;
 typedef xcb_get_keyboard_mapping_reply_t XCBKeyboardMapping;
+typedef xcb_get_modifier_mapping_cookie_t XCBKeyboardModifierCookie;
+typedef xcb_get_modifier_mapping_reply_t XCBKeyboardModifier;
 typedef xcb_intern_atom_cookie_t XCBAtomCookie;
 typedef xcb_atom_t XCBAtom;
 
@@ -295,20 +301,58 @@ typedef xcb_xinerama_query_screens_cookie_t XCBXineramaQueryScreensCookie;
 
 
 
-
-
-
+/* events */
+typedef xcb_key_press_event_t XCBKeyPressEvent;
+typedef xcb_key_release_event_t XCBKeyReleaseEvent;
+typedef xcb_button_press_event_t XCBButtonPressEvent;
+typedef xcb_button_release_event_t XCBButtonReleaseEvent;
+typedef xcb_motion_notify_event_t XCBMotionNotifyEvent;
+typedef xcb_enter_notify_event_t XCBEnterNotifyEvent;
+typedef xcb_leave_notify_event_t XCBLeaveNotifyEvent;
+typedef xcb_focus_in_event_t XCBFocusInEvent;
+typedef xcb_focus_out_event_t XCBFocusOutEvent;
+typedef xcb_keymap_notify_event_t XCBKeymapNotifyEvent;
+typedef xcb_expose_event_t XCBExposeEvent;
+typedef xcb_graphics_exposure_event_t XCBGraphicsExposeEvent;
+typedef xcb_graphics_exposure_event_t XCBGraphicsExposureEvent;
+typedef xcb_no_exposure_event_t XCBNoExpose;
+typedef xcb_no_exposure_event_t XCBNoExposure;
+typedef xcb_circulate_notify_event_t XCBCirculateNotifyEvent;
+typedef xcb_circulate_request_event_t XCBCirculateRequestEvent;
+typedef xcb_map_request_event_t XCBMapRequestEvent;
+typedef xcb_configure_request_event_t XCBConfigureRequestEvent;
+typedef xcb_configure_notify_event_t XCBConfigureNotifyEvent;
+typedef xcb_resize_request_event_t XCBResizeRequestEvent;
+typedef xcb_create_notify_event_t XCBCreateNotifyEvent;
+typedef xcb_destroy_notify_event_t XCBDestroyNotifyEvent;
+typedef xcb_gravity_notify_event_t XCBGravityNotifyEvent;
+typedef xcb_map_notify_event_t XCBMapNotifyEvent;
+typedef xcb_mapping_notify_event_t XCBMappingNotifyEvent;
+typedef xcb_unmap_notify_event_t XCBUnMapNotifyEvent;
+typedef xcb_visibility_notify_event_t XCBVisibilityNotifyEvent;
+typedef xcb_reparent_notify_event_t XCBReparentNotifyEvent;
+typedef xcb_colormap_notify_event_t XCBColormapNotifyEvent;
+typedef xcb_colormap_notify_event_t XCBColorMapNotifyEvent;
+typedef xcb_client_message_event_t XCBClientMessageEvent;
+typedef xcb_property_notify_event_t XCBPropertyNotifyEvent;
+typedef xcb_selection_clear_event_t XCBSelectionClearEvent;
+typedef xcb_selection_notify_event_t XCBSelectionNotifyEvent;
+typedef xcb_selection_request_event_t XCBSelectionRequestEvent;
+/* This is NOT short for XCBGenericEvent rather is used for Ge Events */
+typedef xcb_ge_event_t XCBGeEvent;
 
 
 /* 
- * Opens the display and returns a XCBDisplay* on Success.
+ * Opens the display returning a XCBDisplay * to the connection
  *
  *
  *
  * display_name:                Pass in as ":X" where X is the number of the display to connect to.              
  * *screen_number:              This returns the display screen number.
  * RETURN: NULL on Failure.
- * To check error use XCBGetErrorText() or see XCBCheckDisplayError() to get error number.
+ * RETURN: XCBDisplay * on Success.
+ *
+ * NOTE: To check error use XCBGetErrorText() or see XCBCheckDisplayError() to get error number.
  */
 XCBDisplay *
 XCBOpenDisplay(
@@ -321,15 +365,18 @@ XCBOpenDisplay(
  *
  * display_name:                Pass in as ":X" where X is the number of the display to connect to.              
  * *screen_number:              This returns the display screen number.
- * RETURN: XCB Display *
- * To check error use XCBGetErrorText() or see XCBCheckDisplayError() to get error number.
+ * RETURN: XCB Display * ;
+ * RETURN: NULL on I/O error (rare)
+ *
+ * NOTE: This function will NEVER return NULL.
+ * NOTE: To check error use XCBGetErrorText() or see XCBCheckDisplayError() to get error number.
  */
 XCBDisplay *
 XCBOpenConnection(
         const char *display_name,
         int *screen_number_return);
 /* 
- * Closes the connection Specified and Frees the data associated with connection.
+ * Closes the connection Specified and frees the data associated with connection.
  * No side effects if display is NULL.
  */
 void 
@@ -337,19 +384,22 @@ XCBCloseDisplay(
         XCBDisplay *display);
 /* 
  * display: Specifies the connection to the X server.
- * return a connection number for the specified display. On a POSIX-conformant system, this is the file descriptor of the connection.
+ * return a connection number for the specified display. 
+ * On a POSIX-conformant system, this is the file descriptor of the connection.
  */
 int 
 XCBDisplayNumber(
         XCBDisplay *display);
 /* 
  * display: Specifies the connection to the X server.
- * return a connection number for the specified display. On a POSIX-conformant system, this is the file descriptor of the connection.
+ * return a connection number for the specified display. 
+ * On a POSIX-conformant system, this is the file descriptor of the connection.
  */
 int 
 XCBConnectionNumber(
         XCBDisplay *display);
 /*
+ * 
  */
 XCBScreen *
 XCBScreenOfDisplay(
@@ -817,7 +867,10 @@ XCBWaitForEvent(
  * might be because an I/O error like connection close occurred while
  * attempting to read the next event, in which case the connection is
  * shut down when this function returns.
+ *
+ * NOTE: XCBGenericEvent event_type
  */
+
 XCBGenericEvent *
 XCBPollForEvent(
         XCBDisplay *display);
@@ -841,13 +894,13 @@ XCBPollForQueuedEvent(
 /* Check if a specified cookie request has a reply available from the XServer.
  * 
  * RETURN: 1 On Success.
- * RETURN: 0 On Not Avaible/Failure.
+ * RETURN: 0 On Not Avaible.
  */
 int 
 XCBPollForReply(
         XCBDisplay *display, 
         XCBCookie request, 
-        void **reply);
+        void **reply_return);
 /* Check if a specified cookie request has a reply available from the XServer.
  * This is different from XCBPollForReply() as it assumes the request has already be widened.
  *
@@ -880,20 +933,62 @@ XCBCheckReply64(
         XCBCookie request);
 
 /* grabbing/grab */
-
+/*
+ * key:             XCB_GRAB_ANY                Grab all possible key codes.
+ *                  XCBKeyCode                  The keycode of the specified key combination.
+ *
+ * modifiers:       XCB_MOD_MASK_ANY            Release all key combinations regardless of modifier.
+ *                  XCB_MOD_MASK_SHIFT          The Shift Key. 
+ *                  XCB_MOD_MASK_LOCK           The Lock Key.
+ *                  XCB_MOD_MASK_CONTROL        The Ctrl Key.
+ *                  XCB_MOD_MASK_1              The Alt Key.
+ *                  XCB_MOD_MASK_2              The Numlock Key.
+ *                  XCB_MOD_MASK_3              ISO_LEVEL5_SHIFT              
+ *                  XCB_MOD_MASK_4              The Super/Windows Key.
+ *                  XCB_MOD_MASK_5              ISO_LEVEL3_SHIFT 
+ *
+ * grab_window:     XCBWindow                   The window on which the grabbed key combination will be grabbed.
+ *
+ * owner_events:    0/false/False               The Key Events are not reported to the grab_window.
+ *                  1/true/True                 The Key Events are reported to the grab_window.
+ * 
+ * pointer_mode:    XCB_GRAB_MODE_SYNC          The state of the keyboard appears to freeze: No further keyboard events are.
+ *                                              generated by the server until the grabbing client issues a releasing.
+ *                                              `AllowEvents` request or until the keyboard grab is released.
+ *                  XCB_GRAB_MODE_ASYNC         Keyboard event processing continues normally.
+ *
+ * keyboard_mode:   XCB_GRAB_MODE_SYNC          The state of the keyboard appears to freeze: No further keyboard events are.
+ *                                              generated by the server until the grabbing client issues a releasing.
+ *                                              `AllowEvents` request or until the keyboard grab is released.
+ *                  XCB_GRAB_MODE_ASYNC         Keyboard event processing continues normally.
+ *
+ * RETURN: Cookie to request.
+ */
+XCBCookie
+XCBGrabKey(
+        XCBDisplay *display, 
+        XCBKeyCode key, 
+        uint16_t modifiers, 
+        XCBWindow grab_window, 
+        uint8_t owner_events, 
+        uint8_t pointer_mode, 
+        uint8_t keyboard_mode);
 /*  
- * key:         XCB_GRAB_ANY                Release all possible key codes.
- *              XCBKeyCode                  The keycode of the specified key combination.
- * modifiers:   XCB_MOD_MASK_ANY            Release all key combinations regardless of modifier.
- *              XCB_MOD_MASK_SHIFT          The Shift Key. 
- *              XCB_MOD_MASK_LOCK           The Lock Key.
- *              XCB_MOD_MASK_CONTROL        The Ctrl Key.
- *              XCB_MOD_MASK_1              The Alt Key.
- *              XCB_MOD_MASK_2              The Numlock Key.
- *              XCB_MOD_MASK_3              ISO_LEVEL5_SHIFT              
- *              XCB_MOD_MASK_4              The Super/Windows Key.
- *              XCB_MOD_MASK_5              ISO_LEVEL3_SHIFT 
- * grab_window: XCBWindow                   The window on which the grabbed key combination will be released.
+ * keycode:         XCB_GRAB_ANY                Release all possible key codes.
+ *                  XCBKeyCode                  The keycode of the specified key combination.
+ * modifiers:       XCB_MOD_MASK_ANY            Release all key combinations regardless of modifier.
+ *                  XCB_MOD_MASK_SHIFT          The Shift Key. 
+ *                  XCB_MOD_MASK_LOCK           The Lock Key.
+ *                  XCB_MOD_MASK_CONTROL        The Ctrl Key.
+ *                  XCB_MOD_MASK_1              The Alt Key.
+ *                  XCB_MOD_MASK_2              The Numlock Key.
+ *                  XCB_MOD_MASK_3              ISO_LEVEL5_SHIFT              
+ *                  XCB_MOD_MASK_4              The Super/Windows Key.
+ *                  XCB_MOD_MASK_5              ISO_LEVEL3_SHIFT 
+ *
+ * grab_window:     XCBWindow                   The window on which the grabbed key combination will be released.
+ *
+ * RETURN: Cookie to request.
  */
 XCBCookie
 XCBUngrabKey(
@@ -935,6 +1030,7 @@ XCBUngrabButton(
  *                  XCB_BUTTON_INDEX_3          The middle mouse button.
  *                  XCB_BUTTON_INDEX_4          The Scroll Wheel. (direction TODO).
  *                  XCB_BUTTON_INDEX_5          The Scroll Wheel. (direction TODO).
+ *
  * modifiers:       XCB_MOD_MASK_SHIFT          The Shift Key. 
  *                  XCB_MOD_MASK_LOCK           The Lock Key.
  *                  XCB_MOD_MASK_CONTROL        The Ctrl Key.
@@ -944,19 +1040,24 @@ XCBUngrabButton(
  *                  XCB_MOD_MASK_4              The Super/Windows Key.
  *                  XCB_MOD_MASK_5              ISO_LEVEL3_SHIFT 
  *                  XCB_MOD_MASK_ANY
+ *
  * grab_window:     XCBWindow                   Specifies the window on which the pointer should be grabbed.
  *
  * owner_events:    1/true/True                 Report grabbed events to grab_window.
  *                  0/false/False               Dont report grabbed events to grab_window.
+ *
  * event_mask:      XCB_EVENT_MASK_(...)        Specifies which pointer events are reported to the client.
+ *
  * pointer_mode:    XCB_GRAB_MODE_SYNC          The state of the keyboard appears to freeze: No further keyboard events are.
  *                                              generated by the server until the grabbing client issues a releasing.
  *                                              `AllowEvents` request or until the keyboard grab is released.
  *                  XCB_GRAB_MODE_ASYNC         Keyboard event processing continues normally.
+ *
  * keyboard_mode:   XCB_GRAB_MODE_SYNC          The state of the keyboard appears to freeze: No further keyboard events are.
  *                                              generated by the server until the grabbing client issues a releasing.
  *                                              `AllowEvents` request or until the keyboard grab is released.
  *                  XCB_GRAB_MODE_ASYNC         Keyboard event processing continues normally.
+ *
  * window_confide:  XCB_WINDOW_NONE/XCB_NONE    Dont confide to window.
  *                  XCBWindow                   Specifies the window to confine the pointer in (the user will not be able to.
  *                                              move the pointer out of that window).
@@ -999,6 +1100,17 @@ XCBDisplayKeycodes(
         XCBDisplay *display, 
         int *min_keycode_return, 
         int *max_keycode_return);
+
+/*
+ * NOTE: RETURN MUST BE RELEASED BY CALLER USING free().
+ */
+XCBKeycode *
+XCBGetKeycodes(XCBDisplay *display, XCBKeysym keysym);
+/*
+ * NOTE: RETURN MUST BE RELEASED BY CALLER USING free().
+ */
+XCBKeyCode *
+XCBGetKeyCodes(XCBDisplay *display, XCBKeysym keysym);
 
 
 XCBKeyboardMappingCookie 
@@ -1095,10 +1207,27 @@ XCBSetLineAttributes(
         uint32_t joinstyle);
 
 /*
- * property:                    The atom property AKA XInternAtom(dpy, "my_cool_atom", False);
- * type:        XCBAtom         Not often the case but specific atom require this, see above for type.
- *              XCBAtomType     The XCB_ATOM_(sometype) of the property. (Xlib XA_(sometype))
-  *                     
+ * property:                                    The atom property AKA XInternAtom(dpy, "my_cool_atom", False);
+ *
+ * type:        XCBAtom                         Not often the case but specific atom require this, see above for type.
+ *              XCBAtomType                     The XCB_ATOM_(sometype) of the property. (Xlib XA_(sometype))
+ *
+ * format:                                      Specifies whether the data should be viewed as a list of 8-bit, 16-bit or.
+ *                                              32-bit quantities. Possible values are 8, 16 and 32. This information allows.
+ *                                              the X server to correctly perform byte-swap operations as necessary.
+ *
+ * mode:        XCB_PROP_MODE_REPLACE           Discard the previous property value and store the new data.
+ *
+ *              XCB_PROP_MODE_PREPEND           Insert the new data before the beginning of existing data. The `format` must.
+ *                                              match existing property value. If the property is undefined, it is treated as.
+ *                                              defined with the correct type and format with zero-length data.
+ *
+ *              XCB_PROP_MODE_APPEND            Insert the new data after the beginning of existing data. The `format` must.
+ *                                              match existing property value. If the property is undefined, it is treated as.
+ *                                              defined with the correct type and format with zero-length data.
+ * data:                                        The property data.
+ * 
+ * nelements:                                   Specifies the number of elements.
  * RETURN: Cookie to request.
 */
 XCBCookie
@@ -1110,29 +1239,33 @@ XCBChangeProperty(
         uint8_t format, 
         uint8_t mode, 
         const void *data, 
-        uint32_t nelements);
-
+        uint32_t nelements); /* data_len */
+/*
+ * RETURN: Cookie to request.
+*/
 XCBCookie
 XCBDeleteProperty(
         XCBDisplay *display, 
         XCBWindow window, 
         XCBAtom property);
 
-/*
- * value_mask:          XCB_CONFIG_WINDOW_X;
-                        XCB_CONFIG_WINDOW_Y;
-                        XCB_CONFIG_WINDOW_WIDTH;
-                        XCB_CONFIG_WINDOW_HEIGHT;
-                        XCB_CONFIG_WINDOW_BORDER_WIDTH;
-                        XCB_CONFIG_WINDOW_SIBLING;
-                        XCB_CONFIG_WINDOW_STACK_MODE;
+/* Mask;
+ * value_mask:          XCB_CONFIG_WINDOW_X;            Sets the flag to configure the X axis.
+ *                      XCB_CONFIG_WINDOW_Y;            Sets the flag to configure the Y axis.
+ *                      XCB_CONFIG_WINDOW_WIDTH;        Sets the flag to configure the Width.
+ *                      XCB_CONFIG_WINDOW_HEIGHT;       Sets the flag to configure the Height.
+ *                      XCB_CONFIG_WINDOW_BORDER_WIDTH; Sets the flag to configure the Border Width.
+ *                      XCB_CONFIG_WINDOW_SIBLING;      Sets the flag to configure the Window Sibling.
+ *                      XCB_CONFIG_WINDOW_STACK_MODE;   Sets the flag to configure the Stack Mode.
+ * 
+ * changes:             XCBWindowChanges *              The structure to the changes.
  * RETURN: Cookie to request.
 */
 XCBCookie
 XCBConfigureWindow(
         XCBDisplay *display, 
         XCBWindow window,
-        uint32_t value_mask,
+        uint16_t value_mask,
         XCBWindowChanges *changes);
 /* Sets the classhint for a specified window with class_name as the name hint similiar to XSetClassHint()
  *
@@ -1215,7 +1348,6 @@ XCBDiscardReply(
 void 
 XCBPrefetchMaximumRequestLength(
         XCBDisplay *display);
-
 
 
 

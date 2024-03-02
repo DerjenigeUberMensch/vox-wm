@@ -1,13 +1,13 @@
 # compiler 
-CC = gcc
+CC = cc
 
 # paths
 PREFIX = /usr/local/
 MANPREFIX = ${PREFIX}/share/man
 
 # includes and libs
-INCS = `pkg-config --cflags --libs xcb` -lxcb-util -lxcb-icccm
-LIBS = `pkg-config --cflags --libs xcb` -lxcb-util -lxcb-icccm
+INCS = `pkg-config --cflags --libs xcb` -lxcb-util -lxcb-icccm -lxcb-keysyms
+LIBS = `pkg-config --cflags --libs xcb` -lxcb-util -lxcb-icccm -lxcb-keysyms
 
 #X86 isnt explicitly supported and some code might need to be tweaked
 # Mainly the lbmi2 thing where its only used for resizing an icon so you can just not resize icons and remove that
@@ -22,13 +22,14 @@ SECTIONCODE= -ffunction-sections -fdata-sections
 DEBUGFLAGS = -ggdb -g -pg ${CCVERSION} ${WARNINGFLAGS} ${INCS} ${CPPFLAGS} ${BINARY} ${SECTIONCODE}
 
 WARNINGFLAGS = -pedantic -Wall -Wno-deprecated-declarations -Wshadow -Wuninitialized
-PRELINKERFLAGS = -flto -fprefetch-loop-arrays 
+LINKTIMEOPTIMIZATIONS = -flto
+PRELINKERFLAGS = -fprefetch-loop-arrays ${LINKTIMEOPTIMIZATIONS}
 # can set higher but function overhead is pretty small so meh
 INLINELIMIT = 15
-LINKERFLAGS = ${DYNAMICLINK} -Wl,--gc-sections,--as-needed,--relax,--strip-all -finline-functions -finline-limit=${INLINELIMIT} -flto 
+LINKERFLAGS = ${DYNAMICLINK} -Wl,--gc-sections,--as-needed,--relax,--strip-all -finline-functions -finline-limit=${INLINELIMIT}  ${LINKTIMEOPTIMIZATIONS}
 
 BINARY = ${X32}
-CPPFLAGS = -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L ${XINERAMAFLAGS}
+CPPFLAGS = -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L ${XINERAMAFLAGS} -DVERSION=\"${VERSION}\"
 CCFLAGS  = ${CCVERSION} ${WARNINGFLAGS} ${INCS} ${CPPFLAGS} ${BINARY} ${PRELINKERFLAGS} ${SECTIONCODE} 
 RELEASEFLAGS = ${CCFLAGS} 
 
@@ -49,7 +50,7 @@ BUILDSELF = ${RELEASEFLAGS} ${XNATIVE} -O3
 # uncomment for debugging
 LINKERFLAGS = ${DYNAMICLINK} -Wl,--gc-sections
 # Set your options or presets (see above) ex: ${PRESETNAME} (Compiler used is on top)
-CFLAGS = ${RELEASES}
+CFLAGS = ${DEBUG}
 # Linker flags
 LDFLAGS =  ${LIBS} ${LINKERFLAGS} ${BINARY} 
 # Solaris
