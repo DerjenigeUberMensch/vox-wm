@@ -1,5 +1,6 @@
 #include "xcb_trl.h"
 #include "events.h"
+#include "util.h"
 
 
 extern XCBDisplay *dpy;
@@ -59,30 +60,85 @@ void
 keypress(XCBGenericEvent *event)
 {
     XCBKeyPressEvent *ev = (XCBKeyPressEvent *)event;
+    const i16 rootx             = ev->root_x;
+    const i16 rooty             = ev->root_y;
+    const i16 eventx            = ev->event_x;
+    const i16 eventy            = ev->event_y;
+    const u16 state             = ev->state;
+    const XCBWindow eventroot   = ev->root;
+    const XCBWindow eventwin    = ev->event;
+    const XCBWindow eventchild  = ev->child;
+    const u8 samescreen         = ev->same_screen;
+    const XCBKeyCode keydetail  = ev->detail;
+    const XCBTimestamp tim      = ev->time;
 }
 
 void
 keyrelease(XCBGenericEvent *event)
 {
     XCBKeyReleaseEvent *ev = (XCBKeyReleaseEvent *)event;
+    const i16 rootx             = ev->root_x;
+    const i16 rooty             = ev->root_y;
+    const i16 eventx            = ev->event_x;
+    const i16 eventy            = ev->event_y;
+    const u16 state             = ev->state;
+    const XCBWindow eventroot   = ev->root;
+    const XCBWindow eventwin    = ev->event;
+    const XCBWindow eventchild  = ev->child;
+    const u8 samescreen         = ev->same_screen;
+    const XCBKeyCode keydetail  = ev->detail;
+    const XCBTimestamp tim      = ev->time;
 }
 
 void
 buttonpress(XCBGenericEvent *event)
 {
     XCBButtonPressEvent *ev = (XCBButtonPressEvent *)event;
+    const i16 rootx             = ev->root_x;
+    const i16 rooty             = ev->root_y;
+    const i16 eventx            = ev->event_x;
+    const i16 eventy            = ev->event_y;
+    const u16 state             = ev->state;
+    const XCBWindow eventroot   = ev->root;
+    const XCBWindow eventwin    = ev->event;
+    const XCBWindow eventchild  = ev->child;
+    const u8 samescreen         = ev->same_screen;
+    const XCBKeyCode keydetail  = ev->detail;
+    const XCBTimestamp tim      = ev->time;
 }
 
 void
 buttonrelease(XCBGenericEvent *event)
 {
     XCBButtonReleaseEvent *ev = (XCBButtonReleaseEvent *)event;
+    const i16 rootx             = ev->root_x;
+    const i16 rooty             = ev->root_y;
+    const i16 eventx            = ev->event_x;
+    const i16 eventy            = ev->event_y;
+    const u16 state             = ev->state;
+    const XCBWindow eventroot   = ev->root;
+    const XCBWindow eventwin    = ev->event;
+    const XCBWindow eventchild  = ev->child;
+    const u8 samescreen         = ev->same_screen;
+    const XCBKeyCode keydetail  = ev->detail;
+    const XCBTimestamp tim      = ev->time;
 }
 
 void
 motionnotify(XCBGenericEvent *event)
 {
     XCBMotionNotifyEvent *ev = (XCBMotionNotifyEvent *)event;
+    const i16 rootx             = ev->root_x;
+    const i16 rooty             = ev->root_y;
+    const i16 eventx            = ev->event_x;
+    const i16 eventy            = ev->event_y;
+    const u16 state             = ev->state;
+    const XCBWindow eventroot   = ev->root;
+    const XCBWindow eventwin    = ev->event;
+    const XCBWindow eventchild  = ev->child;
+    const u8 samescreen         = ev->same_screen;
+    const XCBKeyCode keydetail  = ev->detail;
+    const XCBTimestamp tim      = ev->time;
 }
 
 void
@@ -101,18 +157,25 @@ void
 focusin(XCBGenericEvent *event)
 {
     XCBFocusInEvent *ev = (XCBFocusInEvent *)event;
+    const u8 detail = ev->detail;
+    const XCBWindow eventwin = ev->event;
+    const u8 mode = ev->mode;
 }
 
 void
 focusout(XCBGenericEvent *event)
 {
     XCBFocusOutEvent *ev = (XCBFocusOutEvent *)event;
+    const u8 detail = ev->detail;
+    const XCBWindow eventwin = ev->event;
+    const u8 mode = ev->mode;
 }
 
 void
 keymapnotify(XCBGenericEvent *event)
 {
     XCBKeymapNotifyEvent *ev = (XCBKeymapNotifyEvent *)event;
+    u8 *keys = ev->keys;        /* DONOT FREE */
 }
 
 void
@@ -125,36 +188,68 @@ void
 graphicsexpose(XCBGenericEvent *event)
 {
     XCBGraphicsExposeEvent *ev = (XCBGraphicsExposeEvent *)event;
+    const i16 x                 = ev->x;
+    const i16 y                 = ev->y;
+    const u16 w                 = ev->width;
+    const u16 h                 = ev->height;
+    const u16 count             = ev->count;
+    const XCBDrawable drawable  = ev->drawable;
+    const u8 majoropcode        = ev->major_opcode;
+    const u16 minoropcode       = ev->minor_opcode;
 }
 
 void
 noexpose(XCBGenericEvent *event)
 {
     XCBExposeEvent *ev = (XCBExposeEvent *)event;
+    const i16 x                 = ev->x;
+    const i16 y                 = ev->y;
+    const u16 w                 = ev->width;
+    const u16 h                 = ev->height;
+    const u16 count             = ev->count;
+    const XCBWindow win         = ev->window;
 }
 
 void
 circulaterequest(XCBGenericEvent *event)
 {
     XCBCirculateRequestEvent *ev = (XCBCirculateRequestEvent *)event;
+    const XCBWindow win         = ev->window;
+    const XCBWindow eventwin    = ev->event;
+    const u8 place              = ev->place;
 }
 
 void
 configurerequest(XCBGenericEvent *event)
 {   
     XCBConfigureRequestEvent *ev = (XCBConfigureRequestEvent *)event;
+    const i16 x     = ev->x;
+    const i16 y     = ev->y;
+    const u16 w     = ev->width;
+    const u16 h     = ev->height;
+    const u16 bw    = ev->border_width;
+    const u16 mask  = ev->value_mask;
+    const u8  stack = ev->stack_mode;
+    const XCBWindow win     = ev->window;
+    const XCBWindow parent  = ev->parent;
+    const XCBWindow sibling = ev->sibling;
 }
 
 void
 maprequest(XCBGenericEvent *event)
 {
-    XCBMapRequestEvent *ev = (XCBMapRequestEvent *)event;
-}
+    XCBMapRequestEvent *ev  = (XCBMapRequestEvent *)event;
+    const XCBWindow parent  = ev->parent;
+    const XCBWindow win     = ev->window;
 
+}
 void
 resizerequest(XCBGenericEvent *event)
 {
     XCBResizeRequestEvent *ev = (XCBResizeRequestEvent *)event;
+    const XCBWindow win = ev->window;
+    const u16 w         = ev->width;
+    const u16 h         = ev->height;
 }
 
 void
@@ -227,6 +322,10 @@ void
 clientmessage(XCBGenericEvent *event)
 {
     XCBClientMessageEvent *ev = (XCBClientMessageEvent *)event;
+    const XCBWindow win             = ev->window;
+    const XCBAtom atom              = ev->type;
+    const u8 format                 = ev->format;
+    const XCBClientMessageData data = ev->data;     /* union "same" as xlib data8 -> b[20] data16 -> s[10] data32 = l[5] */
 }
 
 void

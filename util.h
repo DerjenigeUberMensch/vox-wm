@@ -1,9 +1,19 @@
+/* See LICENSE file for copyright and license details. */
 #ifndef UTIL_H_
 #define UTIL_H_
 
 #include <stdint.h>
 #include <stdio.h>
-/* See LICENSE file for copyright and license details. */
+
+typedef uint8_t  u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+typedef uint64_t u64;
+
+typedef int8_t   i8;
+typedef int16_t  i16;
+typedef int32_t  i32;
+typedef int64_t  i64;
 
 #define MAX(A, B)               ((A) > (B) ? (A) : (B))
 #define MIN(A, B)               ((A) < (B) ? (A) : (B))

@@ -2,6 +2,7 @@
 #define EVENTS_H_
 
 #include "xcb_trl.h"
+#include "queue.h"
 
 void keypress(XCBGenericEvent *event);
 void keyrelease(XCBGenericEvent *event);
@@ -37,7 +38,6 @@ void selectionclear(XCBGenericEvent *event);
 void selectionnotify(XCBGenericEvent *event);
 void selectionrequest(XCBGenericEvent *event);
 void genericevent(XCBGenericEvent *event);
-
 
 void errorhandler(XCBGenericEvent *error);
 

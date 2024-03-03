@@ -17,30 +17,24 @@
 #include "xcb_winutil.h"
 #include "util.h"
 #include "events.h"
+#include "queue.h"
 #include "dwm.h"
 
 #include "config.h"
 
-typedef uint8_t  u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef uint64_t u64;
 
-typedef int8_t   i8;
-typedef int16_t  i16;
-typedef int32_t  i32;
-typedef int64_t  i64;
-
-int screen;
-int running;
-int sw;
-int sh;
-XCBWindow root;
-XCBDisplay *dpy;
+int screen = 0;
+int running = 0;
+int sw = 0;
+int sh = 0;
+XCBWindow root = 0;
+XCBDisplay *dpy = NULL;
 int numlockmask = 0;
 
 XCBAtom netatom[NetLast];
 XCBAtom wmatom[WMLast];
+QueueItem queue[MAX_QUEUE_SIZE];
+XCBGenericEvent *events[MAX_QUEUE_SIZE];
 
 void
 exithandler(void)
@@ -115,9 +109,10 @@ argcvhandler(int argc, char *argv[])
             const char exec1 = '.';
             const char exec2 = '/';
             const char execcount = 3; /* not 2 because we need \0 */ /* +1 for the possible 1 letter name and +1 again for \0   */
-            if(argv[0] != NULL && strnlen(argv[0], execcount + 2) > execcount && argv[0][0] == exec1 && argv[0][1] == exec2)
+            if(argv[0] != NULL && strnlen(argv[0], execcount + 2) >= execcount && argv[0][0] == exec1 && argv[0][1] == exec2)
             {   
-                if(i > 1)
+                /* We can call die because it is very likely this was run manually */
+                if(i > 0)
                 {
                     printf("%s%s%s", "UNKNOWN COMMAND: '", argv[i], "'\n");
                     printf( "Usage: dwm [options]\n"
@@ -128,7 +123,9 @@ argcvhandler(int argc, char *argv[])
                 }
             }
             else
-            {   
+            {
+                /* We dont die because likely this command was run using some form of exec */
+                printf("%s%s%s", "UNKNOWN COMMAND: '", argv[i], "'\n");
             }
         }
     }
@@ -238,7 +235,8 @@ run(void)
         /* returns the enum type of the event */
         cleanev = XCB_EVENT_RESPONSE_TYPE(ev);
         if(handler[(cleanev)])
-        {   handler[cleanev](ev);
+        {   
+            handler[cleanev](ev);
             free(ev);
             ev = NULL;
         }
@@ -384,16 +382,21 @@ setup(void)
     /* EWMH support per view */
     XCBChangeProperty(dpy, root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&netatom, NetLast);
     XCBDeleteProperty(dpy, root, netatom[NetClientList]);
-
     
     XCBWindowAttributes wa;
-    wa.event_mask = XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT|XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY|
-                    XCB_EVENT_MASK_KEY_PRESS|XCB_EVENT_MASK_KEY_RELEASE|
-                    XCB_EVENT_MASK_KEYMAP_STATE | 
+    /* xcb_event_mask_t */
+    wa.event_mask = XCB_EVENT_MASK_KEY_PRESS|XCB_EVENT_MASK_KEY_RELEASE|
                     XCB_EVENT_MASK_BUTTON_PRESS|XCB_EVENT_MASK_BUTTON_RELEASE|
-                    XCB_EVENT_MASK_POINTER_MOTION|
-                    XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_LEAVE_WINDOW
-                    |XCB_EVENT_MASK_STRUCTURE_NOTIFY|XCB_EVENT_MASK_PROPERTY_CHANGE;
+                    XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_LEAVE_WINDOW|
+                    XCB_EVENT_MASK_POINTER_MOTION|XCB_EVENT_MASK_POINTER_MOTION_HINT|
+                    XCB_EVENT_MASK_BUTTON_1_MOTION|XCB_EVENT_MASK_BUTTON_2_MOTION|XCB_EVENT_MASK_BUTTON_3_MOTION|
+                    XCB_EVENT_MASK_BUTTON_4_MOTION|XCB_EVENT_MASK_BUTTON_5_MOTION|
+                    XCB_EVENT_MASK_BUTTON_MOTION|XCB_EVENT_MASK_KEYMAP_STATE|
+                    XCB_EVENT_MASK_EXPOSURE|XCB_EVENT_MASK_VISIBILITY_CHANGE|
+                    XCB_EVENT_MASK_STRUCTURE_NOTIFY|XCB_EVENT_MASK_RESIZE_REDIRECT|
+                    XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY|XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT|
+                    XCB_EVENT_MASK_FOCUS_CHANGE|XCB_EVENT_MASK_PROPERTY_CHANGE|
+                    XCB_EVENT_MASK_COLOR_MAP_CHANGE|XCB_EVENT_MASK_OWNER_GRAB_BUTTON;
     XCBChangeWindowAttributes(dpy, root, XCB_CW_EVENT_MASK, &wa);
     XCBSelectInput(dpy, root, wa.event_mask);
     grabkeys();

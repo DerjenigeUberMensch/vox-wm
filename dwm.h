@@ -22,8 +22,8 @@
 #define LENGTH(X)               (sizeof X / sizeof X[0])
 #define TAGMASK                 ((1 << LENGTH(tags)) - 1)
 #define TAGSLENGTH              (LENGTH(tags))
-
 #define SESSION_FILE            "/tmp/dwm-session"
+#define MAX_QUEUE_SIZE          1024
 
 /* Client struct flags */
 #define _ALWAYSONTOP        ((1 << 0))
@@ -69,9 +69,10 @@ typedef union  Arg Arg;
 typedef struct Key Key;
 typedef struct Button Button;
 typedef struct Monitor Monitor;
-typedef struct Tag Tag;
 typedef struct Client Client;
 typedef struct Layout Layout;
+typedef struct Desktop Desktop;
+typedef struct QueueItem QueueItem;
 
 union Arg
 {
@@ -102,9 +103,8 @@ struct Button
 
 struct Client
 {
-    char name[256];     /* Client Name              */
-    float mina;         /* Minimum Aspect           */
-    float maxa;         /* Maximum Aspect           */
+    char *name;         /* Client Name              */
+
     int16_t x;          /* X coordinate             */
     int16_t y;          /* Y coordinate             */
     uint16_t w;         /* Width                    */
@@ -113,6 +113,17 @@ struct Client
     int16_t oldy;       /* Previous Y coordinate    */
     uint16_t oldw;      /* Previous Width           */
     uint16_t oldh;      /* Previous Height          */
+
+    uint16_t flags;     /* Flags for client         */
+
+    uint16_t bw;        /* Border Width             */
+    uint16_t oldbw;     /* Old Border Width         */
+
+    XCBWindow win;      /* Client Window            */
+    Monitor *mon;       /* Client Monitor           */
+
+    float mina;         /* Minimum Aspect           */
+    float maxa;         /* Maximum Aspect           */
     uint16_t basew;     /* Base Width               */
     uint16_t baseh;     /* Base Height              */
     int16_t incw;       /* Increment Width          */
@@ -122,30 +133,11 @@ struct Client
     uint16_t minw;      /* Minimum Width            */
     uint16_t minh;      /* Minimum Height           */
 
-    uint16_t bw;        /* Border Width             */
-    uint16_t oldbw;     /* Old Border Width         */
-
-    /* XXX See Monitor seltags (assuming you change this to uint32_t ) */
-    uint16_t tags;      /* Tags for clients base 2;
-                         * 2^x;
-                         * {1, 2, 4, 8, 16, 32, 64, 128...}
-                         */
-    uint16_t flags;     /* Flags for client         */
-
     pid_t pid;          /* Client Pid               */
-    XCBWindow win;      /* Client Window            */
-    Monitor *mon;       /* Client Monitor           */
-};
-
-struct Layout
-{
-    const char *symbol;
-    void (*arrange)(Monitor *);
 };
 
 struct Monitor
 {
-    char ltsymbol[16];          /* Layout symbol                            */
     int16_t mx;                 /* Monitor X (Screen Area)                  */
     int16_t my;                 /* Monitor Y (Screen Area)                  */
     int16_t mw;                 /* Monitor Width (Screen Area)              */
@@ -157,23 +149,29 @@ struct Monitor
 
     uint16_t flags;             /* Monitor flags                            */
 
-
-    uint16_t tag;               /* Current tag in view                      */
-    uint16_t otag;              /* Previous (Old) tag in view               */
-    uint8_t  layout;            /* The Layout Index that is currently used  */
-    uint8_t  olayout;           /* The Previous (Old) Layout Index          */
-
     Client *clients;            /* First Client in linked list              */
     Client *stack;              /* First Stack Client in linked list        */
     Client *sel;                /* Selected Client                          */
+    Desktop *desktops;          /* First Desktop in linked list             */
     Monitor *next;              /* Next Monitor                             */
 
     XCBWindow barwin;           /* The managed status bar                   */
 };
 
+struct Layout
+{
+    const char *symbol;
+    void (*arrange)(Monitor *);
+};
 
+struct Desktop
+{
+    uint16_t num;               /* The Desktop Number           */
+    uint8_t layout;             /* The Layout Index             */
+    uint8_t olayout;            /* The Previous Layout Index    */
 
-
+    Desktop *next;
+};
 
 void checkotherwm(void);
 void cleanup(void);

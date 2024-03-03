@@ -182,6 +182,9 @@ typedef xcb_get_modifier_mapping_cookie_t XCBKeyboardModifierCookie;
 typedef xcb_get_modifier_mapping_reply_t XCBKeyboardModifier;
 typedef xcb_intern_atom_cookie_t XCBAtomCookie;
 typedef xcb_atom_t XCBAtom;
+typedef xcb_time_t XCBTime;
+typedef xcb_timestamp_t XCBTimestamp;
+typedef xcb_client_message_data_t  XCBClientMessageData;
 
 /* Analagous to Xlib's XA_(type)
  * XCB_ATOM_NONE = 0,
@@ -616,7 +619,7 @@ XCBInternAtomReply(
         XCBAtomCookie cookie);
 
 XCBWindowAttributesCookie 
-XGetWindowAttributesCookie(
+XCBGetWindowAttributesCookie(
         XCBDisplay *display, 
         XCBWindow window);
 
