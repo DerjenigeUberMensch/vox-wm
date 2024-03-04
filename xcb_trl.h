@@ -29,7 +29,196 @@
  */
 
 /*
- * Basic XCB Usage
+ * Basic XCB Usage.
+ *
+ *
+ *
+ * <<< Event handling >>>
+ *
+ * XCB uses a rather unique approach to event handling which allows very little memory to be used rather an Xlib's simpler approach.
+ *
+ * This event handling basically is a just a simple structure with padding and id's;
+ * XCBGenericEvent *ev;
+ *
+ * ev->pad;
+ * ev->pad0;
+ * ev->sequence;
+ * ev->full_sequence;
+ * ev->response_type;
+ *
+ * ev->pad              is where all the extra information is stored and allows for xcb to have little memory as this is where we store and cast other structures.
+ * ev->pad0             is aligment padding
+ * ev->sequence         is like the cookie id's so its mostly useless
+ * ev->full_sequence    see above
+ * ev->response_type    This is probably the most imporant part, and tells you what event you want.
+ *
+ * However you may notice that simply using ev->response_type yields access to very few events this is another part of xcb that allows for better memory control.
+ * However because of that it is quite the inconvinice to use, there is a mask however provided by XCB that fixes this, a bit long for no reason too.
+ *
+ *
+ * This is an example on how to use events 
+ * <<< Events >>>
+ *
+ * 
+ * #define DEBUG(fmt, ...) fprintf(stderr, "[%s:%d] by %s: " fmt "\n", __FILE__,__LINE__,__func__,__VA_ARGS__)
+ * int screen;
+ * XCBDisplay *dpy;
+ *
+ * // Open the display
+ * dpy = XCBOpenDisplay(NULL, &screen);
+ * // XCBOpenDisplay() returns NULL on failure.
+ * if(!dpy)
+ * {    printf("%s\n", "Failed to open display.");
+ *      exit(EXIT_FAILURE);
+ * }
+ *
+ *
+ * 
+ *
+ * int running = 1;
+ * uint8_t cleanev;
+ * XCBGenericEvent *ev;
+ *                  // XCBNextEvent returns 0, IF an I/O Errors occured, this more often than not this means the XServer died. Or we ran out of memory..
+ *                  // Though linux will almost always prevent an out of memory error it could still happen.
+ * while(running && XCBNextEvent(dpy, &ev))
+ * {
+ *      // if ev->response_type is ever 0 then an error occured
+ *      if(ev->response_type == 0)
+ *      {
+ *          printf("%s\n", "Woops we encountered an error exiting...");
+ *          exit(EXIT_FAILURE);
+ *      }
+ *      // Back in the day you would do ev->response_type & ~0x80 however XCB changed this to a macro which is more typesafe
+ *      // But what this does is allow use to use the first few bits as numbers
+ *      // Let's just say it lets us use the response_type as enum.
+ *      cleanev = XCB_EVENT_RESPONSE_TYPE(ev);
+ *      // XCB Does NOT automatically free replies which is actually quite the pain to deal with but allows for more control over an application.
+ *      // However you can discard certain replies, (mainly ones that return a cookie) using XCBDiscardReply(), which allows use to not need to free the reply,
+ *      // but we dont get it back either, See the section "Self Spoofing"
+ *      free(ev);
+ *      switch(cleanev)
+ *      {
+            case XCB_KEY_PRESS:
+                DEBUG("%s", "XCB_KEY_PRESS");
+                break;
+            case XCB_KEY_RELEASE:
+                DEBUG("%s", "XCB_KEY_RELEASE");
+                break;
+            case XCB_BUTTON_PRESS:
+                DEBUG("%s", "XCB_BUTTON_PRESS");
+                break;
+            case XCB_BUTTON_RELEASE:
+                DEBUG("%s", "XCB_BUTTON_RELEASE");
+                break;
+            case XCB_MOTION_NOTIFY:
+                DEBUG("%s", "XCB_MOTION_NOTIFY");
+                break;
+            case XCB_ENTER_NOTIFY:
+                DEBUG("%s", "XCB_ENTER_NOTIFY");
+                break;
+            case XCB_LEAVE_NOTIFY:
+                DEBUG("%s", "XCB_LEAVE_NOTIFY");
+                break;
+            case XCB_FOCUS_IN :
+                DEBUG("%s", "XCB_FOCUS_IN");
+                break;
+            case XCB_FOCUS_OUT:
+                DEBUG("%s", "XCB_FOCUS_OUT");
+                break;
+            case XCB_KEYMAP_NOTIFY:
+                DEBUG("%s", "XCB_KEYMAP_NOTIFY");
+                break;
+            case XCB_EXPOSE:
+                DEBUG("%s", "XCB_EXPOSE");
+                break;
+            case XCB_GRAPHICS_EXPOSURE:
+                DEBUG("%s", "XCB_GRAPHICS_EXPOSURE");
+                break;
+            case XCB_NO_EXPOSURE:
+                DEBUG("%s", "XCB_NO_EXPOSURE");
+                break;
+            case XCB_VISIBILITY_NOTIFY:
+                DEBUG("%s", "XCB_VISIBILITY_NOTIFY");
+                break;
+            case XCB_CREATE_NOTIFY:
+                DEBUG("%s", "XCB_CREATE_NOTIFY");
+                break;
+            case XCB_DESTROY_NOTIFY:
+                DEBUG("%s", "XCB_DESTROY_NOTIFY");
+                break;
+            case XCB_UNMAP_NOTIFY:
+                DEBUG("%s", "XCB_UNMAP_NOTIFY"); 
+                break;
+            case XCB_MAP_NOTIFY:
+                DEBUG("%s", "XCB_MAP_NOTIFY");
+                break;
+            case XCB_MAP_REQUEST:
+                DEBUG("%s", "XCB_MAP_REQUEST");
+                break;
+            case XCB_REPARENT_NOTIFY:
+                DEBUG("%s", "XCB_REPARENT_NOTIFY");
+                break;
+            case XCB_CONFIGURE_NOTIFY:
+                DEBUG("%s", "XCB_CONFIGURE_NOTIFY");
+                break;
+            case XCB_CONFIGURE_REQUEST:
+                DEBUG("%s", "XCB_CONFIGURE_REQUEST");
+                break;
+            case XCB_GRAVITY_NOTIFY:
+                DEBUG("%s", "XCB_GRAVITY_NOTIFY");
+                break;
+            case XCB_RESIZE_REQUEST: 
+                DEBUG("%s", "XCB_RESIZE_REQUEST");
+                break;
+            case XCB_CIRCULATE_NOTIFY:
+                DEBUG("%s", "XCB_CIRCULATE_NOTIFY");
+                break;
+            case XCB_CIRCULATE_REQUEST:
+                DEBUG("%s", "XCB_CIRCULATE_REQUEST");
+                break;
+            case XCB_PROPERTY_NOTIFY:
+                DEBUG("%s", "XCB_PROPERTY_NOTIFY");
+                break;
+            case XCB_SELECTION_CLEAR:
+                DEBUG("%s", "XCB_SELECTION_CLEAR");
+                break;
+            case XCB_SELECTION_REQUEST:
+                DEBUG("%s", "XCB_SELECTION_REQUEST");
+                break;
+            case XCB_SELECTION_NOTIFY:
+                DEBUG("%s", "XCB_SELECTION_NOTIFY");
+                break;
+            case XCB_COLORMAP_NOTIFY:
+                DEBUG("%s", "XCB_COLORMAP_NOTIFY");
+                break;
+            case XCB_CLIENT_MESSAGE:
+                DEBUG("%s", "XCB_CLIENT_MESSAGE");
+                break;
+            case XCB_MAPPING_NOTIFY:
+                DEBUG("%s", "XCB_MAPPING_NOTIFY");
+                break;
+            case XCB_GE_GENERIC:
+                DEBUG("%s", "XCB_GE_GENERIC");
+            case XCB_NONE:
+                break;
+            default:
+                printf("%s", "UNKNOWN EVENT");
+                break;
+ *      }
+ * }
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
  *
  * Cookies;
  *
@@ -72,7 +261,7 @@
  * XCBDiscardReply(dpy, cookie);
  *
  * # Reply64
- * # This really isnt too important and is mostly for 64 bit platforms
+ * # This really isnt too important as unless your doing some very specific things.
  * XCBDiscardReply64(dpy, cookie);
  *
  *
@@ -93,7 +282,7 @@
  * If you want a more clear approach you can simply call XCBHasConnectionError();
  *
  * <<< Reply Errors >>> ;
- * By default Errors are handled in the event que.
+ * By default Errors are handled in the event queue.
  * However reply backs, (ie any function that calls for a reply from a cookie).
  * Instead uses the XCBErrorHandler(), this can be set by the client using XCBSetErrorHandler().
  * By Default however is to simply call die() on errors, which may not be desirable.

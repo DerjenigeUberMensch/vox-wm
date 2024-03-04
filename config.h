@@ -32,7 +32,10 @@ static const Layout layouts[] =
 static const Key keys[] =
 {
     /* modifier                 key        function        argument */
-    { 0, XK_A, 0, 0}
+    { 0, XK_A, 0, 0},
+    { 0, XK_A, 0, 0},
+    { 0, XK_A, 0, 0},
+    { 0, XK_A, 0, 0},
 };
 
 /* button definitions */

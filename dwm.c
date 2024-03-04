@@ -33,8 +33,6 @@ int numlockmask = 0;
 
 XCBAtom netatom[NetLast];
 XCBAtom wmatom[WMLast];
-QueueItem queue[MAX_QUEUE_SIZE];
-XCBGenericEvent *events[MAX_QUEUE_SIZE];
 
 void
 exithandler(void)
@@ -136,7 +134,7 @@ checkotherwm(void)
 {
     XCBGenericEvent *ev = NULL;
     int response;
-    XCBSelectInput(dpy, XCBDefaultRootWindow(dpy, screen), XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT);
+    XCBSelectInput(dpy, XCBRootWindow(dpy, screen), XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT);
     XCBSync(dpy);  /* XCBFlush has different behaviour suprisingly, its undesired though */
     /* XCBPollForEvent calls the XServer itself for the event, So if we get a reply then a type of Window manager must be running */
     if((ev = XCBPollForEvent(dpy)))
@@ -192,30 +190,30 @@ grabbuttons(XCBWindow win, int focused)
 void
 grabkeys(void)
 {
-	updatenumlockmask();
-	{
-		u32 i, j, k;
-		u32 modifiers[4] = { 0, XCB_MOD_MASK_LOCK, numlockmask, numlockmask|XCB_MOD_MASK_LOCK };
-        XCBKeyCode *keycodes;
+    updatenumlockmask();
+    u32 i, j, k;
+    u32 modifiers[4] = { 0, XCB_MOD_MASK_LOCK, numlockmask, numlockmask|XCB_MOD_MASK_LOCK };
+    XCBKeyCode *keycodes;
 
-        XCBUngrabKey(dpy, XCB_GRAB_ANY, XCB_MOD_MASK_ANY, root);
-
-        for(i = 0; i < LENGTH(keys); ++i)
-        {   keycodes = XCBGetKeyCodes(dpy, keys[i].keysym);
-        }
-
-        for(j = 0; keycodes[j] != XCB_NO_SYMBOL; ++j)
-        {   
-            for(k = 0; k < LENGTH(modifiers); ++k)
-            {
-                XCBGrabKey(dpy, 
-                        keycodes[j], keys[i].mod | modifiers[k], 
-                        root, 1, 
-                        XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
-            }
-        }
-        free(keycodes);
+    XCBUngrabKey(dpy, XCB_GRAB_ANY, XCB_MOD_MASK_ANY, root);
+    
+    /* This grabs all the keys */
+    for(i = 0; i < LENGTH(keys); ++i)
+    {   keycodes = XCBGetKeyCodes(dpy, keys[i].keysym);
     }
+    /* --i because i will be (array_index + 1) this causes overflow errors resulting in keycodes[i] being negative */
+    --i;
+    for(j = 0; keycodes[j] != XCB_NO_SYMBOL; ++j)
+    {
+        for(k = 0; k < LENGTH(modifiers); ++k)
+        {
+            XCBGrabKey(dpy, 
+                    keycodes[j], keys[i].mod | modifiers[k], 
+                    root, 1, 
+                    XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
+        }
+    }
+    free(keycodes);
 }
 
 void 
@@ -223,23 +221,11 @@ run(void)
 {
     XCBGenericEvent *ev = NULL;
     uint8_t cleanev = 0;
-    while(running)
+    XCBSync(dpy);
+    while(running && XCBNextEvent(dpy, &ev))
     {
-        if(!(ev = XCBPollForQueuedEvent(dpy)))
-        {   XCBNextEvent(dpy, &ev);
-            if(!ev)     /* Assume server is dead */
-            {   running = 0;
-                continue;
-            }
-        }
-        /* returns the enum type of the event */
         cleanev = XCB_EVENT_RESPONSE_TYPE(ev);
-        if(handler[(cleanev)])
-        {   
-            handler[cleanev](ev);
-            free(ev);
-            ev = NULL;
-        }
+        free(ev);
         switch(cleanev)
         {
             case XCB_KEY_PRESS:

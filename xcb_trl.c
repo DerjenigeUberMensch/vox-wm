@@ -638,7 +638,7 @@ XCBPollForQueuedEvent(XCBDisplay *display)
 XCBCookie
 XCBGrabKey(XCBDisplay *display, XCBKeyCode keycode, u16 modifiers, XCBWindow grab_window, u8 owner_events, u8 pointer_mode, u8 keyboard_mode)
 {
-    return xcb_grab_key(display, owner_events, grab_window, modifiers, keycode, pointer_mode, keyboard_mode);
+    return xcb_grab_key(display, owner_events, grab_window, keycode, modifiers, pointer_mode, keyboard_mode);
 }
 
 XCBCookie 
