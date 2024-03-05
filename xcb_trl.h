@@ -705,6 +705,34 @@ XCBSelectInput(
         XCBDisplay *display, 
         XCBWindow window, 
         uint32_t mask);
+/*  
+ *  revert_to:          XCB_INPUT_FOCUS_NONE                The focus reverts to `XCB_NONE`, so no window will have the input focus.
+ *                      XCB_INPUT_FOCUS_POINTER_ROOT        The focus reverts to `XCB_POINTER_ROOT` respectively. When the focus reverts.
+ *                                                          FocusIn and FocusOut events are generated, but the last-focus-change time is.
+ *                                                          not changed.
+ *                      XCB_INPUT_FOCUS_PARENT              The focus reverts to the parent (or closest viewable ancestor) and the new.
+ *                                                          revert_to value is `XCB_INPUT_FOCUS_NONE`.
+ *                      XCB_INPUT_FOCUS_FOLLOW_KEYBOARD     NOT YET DOCUMENTED. Only relevant for the xinput extension.
+ *
+ *  
+ *
+ *  time:               XCB_CURRENT_TIME                    A u32 value to the specified XCB_TIME
+ *                      XCB_TIME_CURRENT_TIME               The current XCB time.
+ *
+ *
+ *  NOTE:   If the specified time is earlier than the current last-focus-change time, the request is ignored .
+ *          (to avoid race conditions when running X over the network).
+ *  NOTE:   A FocusIn and FocusOut event is generated when focus is changed.
+ * 
+ *  RETURN: Cookie to request.
+ */
+XCBCookie
+XCBSetInputFocus(
+        XCBDisplay *display,
+        XCBWindow window,
+        uint8_t revert_to,
+        XCBTimestamp time 
+        );
 /*
  */
 XCBCookie
@@ -1540,6 +1568,41 @@ XCBDiscardReply(
 void 
 XCBPrefetchMaximumRequestLength(
         XCBDisplay *display);
+
+
+
+
+/*
+ *  ICCCM
+ */
+
+typedef xcb_get_property_cookie_t XCBGetPropertyCookie;
+typedef xcb_icccm_get_wm_protocols_reply_t XCBGetWMProtocol;
+XCBGetPropertyCookie
+XCBGetWMProtocolsCookie(
+        XCBDisplay *display, 
+        XCBWindow window, 
+        XCBAtom protocol);
+/*
+ * Grabs the reply and returns a structure to the XCBGetWMProtocol containing the array length (atoms_len) and the array (*atoms).
+ *
+ * NOTE: CALLER MUST CALL XCBWipeGetWMProtocolsReply() when done using data.
+ * NOTE: DATA IS NOT ALLOCATED ON THE HEAP AND SHOULD NEVER BE freed using free(), see above.
+ *
+ * RETURN: 1 On Success;
+ *         0 On Failure;
+ */
+int
+XCBGetWMProtocolsReply(
+        XCBDisplay *display, 
+        XCBGetPropertyCookie cookie,
+        XCBGetWMProtocol *protocol_return
+        );
+
+void
+XCBWipeGetWMProtocolsReply(
+        XCBGetWMProtocol *protocols);
+
 
 
 

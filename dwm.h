@@ -43,6 +43,7 @@
 
 /* Client macros */
 
+#define ISVISIBLE(C)            ((C->mon->desktopnum == C->desktopnum))
 #define ISALWAYSONTOP(C)        ((C->flags & _ALWAYSONTOP))
 #define ISFULLSCREEN(C)         ((C->flags & _FULLSCREEN))
 #define WASFLOATING(C)          ((C->flags & _WASFLOATING))
@@ -72,7 +73,6 @@ typedef struct Monitor Monitor;
 typedef struct Client Client;
 typedef struct Layout Layout;
 typedef struct Desktop Desktop;
-typedef struct QueueItem QueueItem;
 
 union Arg
 {
@@ -102,8 +102,8 @@ struct Button
 };
 
 struct Client
-{
-    char *name;         /* Client Name              */
+{           /* +1 for \0 */
+    char name[256 + 1]; /* Client Name              */
 
     int16_t x;          /* X coordinate             */
     int16_t y;          /* Y coordinate             */
@@ -133,6 +133,7 @@ struct Client
     uint16_t minw;      /* Minimum Width            */
     uint16_t minh;      /* Minimum Height           */
 
+    int16_t desktopnum; /* USE ISVISIBLE() dont use */
     pid_t pid;          /* Client Pid               */
 };
 
@@ -148,6 +149,7 @@ struct Monitor
     uint16_t wh;                /* Monitor Height (Window Area)             */
 
     uint16_t flags;             /* Monitor flags                            */
+    int16_t  desktopnum;           /* Desktop Number                           */
 
     Client *clients;            /* First Client in linked list              */
     Client *stack;              /* First Stack Client in linked list        */
@@ -166,25 +168,33 @@ struct Layout
 
 struct Desktop
 {
-    uint16_t num;               /* The Desktop Number           */
+    int16_t num;                /* The Desktop Number           */
     uint8_t layout;             /* The Layout Index             */
     uint8_t olayout;            /* The Previous Layout Index    */
-
+    
     Desktop *next;
 };
 
 void checkotherwm(void);
 void cleanup(void);
+Client *createclient(void);
+Monitor *createmon(void);
+void focus(Client *c);
 void grabbuttons(XCBWindow window, int focused);
 void grabkeys(void);
+Client *nextvisible(Client *c);
 void run(void);
 void scan(void);
+int sendevent(Client *c, XCBAtom proto);
+void setfocus(Client *c);
 void setup(void);
+void seturgent(Client *c, int state);
 void sigchld(int signo);
 void sighandler(void);
 void sighup(int signo);
 void sigterm(int signo);
 void startup(void);
+void unfocus(Client *c, int setfocus);
 void updatenumlockmask(void);
 
 

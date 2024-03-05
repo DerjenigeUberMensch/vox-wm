@@ -30,6 +30,7 @@ int sh = 0;
 XCBWindow root = 0;
 XCBDisplay *dpy = NULL;
 int numlockmask = 0;
+Monitor *selmon = NULL;
 
 XCBAtom netatom[NetLast];
 XCBAtom wmatom[WMLast];
@@ -157,6 +158,77 @@ cleanup(void)
 {
 }
 
+Monitor *
+createmon(void)
+{
+    Monitor *m = malloc(sizeof(Monitor ));
+    if(!m)
+    {   return NULL;
+    }
+    m->mx = m->my = 0;
+    m->mw = m->mh = 0;
+    m->wx = m->wy = 0;
+    m->ww = m->wh = 0;
+    m->flags = 0;
+    m->clients = NULL;
+    m->stack = NULL;
+    m->sel = NULL;
+    m->desktops = NULL;
+    m->next = NULL;
+    m->barwin = 0;
+    return m;
+}
+
+Client *
+createclient(void)
+{
+    Client *c = malloc(sizeof(Client ));
+    if(!c)
+    {   return NULL;
+    }
+    c->x = c->y = 0;
+    c->w = c->h = 0;
+    c->oldx = c->oldy = 0;
+    c->oldw = c->oldh = 0;
+    c->flags = 0;
+    c->bw = c->oldbw = 0;
+    c->win = 0;
+    c->mon = NULL;
+    c->mina = c->maxa = 0;
+    c->basew = c->baseh = 0;
+    c->incw = c->inch = 0;
+    c->maxw = c->maxh = 0;
+    c->pid = 0;
+    return c;
+}
+
+void
+focus(Client *c)
+{
+    if(!c || !ISVISIBLE(c))
+    {   nextvisible(selmon->clients);
+    }
+    if(selmon->sel && selmon->sel != c)
+    {   unfocus(selmon->sel, 0);
+    }
+    if(c)
+    {   if(c->mon != selmon)
+        {   selmon = c->mon;
+        }
+        if(ISURGENT(c))
+        {   seturgent(c, 0);
+        }
+        grabbuttons(c->win, 1);
+        setfocus(c);
+    }
+    else
+    {   
+        XCBSetInputFocus(dpy, root, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_TIME_CURRENT_TIME);
+        XCBDeleteProperty(dpy, root, netatom[NetActiveWindow]);
+    }
+    selmon->sel = c;
+}
+
 void
 grabbuttons(XCBWindow win, int focused)
 {
@@ -214,6 +286,30 @@ grabkeys(void)
         }
     }
     free(keycodes);
+}
+
+Desktop *
+nextdesktop(Desktop *desk)
+{
+    return desk ? desk->next : NULL;
+}
+
+Client *
+nextvisible(Client *c)
+{
+    if(!c)
+    {   return NULL;
+    }
+    Desktop *desk = c->mon->desktops;
+    if(!desk)
+    {   DIE("%s", "FATAL: CLIENT DOESNT MONITOR DOESNT HAVE ANY DESKTOPS");
+    }
+    while(desk && desk->num != c->desktopnum)
+    {   desk = nextdesktop(desk);
+    }
+    if(!desk)
+    {   DIE("%s", "FATAL: CLIENT DOESNT HAVE A DESKTOP AND SHOULD NOT EXIST.");
+    }
 }
 
 void 
@@ -344,6 +440,22 @@ scan(void)
 {
 }
 
+int 
+sendevent(Client *c, XCBAtom proto)
+{
+    /* TODO */
+}
+
+void
+setfocus(Client *c)
+{
+    if(NEVERFOCUS(c))
+    {
+        XCBSetInputFocus(dpy, c->win, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_TIME_CURRENT_TIME);
+        XCBChangeProperty(dpy, root, netatom[NetActiveWindow], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&(c->win), 1);
+    }
+}
+
 void
 setup(void)
 {
@@ -371,6 +483,7 @@ setup(void)
     
     XCBWindowAttributes wa;
     /* xcb_event_mask_t */
+    /* ~0 causes event errors */
     wa.event_mask = XCB_EVENT_MASK_KEY_PRESS|XCB_EVENT_MASK_KEY_RELEASE|
                     XCB_EVENT_MASK_BUTTON_PRESS|XCB_EVENT_MASK_BUTTON_RELEASE|
                     XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_LEAVE_WINDOW|
@@ -386,6 +499,26 @@ setup(void)
     XCBChangeWindowAttributes(dpy, root, XCB_CW_EVENT_MASK, &wa);
     XCBSelectInput(dpy, root, wa.event_mask);
     grabkeys();
+    Client c;
+    c.flags = 0;
+    seturgent(&c, 1);
+    DEBUG("%d", ISURGENT((&c)));
+}
+
+void
+seturgent(Client *c, int state) 
+{
+    /* flags stuff */
+    c->flags &= (~_URGENT);
+    c->flags |= (_URGENT * !!state);
+
+    if(state)
+    {   
+    }
+    else
+    {
+    }
+    /* TODO XXX */
 }
 
 void
@@ -441,6 +574,17 @@ startup(void)
     }
     checkotherwm();
     atexit(exithandler);
+}
+
+void
+unfocus(Client *c, int setfocus)
+{   
+    grabbuttons(c->win, 0);         /* TODO */
+    XCBSetWindowBorderWidth(dpy, c->win, 0);
+    if(setfocus)
+    {   XCBSetInputFocus(dpy, root, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_TIME_CURRENT_TIME);
+        XCBDeleteProperty(dpy, root, netatom[NetActiveWindow]);
+    }
 }
 
 void

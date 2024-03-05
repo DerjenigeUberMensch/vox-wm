@@ -268,6 +268,12 @@ XCBSelectInput(XCBDisplay *display, XCBWindow window, u32 mask)
 }
 
 XCBCookie
+XCBSetInputFocus(XCBDisplay *display, XCBWindow window, u8 revert_to, XCBTimestamp time)
+{
+    return xcb_set_input_focus(display, revert_to, window, time);
+}
+
+XCBCookie
 XCBChangeWindowAttributes(XCBDisplay *display, XCBWindow window, u32 mask, XCBWindowAttributes *window_attributes)
 {
     return xcb_change_window_attributes_aux(display, window, mask, window_attributes);
@@ -906,5 +912,41 @@ XCBPrefetchMaximumRequestLength(XCBDisplay *display)
      */
     xcb_prefetch_maximum_request_length(display);
 }
+
+
+/* ICCCM */
+
+XCBGetPropertyCookie
+XCBGetWMProtocolsCookie(
+        XCBDisplay *display, 
+        XCBWindow window, 
+        XCBAtom protocol)
+{
+    return xcb_icccm_get_wm_protocols(display, window, protocol);
+}
+
+int
+XCBGetWMProtocolsReply(
+        XCBDisplay *display, 
+        XCBGetPropertyCookie cookie,
+        XCBGetWMProtocol *protocol_return
+        )
+{
+    XCBGenericError *err = NULL;
+    int ret;
+    ret = xcb_icccm_get_wm_protocols_reply(display, cookie, protocol_return, &err);
+    _xcb_err_handler(display, err);
+    return ret;
+
+}
+
+void
+XCBWipeGetWMProtocolsReply(
+        XCBGetWMProtocol *protocols)
+{
+    xcb_icccm_get_wm_protocols_reply_wipe(protocols);
+}
+
+
 
 //xcb_generic_event_t *xcb_poll_for_queued_event(xcb_connection_t *c);
