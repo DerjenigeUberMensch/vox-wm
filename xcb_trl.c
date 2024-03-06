@@ -714,6 +714,45 @@ XCBGetKeycodes(XCBDisplay *display, XCBKeysym keysym)
     return XCBGetKeyCodes(display, keysym);
 }
 
+XCBKeyCode *
+XCBKeySymbolsGetKeyCode(
+        XCBKeySymbols *symbols, 
+        XCBKeysym keysym)
+{
+    return xcb_key_symbols_get_keycode(symbols, keysym);
+}
+
+XCBKeycode *
+XCBKeySymbolsGetKeycode(
+        XCBKeySymbols *symbols,
+        XCBKeysym keysym
+        )
+{
+    return xcb_key_symbols_get_keycode(symbols, keysym);
+}
+
+XCBKeysym
+XCBKeySymbolsGetKeySym(
+        XCBKeySymbols *symbols,
+        XCBKeyCode keycode,
+        uint8_t column
+        )
+{   
+    return xcb_key_symbols_get_keysym(symbols, keycode, column);
+}
+
+XCBKeySymbols *
+XCBKeySymbolsAlloc(XCBDisplay *display)
+{
+    return xcb_key_symbols_alloc(display);
+}
+
+void
+XCBKeySymbolsFree(XCBKeySymbols *keysyms)
+{
+    xcb_key_symbols_free(keysyms);
+}
+
 XCBKeyboardMappingCookie 
 XCBGetKeyboardMappingCookie(XCBDisplay *display, XCBKeyCode first_keycode, u8 count)
 {

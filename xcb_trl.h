@@ -357,7 +357,6 @@ typedef xcb_connection_t XCBDisplay;
  * u8 pad1[4] -> This should be considered READONLY ;
  */
 typedef xcb_setup_t XCBSetup;
-typedef xcb_key_symbols_t XCBKeySymbols;
 typedef xcb_screen_iterator_t XCBScreenIterator;
 typedef xcb_screen_t XCBScreen;
 typedef xcb_window_t XCBWindow;
@@ -447,6 +446,7 @@ typedef xcb_client_message_data_t  XCBClientMessageData;
 */
 typedef xcb_atom_enum_t XCBAtomType;
 typedef xcb_keysym_t XCBKeysym;
+typedef xcb_key_symbols_t XCBKeySymbols;
 typedef xcb_keycode_t XCBKeycode;
 typedef xcb_keycode_t XCBKeyCode;
 
@@ -1159,7 +1159,7 @@ XCBCheckReply64(
  *
  * modifiers:       XCB_MOD_MASK_ANY            Release all key combinations regardless of modifier.
  *                  XCB_MOD_MASK_SHIFT          The Shift Key. 
- *                  XCB_MOD_MASK_LOCK           The Lock Key.
+ *                  XCB_MOD_MASK_LOCK           The Capslock Key.
  *                  XCB_MOD_MASK_CONTROL        The Ctrl Key.
  *                  XCB_MOD_MASK_1              The Alt Key.
  *                  XCB_MOD_MASK_2              The Numlock Key.
@@ -1198,7 +1198,7 @@ XCBGrabKey(
  *                  XCBKeyCode                  The keycode of the specified key combination.
  * modifiers:       XCB_MOD_MASK_ANY            Release all key combinations regardless of modifier.
  *                  XCB_MOD_MASK_SHIFT          The Shift Key. 
- *                  XCB_MOD_MASK_LOCK           The Lock Key.
+ *                  XCB_MOD_MASK_LOCK           The Capslock Key.
  *                  XCB_MOD_MASK_CONTROL        The Ctrl Key.
  *                  XCB_MOD_MASK_1              The Alt Key.
  *                  XCB_MOD_MASK_2              The Numlock Key.
@@ -1252,7 +1252,7 @@ XCBUngrabButton(
  *                  XCB_BUTTON_INDEX_5          The Scroll Wheel. (direction TODO).
  *
  * modifiers:       XCB_MOD_MASK_SHIFT          The Shift Key. 
- *                  XCB_MOD_MASK_LOCK           The Lock Key.
+ *                  XCB_MOD_MASK_LOCK           The Capslock  Key.
  *                  XCB_MOD_MASK_CONTROL        The Ctrl Key.
  *                  XCB_MOD_MASK_1              The Alt Key.
  *                  XCB_MOD_MASK_2              The Numlock Key.
@@ -1321,16 +1321,150 @@ XCBDisplayKeycodes(
         int *min_keycode_return, 
         int *max_keycode_return);
 
-/*
+/* This gets the keycodes of the specfied display.
+ *
+ * NOTE: This operation is relativly expensive so it is recommended to not use this function;
+ *       Instead it is recommended to use XCBKeySymbolsAlloc() and search them yourself.
+ *
  * NOTE: RETURN MUST BE RELEASED BY CALLER USING free().
  */
 XCBKeycode *
 XCBGetKeycodes(XCBDisplay *display, XCBKeysym keysym);
-/*
+/* This gets the keycodes of the specfied display.
+ *
+ * NOTE: This operation is relativly expensive so it is recommended to not use this function.
+ *       Instead it is recommended to use XCBKeySymbolsAlloc() and search them using XCBKeySymbolsGetKeyCode.
+ *
  * NOTE: RETURN MUST BE RELEASED BY CALLER USING free().
  */
 XCBKeyCode *
 XCBGetKeyCodes(XCBDisplay *display, XCBKeysym keysym);
+
+
+
+XCBKeyCode *
+XCBKeySymbolsGetKeyCode(
+        XCBKeySymbols *symbols, 
+        XCBKeysym keysym);
+
+XCBKeycode *
+XCBKeySymbolsGetKeycode(
+        XCBKeySymbols *symbols,
+        XCBKeysym keysym
+        );
+
+
+/*
+ * IGNORE THIS FUNCTION IT IS WRONG;
+ * TODO try to understand what this mess of a function does
+ * workarounds, DWM has a somewhat nice workaround only testing keys independently to wether or not a mask is used over no mask.
+ * However it is somewhat limiting and a bit complicated for input handling.
+ * Too bad they use Xlib over xcb.
+ *
+ *
+ * column:                      0           Keycode is returned lowercase no matter what.
+ *                              1           Keycode is returned Alternative (uppercase) no matter what.
+ *                                          However Modifiers are inconsistent and may return 0.
+ *                              2           Respect Modifiers and use keycode casing based on modified.
+ *                                          eg: shift/capslock return uppercase, no shift/capslock return lowercase.
+ *                              3           IDK, testing was inconclusive as I dont know what I am looking for as
+ *                                          it seems inconsistent, further testing required.
+ *
+ * NOTE: Wierdly on the very first mouse click you get the sym 65407, further testing required.
+ *       This only seems to occur when first clicking root window in Xephyr and never again.
+ *
+ * <<< The "Documentation" >>>
+ * Use of the 'col' parameter:
+
+A list of KeySyms is associated with each KeyCode. The list is intended
+to convey the set of symbols on the corresponding key. If the list
+(ignoring trailing NoSymbol entries) is a single KeySym ``K'', then the
+list is treated as if it were the list ``K NoSymbol K NoSymbol''. If the
+list (ignoring trailing NoSymbol entries) is a pair of KeySyms ``K1
+K2'', then the list is treated as if it were the list ``K1 K2 K1 K2''.
+If the list (ignoring trailing NoSymbol entries) is a triple of KeySyms
+``K1 K2 K3'', then the list is treated as if it were the list ``K1 K2 K3
+NoSymbol''. When an explicit ``void'' element is desired in the list,
+the value VoidSymbol can be used.
+
+The first four elements of the list are split into two groups of
+KeySyms. Group 1 contains the first and second KeySyms; Group 2 contains
+the third and fourth KeySyms. Within each group, if the second element
+of the group is NoSymbol , then the group should be treated as if the
+second element were the same as the first element, except when the first
+element is an alphabetic KeySym ``K'' for which both lowercase and
+uppercase forms are defined. In that case, the group should be treated
+as if the first element were the lowercase form of ``K'' and the second
+element were the uppercase form of ``K.''
+
+The standard rules for obtaining a KeySym from a KeyPress event make use
+of only the Group 1 and Group 2 KeySyms; no interpretation of other
+KeySyms in the list is given. Which group to use is determined by the
+modifier state. Switching between groups is controlled by the KeySym
+named MODE SWITCH, by attaching that KeySym to some KeyCode and
+attaching that KeyCode to any one of the modifiers Mod1 through Mod5.
+This modifier is called the group modifier. For any KeyCode, Group 1 is
+used when the group modifier is off, and Group 2 is used when the group
+modifier is on.
+
+The Lock modifier is interpreted as CapsLock when the KeySym named
+XK_Caps_Lock is attached to some KeyCode and that KeyCode is attached to
+the Lock modifier. The Lock modifier is interpreted as ShiftLock when
+the KeySym named XK_Shift_Lock is attached to some KeyCode and that
+KeyCode is attached to the Lock modifier. If the Lock modifier could be
+interpreted as both CapsLock and ShiftLock, the CapsLock interpretation
+is used.
+
+The operation of keypad keys is controlled by the KeySym named
+XK_Num_Lock, by attaching that KeySym to some KeyCode and attaching that
+KeyCode to any one of the modifiers Mod1 through Mod5 . This modifier is
+called the numlock modifier. The standard KeySyms with the prefix
+``XK_KP_'' in their name are called keypad KeySyms; these are KeySyms
+with numeric value in the hexadecimal range 0xFF80 to 0xFFBD inclusive.
+In addition, vendor-specific KeySyms in the hexadecimal range 0x11000000
+to 0x1100FFFF are also keypad KeySyms.
+
+Within a group, the choice of KeySym is determined by applying the first
+rule that is satisfied from the following list:
+
+* The numlock modifier is on and the second KeySym is a keypad KeySym. In
+  this case, if the Shift modifier is on, or if the Lock modifier is on
+  and is interpreted as ShiftLock, then the first KeySym is used,
+  otherwise the second KeySym is used.
+
+* The Shift and Lock modifiers are both off. In this case, the first
+  KeySym is used.
+
+* The Shift modifier is off, and the Lock modifier is on and is
+  interpreted as CapsLock. In this case, the first KeySym is used, but
+  if that KeySym is lowercase alphabetic, then the corresponding
+  uppercase KeySym is used instead.
+
+* The Shift modifier is on, and the Lock modifier is on and is
+  interpreted as CapsLock. In this case, the second KeySym is used, but
+  if that KeySym is lowercase alphabetic, then the corresponding
+  uppercase KeySym is used instead.
+
+* The Shift modifier is on, or the Lock modifier is on and is
+  interpreted as ShiftLock, or both. In this case, the second KeySym is
+  used.
+
+*/
+
+XCBKeysym
+XCBKeySymbolsGetKeySym(
+        XCBKeySymbols *symbols,
+        XCBKeyCode keycode,
+        uint8_t column
+        );
+
+XCBKeySymbols *
+XCBKeySymbolsAlloc(
+        XCBDisplay *display);
+
+void
+XCBKeySymbolsFree(
+        XCBKeySymbols *keysyms);
 
 
 XCBKeyboardMappingCookie 

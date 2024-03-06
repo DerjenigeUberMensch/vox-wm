@@ -1,9 +1,11 @@
 #include "xcb_trl.h"
 #include "events.h"
 #include "util.h"
+#include "config.h"
+#include "dwm.h"
 
+extern WM *_wm;
 
-extern XCBDisplay *dpy;
 extern void xerror(XCBDisplay *display, XCBGenericError *error);
 
 void (*handler[LASTEvent]) (XCBGenericEvent *) = 
@@ -71,6 +73,35 @@ keypress(XCBGenericEvent *event)
     const u8 samescreen         = ev->same_screen;
     const XCBKeyCode keydetail  = ev->detail;
     const XCBTimestamp tim      = ev->time;
+
+
+
+    XCBKeysym sym = 0;
+    
+    const i32 cleanstate = CLEANMASK(state);
+
+    /* ONLY use lowercase cause we dont know how to handle anything else */
+    sym = XCBKeySymbolsGetKeySym(_wm->syms, keydetail, 0);
+
+    /* Only use upercase cause we dont know how to handle anything else
+     * sym = XCBKeySymbolsGetKeySym(_wm->syms,  keydetail, 0);
+     */
+    /* This Could work MAYBE allowing for upercase and lowercase Keybinds However that would complicate things due to our ability to mask Shift
+     * sym = XCBKeySymbolsGetKeySym(_wm->syms, keydetail, cleanstate); 
+     */
+    int i;
+    for(i = 0; i < LENGTH(keys); ++i)
+    {
+        if(keys[i].type == XCB_KEY_PRESS)
+        {
+            if (sym == keys[i].keysym
+                    && CLEANMASK(keys[i].mod) == cleanstate
+                    && keys[i].func) 
+            {   keys[i].func(&(keys[i].arg));
+                return;
+            }
+        }
+    }
 }
 
 void
@@ -241,7 +272,7 @@ maprequest(XCBGenericEvent *event)
     XCBMapRequestEvent *ev  = (XCBMapRequestEvent *)event;
     const XCBWindow parent  = ev->parent;
     const XCBWindow win     = ev->window;
-
+    XCBMapWindow(_wm->dpy, win);
 }
 void
 resizerequest(XCBGenericEvent *event)
@@ -360,5 +391,5 @@ genericevent(XCBGenericEvent *event)
 
 void
 errorhandler(XCBGenericEvent *event)
-{   xerror(dpy, (XCBGenericError *)event);
+{   xerror(_wm->dpy, (XCBGenericError *)event);
 }

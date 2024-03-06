@@ -15,24 +15,24 @@ static const Layout layouts[] =
 };
 
 /* key definitions */
-#define ALT     XCB_MOD_MASK_1
-#define SUPER   XCB_MOD_MASK_4
-#define CTRL    XCB_MOD_MASK_CONTROL
-#define SHIFT   XCB_MOD_MASK_SHIFT
-#define LOCK    XCB_MOD_MASK_LOCK
-#define LMB     XCB_BUTTON_MASK_1
-#define MMB     XCB_BUTTON_MASK_2
-#define RMB     XCB_BUTTON_MASK_3
-#define BUTTON4 XCB_BUTTON_MASK_4
-#define BUTTON5 XCB_BUTTON_MASK_5
+#define ALT         XCB_MOD_MASK_1
+#define SUPER       XCB_MOD_MASK_4
+#define CTRL        XCB_MOD_MASK_CONTROL
+#define SHIFT       XCB_MOD_MASK_SHIFT
+#define CAPSLOCK    XCB_MOD_MASK_LOCK
+#define LMB         XCB_BUTTON_MASK_1
+#define MMB         XCB_BUTTON_MASK_2
+#define RMB         XCB_BUTTON_MASK_3
+#define BUTTON4     XCB_BUTTON_MASK_4
+#define BUTTON5     XCB_BUTTON_MASK_5
 
 /* helper for spawning shell commands in the pre dwm-5.0 fashion */
 #define SHCMD(cmd) { .v = (const char*[]){ "/bin/sh", "-c", cmd, NULL } }
 
 static const Key keys[] =
 {
-    /* modifier                 key        function        argument */
-    { 0, XK_A, 0, 0},
+    /* KeyType                  modifier                 key        function        argument */
+    { XCB_KEY_PRESS,            0|SHIFT,                      XK_a,      UserStats,              {0}},
     { 0, XK_A, 0, 0},
     { 0, XK_A, 0, 0},
     { 0, XK_A, 0, 0},
