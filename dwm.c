@@ -401,7 +401,7 @@ getrootptr(i16 *x, i16 *y)
 }
 
 void
-grabbuttons(XCBWindow win, int focused)
+grabbuttons(XCBWindow win, uint8_t focused)
 {
 	updatenumlockmask();
 	{
@@ -472,6 +472,7 @@ nextvisible(Client *c)
     return c;
 }
 
+
 Monitor *
 recttomon(i16 x, i16 y, u16 w, u16 h)
 {
@@ -484,6 +485,19 @@ recttomon(i16 x, i16 y, u16 w, u16 h)
 			r = m;
 		}
 	return r;
+}
+
+void 
+resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
+{
+    c->oldx = c->x;
+    c->oldy = c->y;
+    c->oldw = c->w;
+    c->oldh = c->h;
+    c->x = x;
+    c->y = y;
+    c->w = width;
+    c->h = height;
 }
 
 void 
@@ -625,6 +639,20 @@ sendevent(Client *c, XCBAtom proto)
 }
 
 void
+setalwaysontop(Client *c, u8 state)
+{
+    c->flags &= (~_ALWAYSONTOP);
+    c->flags |= (_ALWAYSONTOP * !!state);
+}
+
+void
+setborderwidth(Client *c, uint16_t border_width)
+{
+    c->oldbw = c->bw;
+    c->bw = border_width;
+}
+
+void
 setclientdesktop(Client *c, Desktop *desk)
 {
     if((c->next || c->prev))
@@ -635,13 +663,55 @@ setclientdesktop(Client *c, Desktop *desk)
 }
 
 void
+setfloating(Client *c, uint8_t state)
+{
+    /* set previous floating state */
+    c->flags &= (~_WASFLOATING);
+    c->flags |= (_WASFLOATING * !!(c->flags & _FLOATING));
+
+    c->flags &= (~_FLOATING);
+    c->flags |= (_FLOATING * !!state);
+}
+
+void
+setfullscreen(Client *c, u8 state)
+{
+    if(state && !ISFULLSCREEN(c))
+    {
+        XCBChangeProperty(_wm->dpy, c->win, netatom[NetWMState], XCB_ATOM_ATOM, 32,
+        XCB_PROP_MODE_REPLACE, (unsigned char *)&netatom[NetWMStateFullscreen], 1);
+        setborderwidth(c, c->bw);
+        setborderwidth(c, 0);
+        resizeclient(c, c->mon->mx, c->mon->wy, c->mon->mw, c->mon->mh);
+        XCBRaiseWindow(_wm->dpy, c->win);
+    }
+    else if(!state && ISFULLSCREEN(c))
+    {
+        XCBChangeProperty(_wm->dpy, c->win, netatom[NetWMState], XCB_ATOM_ATOM, 32, 
+        XCB_PROP_MODE_REPLACE, (unsigned char *)0, 0);
+        setborderwidth(c, c->oldbw);
+        resizeclient(c, c->oldx, c->oldy, c->oldw, c->oldh);
+    }
+    c->flags &= (~_FULLSCREEN);
+    c->flags |= (_FULLSCREEN * !!state);
+}
+
+void
 setfocus(Client *c)
 {
-    if(NEVERFOCUS(c))
+    if(!NEVERFOCUS(c))
     {
         XCBSetInputFocus(_wm->dpy, c->win, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_TIME_CURRENT_TIME);
         XCBChangeProperty(_wm->dpy, _wm->root, netatom[NetActiveWindow], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&(c->win), 1);
     }
+    /* send event */
+}
+
+void
+setneverfocus(Client *c, uint8_t state)
+{
+    c->flags &= ~(_NEVERFOCUS);
+    c->flags |= (_NEVERFOCUS * !!state);
 }
 
 void
@@ -697,7 +767,7 @@ setup(void)
 }
 
 void
-seturgent(Client *c, int state) 
+seturgent(Client *c, uint8_t state) 
 {
     /* flags stuff */
     c->flags &= (~_URGENT);
@@ -775,7 +845,7 @@ startup(void)
 }
 
 void
-unfocus(Client *c, int setfocus)
+unfocus(Client *c, uint8_t setfocus)
 {   
     grabbuttons(c->win, 0);         /* TODO */
     XCBSetWindowBorderWidth(_wm->dpy, c->win, 0);

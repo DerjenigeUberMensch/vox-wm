@@ -30,6 +30,11 @@ typedef int64_t  i64;
 #define DEBUG(fmt, ...) ((void)0)
 #endif
 
+
+
+#define CLEARFLAG(FLAGS, FLAG)            ((FLAGS &= (~FLAG)))
+#define SETFLAG(FLAGS, FLAG)              (((FLAGS |= FLAG)))
+
 void *ecalloc(size_t nmemb, size_t size);
 char *smprintf(char *fmt, ...);
 unsigned int UIHash(unsigned int x);

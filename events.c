@@ -75,14 +75,10 @@ keypress(XCBGenericEvent *event)
     const XCBTimestamp tim      = ev->time;
 
 
-
-    XCBKeysym sym = 0;
-    
     const i32 cleanstate = CLEANMASK(state);
 
     /* ONLY use lowercase cause we dont know how to handle anything else */
-    sym = XCBKeySymbolsGetKeySym(_wm->syms, keydetail, 0);
-
+    const XCBKeysym sym = XCBKeySymbolsGetKeySym(_wm->syms, keydetail, 0);
     /* Only use upercase cause we dont know how to handle anything else
      * sym = XCBKeySymbolsGetKeySym(_wm->syms,  keydetail, 0);
      */
@@ -119,6 +115,29 @@ keyrelease(XCBGenericEvent *event)
     const u8 samescreen         = ev->same_screen;
     const XCBKeyCode keydetail  = ev->detail;
     const XCBTimestamp tim      = ev->time;
+
+    const i32 cleanstate = CLEANMASK(state);
+    /* ONLY use lowercase cause we dont know how to handle anything else */
+    const XCBKeysym sym = XCBKeySymbolsGetKeySym(_wm->syms, keydetail, 0);
+    /* Only use upercase cause we dont know how to handle anything else
+     * sym = XCBKeySymbolsGetKeySym(_wm->syms,  keydetail, 0);
+     */
+    /* This Could work MAYBE allowing for upercase and lowercase Keybinds However that would complicate things due to our ability to mask Shift
+     * sym = XCBKeySymbolsGetKeySym(_wm->syms, keydetail, cleanstate); 
+     */
+    int i;
+    for(i = 0; i < LENGTH(keys); ++i)
+    {
+        if(keys[i].type == XCB_KEY_RELEASE)
+        {
+            if (sym == keys[i].keysym
+                    && CLEANMASK(keys[i].mod) == cleanstate
+                    && keys[i].func) 
+            {   keys[i].func(&(keys[i].arg));
+                return;
+            }
+        }
+    }
 }
 
 void
@@ -136,6 +155,33 @@ buttonpress(XCBGenericEvent *event)
     const u8 samescreen         = ev->same_screen;
     const XCBKeyCode keydetail  = ev->detail;
     const XCBTimestamp tim      = ev->time;
+
+    Monitor *m;
+    /* focus monitor if necessary */
+    if ((m = wintomon(eventwin)) && m != _wm->selmon)
+    {
+        unfocus(_wm->selmon->sel, 1);
+        _wm->selmon = m;
+        focus(NULL);
+    }
+    Client *c;
+    if((c = wintoclient(eventwin)))
+    {   
+        if(m && m->sel != c)   
+        {   
+            if(c->mon != m)
+            {   c->mon = m;
+            }
+            detachclient(c);
+            attachclient(c);
+            focus(c);
+            if(ISFLOATING(c) || ISALWAYSONTOP(c))
+            {   XCBRaiseWindow(_wm->dpy, c->win);
+            }
+            XCBAllowEvents(_wm->dpy, , XCB_TIME_CURRENT_TIME);
+        }
+    }
+
 }
 
 void
