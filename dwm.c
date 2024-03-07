@@ -7,6 +7,7 @@
 #include <locale.h>
 #include <unistd.h>
 #include <signal.h>
+#include <sys/types.h>
 #include <sys/wait.h>
 #include <xcb/xcb.h>
 #include <xcb/xcb_aux.h>
@@ -33,6 +34,20 @@ void
 UserStats(const Arg *arg)
 {
     DEBUG("%s" , "Pressed 'a'");
+    struct sigaction sig;
+    if(!fork())
+    {   
+        if(_wm->dpy)
+        {   close(XCBConnectionNumber(_wm->dpy));
+        }
+        setsid();
+        sigemptyset(&sig.sa_mask);
+        sig.sa_flags = 0;
+        sig.sa_handler = SIG_DFL;
+        sigaction(SIGCHLD, &sig, NULL);
+        char *arr[] = { "st", NULL };
+		execvp(((char **)arr)[0], (char **)arr);
+    }
 }
 
 void
@@ -254,6 +269,7 @@ cleanupdesktop(Desktop *desk)
 void
 cleanupclient(Client *c)
 {
+    detachclient(c);
     free(c);
     c = NULL;
 }
@@ -320,7 +336,6 @@ createmon(void)
     m->ww = m->wh = 0;
     m->flags = 0;
     m->sel = NULL;
-    m->desktops = NULL;
     m->next = NULL;
     m->barwin = 0;
     int i;
@@ -332,9 +347,9 @@ createmon(void)
 }
 
 Client *
-createclient(void)
+createclient(Monitor *m)
 {
-    Client *c = malloc(sizeof(Client ));
+    Client *c = calloc(1, sizeof(Client ));
     if(!c)
     {   return NULL;
     }
@@ -345,12 +360,13 @@ createclient(void)
     c->flags = 0;
     c->bw = c->oldbw = 0;
     c->win = 0;
-    c->mon = NULL;
+    c->mon = m;
     c->mina = c->maxa = 0;
     c->basew = c->baseh = 0;
     c->incw = c->inch = 0;
     c->maxw = c->maxh = 0;
     c->pid = 0;
+    c->desktop = m->desksel;
     return c;
 }
 

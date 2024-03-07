@@ -178,7 +178,7 @@ buttonpress(XCBGenericEvent *event)
             if(ISFLOATING(c) || ISALWAYSONTOP(c))
             {   XCBRaiseWindow(_wm->dpy, c->win);
             }
-            XCBAllowEvents(_wm->dpy, , XCB_TIME_CURRENT_TIME);
+            //XCBAllowEvents(_wm->dpy, XCB_, XCB_TIME_CURRENT_TIME);
         }
     }
 
@@ -318,7 +318,17 @@ maprequest(XCBGenericEvent *event)
     XCBMapRequestEvent *ev  = (XCBMapRequestEvent *)event;
     const XCBWindow parent  = ev->parent;
     const XCBWindow win     = ev->window;
+
+
+    DEBUG("%s%d", "MAPPED:", win);
     XCBMapWindow(_wm->dpy, win);
+    Client *c = createclient(_wm->selmon);
+    c->win = win;
+    XCBMoveResizeWindow(_wm->dpy, win, _wm->selmon->wx, _wm->selmon->wy, _wm->selmon->ww, _wm->selmon->wh);
+    XCBSync(_wm->dpy);
+    attachclient(c);
+    focus(c);
+    XCBSync(_wm->dpy);
 }
 void
 resizerequest(XCBGenericEvent *event)
@@ -363,6 +373,9 @@ void
 mapnotify(XCBGenericEvent *event)
 {
     XCBMapNotifyEvent *ev = (XCBMapNotifyEvent *)event;
+    const XCBWindow win             = ev->window;
+    const XCBWindow eventwin        = ev->event;
+    const uint8_t override_redirect = ev->override_redirect;
 }
 
 void
@@ -375,6 +388,24 @@ void
 unmapnotify(XCBGenericEvent *event)
 {
     XCBUnMapNotifyEvent *ev = (XCBUnMapNotifyEvent *)event;
+    const XCBWindow eventwin    = ev->event;
+    const XCBWindow win         = ev->window;
+    const uint8_t isconfigure   = ev->from_configure;
+
+
+
+    Client *c;
+    if((c = wintoclient(win)))
+    {
+        if(isconfigure)
+        {   /* setclientstate(c, WIDTHDRAWNSTATE); */
+        }
+        else
+        {   cleanupclient(c);
+        }
+    }
+    focus(NULL);
+    XCBSync(_wm->dpy);
 }
 
 void

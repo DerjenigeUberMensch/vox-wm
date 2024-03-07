@@ -223,7 +223,7 @@ void cleanupclient(Client *c);
 void cleanupdesktop(Desktop *desk);
 void cleanupmon(Monitor *m);
 void cleanupmons(void);
-Client *createclient(void);
+Client *createclient(Monitor *m);
 Monitor *createmon(void);
 void focus(Client *c);
 void grabbuttons(XCBWindow window, uint8_t focused);
