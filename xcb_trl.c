@@ -23,9 +23,15 @@
 #include <xcb/xcb_xrm.h>
 #include <xcb/xcb_errors.h>
 
+
+/* error codes */
+#include <X11/X.h>
+#include <X11/Xproto.h>
+
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+
 
 typedef uint8_t  u8;
 typedef uint16_t u16;
@@ -83,9 +89,6 @@ _xcb_err_handler(XCBDisplay *display, XCBGenericError *err)
     }
     if(!_handler)
     {   
-        if(err->error_code == XCB_NONE)
-        {   return;
-        }
         _xcb_die("error_code: [%d], major_code: [%d], minor_code: [%d]\n"
             "sequence: [%d], response_type: [%d], resource_id: [%d]\n"
             "full_sequence: [%d]\n"
@@ -327,8 +330,16 @@ XCBMoveWindow(XCBDisplay *display, XCBWindow window, i32 x, i32 y)
 XCBCookie
 XCBMoveResizeWindow(XCBDisplay *display, XCBWindow window, i32 x, i32 y, u32 width, u32 height)
 {
-    const i32 values[] = { x, y, width, height };
+    const i64 values[] = { x, y, width, height };
     const u32 mask = XCB_CONFIG_WINDOW_X|XCB_CONFIG_WINDOW_Y|XCB_CONFIG_WINDOW_WIDTH|XCB_CONFIG_WINDOW_HEIGHT;
+    return xcb_configure_window(display, window, mask, values);
+}
+
+XCBCookie
+XCBResizeWindow(XCBDisplay *display, XCBWindow window, u32 width, u32 height)
+{
+    const u32 values[] = { width, height };
+    const u32 mask = XCB_CONFIG_WINDOW_WIDTH|XCB_CONFIG_WINDOW_HEIGHT;
     return xcb_configure_window(display, window, mask, values);
 }
 
@@ -395,49 +406,66 @@ XCBSetSibling(XCBDisplay *display, XCBWindow window, XCBWindow sibling)
     return xcb_configure_window(display, window, mask, &values);
 }
 
-XCBWindowAttributesCookie
+XCBCookie
 XCBGetWindowAttributesCookie(XCBDisplay *display, XCBWindow window)
 {
-    return xcb_get_window_attributes(display, window);
+    const xcb_get_window_attributes_cookie_t cookie = xcb_get_window_attributes(display, window);
+    XCBCookie ret = { .sequence = cookie.sequence };
+    return ret;
 }
 
 XCBWindowAttributesReply *
-XCBGetWindowAttributesReply(XCBDisplay *display, XCBWindowAttributesCookie cookie)
+XCBGetWindowAttributesReply(XCBDisplay *display, XCBCookie cookie)
 {
     XCBGenericError *err = NULL;
     XCBWindowAttributesReply *reply = NULL;
-    reply = xcb_get_window_attributes_reply(display, cookie, &err);
-    _xcb_err_handler(display, err);
+    const xcb_get_window_attributes_cookie_t cookie1 = { .sequence = cookie.sequence };
+    reply = xcb_get_window_attributes_reply(display, cookie1, &err);
+    if(err)
+    {
+        _xcb_err_handler(display, err);
+        return NULL;
+    }
     return reply;
 }
 
-XCBGeometryCookie
+XCBCookie
 XCBGetWindowGeometryCookie(XCBDisplay *display, XCBWindow window)
 {
-    return xcb_get_geometry(display, window);
+    const xcb_get_geometry_cookie_t cookie = xcb_get_geometry(display, window);
+    XCBCookie ret = { .sequence = cookie.sequence };
+    return ret;
 }
 
 XCBGeometry *
-XCBGetWindowGeometryReply(XCBDisplay *display, XCBGeometryCookie cookie)
+XCBGetWindowGeometryReply(XCBDisplay *display, XCBCookie cookie)
 {
     XCBGenericError *err = NULL;
     XCBGeometry *reply = NULL;
-    reply = xcb_get_geometry_reply(display, cookie, &err);
-    _xcb_err_handler(display, err);
+    const xcb_get_geometry_cookie_t cookie1 = { .sequence = cookie.sequence };
+    reply = xcb_get_geometry_reply(display, cookie1, &err);
+    if(err)
+    {   
+        _xcb_err_handler(display, err);
+        return NULL;
+    }
     return reply;
 }
 
-XCBAtomCookie
+XCBCookie
 XCBInternAtomCookie(XCBDisplay *display, const char *name, int only_if_exists)
 {
-    return xcb_intern_atom(display, only_if_exists, strlen(name), name);
+    const xcb_intern_atom_cookie_t cookie = xcb_intern_atom(display, only_if_exists, strlen(name), name);
+    XCBCookie ret = { .sequence = cookie.sequence };
+    return ret;
 }
 
 XCBAtom
-XCBInternAtomReply(XCBDisplay *display, XCBAtomCookie cookie)
+XCBInternAtomReply(XCBDisplay *display, XCBCookie cookie)
 {
     XCBGenericError *err = NULL;
-    xcb_intern_atom_reply_t *reply = xcb_intern_atom_reply(display, cookie, &err);
+    const xcb_intern_atom_cookie_t cookie1 = { .sequence = cookie.sequence };
+    xcb_intern_atom_reply_t *reply = xcb_intern_atom_reply(display, cookie1, &err);
     _xcb_err_handler(display, err);
     xcb_atom_t atom = 0;
     if(reply)
@@ -447,6 +475,56 @@ XCBInternAtomReply(XCBDisplay *display, XCBAtomCookie cookie)
     }
     return atom;
 }
+
+XCBCookie
+XCBGetPropertyCookie(
+        XCBDisplay *display,
+        XCBWindow window,
+        XCBAtom property,
+        uint32_t long_offset,
+        uint32_t long_length,
+        uint8_t _delete,
+        XCBAtom req_type
+        )
+{
+    const xcb_get_property_cookie_t cookie = xcb_get_property(display, _delete, window, property, req_type, long_offset, long_length);
+    XCBCookie ret = { .sequence = cookie.sequence };
+    return ret;
+}
+
+XCBCookie 
+XCBGetWindowPropertyCookie(
+        XCBDisplay *display,
+        XCBWindow window,
+        XCBAtom property,
+        uint32_t long_offset,
+        uint32_t long_length,
+        uint8_t _delete,
+        XCBAtom req_type
+        )
+{
+    const xcb_get_property_cookie_t cookie = xcb_get_property(display, _delete, window, property, req_type, long_offset, long_length);
+    XCBCookie ret = { .sequence = cookie.sequence };
+    return ret;
+}
+
+XCBWindowProperty *
+XCBGetPropertyReply(
+        XCBDisplay *display,
+        XCBCookie cookie
+        )
+{
+    XCBGenericError *err = NULL;
+    const xcb_get_property_cookie_t cookie1 = { .sequence = cookie.sequence };
+    xcb_get_property_reply_t *ret =  xcb_get_property_reply(display, cookie1, &err);
+    if(err)
+    {
+        _xcb_err_handler(display, err);
+        return NULL;
+    }
+    return ret;
+}
+
 
 
 
@@ -474,11 +552,12 @@ XCBCreateFontCursor(XCBDisplay *display, int shape)
     const u16 bgblue = 0;
 
     const xcb_font_t font = xcb_generate_id(display);
+    const u8 strlenofcursor = 6;    /* X only reads data for those 6 chars so no need for +1 for the \0 character */
 
-    (void)xcb_open_font(display, font, strlen("cursor"), "cursor");
+    xcb_open_font(display, font, strlenofcursor, "cursor");
 
     const xcb_cursor_t id = xcb_generate_id(display);
-    (void)xcb_create_glyph_cursor(display, id, font, font, shape, shape + 1,
+    xcb_create_glyph_cursor(display, id, font, font, shape, shape + 1,
                             fgred, fggreen, fgblue,
                             bgred, bggreen, bgblue);
     return id;
@@ -513,19 +592,26 @@ XCBCloseFont(XCBDisplay *display, XCBFont id)
 
 /* text property textproperty */
 
-XCBTextPropertyCookie
+XCBCookie
 XCBGetTextPropertyCookie(XCBDisplay *display, XCBWindow window, XCBAtom property)
 {
-    return xcb_icccm_get_text_property(display, window, property);
+    const xcb_get_property_cookie_t cookie = xcb_icccm_get_text_property(display, window, property);
+    XCBCookie ret = { .sequence = cookie.sequence };
+    return ret;
 }
 
 int 
-XCBGetTextPropertyReply(XCBDisplay *display, XCBTextPropertyCookie cookie, XCBTextProperty *reply_return)
+XCBGetTextPropertyReply(XCBDisplay *display, XCBCookie cookie, XCBTextProperty *reply_return)
 {
     XCBGenericError *err = NULL;
     int status = 0;
-    status = xcb_icccm_get_text_property_reply(display, cookie, reply_return, &err);
-    _xcb_err_handler(display, err);
+    const xcb_get_property_cookie_t cookie1 = { .sequence = cookie.sequence };
+    status = xcb_icccm_get_text_property_reply(display, cookie1, reply_return, &err);
+    if(err)
+    {   
+        _xcb_err_handler(display, err);
+        return 0;
+    }
     return status;
 }
 int
@@ -596,22 +682,194 @@ XCBSetIOErrorHandler(XCBDisplay *display, void *IOHandler)
 }
 
 char *
-XCBGetErrorText(XCBDisplay *display)
-{
-    /* TODO */
-    return "";
+XCBErrorCodeText(
+        uint8_t error_code)
+{                                           /* array size - 1 */
+    error_code *= error_code > 0 && error_code < 18 - 1;
+    char *errs[18] =
+    {
+        [0] = NULL,
+        [BadRequest] = "BadRequest",
+        [BadValue] = "BadValue",
+        [BadWindow] = "BadWindow",
+        [BadPixmap] = "BadPixmap",
+        [BadAtom] = "BadAtom",
+        [BadCursor] = "BadCursor",
+        [BadFont] = "BadFont",
+        [BadMatch] = "BadMatch",
+        [BadDrawable] = "BadDrawable",
+        [BadAccess] = "BadAccess",
+        [BadAlloc] = "BadAlloc",
+        [BadColor] = "BadColor",
+        [BadGC] = "BadGC",
+        [BadIDChoice] = "BadIDChoice",
+        [BadName] = "BadName",
+        [BadLength] = "BadLength",
+        [BadImplementation] = "BadImplementation",
+    };
+
+    if(errs[error_code])
+    {   return errs[error_code];
+    }
+    return NULL;
 }
 
-
-
-
-
+char *
+XCBErrorMajorCodeText(
+        uint8_t major_code)
+{                                           /* array size - 1 */
+    major_code *= major_code > 0 && major_code < 128 - 1;
+    char *errs[128] = 
+    {
+        [0] = NULL,
+        [X_CreateWindow] = "CreateWindow",
+        [X_ChangeWindowAttributes] = "ChangeWindowAttributes",
+        [X_GetWindowAttributes] = "GetWindowAttributes",
+        [X_DestroyWindow] = "DestroyWindow",
+        [X_DestroySubwindows] = "DestroySubwindows",
+        [X_ChangeSaveSet] = "ChangeSaveSet",
+        [X_ReparentWindow] = "ReparentWindow",
+        [X_MapWindow] = "MapWindow",
+        [X_MapSubwindows] = "MapSubwindows",
+        [X_UnmapWindow] = "UnmapWindow",
+        [X_UnmapSubwindows] = "UnmapSubwindows",
+        [X_ConfigureWindow] = "ConfigureWindow",
+        [X_CirculateWindow] = "CirculateWindow",
+        [X_GetGeometry] = "GetGeometry",
+        [X_QueryTree] = "QueryTree",
+        [X_InternAtom] = "InternAtom",
+        [X_GetAtomName] = "GetAtomName",
+        [X_ChangeProperty] = "ChangeProperty",
+        [X_DeleteProperty] = "DeleteProperty",
+        [X_GetProperty] = "GetProperty",
+        [X_ListProperties] = "ListProperties",
+        [X_SetSelectionOwner] = "SetSelectionOwner",
+        [X_GetSelectionOwner] = "GetSelectionOwner",
+        [X_ConvertSelection] = "ConvertSelection",
+        [X_SendEvent] = "SendEvent",
+        [X_GrabPointer] = "GrabPointer",
+        [X_UngrabPointer] = "UngrabPointer",
+        [X_GrabButton] = "GrabButton",
+        [X_UngrabButton] = "UngrabButton",
+        [X_ChangeActivePointerGrab] = "ChangeActivePointerGrab",
+        [X_GrabKeyboard] = "GrabKeyboard",
+        [X_UngrabKeyboard] = "UngrabKeyboard",
+        [X_GrabKey] = "GrabKey",
+        [X_UngrabKey] = "UngrabKey",
+        [X_AllowEvents] = "AllowEvents",
+        [X_GrabServer] = "GrabServer",
+        [X_UngrabServer] = "UngrabServer",
+        [X_QueryPointer] = "QueryPointer",
+        [X_GetMotionEvents] = "GetMotionEvents",
+        [X_TranslateCoords] = "TranslateCoords",
+        [X_WarpPointer] = "WarpPointer",
+        [X_SetInputFocus] = "SetInputFocus",
+        [X_GetInputFocus] = "GetInputFocus",
+        [X_QueryKeymap] = "QueryKeymap",
+        [X_OpenFont] = "OpenFont",
+        [X_CloseFont] = "CloseFont",
+        [X_QueryFont] = "QueryFont",
+        [X_QueryTextExtents] = "QueryTextExtents",
+        [X_ListFonts] = "ListFonts",
+        [X_ListFontsWithInfo] = "ListFontsWithInfo",
+        [X_SetFontPath] = "SetFontPath",
+        [X_GetFontPath] = "GetFontPath",
+        [X_CreatePixmap] = "CreatePixmap",
+        [X_FreePixmap] = "FreePixmap",
+        [X_CreateGC] = "CreateGC",
+        [X_ChangeGC] = "ChangeGC",
+        [X_CopyGC] = "CopyGC",
+        [X_SetDashes] = "SetDashes",
+        [X_SetClipRectangles] = "SetClipRectangles",
+        [X_FreeGC] = "FreeGC",
+        [X_ClearArea] = "ClearArea",
+        [X_CopyArea] = "CopyArea",
+        [X_CopyPlane] = "CopyPlane",
+        [X_PolyPoint] = "PolyPoint",
+        [X_PolyLine] = "PolyLine",
+        [X_PolySegment] = "PolySegment",
+        [X_PolyRectangle] = "PolyRectangle",
+        [X_PolyArc] = "PolyArc",
+        [X_FillPoly] = "FillPoly",
+        [X_PolyFillRectangle] = "PolyFillRectangle",
+        [X_PolyFillArc] = "PolyFillArc",
+        [X_PutImage] = "PutImage",
+        [X_GetImage] = "GetImage",
+        [X_PolyText8] = "PolyText8",
+        [X_PolyText16] = "PolyText16",
+        [X_ImageText8] = "ImageText8",
+        [X_ImageText16] = "ImageText16",
+        [X_CreateColormap] = "CreateColormap",
+        [X_FreeColormap] = "FreeColormap",
+        [X_CopyColormapAndFree] = "CopyColormapAndFree",
+        [X_InstallColormap] = "InstallColormap",
+        [X_UninstallColormap] = "UninstallColormap",
+        [X_ListInstalledColormaps] = "ListInstalledColormaps",
+        [X_AllocColor] = "AllocColor",
+        [X_AllocNamedColor] = "AllocNamedColor",
+        [X_AllocColorCells] = "AllocColorCells",
+        [X_AllocColorPlanes] = "AllocColorPlanes",
+        [X_FreeColors] = "FreeColors",
+        [X_StoreColors] = "StoreColors",
+        [X_StoreNamedColor] = "StoreNamedColor",
+        [X_QueryColors] = "QueryColors",
+        [X_LookupColor] = "LookupColor",
+        [X_CreateCursor] = "CreateCursor",
+        [X_CreateGlyphCursor] = "CreateGlyphCursor",
+        [X_FreeCursor] = "FreeCursor",
+        [X_RecolorCursor] = "RecolorCursor",
+        [X_QueryBestSize] = "QueryBestSize",
+        [X_QueryExtension] = "QueryExtension",
+        [X_ListExtensions] = "ListExtensions",
+        [X_ChangeKeyboardMapping] = "ChangeKeyboardMapping",
+        [X_GetKeyboardMapping] = "GetKeyboardMapping",
+        [X_ChangeKeyboardControl] = "ChangeKeyboardControl",
+        [X_GetKeyboardControl] = "GetKeyboardControl",
+        [X_Bell] = "Bell",
+        [X_ChangePointerControl] = "ChangePointerControl",
+        [X_GetPointerControl] = "GetPointerControl",
+        [X_SetScreenSaver] = "SetScreenSaver",
+        [X_GetScreenSaver] = "GetScreenSaver",
+        [X_ChangeHosts] = "ChangeHosts",
+        [X_ListHosts] = "ListHosts",
+        [X_SetAccessControl] = "SetAccessControl",
+        [X_SetCloseDownMode] = "SetCloseDownMode",
+        [X_KillClient] = "KillClient",
+        [X_RotateProperties] = "RotateProperties",
+        [X_ForceScreenSaver] = "ForceScreenSaver",
+        [X_SetPointerMapping] = "SetPointerMapping",
+        [X_GetPointerMapping] = "GetPointerMapping",
+        [X_SetModifierMapping] = "SetModifierMapping",
+        [X_GetModifierMapping] = "GetModifierMapping",
+        [X_NoOperation] = "NoOperation"
+    };
+    if(errs[major_code])
+    {   return errs[major_code];
+    }
+    return NULL;
+}
 
 /* events */
 
 
 
+XCBCookie
+XCBAllowEvents(XCBDisplay *display, u8 mode, XCBTimestamp time)
+{
+    return xcb_allow_events(display, mode, time);
+}
 
+XCBCookie
+XCBSendEvent(
+        XCBDisplay *display,
+        XCBWindow window,
+        uint8_t propagate,
+        uint32_t event_mask,
+        const char *event
+        )
+{
+    return xcb_send_event(display, propagate, window, event_mask, event);
+}
 
 int 
 XCBNextEvent(XCBDisplay *display, XCBGenericEvent **event_return) 
@@ -753,33 +1011,47 @@ XCBKeySymbolsFree(XCBKeySymbols *keysyms)
     xcb_key_symbols_free(keysyms);
 }
 
-XCBKeyboardMappingCookie 
+XCBCookie
 XCBGetKeyboardMappingCookie(XCBDisplay *display, XCBKeyCode first_keycode, u8 count)
 {
-    return xcb_get_keyboard_mapping(display, first_keycode, count);
+    const xcb_get_keyboard_mapping_cookie_t cookie = xcb_get_keyboard_mapping(display, first_keycode, count);
+    XCBCookie ret = { .sequence = cookie.sequence };
+    return ret;
 }
 
 XCBKeyboardMapping *
-XCBGetKeyboardMappingReply(XCBDisplay *display, XCBKeyboardMappingCookie cookie)
+XCBGetKeyboardMappingReply(XCBDisplay *display, XCBCookie cookie)
 {
     XCBGenericError *err = NULL;
-    XCBKeyboardMapping *reply = xcb_get_keyboard_mapping_reply(display, cookie, &err);
-    _xcb_err_handler(display, err);
+    const xcb_get_keyboard_mapping_cookie_t cookie1 = { .sequence = cookie.sequence };
+    XCBKeyboardMapping *reply = xcb_get_keyboard_mapping_reply(display, cookie1, &err);
+    if(err)
+    {   
+        _xcb_err_handler(display, err);
+        return NULL;
+    }
     return reply;
 }
 
-XCBPointerCookie
+XCBCookie
 XCBQueryPointerCookie(XCBDisplay *display, XCBWindow window)
 {
-    return xcb_query_pointer(display, window);
+    const xcb_query_pointer_cookie_t cookie = xcb_query_pointer(display, window);
+    const XCBCookie ret = { .sequence = cookie.sequence };
+    return ret;
 }
 
 XCBPointerReply *
-XCBQueryPointerReply(XCBDisplay *display, XCBPointerCookie cookie)
+XCBQueryPointerReply(XCBDisplay *display, XCBCookie cookie)
 {
     XCBGenericError *err = NULL;
-    XCBPointerReply *reply = xcb_query_pointer_reply(display, cookie, &err);
-    _xcb_err_handler(display, err);
+    const xcb_query_pointer_cookie_t cookie1 = { .sequence = cookie.sequence };
+    XCBPointerReply *reply = xcb_query_pointer_reply(display, cookie1, &err);
+    if(err)
+    {   
+        _xcb_err_handler(display, err);
+        return NULL;
+    }
     return reply;
 }
 
@@ -955,33 +1227,39 @@ XCBPrefetchMaximumRequestLength(XCBDisplay *display)
 
 /* ICCCM */
 
-XCBGetPropertyCookie
+XCBCookie
 XCBGetWMProtocolsCookie(
         XCBDisplay *display, 
         XCBWindow window, 
         XCBAtom protocol)
 {
-    return xcb_icccm_get_wm_protocols(display, window, protocol);
+    const xcb_get_property_cookie_t cookie = xcb_icccm_get_wm_protocols(display, window, protocol);
+    XCBCookie ret = { .sequence = cookie.sequence };
+    return ret;
 }
 
 int
 XCBGetWMProtocolsReply(
         XCBDisplay *display, 
-        XCBGetPropertyCookie cookie,
-        XCBGetWMProtocol *protocol_return
+        XCBCookie cookie,
+        XCBWMProtocols *protocol_return
         )
 {
     XCBGenericError *err = NULL;
-    int ret;
-    ret = xcb_icccm_get_wm_protocols_reply(display, cookie, protocol_return, &err);
-    _xcb_err_handler(display, err);
+    const xcb_get_property_cookie_t cookie1 = { .sequence = cookie.sequence };
+    const int ret = xcb_icccm_get_wm_protocols_reply(display, cookie1, protocol_return, &err);
+    if(err)
+    {   
+        _xcb_err_handler(display, err);
+        return 0;
+    }
     return ret;
 
 }
 
 void
 XCBWipeGetWMProtocolsReply(
-        XCBGetWMProtocol *protocols)
+        XCBWMProtocols *protocols)
 {
     xcb_icccm_get_wm_protocols_reply_wipe(protocols);
 }

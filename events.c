@@ -222,12 +222,38 @@ void
 enternotify(XCBGenericEvent *event)
 {
     XCBEnterNotifyEvent *ev = (XCBEnterNotifyEvent *)event;
+    const uint8_t detail    = ev->detail;
+    const XCBTimestamp tim  = ev->time;
+    const XCBWindow eventroot = ev->root;
+    const XCBWindow eventwin = ev->event;
+    const XCBWindow eventchild = ev->child;
+    const int16_t rootx = ev->root_x;
+    const int16_t rooty = ev->root_y;
+    const int16_t eventx = ev->event_x;
+    const int16_t eventy = ev->event_y;
+    const uint16_t state = ev->state;
+    const uint8_t mode   = ev->mode;
+    const uint8_t samescreenfocus = ev->same_screen_focus;
+
 }
 
 void
 leavenotify(XCBGenericEvent *event)
 {
     XCBLeaveNotifyEvent *ev = (XCBLeaveNotifyEvent *)event;
+    const uint8_t detail    = ev->detail;
+    const XCBTimestamp tim  = ev->time;
+    const XCBWindow eventroot = ev->root;
+    const XCBWindow eventwin = ev->event;
+    const XCBWindow eventchild = ev->child;
+    const int16_t rootx = ev->root_x;
+    const int16_t rooty = ev->root_y;
+    const int16_t eventx = ev->event_x;
+    const int16_t eventy = ev->event_y;
+    const uint16_t state = ev->state;
+    const uint8_t mode   = ev->mode;
+    const uint8_t samescreenfocus = ev->same_screen_focus;
+    
 }
 
 void
@@ -237,6 +263,10 @@ focusin(XCBGenericEvent *event)
     const u8 detail = ev->detail;
     const XCBWindow eventwin = ev->event;
     const u8 mode = ev->mode;
+
+    if(_wm->selmon->sel && eventwin != _wm->selmon->sel->win)
+    {   setfocus(_wm->selmon->sel);
+    }
 }
 
 void
@@ -319,16 +349,9 @@ maprequest(XCBGenericEvent *event)
     const XCBWindow parent  = ev->parent;
     const XCBWindow win     = ev->window;
 
-
-    DEBUG("%s%d", "MAPPED:", win);
-    XCBMapWindow(_wm->dpy, win);
-    Client *c = createclient(_wm->selmon);
-    c->win = win;
-    XCBMoveResizeWindow(_wm->dpy, win, _wm->selmon->wx, _wm->selmon->wy, _wm->selmon->ww, _wm->selmon->wh);
-    XCBSync(_wm->dpy);
-    attachclient(c);
-    focus(c);
-    XCBSync(_wm->dpy);
+    if(!wintoclient(win))
+    {   manage(ev->window);
+    }
 }
 void
 resizerequest(XCBGenericEvent *event)
@@ -382,6 +405,10 @@ void
 mappingnotify(XCBGenericEvent *event)
 {
     XCBMappingNotifyEvent *ev = (XCBMappingNotifyEvent *)event;
+    const XCBKeyCode first_keycode = ev->first_keycode;
+    const uint8_t count            = ev->count;
+    const uint8_t request          = ev->request;
+
 }
 
 void
@@ -392,20 +419,10 @@ unmapnotify(XCBGenericEvent *event)
     const XCBWindow win         = ev->window;
     const uint8_t isconfigure   = ev->from_configure;
 
-
-
     Client *c;
-    if((c = wintoclient(win)))
-    {
-        if(isconfigure)
-        {   /* setclientstate(c, WIDTHDRAWNSTATE); */
-        }
-        else
-        {   cleanupclient(c);
-        }
+    if((c = wintoclient(win)) || (c = wintoclient(eventwin)))
+    {   unmanage(c);
     }
-    focus(NULL);
-    XCBSync(_wm->dpy);
 }
 
 void

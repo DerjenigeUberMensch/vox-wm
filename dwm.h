@@ -106,8 +106,6 @@ struct Button
 
 struct Client
 {
-    Client *next;       /* The next client in list  */
-    Client *prev;       /* The previous client      */
     int16_t x;          /* X coordinate             */
     int16_t y;          /* Y coordinate             */
     uint16_t w;         /* Width                    */
@@ -119,12 +117,15 @@ struct Client
 
     uint16_t flags;     /* Flags for client         */
 
-    uint16_t bw;        /* Border Width             */
-    uint16_t oldbw;     /* Old Border Width         */
-
     XCBWindow win;      /* Client Window            */
+
+    Client *next;       /* The next client in list  */
+    Client *prev;       /* The previous client      */
     Monitor *mon;       /* Client Monitor           */
     Desktop *desktop;   /* Client Associated Desktop*/
+
+    uint16_t bw;        /* Border Width             */
+    uint16_t oldbw;     /* Old Border Width         */
 
     float mina;         /* Minimum Aspect           */
     float maxa;         /* Maximum Aspect           */
@@ -178,10 +179,11 @@ struct Layout
 struct Desktop
 {
     int16_t num;                /* The Desktop Number           */
-    uint8_t layout;            /* The Layout Index             */
-    uint8_t olayout;           /* The Previous Layout Index    */
+    uint8_t layout;             /* The Layout Index             */
+    uint8_t olayout;            /* The Previous Layout Index    */
 
     Client *clients;            /* First Client in linked list  */
+    Client *clast;              /* Last Client in linked list   */
     Desktop *next;              /* Next Client in linked list   */
     Desktop *prev;              /* Previous Client in list      */
 };
@@ -191,14 +193,15 @@ struct Desktop
 struct WM
 {
     int screen;                     /* Screen id            */
+    int numlockmask;                /* numlockmask          */
     uint16_t sw;                    /* Screen Height        */
     uint16_t sh;                    /* Screen Width         */
     XCBWindow root;                 /* The root window      */
     XCBWindow wmcheckwin;           /* window manager check */
     XCBDisplay *dpy;                /* The current display  */
-    int numlockmask;                /* numlockmask          */
     Monitor *selmon;                /* Selected Monitor     */
     Monitor *mons;                  /* Monitors             */
+    Client *lastfocused;            /* Last focused client  */
     uint8_t running;                /* Running flag         */
     uint8_t restart;                /* Restart flag         */
     uint16_t default_layout;        /* default layout index */
@@ -228,7 +231,10 @@ Monitor *createmon(void);
 void focus(Client *c);
 void grabbuttons(XCBWindow window, uint8_t focused);
 void grabkeys(void);
+void manage(XCBWindow window);
+Desktop *nextdesktop(Desktop *desktop);
 Client *nextvisible(Client *c);
+Client *lastvisible(Client *c);
 void resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height);
 void run(void);
 void scan(void);
@@ -250,6 +256,7 @@ void startup(void);
 void unfocus(Client *c, uint8_t setfocus);
 int  updategeom(void);
 void updatenumlockmask(void);
+void unmanage(Client *c);
 
 Client *wintoclient(XCBWindow win);
 Monitor *wintomon(XCBWindow win);

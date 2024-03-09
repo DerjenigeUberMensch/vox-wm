@@ -2,7 +2,6 @@
 #define EVENTS_H_
 
 #include "xcb_trl.h"
-#include "queue.h"
 
 void keypress(XCBGenericEvent *event);
 void keyrelease(XCBGenericEvent *event);
@@ -42,10 +41,8 @@ void genericevent(XCBGenericEvent *event);
 void errorhandler(XCBGenericEvent *error);
 
 #ifndef LASTEvent
-#define LASTEvent   50      /* XCB has a max event count of roughly ~35 however that is a estimate which is why 50 is used (just in case) .
+#define LASTEvent   40      /* XCB has a max event count of roughly ~35 however that is a estimate which is why 50 is used (just in case) .
                              * The reason it isnt 33 like in xlib is cause xcb skips ~2 before assigning event opcodes.
                              */
 #endif
-extern void (*handler[LASTEvent]) (XCBGenericEvent *);
-
 #endif

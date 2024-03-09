@@ -76,7 +76,7 @@ enum NETWMPROTOCOLS
     NetLast,
 };
 /* default atoms */
-enum WMPROTOCOLS { WMProtocols, WMDelete, WMState, WMTakeFocus, WMLast, };
+enum WMPROTOCOLS { WMTakeFocus, WMProtocols, WMDelete, WMState, WMLast };
 
 
 
@@ -86,13 +86,29 @@ enum WMPROTOCOLS { WMProtocols, WMDelete, WMState, WMTakeFocus, WMLast, };
  *
  * Usage: Pass in the adress of the returned value(s), using the respective sizes of WMLast, NetLast;
  *        XCBAtom wmatom[WMLast]; XCBAtom netatom[NetLast];
- *        XCBInitAtoms(display, &wmatom, &netatom);
+ *        XCBInitAtoms(display, wmatom, netatom);
  *
  * NOTE: No side-effects if wm_atom_return is NULL.
  * NOTE: No side-effects if net_atom_return is NULL.
  * NOTE: XCBInitAtoms() assumes that the space given is enough, ie WMLast or NetLast for array size 
  * 
  */
-void XCBInitAtoms(XCBDisplay *display, XCBAtom *wm_atom_return, XCBAtom *net_atom_return);
+void XCBInitAtoms(
+        XCBDisplay *display, 
+        XCBAtom *wm_atom_return, 
+        XCBAtom *net_atom_return);
+int 
+XCBGetTextProp(
+        XCBDisplay *display, 
+        XCBWindow window, 
+        XCBAtom atom, 
+        char *text, 
+        size_t size);
+int
+XCBGetWindowName(
+        XCBDisplay *display, 
+        XCBWindow win, 
+        char *name, 
+        uint32_t name_len);
 
 #endif

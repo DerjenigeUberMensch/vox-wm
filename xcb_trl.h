@@ -26,11 +26,26 @@
  * 2. ctrl+f or '/' for search, no need for grep.
  * 3. too much work.
  * 4. I am Lazy.
+ *
+ * Main reason to not use xcb
+ * 1.) Way harder to use to its syncrounous nature
+ * Really, Xlib's locking of Server is overblown out of porpotion when talking about xcb being better.
+ * The main problem though with Xlib is that it could be async (which would make xcb less useful) and most of the functions are.
+ * HOWEVER some "vital" or imporant ones arent which is the main problem with Xlib.
+ * Secondly Xlib uses quite a bit more resources than xcb which is also why xcb use often times "better" for the most part though Xlib is fine,
+ * What really should happen is we build a toolkit around xcb and NOT use Xlib in the first place. AND not do what Xlib did and be syncrounous.
  */
 
 /*
  * Basic XCB Usage.
  *
+ *
+ *
+ *
+ * xcb has a async way of handling stuff so when you call a function to do something async, unless you poll for reply nothing will happen.
+ * This is because the item is buffered to itself meaning that unless you call XCBSync() or XCBFlush() you will never get your event back.
+ * This is bad as it makes some things harder to use but its mostly good cause you can make a buffered requests and then just send that 1 big buffer.
+ * This saves on time asking for ping backs for every single requests.
  *
  *
  * <<< Event handling >>>
@@ -373,6 +388,7 @@ typedef xcb_atom_t XCBAtom;
 typedef xcb_time_t XCBTime;
 typedef xcb_timestamp_t XCBTimestamp;
 typedef xcb_client_message_data_t  XCBClientMessageData;
+typedef xcb_get_property_reply_t XCBWindowProperty;
 
 /* Analagous to Xlib's XA_(type)
  * XCB_ATOM_NONE = 0,
@@ -788,6 +804,13 @@ XCBMoveResizeWindow(
         uint32_t height);
 
 XCBCookie
+XCBResizeWindow(
+        XCBDisplay *display, 
+        XCBWindow window, 
+        uint32_t width, 
+        uint32_t height);
+
+XCBCookie
 XCBRaiseWindow(
         XCBDisplay *display, 
         XCBWindow window);
@@ -824,36 +847,92 @@ XCBSetSibling(
         XCBWindow window, 
         XCBWindow sibling);
 
-XCBAtomCookie 
+XCBCookie
 XCBInternAtomCookie(
         XCBDisplay *display, 
         const char *name, 
         int only_if_exists);
 
+/*
+ *
+ * NOTE: reply must be freed by caller.
+ *
+ * RETURN: 0 on Failure.
+ *
+ */
 XCBAtom 
 XCBInternAtomReply(
         XCBDisplay *display, 
-        XCBAtomCookie cookie);
+        XCBCookie cookie);
 
-XCBWindowAttributesCookie 
+XCBCookie
+XCBGetPropertyCookie(
+        XCBDisplay *display,
+        XCBWindow w,
+        XCBAtom property,
+        uint32_t long_offset,
+        uint32_t long_length,
+        uint8_t _delete,
+        XCBAtom req_type
+        );
+/*
+ *
+ * NOTE: reply must be freed by caller.
+ *
+ * RETURN: 0 on Failure.
+ *
+ */
+XCBWindowProperty *
+XCBGetPropertyReply(
+        XCBDisplay *display,
+        XCBCookie cookie
+        );
+
+XCBCookie
+XCBGetWindowPropertyCookie(
+        XCBDisplay *display,
+        XCBWindow w,
+        XCBAtom property,
+        uint32_t long_offset,
+        uint32_t long_length,
+        uint8_t _delete,
+        XCBAtom req_type
+        );
+
+
+XCBCookie
 XCBGetWindowAttributesCookie(
         XCBDisplay *display, 
         XCBWindow window);
 
+/*
+ *
+ * NOTE: reply must be freed by caller.
+ *
+ * RETURN: NULL on Failure.
+ *
+ */
 XCBWindowAttributesReply *
 XCBGetWindowAttributesReply(
         XCBDisplay *display, 
-        XCBWindowAttributesCookie cookie);
+        XCBCookie cookie);
 
-XCBGeometryCookie 
+XCBCookie
 XCBGetWindowGeometryCookie(
         XCBDisplay *display, 
         XCBWindow window);
 
+/*
+ *
+ * NOTE: reply must be freed by caller.
+ *
+ * RETURN: NULL on Failure.
+ *
+ */
 XCBGeometry *
 XCBGetWindowGeometryReply(
         XCBDisplay *display, 
-        XCBGeometryCookie cookie);
+        XCBCookie cookie);
 
 XCBPixmap 
 XCBCreatePixmap(
@@ -889,18 +968,25 @@ XCBCloseFont(
         XCBFont id
         );
 
-XCBPointerCookie 
+XCBCookie
 XCBQueryPointerCookie(
         XCBDisplay *display, 
         XCBWindow window);
 
+/*
+ *
+ * NOTE: reply must be freed by caller.
+ *
+ * RETURN: 0 on Failure.
+ *
+ */
 XCBPointerReply *
 XCBQueryPointerReply(
         XCBDisplay *display, 
-        XCBPointerCookie cookie);
+        XCBCookie cookie);
 /**/
 /* text props */
-XCBTextPropertyCookie 
+XCBCookie
 XCBGetTextPropertyCookie(
         XCBDisplay *display, 
         XCBWindow window, 
@@ -914,7 +1000,7 @@ XCBGetTextPropertyCookie(
 int 
 XCBGetTextPropertyReply(
         XCBDisplay *display, 
-        XCBTextPropertyCookie cookie, 
+        XCBCookie cookie, 
         XCBTextProperty *reply_return);
 
 /*
@@ -1016,12 +1102,16 @@ XCBHasDisplayError(
         XCBDisplay *display);
 
 
-/* NONFUNCTIONING
+/* 
  * 1 -> Error handler set.
  * 0 -> Error handler unset.
+ *
  * Incase of an unset error handler (default) XCB simply calls die() when an error occurs which may not be desired.
  * One should note that this function simply sets the function to be called when an error occurs using this API.
  * Meaning that this only handles calls made by this API, this does not handle any errors caused by another thread or raw xcb calls.
+ *
+ * NOTE: Handler provided MUST free() the XCBGenericError * when done
+ *
  * RETURN: {1, 0}.
  */
 int 
@@ -1034,10 +1124,50 @@ XCBSetIOErrorHandler(
         XCBDisplay *display, 
         void *IOHandler);
 
-/* TODO */
+
+/* Returns Bad(The error) using a number provided.
+ * The number is from the generic structure XCBGenericError.
+ * XCBGenericError *err;
+ * err->error_code;
+ *
+ * NOTE: This function doesnt use too much binary data and is safe to use.
+ *
+ * RETURN: Error text on Success.
+ * RETURN: NULL on failure.
+ */
 char *
-XCBGetErrorText(
-        XCBDisplay *display);
+XCBErrorCodeText(
+        uint8_t error_code);
+
+/* Returns (The error) using a number provided.
+ * The number is from the generic structure XCBGenericError.
+ * XCBGenericError *err;
+ * err->major_code;
+ *
+ * NOTE: Usage may result in bigger binary sizes.
+ *
+ * RETURN: Error text on Success.
+ * RETURN: NULL on failure.
+ */
+char *
+XCBErrorMajorCodeText(
+        uint8_t major_code);
+
+/*  
+ * NOTE: This function is currently not supported.
+ *
+ * Returns (The error) using a number provided by.
+ * The number is from the generic structure XCBGenericError.
+ * XCBGenericError *err;
+ * err->minor_code;
+ *
+ * RETURN: Error text on Success.
+ * RETURN: NULL on failure.
+ */
+char *
+XCBErrorMinorCodeText(
+        uint16_t minor_code
+        );
 
 
 
@@ -1119,6 +1249,15 @@ XCBAllowEvents(
         XCBDisplay *display, 
         uint8_t mode, 
         XCBTimestamp timestamp);
+
+XCBCookie
+XCBSendEvent(
+        XCBDisplay *display,
+        XCBWindow window,
+        uint8_t propagate,
+        uint32_t event_mask,
+        const char *event
+        );
 /* 
  * Gets and returns the next Event from the XServer.
  * This returns a structure called xcb_generic_event_t.
@@ -1540,16 +1679,23 @@ XCBKeySymbolsFree(
         XCBKeySymbols *keysyms);
 
 
-XCBKeyboardMappingCookie 
+XCBCookie
 XCBGetKeyboardMappingCookie(
         XCBDisplay *display, 
         XCBKeyCode first_keycode, 
         uint8_t count);
 
+/*
+ *
+ * NOTE: reply must be freed by caller.
+ *
+ * RETURN: 0 on Failure.
+ *
+ */
 XCBKeyboardMapping *
 XCBGetKeyboardMappingReply(
         XCBDisplay *display, 
-        XCBKeyboardMappingCookie cookie);
+        XCBCookie cookie);
 
 /* Send a event to the XServer to map the window specified;
  *
@@ -1783,9 +1929,9 @@ XCBPrefetchMaximumRequestLength(
  *  ICCCM
  */
 
-typedef xcb_get_property_cookie_t XCBGetPropertyCookie;
-typedef xcb_icccm_get_wm_protocols_reply_t XCBGetWMProtocol;
-XCBGetPropertyCookie
+typedef xcb_icccm_get_wm_protocols_reply_t XCBWMProtocols;
+
+XCBCookie
 XCBGetWMProtocolsCookie(
         XCBDisplay *display, 
         XCBWindow window, 
@@ -1802,13 +1948,13 @@ XCBGetWMProtocolsCookie(
 int
 XCBGetWMProtocolsReply(
         XCBDisplay *display, 
-        XCBGetPropertyCookie cookie,
-        XCBGetWMProtocol *protocol_return
+        XCBCookie cookie,
+        XCBWMProtocols *protocol_return
         );
 
 void
 XCBWipeGetWMProtocolsReply(
-        XCBGetWMProtocol *protocols);
+        XCBWMProtocols *protocols);
 
 
 

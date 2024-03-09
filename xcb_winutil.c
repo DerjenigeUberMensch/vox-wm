@@ -1,6 +1,7 @@
 
 
 #include <stdio.h>
+#include <string.h>
 #include "xcb_trl.h"
 #include "xcb_winutil.h"
 
@@ -9,8 +10,8 @@ void
 XCBInitAtoms(XCBDisplay *display, XCBAtom *wm_atom_return, XCBAtom *net_atom_return)
 {
     /* wm */
-    XCBAtomCookie wmcookies[WMLast];
-    XCBAtomCookie netcookies[NetLast];
+    XCBCookie wmcookies[WMLast];
+    XCBCookie netcookies[NetLast];
     if(wm_atom_return)
     {
         wmcookies[WMProtocols] = XCBInternAtomCookie(display, "WM_PROTOCOLS", False);
@@ -232,3 +233,64 @@ XCBInitAtoms(XCBDisplay *display, XCBAtom *wm_atom_return, XCBAtom *net_atom_ret
     }
 }
 
+
+int 
+XCBGetTextProp(
+        XCBDisplay *display, 
+        XCBWindow window, 
+        XCBAtom atom, 
+        char *text, 
+        size_t size)
+{
+	char **list = NULL;
+	int n;
+    XCBCookie cookie;
+	XCBTextProperty name;
+
+
+	if (!text || size == 0)
+		return 0;
+
+	text[0] = '\0';
+
+    cookie = XCBGetTextPropertyCookie(display, window, atom);
+    if(!XCBGetTextPropertyReply(display, cookie, &name) || !name.name_len)
+    {   return 0;
+    }
+                        /* XA_STRING I think */
+    if (name.encoding == XCB_ATOM_STRING) 
+    {   strncpy(text, (char *)name.name, size - 1);
+    }
+    else
+    {
+        /* this is questionably hard to replace src/xlibi18n/lcWrap.c 
+         * XSupportsLocale() is also in here so might was well get that too
+         */
+        /*
+           XTextProperty prop;
+           prop.encoding = name->encoding;
+           prop.format = name->format;
+           prop.value = (unsigned char *)name->name;
+           prop.nitems = name->name_len;
+
+           if (XmbTextPropertyToTextList(Xdpy, &prop, &list, &n) >= Success && n > 0 && *list) 
+           {
+           strncpy(text, *list, size - 1);
+           XFreeStringList(list);
+           }
+           */
+    } 
+	text[size - 1] = '\0';
+    XCBFreeTextProperty(&name);
+	return 1;
+}
+
+int
+XCBGetWindowName(
+        XCBDisplay *display, 
+        XCBWindow win, 
+        char *name, 
+        uint32_t name_len)
+{
+    return 1;
+}

@@ -45,6 +45,28 @@ uint64_t UI64UnHash(uint64_t x);
 
 double functime(void (*_timefunction)(void));
 
+
+
+
+
+
+#ifndef False
+#define False 0
+#endif
+
+#ifndef True
+#define True 1
+#endif
+
+#ifndef None
+#define None 0
+#endif
+
+#ifndef Nill
+#define Nill ((void *)0)
+#endif
+
+
 #define ASSUME(cond) do { if (!(cond)) __builtin_unreachable(); } while (0)
 
 
