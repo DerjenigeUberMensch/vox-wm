@@ -5,11 +5,19 @@
 #include "dwm.h"
 #include <X11/keysym.h>
 
-
-static const Layout layouts[] = 
+/* layouts */
+enum LayoutType
 {
-	/* symbol     arrange function */
-    {"NULL",      NULL}
+    Tiled, Floating, Monocle, Grid
+};
+
+static const Layout layouts[4] = 
+{
+/*  Name                symbol          arrange function    */
+    [Tiled] =           { "[T]",        tile                },
+    [Floating] =        { "[F]",        floating            },
+    [Monocle] =         { "[M]",        monocle             },
+    [Grid] =            { "[G]",        grid                },
 };
 
 /* key definitions */

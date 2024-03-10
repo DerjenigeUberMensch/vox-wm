@@ -167,7 +167,7 @@ XCBInitAtoms(XCBDisplay *display, XCBAtom *wm_atom_return, XCBAtom *net_atom_ret
         net_atom_return[NetWMStateHidden] = XCBInternAtomReply(display, netcookies[NetWMStateHidden]);
         net_atom_return[NetWMStateFullscreen] = XCBInternAtomReply(display, netcookies[NetWMStateFullscreen]);
         net_atom_return[NetWMStateAlwaysOnTop] = XCBInternAtomReply(display, netcookies[NetWMStateAlwaysOnTop]);
-        net_atom_return[NetWMStateAbove] = XCBInternAtomReply(display, netcookies[NetWMStateAbove]);
+        net_atom_return[NetWMStateAbove] = net_atom_return[NetWMStateAlwaysOnTop];
         net_atom_return[NetWMStateBelow] = XCBInternAtomReply(display, netcookies[NetWMStateBelow]);
         net_atom_return[NetWMStateDemandAttention] = XCBInternAtomReply(display, netcookies[NetWMStateDemandAttention]);
         net_atom_return[NetWMStateFocused] = XCBInternAtomReply(display, netcookies[NetWMStateFocused]);
@@ -313,7 +313,8 @@ int
 XCBGetWindowName(
         XCBDisplay *display, 
         XCBWindow win, 
-        char *name, 
+        XCBAtom _NET_WM_NAME,
+        char **name, 
         uint32_t name_len)
 {
     return 1;

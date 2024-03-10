@@ -30,6 +30,12 @@ typedef int64_t  i64;
 #define DEBUG(fmt, ...) ((void)0)
 #endif
 
+#if (ENABLE_DEBUGGING)
+#define DEBUG0(X) fprintf(stderr, "[%s:%d] by %s: " X "\n", __FILE__, __LINE__, __func__)
+#else
+#define DEBUG0(X) ((void)0)
+#endif
+
 
 
 #define CLEARFLAG(FLAGS, FLAG)            ((FLAGS &= (~FLAG)))

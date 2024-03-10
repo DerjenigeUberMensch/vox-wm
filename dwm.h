@@ -36,16 +36,10 @@
 #define _URGENT             ((1 << 5))
 #define _NEVERFOCUS         ((1 << 6))
 #define _HIDDEN             ((1 << 7))
-
-/* Monitor struct flags */
-#define _SHOWBAR            ((1 << 0))
-#define _OSHOWBAR           ((1 << 1))
-#define _TOPBAR             ((1 << 2))
-
+#define _STICKY             ((1 << 8))
 
 /* Client macros */
 
-#define ISVISIBLE(C)            ((C->mon->desksel == C->desktop))
 #define ISALWAYSONTOP(C)        ((C->flags & _ALWAYSONTOP))
 #define ISFULLSCREEN(C)         ((C->flags & _FULLSCREEN))
 #define WASFLOATING(C)          ((C->flags & _WASFLOATING))
@@ -54,6 +48,13 @@
 #define ISURGENT(C)             ((C->flags & _URGENT))
 #define NEVERFOCUS(C)           ((C->flags & _NEVERFOCUS))
 #define ISHIDDEN(C)             ((C->flags & _HIDDEN))
+#define ISSTICKY(C)             ((C->flags & _STICKY))
+#define ISVISIBLE(C)            ((C->mon->desksel == C->desktop || ISSTICKY(c)))
+
+/* Monitor struct flags */
+#define _SHOWBAR            ((1 << 0))
+#define _OSHOWBAR           ((1 << 1))
+#define _TOPBAR             ((1 << 2))
 
 /* Monitor Macros */
 
@@ -157,6 +158,7 @@ struct Monitor
     uint16_t wh;                /* Monitor Height (Window Area)             */
 
     uint16_t flags;             /* Monitor flags                            */
+    uint16_t deskcount;         /* Desktop Counter                          */
 
     Client *sel;                /* Selected Client                          */
     Desktop *desktops;          /* First Desktop in linked list             */
@@ -173,7 +175,7 @@ struct Monitor
 struct Layout
 {
     const char *symbol;
-    void (*arrange)(Monitor *);
+    void (*arrange)(Desktop *);
 };
 
 struct Desktop
@@ -228,17 +230,19 @@ void cleanupmon(Monitor *m);
 void cleanupmons(void);
 Client *createclient(Monitor *m);
 Monitor *createmon(void);
+void floating(Desktop *desk);
 void focus(Client *c);
 void grabbuttons(XCBWindow window, uint8_t focused);
 void grabkeys(void);
+void grid(Desktop *desk);
 void manage(XCBWindow window);
+void monocle(Desktop *desk);
 Desktop *nextdesktop(Desktop *desktop);
 Client *nextvisible(Client *c);
 Client *lastvisible(Client *c);
 void resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height);
 void run(void);
 void scan(void);
-int sendevent(Client *c, XCBAtom proto);
 void setalwaysontop(Client *c, uint8_t isalwaysontop);
 void setborderwidth(Client *c, uint16_t border_width);
 void setclientdesktop(Client *c, Desktop *desktop);
@@ -248,23 +252,30 @@ void setfocus(Client *c);
 void setneverfocus(Client *c, uint8_t state);
 void setup(void);
 void seturgent(Client *c, uint8_t isurgent);
+void setviewport(void);
 void sigchld(int signo);
 void sighandler(void);
 void sighup(int signo);
 void sigterm(int signo);
 void startup(void);
+void tile(Desktop *desk);
 void unfocus(Client *c, uint8_t setfocus);
 int  updategeom(void);
 void updatenumlockmask(void);
-void unmanage(Client *c);
-
+void updatesizehints(Client *c);
+void updatetitle(Client *c);
+void updateicon(Client *c);
+void updatewindowstate(Client *c, XCBAtom state, uint8_t data);
+void updatewindowtype(Client *c);
+void updatewmhints(Client *c);
+void winsetstate(XCBWindow win, int32_t state);
 Client *wintoclient(XCBWindow win);
 Monitor *wintomon(XCBWindow win);
 
 
+void unmanage(Client *c);
 
-
-
+void xerror(XCBDisplay *display, XCBGenericError *error);
 
 /* toogle */
 void UserStats(const Arg *arg);

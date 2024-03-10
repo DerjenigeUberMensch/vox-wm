@@ -158,12 +158,18 @@ buttonpress(XCBGenericEvent *event)
 
     Monitor *m;
     /* focus monitor if necessary */
-    if ((m = wintomon(eventwin)) && m != _wm->selmon)
+    if ((m = wintomon(eventwin)))
     {
-        unfocus(_wm->selmon->sel, 1);
-        _wm->selmon = m;
-        focus(NULL);
+        if(m != _wm->selmon)
+        {
+            unfocus(_wm->selmon->sel, 1);
+            _wm->selmon = m;
+            focus(NULL);
+        }
+        /* no need to handle any other clients */
+        return;
     }
+
     Client *c;
     if((c = wintoclient(eventwin)))
     {   
@@ -181,7 +187,7 @@ buttonpress(XCBGenericEvent *event)
             //XCBAllowEvents(_wm->dpy, XCB_, XCB_TIME_CURRENT_TIME);
         }
     }
-
+    XCBSync(_wm->dpy);
 }
 
 void
@@ -267,6 +273,7 @@ focusin(XCBGenericEvent *event)
     if(_wm->selmon->sel && eventwin != _wm->selmon->sel->win)
     {   setfocus(_wm->selmon->sel);
     }
+    XCBSync(_wm->dpy);
 }
 
 void
@@ -282,7 +289,7 @@ void
 keymapnotify(XCBGenericEvent *event)
 {
     XCBKeymapNotifyEvent *ev = (XCBKeymapNotifyEvent *)event;
-    u8 *keys = ev->keys;        /* DONOT FREE */
+    u8 *eventkeys   = ev->keys;        /* DONOT FREE */
 }
 
 void
@@ -352,6 +359,7 @@ maprequest(XCBGenericEvent *event)
     if(!wintoclient(win))
     {   manage(ev->window);
     }
+    XCBSync(_wm->dpy);
 }
 void
 resizerequest(XCBGenericEvent *event)
@@ -423,6 +431,7 @@ unmapnotify(XCBGenericEvent *event)
     if((c = wintoclient(win)) || (c = wintoclient(eventwin)))
     {   unmanage(c);
     }
+    XCBSync(_wm->dpy);
 }
 
 void

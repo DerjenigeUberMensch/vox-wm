@@ -121,11 +121,16 @@ XCBGetTextProp(
         XCBAtom atom, 
         char *text, 
         size_t size);
+/*
+ * NOTE: name_len doesnt include \0 character.
+ *
+ */
 int
 XCBGetWindowName(
         XCBDisplay *display, 
         XCBWindow win, 
-        char *name, 
+        XCBAtom _NET_WM_NAME,
+        char **name, 
         uint32_t name_len);
 
 #endif
