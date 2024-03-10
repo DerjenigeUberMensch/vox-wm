@@ -89,14 +89,47 @@ _xcb_err_handler(XCBDisplay *display, XCBGenericError *err)
     }
     if(!_handler)
     {   
-        _xcb_die("error_code: [%d], major_code: [%d], minor_code: [%d]\n"
-            "sequence: [%d], response_type: [%d], resource_id: [%d]\n"
-            "full_sequence: [%d]\n"
-            , 
-            err->error_code, err->major_code, err->minor_code,
-            err->sequence, err->response_type, err->resource_id,
-            err->full_sequence
-            );
+        const char *errtxt = XCBErrorCodeText(err->error_code);
+        const char *mjrtxt = XCBErrorMajorCodeText(err->major_code);
+        /* if it wasnt in our list it probably was an extension we dont cover those so just die */
+        if(!errtxt && !mjrtxt)
+        {
+            _xcb_die("error_code: [%d], major_code: [%d], minor_code: [%d]\n"
+                    "sequence: [%d], response_type: [%d], resource_id: [%d]\n"
+                    "full_sequence: [%d]\n"
+                    , 
+                    err->error_code, err->major_code, err->minor_code,
+                    err->sequence, err->response_type, err->resource_id,
+                    err->full_sequence
+                    );
+        }
+        if(!errtxt)
+        {
+            fprintf(stderr, "error_code: [%d], major_code: [%d], minor_code: [%d]\n"
+                    "sequence: [%d], response_type: [%d], resource_id: [%d]\n"
+                    "full_sequence: [%d]\n"
+                    , 
+                    err->error_code, err->major_code, err->minor_code,
+                    err->sequence, err->response_type, err->resource_id,
+                    err->full_sequence);
+            if(mjrtxt)
+            {   fprintf(stderr, "This likely is a %s major code error.\n", mjrtxt);
+            }
+        }
+        else if(!mjrtxt)
+        {
+            fprintf(stderr, "error_code: [%d], major_code: [%d], minor_code: [%d]\n"
+                    "sequence: [%d], response_type: [%d], resource_id: [%d]\n"
+                    "full_sequence: [%d]\n"
+                    , 
+                    err->error_code, err->major_code, err->minor_code,
+                    err->sequence, err->response_type, err->resource_id,
+                    err->full_sequence);
+            if(errtxt)
+            {   fprintf(stderr, "This liekly is a %s error.\n", errtxt);
+            }
+        }
+        return;
     }
     /* this is unreachable if no handler is set */
     _handler(display, err);
@@ -464,15 +497,16 @@ XCBAtom
 XCBInternAtomReply(XCBDisplay *display, XCBCookie cookie)
 {
     XCBGenericError *err = NULL;
+    xcb_atom_t atom = 0;
     const xcb_intern_atom_cookie_t cookie1 = { .sequence = cookie.sequence };
     xcb_intern_atom_reply_t *reply = xcb_intern_atom_reply(display, cookie1, &err);
-    _xcb_err_handler(display, err);
-    xcb_atom_t atom = 0;
-    if(reply)
+    if(err)
     {
-        atom = reply->atom;
-        free(reply);
+        _xcb_err_handler(display, err);
+        return 0;
     }
+    atom = reply->atom;
+    free(reply);
     return atom;
 }
 
@@ -1032,6 +1066,32 @@ XCBGetKeyboardMappingReply(XCBDisplay *display, XCBCookie cookie)
     }
     return reply;
 }
+
+XCBCookie
+XCBQueryTreeCookie(
+        XCBDisplay *display,
+        XCBWindow window
+        )
+{
+    const xcb_query_tree_cookie_t cookie = xcb_query_tree(display, window);
+    XCBCookie ret = { .sequence = cookie.sequence };
+    return ret;
+}
+
+XCBQueryTree *
+XCBQueryTreeReply(XCBDisplay *display, XCBCookie cookie)
+{
+    const xcb_query_tree_cookie_t cookie1 = { .sequence = cookie.sequence };
+    XCBGenericError *err = NULL;
+    xcb_query_tree_reply_t *reply = xcb_query_tree_reply(display, cookie1, &err);
+    if(err)
+    {   
+        _xcb_err_handler(display, err);
+        return NULL;
+    }
+    return reply;
+}
+
 
 XCBCookie
 XCBQueryPointerCookie(XCBDisplay *display, XCBWindow window)

@@ -482,6 +482,7 @@ typedef xcb_get_geometry_cookie_t XCBGeometryCookie;
 typedef xcb_get_geometry_cookie_t XCBWindowGeometryCookie;
 typedef xcb_query_extension_cookie_t XCBExtensionCookie;
 typedef xcb_query_extension_reply_t XCBExtensionReply;
+typedef xcb_query_tree_reply_t XCBQueryTree;
 typedef xcb_change_window_attributes_value_list_t XCBWindowAttributes;
 typedef xcb_get_window_attributes_reply_t XCBWindowAttributesReply;
 typedef xcb_get_geometry_reply_t XCBGeometry;
@@ -966,6 +967,28 @@ XCBCookie
 XCBCloseFont(
         XCBDisplay *display,
         XCBFont id
+        );
+
+
+
+
+XCBCookie
+XCBQueryTreeCookie(
+        XCBDisplay *display,
+        XCBWindow window
+        );
+
+/*
+ * 
+ * NOTE: reply must be freed by caller.
+ *
+ * RETURN: XCBQueryTree * on Success.
+ * RETURN: NULL on Failure.
+ */
+XCBQueryTree *
+XCBQueryTreeReply(
+        XCBDisplay *display,
+        XCBCookie cookie
         );
 
 XCBCookie

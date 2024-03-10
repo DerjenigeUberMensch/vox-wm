@@ -76,7 +76,24 @@ enum NETWMPROTOCOLS
     NetLast,
 };
 /* default atoms */
-enum WMPROTOCOLS { WMTakeFocus, WMProtocols, WMDelete, WMState, WMLast };
+enum WMPROTOCOLS { 
+
+    WMName,
+    WMIconName,
+    WMIconSize,
+    WMHints, WMNormalHints,
+    WMClass, 
+    WMTransientFor,
+    WMColormapWindows,
+    WMClientMachine,
+
+    WMCommand,
+
+    WMProtocols, 
+    WMTakeFocus, WMSaveYourself, WMDeleteWindow, 
+
+    WMState, 
+    WMLast };
 
 
 

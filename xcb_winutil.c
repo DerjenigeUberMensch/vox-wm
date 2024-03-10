@@ -14,10 +14,23 @@ XCBInitAtoms(XCBDisplay *display, XCBAtom *wm_atom_return, XCBAtom *net_atom_ret
     XCBCookie netcookies[NetLast];
     if(wm_atom_return)
     {
-        wmcookies[WMProtocols] = XCBInternAtomCookie(display, "WM_PROTOCOLS", False);
-        wmcookies[WMDelete] = XCBInternAtomCookie(display, "WM_DELETE_WINDOW", False);
-        wmcookies[WMState] = XCBInternAtomCookie(display, "WM_STATE", False);
+        wmcookies[WMName] = XCBInternAtomCookie(display, "WM_NAME", False);
+        wmcookies[WMIconName] = XCBInternAtomCookie(display, "WM_ICON_NAME", False);
+        wmcookies[WMIconSize] = XCBInternAtomCookie(display, "WM_ICON_SIZE", False);
+        wmcookies[WMHints] = XCBInternAtomCookie(display, "WM_HINTS", False);
+        wmcookies[WMNormalHints] = XCBInternAtomCookie(display, "WM_NORMAL_HINTS", False);
+        wmcookies[WMClass] = XCBInternAtomCookie(display, "WM_CLASS", False);
+        wmcookies[WMTransientFor] = XCBInternAtomCookie(display, "WM_TRANSIENT_FOR", False);
+        wmcookies[WMColormapWindows] = XCBInternAtomCookie(display, "WM_COLORMAP_WINDOWS", False);
+        wmcookies[WMClientMachine] = XCBInternAtomCookie(display, "WM_CLIENT_MACHINE", False);
+        wmcookies[WMCommand] = XCBInternAtomCookie(display, "WM_COMMAND", False);
+
         wmcookies[WMTakeFocus] = XCBInternAtomCookie(display, "WM_TAKE_FOCUS", False);
+        wmcookies[WMSaveYourself] = XCBInternAtomCookie(display, "WM_SAVE_YOURSELF", False);    /* (deprecated) */
+        wmcookies[WMDeleteWindow] = XCBInternAtomCookie(display, "WM_DELETE_WINDOW", False);
+        wmcookies[WMProtocols] = XCBInternAtomCookie(display, "WM_PROTOCOLS", False);
+        wmcookies[WMState] = XCBInternAtomCookie(display, "WM_STATE", False);
+
     }
 
     /* wm state */
@@ -125,8 +138,19 @@ XCBInitAtoms(XCBDisplay *display, XCBAtom *wm_atom_return, XCBAtom *net_atom_ret
 
     if(wm_atom_return)
     {
+        wm_atom_return[WMName] = XCBInternAtomReply(display, wmcookies[WMName]);
+        wm_atom_return[WMIconName] = XCBInternAtomReply(display, wmcookies[WMIconName]);
+        wm_atom_return[WMIconSize] = XCBInternAtomReply(display,wmcookies[WMIconSize]);
+        wm_atom_return[WMHints] = XCBInternAtomReply(display, wmcookies[WMHints]);
+        wm_atom_return[WMNormalHints] = XCBInternAtomReply(display, wmcookies[WMNormalHints]);
+        wm_atom_return[WMClass] = XCBInternAtomReply(display, wmcookies[WMClass]);
+        wm_atom_return[WMTransientFor] = XCBInternAtomReply(display, wmcookies[WMTransientFor]);
+        wm_atom_return[WMColormapWindows] = XCBInternAtomReply(display, wmcookies[WMColormapWindows]);
+        wm_atom_return[WMClientMachine] = XCBInternAtomReply(display, wmcookies[WMClientMachine]);
+        wm_atom_return[WMCommand] = XCBInternAtomReply(display, wmcookies[WMCommand]);
+
         wm_atom_return[WMProtocols] = XCBInternAtomReply(display, wmcookies[WMProtocols]);
-        wm_atom_return[WMDelete] = XCBInternAtomReply(display, wmcookies[WMDelete]);
+        wm_atom_return[WMDeleteWindow] = XCBInternAtomReply(display, wmcookies[WMDeleteWindow]);
         wm_atom_return[WMState] = XCBInternAtomReply(display, wmcookies[WMState]);
         wm_atom_return[WMTakeFocus] = XCBInternAtomReply(display, wmcookies[WMTakeFocus]);
     }

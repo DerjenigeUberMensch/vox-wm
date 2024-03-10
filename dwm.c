@@ -33,7 +33,6 @@ WM *_wm;
 XCBAtom netatom[NetLast];
 XCBAtom wmatom[WMLast];
 
-
 void
 UserStats(const Arg *arg)
 {
@@ -715,9 +714,23 @@ run(void)
     }
 }
 
+/* scan for clients initally */
 void
 scan(void)
 {
+    u16 i, num;
+    XCBWindow d1, d2, *wins = NULL;
+    const XCBCookie cookie = XCBQueryTreeCookie(_wm->dpy, _wm->root);
+    XCBQueryTree *tree = NULL;
+
+    if((tree = XCBQueryTreeReply(_wm->dpy, cookie)))
+    {
+        free(tree);
+    }
+    else
+    {
+        DEBUG("%s", "Failed scan for clients.");
+    }
 }
 
 int 
@@ -727,7 +740,6 @@ sendevent(Client *c, XCBAtom proto)
     XCBCookie cookie = XCBGetWMProtocolsCookie(_wm->dpy, c->win, proto);
     XCBWMProtocols wmproto;
     int exists = 0;
-    XCBSync(_wm->dpy);
     if(XCBGetWMProtocolsReply(_wm->dpy, cookie, &wmproto))
     {
         i32 n = wmproto.atoms_len;   
@@ -820,7 +832,8 @@ setfocus(Client *c)
         XCBChangeProperty(_wm->dpy, _wm->root, netatom[NetActiveWindow], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&(c->win), 1);
     }
     if(!sendevent(c, wmatom[WMTakeFocus]))
-    {   DEBUG("%s", "Could not find WMTakeFocus.");
+    {   /* we can ignore this as it is not strictly necessary to run the WM but its generally not a good thing */
+        DEBUG("%s", "Could not find WMTakeFocus.");
     }
     XCBSync(_wm->dpy);
 }
@@ -1160,6 +1173,8 @@ wintoclient(XCBWindow win)
     Client *c = NULL;
     Desktop *desk = NULL;
     Monitor *m = NULL;
+
+    /* while we should if its root to return early we dont cause we dont handle root as a client */
     for(m = _wm->mons; m; m = m->next)
     {
         DEBUG("%s", "MONITOR");
