@@ -1,4 +1,4 @@
-# xcb-wm-dwm
+# xcb-wm
 
 
 
