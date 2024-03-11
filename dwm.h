@@ -21,6 +21,8 @@
 #define INTERSECT(x,y,w,h,m)    (MAX(0, MIN((x)+(w),(m)->wx+(m)->ww) - MAX((x),(m)->wx)) \
                                 * MAX(0, MIN((y)+(h),(m)->wy+(m)->wh) - MAX((y),(m)->wy)))
 #define MOUSEMASK               (BUTTONMASK | XCB_EVENT_MASK_POINTER_MOTION)
+#define WIDTH(C)                ((C)->w + ((C)->bw << 1))
+#define HEIGHT(C)               ((C)->h + ((C)->bw << 1))
 #define LENGTH(X)               (sizeof X / sizeof X[0])
 #define TAGMASK                 ((1 << LENGTH(tags)) - 1)
 #define TAGSLENGTH              (LENGTH(tags))
@@ -217,6 +219,7 @@ struct WM
 
 void argcvhandler(int argc, char *argv[]);
 
+uint8_t applysizehints(Client *c, int16_t *x, int16_t *y, uint16_t *width, uint16_t *height, uint8_t interact);
 void attachdesktop(Monitor *m, Desktop *desk);
 void detachdesktop(Monitor *m, Desktop *desk);
 void attachclient(Client *c);
@@ -228,6 +231,7 @@ void cleanupclient(Client *c);
 void cleanupdesktop(Desktop *desk);
 void cleanupmon(Monitor *m);
 void cleanupmons(void);
+void configure(Client *c);
 Client *createclient(Monitor *m);
 Monitor *createmon(void);
 void floating(Desktop *desk);
@@ -237,9 +241,13 @@ void grabkeys(void);
 void grid(Desktop *desk);
 void manage(XCBWindow window);
 void monocle(Desktop *desk);
+Client *nextclient(Client *c);
 Desktop *nextdesktop(Desktop *desktop);
+Monitor *nextmonitor(Monitor *monitor);
 Client *nextvisible(Client *c);
 Client *lastvisible(Client *c);
+Monitor *recttomon(int16_t x, int16_t y, uint16_t width, uint16_t height);
+void resize(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height, uint8_t interact);
 void resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height);
 void run(void);
 void scan(void);

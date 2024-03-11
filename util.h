@@ -25,13 +25,13 @@ typedef int64_t  i64;
 #define ENABLE_DEBUGGING 1   /* enable debbuging */
 
 #if (ENABLE_DEBUGGING)
-#define DEBUG(fmt, ...) fprintf(stderr, "[%s:%d] by %s: " fmt "\n", __FILE__,__LINE__,__func__,__VA_ARGS__)
+#define DEBUG(fmt, ...) fprintf(stderr, "[%s:%d] by %s(): " fmt "\n", __FILE__,__LINE__,__func__,__VA_ARGS__)
 #else
 #define DEBUG(fmt, ...) ((void)0)
 #endif
 
 #if (ENABLE_DEBUGGING)
-#define DEBUG0(X) fprintf(stderr, "[%s:%d] by %s: " X "\n", __FILE__, __LINE__, __func__)
+#define DEBUG0(X) fprintf(stderr, "[%s:%d] by %s(): " X "\n", __FILE__, __LINE__, __func__)
 #else
 #define DEBUG0(X) ((void)0)
 #endif

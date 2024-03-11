@@ -376,14 +376,10 @@ typedef xcb_screen_iterator_t XCBScreenIterator;
 typedef xcb_screen_t XCBScreen;
 typedef xcb_window_t XCBWindow;
 typedef xcb_cursor_t XCBCursor;
-typedef xcb_get_property_cookie_t XCBTextPropertyCookie;
 typedef xcb_icccm_get_text_property_reply_t XCBTextProperty;
 typedef xcb_void_cookie_t XCBCookie;
-typedef xcb_get_keyboard_mapping_cookie_t XCBKeyboardMappingCookie;
 typedef xcb_get_keyboard_mapping_reply_t XCBKeyboardMapping;
-typedef xcb_get_modifier_mapping_cookie_t XCBKeyboardModifierCookie;
 typedef xcb_get_modifier_mapping_reply_t XCBKeyboardModifier;
-typedef xcb_intern_atom_cookie_t XCBAtomCookie;
 typedef xcb_atom_t XCBAtom;
 typedef xcb_time_t XCBTime;
 typedef xcb_timestamp_t XCBTimestamp;
@@ -473,14 +469,7 @@ typedef xcb_visualid_t XCBVisual;
 typedef char XCBClassHint;
 
 
-typedef xcb_get_window_attributes_cookie_t XCBWindowAttributesCookie;
 typedef xcb_configure_window_value_list_t XCBWindowChanges;
-typedef xcb_get_window_attributes_cookie_t XCBAttributesCookie;
-typedef xcb_get_window_attributes_cookie_t XCBGetAttributesCookie;
-typedef xcb_get_geometry_cookie_t XCBGetGeometryCookie;
-typedef xcb_get_geometry_cookie_t XCBGeometryCookie;
-typedef xcb_get_geometry_cookie_t XCBWindowGeometryCookie;
-typedef xcb_query_extension_cookie_t XCBExtensionCookie;
 typedef xcb_query_extension_reply_t XCBExtensionReply;
 typedef xcb_query_tree_reply_t XCBQueryTree;
 typedef xcb_change_window_attributes_value_list_t XCBWindowAttributes;
@@ -496,7 +485,6 @@ typedef xcb_generic_event_t XCBGenericEvent;
 typedef xcb_generic_reply_t XCBGenericReply;
 typedef xcb_generic_error_t XCBGenericError;
 
-typedef xcb_query_pointer_cookie_t XCBPointerCookie;
 typedef xcb_query_pointer_reply_t XCBPointerReply;
 
 /* Xinerama */
@@ -1701,6 +1689,22 @@ void
 XCBKeySymbolsFree(
         XCBKeySymbols *keysyms);
 
+
+/* <<< Straight From Xlib >>>
+ * The XCBRefreshKeyboardMapping() function refreshes the stored modifier and keymap information. 
+ * You usually call this function when a XCB_MAPPING_NOTIFY event with a request member of 
+ *
+ * XCB_MAPPIN_KEYBOARD or XCB_MAPPING_MODIFIER occurs. 
+ * The result is to update XCB's knowledge of the keyboard. 
+ *
+ *
+ * RETURN: 1 on Success.
+ * RETURN: 0 on Failure.
+ */
+uint8_t
+XCBRefreshKeyboardMapping(
+        XCBKeySymbols *syms, 
+        XCBMappingNotifyEvent *event);
 
 XCBCookie
 XCBGetKeyboardMappingCookie(

@@ -5,7 +5,6 @@
 #include "dwm.h"
 
 extern WM *_wm;
-
 extern void xerror(XCBDisplay *display, XCBGenericError *error);
 
 void (*handler[LASTEvent]) (XCBGenericEvent *) = 
@@ -156,6 +155,8 @@ buttonpress(XCBGenericEvent *event)
     const XCBKeyCode keydetail  = ev->detail;
     const XCBTimestamp tim      = ev->time;
 
+    const i32 cleanstate = CLEANMASK(state);
+
     Monitor *m;
     /* focus monitor if necessary */
     if ((m = wintomon(eventwin)))
@@ -184,7 +185,21 @@ buttonpress(XCBGenericEvent *event)
             if(ISFLOATING(c) || ISALWAYSONTOP(c))
             {   XCBRaiseWindow(_wm->dpy, c->win);
             }
-            //XCBAllowEvents(_wm->dpy, XCB_, XCB_TIME_CURRENT_TIME);
+            XCBAllowEvents(_wm->dpy, XCB_ALLOW_REPLAY_POINTER, XCB_TIME_CURRENT_TIME);
+        }
+    }
+    int i;
+    for(i = 0; i < LENGTH(buttons); ++i)
+    {   
+        if(buttons[i].type == XCB_BUTTON_PRESS
+            && buttons[i].func
+            && buttons[i].button == keydetail
+            && CLEANMASK(buttons[i].mask) == cleanstate)
+        {
+            Arg arg;
+            arg.v = ev;
+            buttons[i].func(&arg);
+            break;
         }
     }
     XCBSync(_wm->dpy);
@@ -205,6 +220,23 @@ buttonrelease(XCBGenericEvent *event)
     const u8 samescreen         = ev->same_screen;
     const XCBKeyCode keydetail  = ev->detail;
     const XCBTimestamp tim      = ev->time;
+
+    const i32 cleanstate = CLEANMASK(state);
+
+    int i;
+    for(i = 0; i < LENGTH(buttons); ++i)
+    {   
+        if(buttons[i].type == XCB_BUTTON_RELEASE
+            && buttons[i].func
+            && buttons[i].button == keydetail
+            && CLEANMASK(buttons[i].mask) == cleanstate)
+        {
+            Arg arg;
+            arg.v = ev;
+            buttons[i].func(&arg);
+            break;
+        }
+    }
 }
 
 void
@@ -222,6 +254,29 @@ motionnotify(XCBGenericEvent *event)
     const u8 samescreen         = ev->same_screen;
     const XCBKeyCode keydetail  = ev->detail;
     const XCBTimestamp tim      = ev->time;
+
+
+    
+
+    static Monitor *mon = NULL;
+    Monitor *m;
+    const XCBWindow root = _wm->root;
+
+    if(eventwin != root)
+    {   return;
+    }
+
+
+    if((m = recttomon(rootx, rooty, 1, 1)) != mon && mon)
+    {
+        Client *c = _wm->selmon->sel;
+        if(c)
+        {   unfocus(c, 1);
+        }
+        _wm->selmon = m;
+        focus(NULL);
+    }
+    mon = m;
 }
 
 void
@@ -241,6 +296,31 @@ enternotify(XCBGenericEvent *event)
     const uint8_t mode   = ev->mode;
     const uint8_t samescreenfocus = ev->same_screen_focus;
 
+
+
+    /* hover focus */
+
+
+
+    Client *c;
+    Monitor *m;
+
+    if((mode != XCB_NOTIFY_MODE_NORMAL || detail == XCB_NOTIFY_DETAIL_INFERIOR) || eventwin != _wm->root)
+    {   return;
+    }
+
+    c = wintoclient(eventwin);
+    m = c ? c->mon : wintomon(eventwin);
+
+    if(m != _wm->selmon)
+    {
+        unfocus(_wm->selmon->sel, 1);
+        _wm->selmon = m;
+    }
+    else if(!c || c == _wm->selmon->sel)
+    {   return;
+    }
+    focus(c);
 }
 
 void
@@ -262,6 +342,7 @@ leavenotify(XCBGenericEvent *event)
     
 }
 
+/* there are some broken focus acquiring clients needing extra handling */
 void
 focusin(XCBGenericEvent *event)
 {
@@ -347,6 +428,85 @@ configurerequest(XCBGenericEvent *event)
     const XCBWindow win     = ev->window;
     const XCBWindow parent  = ev->parent;
     const XCBWindow sibling = ev->sibling;
+
+    Client *c;
+    Monitor *m;
+    if((c = wintoclient(win)))
+    {
+        m = c->mon;
+        if(mask & XCB_CONFIG_WINDOW_BORDER_WIDTH)
+        {   setborderwidth(c, bw);
+        }
+        if(mask & XCB_CONFIG_WINDOW_X)
+        {
+            c->oldx = c->x;
+            c->x = m->mx + ev->x;
+        }
+        if(mask & XCB_CONFIG_WINDOW_Y)
+        {
+            c->oldy = c->y;
+            c->y = m->my + ev->y;
+        }
+        if(mask & XCB_CONFIG_WINDOW_WIDTH)
+        {
+            c->oldw = c->w;
+            c->w = ev->width;
+        }
+        if(mask & XCB_CONFIG_WINDOW_HEIGHT)
+        {
+            c->oldh = c->h;
+            c->h = ev->height;
+        }
+        if(mask & XCB_CONFIG_WINDOW_SIBLING)
+        {
+            ASSUME(0);
+            if(sibling != None)
+            {   /* Ignore these requests we handle stack order */
+            }
+        }
+        if(mask & XCB_CONFIG_WINDOW_STACK_MODE)
+        {
+            /* Ignore these requests we handle stack order */
+            ASSUME(0);
+            switch(stack)
+            {
+                case XCB_STACK_MODE_ABOVE: /* XRaiseAboveSibling(ev->above) */ break;
+                case XCB_STACK_MODE_BELOW: /* XLowerBelowSibling(ev->above) */ break;
+                case XCB_STACK_MODE_TOP_IF: /* XRaiseWindow(dpy, ev->window) */ break;
+                case XCB_STACK_MODE_BOTTOM_IF:/* XLowerToBottomWindow(dpy, e->window)*/ break;
+                case XCB_STACK_MODE_OPPOSITE: /* XFlipStackOrder(ev->above, ev->window)*/ break;
+            }
+        }
+        if((c->x + c->w) > m->mx + m->mw && ISFLOATING(c))
+        {   
+            c->oldx = c->x;
+            c->x = m->mx + ((m->mw >> 1) - (WIDTH(c) >> 1)); /* center in x direction */
+        }
+        if((c->y + c->h) > m->my + m->mh && ISFLOATING(c))
+        {   
+            c->oldy = c->y;
+            c->y = m->my + ((m->mh >> 1) - (HEIGHT(c) >> 1)); /* center in y direction */
+        }
+        if(mask & (XCB_CONFIG_WINDOW_X|XCB_CONFIG_WINDOW_Y) 
+        && !(mask & (XCB_CONFIG_WINDOW_WIDTH|XCB_CONFIG_WINDOW_HEIGHT)))
+        {   configure(c);
+        }
+        if(ISVISIBLE(c))
+        {   XCBMoveResizeWindow(_wm->dpy, c->win, c->x, c->y, c->w, c->h);
+        }
+    }
+    else
+    {
+        XCBWindowChanges wc;
+        wc.x = x;
+        wc.y = y;
+        wc.width = w;
+        wc.height = h;
+        wc.border_width = bw;
+        wc.sibling = sibling;
+        wc.stack_mode = stack;
+        XCBConfigureWindow(_wm->dpy, win, mask, &wc);
+    }
 }
 
 void
@@ -368,6 +528,16 @@ resizerequest(XCBGenericEvent *event)
     const XCBWindow win = ev->window;
     const u16 w         = ev->width;
     const u16 h         = ev->height;
+
+    /* popup windows sometimes need this */
+    Client *c;
+    
+    if((c = wintoclient(win)))
+    {   resize(c, c->x, c->y, w, h, 1);
+    }
+    else
+    {   XCBResizeWindow(_wm->dpy, win, w, h);
+    }
 }
 
 void
@@ -376,10 +546,67 @@ circulatenotify(XCBGenericEvent *event)
     XCBCirculateNotifyEvent *ev = (XCBCirculateNotifyEvent *)event;
 }
 
+/* These events are mostly just Info events of stuff that has happened already
+ * so this tells that happened (x/y/w/h) and only tells that (AKA sends this event)
+ * if we sucesfully did that action So we only really need to check root events here
+ * cause this only occurs on sucesfull actions
+ */
 void
 configurenotify(XCBGenericEvent *event)
 {
     XCBConfigureNotifyEvent *ev = (XCBConfigureNotifyEvent *)event;
+    const XCBWindow eventwin = ev->event;
+    const XCBWindow win = ev->window;
+    const XCBWindow abovesibling = ev->above_sibling;
+    const i16 x = ev->x;
+    const i16 y = ev->y;
+    const u16 w = ev->width;
+    const u16 h = ev->height;
+    const u16 borderwidth = ev->border_width;
+    const u8 overrideredirect = ev->override_redirect;
+
+    if(win == _wm->root)
+    {
+        u8 dirty;
+        dirty = (_wm->sw != w || _wm->sh != h);
+        _wm->sw = w;
+        _wm->sh = h;
+
+        if(updategeom() || dirty)
+        {
+            Monitor *m;
+            Desktop *desk;
+            Client *c;
+            /* update the bar */
+
+            m = _wm->mons;
+            while((m = nextmonitor(m)))
+            {
+                desk = m->desktops;
+                while((desk = nextdesktop(desk)))
+                {
+                    c = desk->clients;
+                    while((c = nextclient(c)))
+                    {
+                        if(ISFULLSCREEN(c))
+                        {   resizeclient(c, m->mx, m->my, m->mw, m->mh);
+                        }
+                        XCBMoveResizeWindow(_wm->dpy, m->barwin, m->wx, m->by, m->ww, m->bh);
+                    }
+                }
+            }
+            focus(NULL);
+            /* arrangeall */
+        }
+    }
+
+    if(overrideredirect)
+    {
+        Client *c;
+        if((c = wintoclient(win)))
+        {   unmanage(c);
+        }
+    }
 }
 
 void
@@ -417,6 +644,10 @@ mappingnotify(XCBGenericEvent *event)
     const uint8_t count            = ev->count;
     const uint8_t request          = ev->request;
 
+    XCBRefreshKeyboardMapping(_wm->syms, ev);
+    if(ev->request == XCB_MAPPING_KEYBOARD)
+    {   grabkeys();
+    }
 }
 
 void

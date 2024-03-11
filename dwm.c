@@ -130,6 +130,98 @@ argcvhandler(int argc, char *argv[])
 }
 
 
+uint8_t
+applysizehints(Client *c, int16_t *x, int16_t *y, uint16_t *width, uint16_t *height, uint8_t interact)
+{
+    int baseismin;
+    Monitor *m = c->mon;
+
+    /* set minimum possible */
+    *width = MAX(1, *width);
+    *height = MAX(1, *height);
+    if (interact)
+    {
+        if (*x > _wm->sw) 
+        {   *x = _wm->sw - WIDTH(c);
+        }
+        if (*y > _wm->sh) 
+        {   *y = _wm->sh - HEIGHT(c);
+        }
+        if (*x + *width + (c->bw << 1) < 0)
+        {   *x = 0;
+        }
+        if (*y + *height + (c->bw << 1) < 0)
+        {   *y = 0;
+        }
+    }
+    else
+    {
+        if (*x >= m->wx + m->ww)
+        {   *x = m->wx + m->ww - WIDTH(c);
+        }
+        if (*y >= m->wy + m->wh) 
+        {   *y = m->wy + m->wh - HEIGHT(c);
+        }
+        if (*x + *width + (c->bw << 1) <= m->wx) 
+        {   *x = m->wx;
+        }
+        if (*y + *height + (c->bw << 1) <= m->wy) 
+        {   *y = m->wy;
+        }
+    }
+    if (*height < m->bh)
+    {   *height = m->bh;
+    }
+    if (*width  < m->bh)
+    {   *width = m->bh;
+    }
+    if (ISFLOATING(c))
+    {
+        updatesizehints(c);
+        /* see last two sentences in ICCCM 4.1.2.3 */
+        baseismin = c->basew == c->minw && c->baseh == c->minh;
+        /* temporarily remove base dimensions */
+        if (!baseismin)
+        {
+            *width  -= c->basew;
+            *height -= c->baseh;
+        }
+        /* adjust for aspect limits */
+        if (c->mina > 0 && c->maxa > 0)
+        {
+            if (c->maxa < (float)*width / *height) 
+            {   *width = *height * c->maxa + 0.5;
+            }
+            else if (c->mina < (float)*height / *width) 
+            {   *height = *width * c->mina + 0.5;
+            }
+        }
+        /* increment calculation requires this */
+        if (baseismin)
+        {
+            *width  -= c->basew;
+            *height -= c->baseh;
+        }
+        /* adjust for increment value */
+        if (c->incw)
+        {   *width -= *width % c->incw;
+        }
+        if (c->inch) 
+        {   *height -= *height % c->inch;
+        }
+        /* restore base dimensions */
+        *width = MAX(*width + c->basew, c->minw);
+        *height = MAX(*height + c->baseh, c->minh);
+        if (c->maxw) 
+        {   *width = MIN(*width, c->maxw);
+        }
+        if (c->maxh) 
+        {   *height = MIN(*height, c->maxh);
+        }
+    }
+    return *x != c->x || *y != c->y || *width != c->w || *height != c->h;
+}
+
 void
 attachdesktop(Monitor *m, Desktop *desktop)
 {
@@ -536,10 +628,22 @@ manage(XCBWindow win)
     focus(NULL);
 }
 
+Client *
+nextclient(Client *c)
+{
+    return c ? c->next : c;
+}
+
 Desktop *
 nextdesktop(Desktop *desk)
 {
     return desk ? desk->next : desk;
+}
+
+Monitor *
+nextmonitor(Monitor *m)
+{
+    return m ? m->next : m;
 }
 
 Client *
@@ -568,6 +672,14 @@ recttomon(i16 x, i16 y, u16 w, u16 h)
 			r = m;
 		}
 	return r;
+}
+
+void
+resize(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height, uint8_t interact)
+{
+    if(applysizehints(c, &x, &y, &width, &height, interact))
+    {   resizeclient(c, x, y, width, height);
+    }
 }
 
 void 

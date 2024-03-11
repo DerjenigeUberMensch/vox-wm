@@ -1045,6 +1045,14 @@ XCBKeySymbolsFree(XCBKeySymbols *keysyms)
     xcb_key_symbols_free(keysyms);
 }
 
+uint8_t
+XCBRefreshKeyboardMapping(
+        XCBKeySymbols *syms, 
+        XCBMappingNotifyEvent *event)
+{
+    return xcb_refresh_keyboard_mapping(syms, event);
+}
+
 XCBCookie
 XCBGetKeyboardMappingCookie(XCBDisplay *display, XCBKeyCode first_keycode, u8 count)
 {
