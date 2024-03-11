@@ -12,6 +12,10 @@
 #define VERSION     "NOT_SET.NOT_SET.NOT_SET"
 #endif
 
+#ifndef NAME
+#define NAME        "NOT_SET"
+#endif
+
 #define WM_NAME     "gamer"
 
 #define BUTTONMASK              (XCB_EVENT_MASK_BUTTON_PRESS|XCB_EVENT_MASK_BUTTON_RELEASE)
@@ -193,11 +197,17 @@ struct Desktop
 };
 
 /* WM
- * This struct does not use flags as it retains commonly used information that must be quickly accessible due to its vital nature */
+ * This struct does not use flags as it retains commonly used information that must be quickly accessible due to its vital nature 
+ */
 struct WM
 {
     int screen;                     /* Screen id            */
     int numlockmask;                /* numlockmask          */
+    int running;                    /* Running flag         */
+    int restart;                    /* Restart flag         */
+    int has_error;                  /* Non Zero on Error    */
+    uint8_t default_layout;         /* default layout index */
+    uint16_t desktopcount;          /* desktopcount         */
     uint16_t sw;                    /* Screen Height        */
     uint16_t sh;                    /* Screen Width         */
     XCBWindow root;                 /* The root window      */
@@ -206,15 +216,8 @@ struct WM
     Monitor *selmon;                /* Selected Monitor     */
     Monitor *mons;                  /* Monitors             */
     Client *lastfocused;            /* Last focused client  */
-    uint8_t running;                /* Running flag         */
-    uint8_t restart;                /* Restart flag         */
-    uint16_t default_layout;        /* default layout index */
-    uint16_t desktopcount;          /* desktopcount         */
-    char *msg;                      /* Message Buffer       */
-    uint8_t has_error;              /* On true write msg buffer;
-                                     * An prompt user to exit;
-                                     */
     XCBKeySymbols *syms;            /* keysym alloc         */
+    char *msg;                      /* Message Buffer       */
 };
 
 void argcvhandler(int argc, char *argv[]);
@@ -234,12 +237,13 @@ void cleanupmons(void);
 void configure(Client *c);
 Client *createclient(Monitor *m);
 Monitor *createmon(void);
+void exithandler(void);
 void floating(Desktop *desk);
 void focus(Client *c);
 void grabbuttons(XCBWindow window, uint8_t focused);
 void grabkeys(void);
 void grid(Desktop *desk);
-void manage(XCBWindow window);
+Client *manage(XCBWindow window);
 void monocle(Desktop *desk);
 Client *nextclient(Client *c);
 Desktop *nextdesktop(Desktop *desktop);
@@ -254,6 +258,7 @@ void scan(void);
 void setalwaysontop(Client *c, uint8_t isalwaysontop);
 void setborderwidth(Client *c, uint16_t border_width);
 void setclientdesktop(Client *c, Desktop *desktop);
+void setclientstate(Client *c, uint8_t state);
 void setfloating(Client *c, uint8_t isfloating);
 void setfullscreen(Client *c, uint8_t isfullscreen);
 void setfocus(Client *c);
@@ -268,6 +273,7 @@ void sigterm(int signo);
 void startup(void);
 void tile(Desktop *desk);
 void unfocus(Client *c, uint8_t setfocus);
+void updateclientlist(void);
 int  updategeom(void);
 void updatenumlockmask(void);
 void updatesizehints(Client *c);

@@ -7,7 +7,11 @@ SRCH= $(wildcard *.h)
 OBJ = ${SRC:.c=.o}
 VERSION = 1.0.0
 EXE = dwm
+CMACROS = -DVERSION=\"${VERSION}\" -DNAME=\"${EXE}\"
+CFLAGS += ${CMACROS}
+
 all: options default
+
 
 options:
 	@echo ${EXE} build options:

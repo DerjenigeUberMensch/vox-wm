@@ -256,8 +256,6 @@ motionnotify(XCBGenericEvent *event)
     const XCBTimestamp tim      = ev->time;
 
 
-    
-
     static Monitor *mon = NULL;
     Monitor *m;
     const XCBWindow root = _wm->root;
@@ -265,7 +263,6 @@ motionnotify(XCBGenericEvent *event)
     if(eventwin != root)
     {   return;
     }
-
 
     if((m = recttomon(rootx, rooty, 1, 1)) != mon && mon)
     {
@@ -299,7 +296,6 @@ enternotify(XCBGenericEvent *event)
 
 
     /* hover focus */
-
 
 
     Client *c;
@@ -377,6 +373,17 @@ void
 expose(XCBGenericEvent *event)
 {
     XCBExposeEvent *ev = (XCBExposeEvent *)event;
+    const XCBWindow win     = ev->window;
+    const i16 x             = ev->x;
+    const i16 y             = ev->y;
+    const u16 w             = ev->width;
+    const u16 h             = ev->height;
+    const u16 count         = ev->count;
+
+    Monitor *m;
+    if(count == 0 && (m = wintomon(win)))
+    {   /* redrawbar */
+    }
 }
 
 void
@@ -435,27 +442,28 @@ configurerequest(XCBGenericEvent *event)
     {
         m = c->mon;
         if(mask & XCB_CONFIG_WINDOW_BORDER_WIDTH)
-        {   setborderwidth(c, bw);
+        {                           /* Border width should NEVER be bigger than the screen */
+            setborderwidth(c, MIN(bw, c->mon->ww));
         }
         if(mask & XCB_CONFIG_WINDOW_X)
         {
             c->oldx = c->x;
-            c->x = m->mx + ev->x;
+            c->x = m->mx + x;
         }
         if(mask & XCB_CONFIG_WINDOW_Y)
         {
             c->oldy = c->y;
-            c->y = m->my + ev->y;
+            c->y = m->my + y;
         }
         if(mask & XCB_CONFIG_WINDOW_WIDTH)
         {
             c->oldw = c->w;
-            c->w = ev->width;
+            c->w = w;
         }
         if(mask & XCB_CONFIG_WINDOW_HEIGHT)
         {
             c->oldh = c->h;
-            c->h = ev->height;
+            c->h = h;
         }
         if(mask & XCB_CONFIG_WINDOW_SIBLING)
         {
@@ -521,6 +529,7 @@ maprequest(XCBGenericEvent *event)
     }
     XCBSync(_wm->dpy);
 }
+/* popup windows sometimes need this */
 void
 resizerequest(XCBGenericEvent *event)
 {
@@ -529,11 +538,10 @@ resizerequest(XCBGenericEvent *event)
     const u16 w         = ev->width;
     const u16 h         = ev->height;
 
-    /* popup windows sometimes need this */
     Client *c;
     
     if((c = wintoclient(win)))
-    {   resize(c, c->x, c->y, w, h, 1);
+    {   resize(c, c->x, c->y, w, h, 0);
     }
     else
     {   XCBResizeWindow(_wm->dpy, win, w, h);
@@ -609,16 +617,48 @@ configurenotify(XCBGenericEvent *event)
     }
 }
 
+/* The window manager technically doesnt have to abide by createnotify as it doesnt need to manage its own windows
+ * However if a window manager wants to manage these windows instead of ignoring them you would do it here 
+ */
 void
 createnotify(XCBGenericEvent *event)
 {
     XCBCreateNotifyEvent *ev = (XCBCreateNotifyEvent *)event;
+    const u8 overrideredirect   = ev->override_redirect;
+    const XCBWindow win         = ev->window;
+    const XCBWindow parentwin   = ev->parent;
+    const i16 x                 = ev->x;
+    const i16 y                 = ev->y;
+    const u16 w                 = ev->width;
+    const u16 h                 = ev->height;
+    const u16 bw                = ev->border_width;
+
+    /* we dont want to make root/wmcheckwin killable so dont manage them */
+    if(win == _wm->root || win == _wm->wmcheckwin || overrideredirect)
+    {   return;
+    }
+
+    Client *c = wintoclient(win);
+    if(!c)
+    {   
+        c = manage(win);
+        setborderwidth(c, bw);
+        resize(c, x, y, w, h, 0);
+        XCBSync(_wm->dpy);
+    }
 }
 
 void
 destroynotify(XCBGenericEvent *event)
 {
     XCBDestroyNotifyEvent *ev = (XCBDestroyNotifyEvent *)event;
+    const XCBWindow win         = ev->window;
+    const XCBWindow eventwin    = ev->event;        /* The Event win is the window that sent the message */
+
+    Client *c;
+    if((c = wintoclient(win)))
+    {   unmanage(c);
+    }
 }
 
 void
@@ -697,6 +737,62 @@ void
 propertynotify(XCBGenericEvent *event)
 {
     XCBPropertyNotifyEvent *ev = (XCBPropertyNotifyEvent *)event;
+    const XCBAtom atom          = ev->atom;
+    const XCBWindow win         = ev->window;
+    const XCBTimestamp timestamp= ev->time;
+    const u16 state             = ev->state;
+
+
+
+
+    Client *c = NULL;
+    XCBWindow trans;
+
+    int nfyname;
+    int nfyicon;
+    int nfytype;
+    int nfymotif;
+    int nfybar;
+
+    if((win == _wm->root) && atom == XCB_ATOM_WM_NAME)
+    {   /* updatestatus */
+    }
+
+    if(state == XCB_PROPERTY_DELETE)
+    {   return;
+    }
+
+    if((c = wintoclient(win)))
+    {   
+        switch(atom)
+        {
+            case XCB_ATOM_WM_TRANSIENT_FOR:
+                  break;
+            case XCB_ATOM_WM_NORMAL_HINTS:
+                  break;
+            case XCB_ATOM_WM_HINTS:
+                  updatewmhints(c);
+                  /* draw bar */
+                  break;
+            default:
+                  break;
+        }
+
+        /*
+        nfyname = ev->atom == XCB_ATOM_WM_NAME || ev->atom == netatom[NetWMName];
+        nfyicon = ev->atom == netatom[NetWMIcon];
+        nfytype = ev->atom == netatom[NetWMWindowType];
+        nfymotif= ev->atom == motifatom;
+
+        nfybar = nfyname || nfyicon || nfytype || nfymotif;
+        if (nfyname)  updatetitle(c);
+        if (nfyicon)  updateicon(c);
+        if (nfytype)  updatewindowtype(c);
+        if (nfymotif) updatemotifhints(c);
+        if (nfybar)   drawbar(c->mon);
+        */
+    }
+
 }
 
 void

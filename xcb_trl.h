@@ -28,12 +28,16 @@
  * 4. I am Lazy.
  *
  * Main reason to not use xcb
- * 1.) Way harder to use to its syncrounous nature
+ * 1.) Way harder to use to its asyncrounous nature
  * Really, Xlib's locking of Server is overblown out of porpotion when talking about xcb being better.
  * The main problem though with Xlib is that it could be async (which would make xcb less useful) and most of the functions are.
  * HOWEVER some "vital" or imporant ones arent which is the main problem with Xlib.
  * Secondly Xlib uses quite a bit more resources than xcb which is also why xcb use often times "better" for the most part though Xlib is fine,
  * What really should happen is we build a toolkit around xcb and NOT use Xlib in the first place. AND not do what Xlib did and be syncrounous.
+ * Which is what we did... 
+ * However its a shame that Xlib is seen as "deprecated" by people how dont use the X11 windoing system. Really it be more accurate to be seen as a bandage fix
+ * XCB if documented would have already take over Xlib and xlib would without question already been banished to the shadow realm.
+ * However XCB still has a way to go without its documentation, though it has improved greatly over the years.
  */
 
 /*
@@ -68,7 +72,7 @@
  * ev->response_type    This is probably the most imporant part, and tells you what event you want.
  *
  * However you may notice that simply using ev->response_type yields access to very few events this is another part of xcb that allows for better memory control.
- * However because of that it is quite the inconvinice to use, there is a mask however provided by XCB that fixes this, a bit long for no reason too.
+ * However because of that it is quite the inconvenient to use, there is a mask however provided by XCB that fixes this, a bit long for no reason too.
  *
  *
  * This is an example on how to use events 
@@ -249,7 +253,7 @@
  * This is sometimes useful when you dont want to receive an event back (for whatever reason).
  * Or when you want to receive events back from yourself which can be useful most of the time.
  *
- * # This would send an event to the XServer that we want to map this window as a mapnotify (assuming we sent it).
+ * # This would send an event to the XServer that we want to map this window as a maprequest (assuming we sent it).
  * # and have to be handle by us.
  *
  * XCBMapWindow(dpy, cool_window);
@@ -300,7 +304,7 @@
  * By default Errors are handled in the event queue.
  * However reply backs, (ie any function that calls for a reply from a cookie).
  * Instead uses the XCBErrorHandler(), this can be set by the client using XCBSetErrorHandler().
- * By Default however is to simply call die() on errors, which may not be desirable.
+ * By Default however we call die() on extension errors and so nothing on know errors that can be ignored.
  */
 
 #ifndef XCB_PTL_TYPEDEF_H_
@@ -537,6 +541,38 @@ typedef xcb_selection_notify_event_t XCBSelectionNotifyEvent;
 typedef xcb_selection_request_event_t XCBSelectionRequestEvent;
 /* This is NOT short for XCBGenericEvent rather is used for Ge Events */
 typedef xcb_ge_event_t XCBGeEvent;
+
+
+
+
+/* macros */
+enum
+{
+    XCB_WINDOW_NORMAL_STATE = XCB_ICCCM_WM_STATE_NORMAL,
+    XCB_WINDOW_ICONIC_STATE = XCB_ICCCM_WM_STATE_ICONIC,
+    XCB_WINDOW_WITHDRAWN_STATE = XCB_ICCCM_WM_STATE_WITHDRAWN,
+    XCB_WINDOW_WM_HINT_STATE = XCB_ICCCM_WM_HINT_STATE,
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 /* 
@@ -854,6 +890,26 @@ XCBInternAtomReply(
         XCBDisplay *display, 
         XCBCookie cookie);
 
+
+XCBCookie
+XCBGetTransientForHintCookie(
+        XCBDisplay *display, 
+        XCBWindow win);
+
+/*
+ *
+ * NOTE: trans_return is filled data and should NOT be freed.
+ *
+ * RETURN: 1 on Success.
+ * RETURN: 0 on Failure.
+ */
+uint8_t
+XCBGetTransientForHintReply(
+        XCBDisplay *display,
+        XCBCookie cookie,
+        XCBWindow *trans_return
+        );
+
 XCBCookie
 XCBGetPropertyCookie(
         XCBDisplay *display,
@@ -1121,7 +1177,7 @@ XCBHasDisplayError(
  * One should note that this function simply sets the function to be called when an error occurs using this API.
  * Meaning that this only handles calls made by this API, this does not handle any errors caused by another thread or raw xcb calls.
  *
- * NOTE: Handler provided MUST free() the XCBGenericError * when done
+ * NOTE: Handler provided should NOT free() the XCBGenericError * provided.
  *
  * RETURN: {1, 0}.
  */

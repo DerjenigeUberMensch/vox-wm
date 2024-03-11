@@ -92,13 +92,16 @@ argcvhandler(int argc, char *argv[])
                     "  POINTER_SIZE:    [%d]\n"
                     "Version Information.\n"
                     "  VERSION:         [%s]\n"
+                    "  MARK:            [%s]\n"
+                    "  WM_NAME:         [%s]\n"
                     , 
                     __DATE__, __TIME__,
                     compiler, majorversion, minorversion, patchversion,
                     __STDC_HOSTED__, __STDC_VERSION__,
                     __BYTE_ORDER__,
                     __SIZEOF_POINTER__,
-                    VERSION
+                    VERSION,
+                    NAME, WM_NAME
                     );
             exit(EXIT_SUCCESS);
         }
@@ -423,29 +426,6 @@ createdesktop(Monitor *m)
     return desk;
 }
 
-Monitor *
-createmon(void)
-{
-    Monitor *m = calloc(1, sizeof(Monitor ));
-    if(!m)
-    {   return NULL;
-    }
-    m->mx = m->my = 0;
-    m->mw = m->mh = 0;
-    m->wx = m->wy = 0;
-    m->ww = m->wh = 0;
-    m->flags = 0;
-    m->sel = NULL;
-    m->next = NULL;
-    m->barwin = 0;
-    int i;
-    for(i = 0; i < _wm->desktopcount; ++i)
-    {   createdesktop(m);
-    }
-    m->desksel = m->desktops;
-    return m;
-}
-
 Client *
 createclient(Monitor *m)
 {
@@ -470,10 +450,38 @@ createclient(Monitor *m)
     return c;
 }
 
+Monitor *
+createmon(void)
+{
+    Monitor *m = calloc(1, sizeof(Monitor ));
+    if(!m)
+    {   return NULL;
+    }
+    m->mx = m->my = 0;
+    m->mw = m->mh = 0;
+    m->wx = m->wy = 0;
+    m->ww = m->wh = 0;
+    m->flags = 0;
+    m->sel = NULL;
+    m->next = NULL;
+    m->barwin = 0;
+    int i;
+    for(i = 0; i < _wm->desktopcount; ++i)
+    {   createdesktop(m);
+    }
+    m->desksel = m->desktops;
+    return m;
+}
+
 void
 exithandler(void)
 {
     DEBUG("%s", "Process Terminated Successfully.");
+}
+
+void
+floating(Desktop *desk)
+{
 }
 
 void
@@ -575,6 +583,11 @@ grabkeys(void)
     }
     /* --i because i will be (array_index + 1) this causes overflow errors resulting in keycodes[i] being negative */
     --i;
+    if(!keycodes)
+    {   /* This is kinda a lie as it could occur but if it did we probably would have already called DIE() by then */
+        DEBUG("%s", "keycodes are undefined this should not be possible.");
+        return;
+    }
     for(j = 0; keycodes[j] != XCB_NO_SYMBOL; ++j)
     {
         for(k = 0; k < LENGTH(modifiers); ++k)
@@ -589,43 +602,95 @@ grabkeys(void)
 }
 
 void
+grid(Desktop *desk)
+{
+}
+
+Client *
 manage(XCBWindow win)
 {
 
     Client *c, *t = NULL;
     XCBWindow trans = None;
-    XCBCookie wacookie = XCBGetWindowAttributesCookie(_wm->dpy, win);
+    XCBWindowChanges wc;
+    XCBWindowGeometry *wg;
+    XCBCookie wgcookie = XCBGetWindowGeometryCookie(_wm->dpy, win);
+    XCBCookie transcookie = XCBGetTransientForHintCookie(_wm->dpy, win);
 
     c = createclient(_wm->selmon);
     c->win = win;
 
-    
-    updatetitle(c);
+    wg = XCBGetWindowGeometryReply(_wm->dpy, wgcookie);
+    if(wg)
+    {   /* init geometry */
+        c->x = c->oldx = wg->x;
+        c->y = c->oldy = wg->y;
+        c->w = c->oldw = wg->width;
+        c->h = c->oldh = wg->height;
+        c->oldbw = wg->border_width;
+        free(wg);
+    }
 
+    if(XCBGetTransientForHintReply(_wm->dpy, transcookie, &trans) && (t = wintoclient(trans)))
+    {
+        c->mon = t->mon;
+        c->desktop = t->desktop;
+    }
+    else
+    {
+        c->mon = _wm->selmon;
+        /* applyrules() */
+    }
+
+    if (c->x + WIDTH(c) > c->mon->wx + c->mon->ww)
+    {   c->x = c->mon->wx + c->mon->ww - WIDTH(c);
+    }
+    if (c->y + HEIGHT(c) > c->mon->wy + c->mon->wh)
+    {   c->y = c->mon->wy + c->mon->wh - HEIGHT(c);
+    }
+    c->x = MAX(c->x, c->mon->wx);
+    c->y = MAX(c->y, c->mon->wy);
+
+    /* c->x = CFG_BORDER_WIDTH */
+    wc.border_width = c->bw;
+    XCBConfigureWindow(_wm->dpy, win, XCB_CONFIG_WINDOW_BORDER_WIDTH, &wc);
+    /*  XSetWindowBorder(dpy, w, scheme[SchemeBorder][ColBorder].pixel); */
+    configure(c);   /* propagates border_width, if size doesn't change */
+    updatetitle(c);
+    updatewindowtype(c);
+    updatesizehints(c);
+    updatewmhints(c);
     
-    XCBSelectInput(_wm->dpy, win,
-            XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_FOCUS_CHANGE|XCB_EVENT_MASK_PROPERTY_CHANGE|
-            XCB_EVENT_MASK_STRUCTURE_NOTIFY
-            );
+    XCBSelectInput(_wm->dpy, win,   XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_FOCUS_CHANGE|XCB_EVENT_MASK_PROPERTY_CHANGE|
+                                    XCB_EVENT_MASK_STRUCTURE_NOTIFY
+                                    );
     grabbuttons(win, 0);
 
+    if(!ISFLOATING(c))
+    {
+        /* set both wasfloating and is floating to the same value */
+        setfloating(c, trans != XCB_NONE); /* this just covers a few other checks */
+        setfloating(c, trans != XCB_NONE || ISALWAYSONTOP(c) || ISFLOATING(c));
+    }
     attachclient(c);
     XCBChangeProperty(_wm->dpy, _wm->root, netatom[NetClientList], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&win, 1);
+    XCBMoveResizeWindow(_wm->dpy, win, c->x + (_wm->sw << 1), c->y, c->w, c->h);
+    setclientstate(c, XCB_WINDOW_NORMAL_STATE);
 
     if(c->mon == _wm->selmon)
     {   unfocus(_wm->selmon->sel, 0);
     }
     c->mon->sel = c;
 
-
-    c->win = win;
-    c->mon->sel = c;
-
-
-
-
+    setfullscreen(c, ISFULLSCREEN(c->mon));
     XCBMapWindow(_wm->dpy, win);
     focus(NULL);
+    return c;
+}
+
+void
+monocle(Desktop *desk)
+{
 }
 
 Client *
@@ -883,7 +948,7 @@ setclientdesktop(Client *c, Desktop *desk)
 }
 
 void
-setclientstate(Client *c, i32 state)
+setclientstate(Client *c, u8 state)
 {
     i32 data[2] = { state, XCB_NONE };
     
@@ -1115,7 +1180,7 @@ void
 sigterm(int signo)
 {
     (void)signo;
-    exit(1);
+    exit(0);
 }
 
 void
@@ -1135,6 +1200,12 @@ startup(void)
     /* This allows for execvp and exec to only spawn process on the specified display rather than the default varaibles */
     setenv("DISPLAY", ":1", 1);
     atexit(exithandler);
+}
+
+void
+tile(Desktop *desk)
+{
+    
 }
 
 void
@@ -1288,8 +1359,40 @@ unmanage(Client *c)
     if(_wm->lastfocused == c)
     {   _wm->lastfocused = NULL;
     }
+    updateclientlist();
     focus(NULL);
 }
+
+void
+updateclientlist(void)
+{
+    Client *c;
+    Monitor *m;
+    Desktop *desk;
+    
+    XCBDeleteProperty(_wm->dpy, _wm->root, netatom[NetClientList]);
+
+    m = _wm->mons;
+    while((m = nextmonitor(m)))
+    {
+        desk = m->desktops;
+        while((desk = nextdesktop(desk)))
+        {
+            c = desk->clients;
+            while((c = nextclient(c)))
+            {   XCBChangeProperty(_wm->dpy, _wm->root, netatom[NetClientList], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&(c->win), 1);
+            }
+        }
+    }
+}
+
+void
+updatedesktop(void)
+{
+    i32 data[1] = { _wm->selmon->desksel->num };
+    XCBChangeProperty(_wm->dpy, _wm->root, netatom[NetCurrentDesktop], XCB_ATOM_CARDINAL, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)data, 1);
+}
+
 
 void
 updatenumlockmask(void)
@@ -1401,14 +1504,15 @@ void
 xerror(XCBDisplay *display, XCBGenericError *err)
 {
     if(err)
-    {   DEBUG("error_code: [%d], major_code: [%d], minor_code: [%d]\n"
+    {   
+        DEBUG("%s %s\n", XCBErrorCodeText(err->error_code), XCBErrorMajorCodeText(err->major_code));
+        DEBUG("error_code: [%d], major_code: [%d], minor_code: [%d]\n"
               "sequence: [%d], response_type: [%d], resource_id: [%d]\n"
               "full_sequence: [%d]\n"
               ,
            err->error_code, err->major_code, err->minor_code, 
            err->sequence, err->response_type, err->resource_id, 
            err->full_sequence);
-        DEBUG("%s %s\n", XCBErrorCodeText(err->error_code), XCBErrorMajorCodeText(err->major_code));
     }
 }
 

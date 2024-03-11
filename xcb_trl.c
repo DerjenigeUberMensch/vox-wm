@@ -129,10 +129,12 @@ _xcb_err_handler(XCBDisplay *display, XCBGenericError *err)
             {   fprintf(stderr, "This liekly is a %s error.\n", errtxt);
             }
         }
+        free(err);
         return;
     }
     /* this is unreachable if no handler is set */
     _handler(display, err);
+    free(err);
 }
 
 XCBDisplay *
@@ -508,6 +510,34 @@ XCBInternAtomReply(XCBDisplay *display, XCBCookie cookie)
     atom = reply->atom;
     free(reply);
     return atom;
+}
+
+XCBCookie
+XCBGetTransientForHintCookie(
+        XCBDisplay *display, 
+        XCBWindow win)
+{
+    xcb_get_property_cookie_t cookie = xcb_icccm_get_wm_transient_for(display, win);
+    const XCBCookie ret = { .sequence = cookie.sequence };
+    return ret;
+}
+
+u8
+XCBGetTransientForHintReply(
+        XCBDisplay *display,
+        XCBCookie cookie,
+        XCBWindow *win
+        )
+{
+    XCBGenericError *err = NULL;
+    xcb_get_property_cookie_t cookie1 = { .sequence = cookie.sequence };
+    const u8 status = xcb_icccm_get_wm_transient_for_reply(display, cookie1, win, &err);
+
+    if(err)
+    {   _xcb_err_handler(display, err);
+        return 0;
+    }
+    return status;
 }
 
 XCBCookie
