@@ -166,7 +166,6 @@ struct Monitor
     uint16_t flags;             /* Monitor flags                            */
     uint16_t deskcount;         /* Desktop Counter                          */
 
-    Client *sel;                /* Selected Client                          */
     Desktop *desktops;          /* First Desktop in linked list             */
     Desktop *desksel;           /* Selected Desktop                         */
     Monitor *next;              /* Next Monitor                             */
@@ -192,6 +191,7 @@ struct Desktop
 
     Client *clients;            /* First Client in linked list  */
     Client *clast;              /* Last Client in linked list   */
+    Client *sel;                /* Selected Client                          */
     Desktop *next;              /* Next Client in linked list   */
     Desktop *prev;              /* Previous Client in list      */
 };
@@ -205,7 +205,6 @@ struct WM
     int numlockmask;                /* numlockmask          */
     int running;                    /* Running flag         */
     int restart;                    /* Restart flag         */
-    int has_error;                  /* Non Zero on Error    */
     uint8_t default_layout;         /* default layout index */
     uint16_t desktopcount;          /* desktopcount         */
     uint16_t sw;                    /* Screen Height        */
@@ -217,12 +216,11 @@ struct WM
     Monitor *mons;                  /* Monitors             */
     Client *lastfocused;            /* Last focused client  */
     XCBKeySymbols *syms;            /* keysym alloc         */
-    char *msg;                      /* Message Buffer       */
 };
 
 void argcvhandler(int argc, char *argv[]);
-
 uint8_t applysizehints(Client *c, int16_t *x, int16_t *y, uint16_t *width, uint16_t *height, uint8_t interact);
+void arrange(Desktop *desk);
 void attachdesktop(Monitor *m, Desktop *desk);
 void detachdesktop(Monitor *m, Desktop *desk);
 void attachclient(Client *c);
@@ -240,6 +238,7 @@ Monitor *createmon(void);
 void exithandler(void);
 void floating(Desktop *desk);
 void focus(Client *c);
+int32_t getstate(XCBWindow win);
 void grabbuttons(XCBWindow window, uint8_t focused);
 void grabkeys(void);
 void grid(Desktop *desk);
@@ -253,6 +252,7 @@ Client *lastvisible(Client *c);
 Monitor *recttomon(int16_t x, int16_t y, uint16_t width, uint16_t height);
 void resize(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height, uint8_t interact);
 void resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height);
+void restack(Desktop *desk);
 void run(void);
 void scan(void);
 void setalwaysontop(Client *c, uint8_t isalwaysontop);
@@ -263,6 +263,7 @@ void setfloating(Client *c, uint8_t isfloating);
 void setfullscreen(Client *c, uint8_t isfullscreen);
 void setfocus(Client *c);
 void setneverfocus(Client *c, uint8_t state);
+void setsticky(Client *c, uint8_t state);
 void setup(void);
 void seturgent(Client *c, uint8_t isurgent);
 void setviewport(void);

@@ -1130,6 +1130,13 @@ XCBQueryTreeReply(XCBDisplay *display, XCBCookie cookie)
     return reply;
 }
 
+XCBWindow *
+XCBQueryTreeChildren(const XCBQueryTree *tree)
+{
+    /* Why does this exist? its simply a offset of (tree + 1) */
+    return xcb_query_tree_children(tree);
+}
+
 
 XCBCookie
 XCBQueryPointerCookie(XCBDisplay *display, XCBWindow window)

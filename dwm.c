@@ -11,12 +11,13 @@
 #include <sys/wait.h>
 #include <xcb/xcb.h>
 #include <xcb/xcb_aux.h>
+#include <xcb/xcb_atom.h>
 #include <xcb/xproto.h>
+#include <xcb/xkb.h>
 
 
 #include <X11/X.h> /* error codes */
 
-#include <xcb/xcb_atom.h>
 #include "xcb_trl.h"
 #include "xcb_winutil.h"
 #include "util.h"
@@ -226,6 +227,11 @@ applysizehints(Client *c, int16_t *x, int16_t *y, uint16_t *width, uint16_t *hei
 }
 
 void
+arrange(Desktop *desk)
+{
+}
+
+void
 attachdesktop(Monitor *m, Desktop *desktop)
 {
     desktop->next = m->desktops;
@@ -314,10 +320,10 @@ checkotherwm(void)
         free(ev);
         XCBCloseDisplay(_wm->dpy);
         if(response == 0) 
-        {   DIE("%s", "FATAL: ANOTHER WINDOW MANAGER IS RUNNING.");
+        {   DIECAT("%s", "FATAL: ANOTHER WINDOW MANAGER IS RUNNING.");
         }
         /* UNREACHABLE */
-        DIE("%s", "FATAL: UNKNOWN REPONSE_TYPE");
+        DIECAT("%s", "FATAL: UNKNOWN REPONSE_TYPE");
     }
     /* assuming this isnt a bug we received nothing because we pinged the server for a response and got nothing */
     /* The other edge case is if the display just doesnt work, however this is covered at startup() if(!_wm->dpy) { DIE(msg); } */
@@ -328,11 +334,7 @@ cleanup(void)
 {
     cleanupmons();
     XCBKeySymbolsFree(_wm->syms);
-
-    /* global check if the server died */
-    if(_wm->running)
-    {   DIE("%s", "FATAL: THE XSERVER HAS UNEXPECTEDLY DIED");
-    }
+    u8 status = XCBHasDisplayError(_wm->dpy);
 }
 
 void
@@ -355,7 +357,6 @@ void
 cleanupclient(Client *c)
 {
     detachclient(c);
-    DEBUG("%s%s", "DETACHED: ", c->name);
     free(c);
     c = NULL;
 }
@@ -414,9 +415,6 @@ createdesktop(Monitor *m)
     if(!desk)
     {
         DEBUG("%s", "WARN: FAILED TO CREATE DESKTOP");
-        _wm->msg = "FAILED TO CREATE DESKTOP\n"
-                   "FURTHER USAGE MAY LEAD TO INSTABILITY\n"
-                   "IT IS RECOMMENDED TO RESTART " WM_NAME "\n";
         return NULL;
     }
     desk->layout = _wm->default_layout;
@@ -462,7 +460,6 @@ createmon(void)
     m->wx = m->wy = 0;
     m->ww = m->wh = 0;
     m->flags = 0;
-    m->sel = NULL;
     m->next = NULL;
     m->barwin = 0;
     int i;
@@ -476,6 +473,7 @@ createmon(void)
 void
 exithandler(void)
 {
+    free(_wm);
     DEBUG("%s", "Process Terminated Successfully.");
 }
 
@@ -487,16 +485,16 @@ floating(Desktop *desk)
 void
 focus(Client *c)
 {
-    const Monitor *m = _wm->selmon;
     if(!c || !ISVISIBLE(c))
     {   /* selmon should have atleast 1 desktop so no need to check */
-        c = nextvisible(m->desksel->clients);
+        c = nextvisible(_wm->selmon->desksel->clients);
     }
-    if(m->sel && m->sel != c)
-    {   unfocus(m->sel, 0);
+    if(_wm->selmon->desksel->sel && _wm->selmon->desksel->sel != c)
+    {   unfocus(_wm->selmon->desksel->sel, 0);
     }
     if(c)
-    {   if(c->mon != m)
+    {   
+        if(c->mon != _wm->selmon)
         {   _wm->selmon = c->mon;
         }
         if(ISURGENT(c))
@@ -517,7 +515,21 @@ focus(Client *c)
         XCBSetInputFocus(_wm->dpy, _wm->root, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
         XCBDeleteProperty(_wm->dpy, _wm->root, netatom[NetActiveWindow]);
     }
-    _wm->selmon->sel = c;
+    _wm->selmon->desksel->sel = c;
+}
+
+i32
+getstate(XCBWindow win)
+{
+    i32 state = 0;
+    const XCBCookie cookie = XCBGetWindowPropertyCookie(_wm->dpy, win, wmatom[WMState], 0L, 2L, False, wmatom[WMState]);
+    XCBWindowAttributesReply *reply = XCBGetWindowAttributesReply(_wm->dpy, cookie);
+    if(reply)
+    {
+        state = reply->map_state;
+        free(reply);
+    }
+    return state;
 }
 
 i8
@@ -550,7 +562,7 @@ grabbuttons(XCBWindow win, uint8_t focused)
     if (!focused)
     {
         XCBGrabButton(_wm->dpy, XCB_BUTTON_INDEX_ANY, XCB_MOD_MASK_ANY, win, 0, BUTTONMASK, 
-                XCB_GRAB_MODE_SYNC, XCB_GRAB_MODE_SYNC, XCB_NONE, XCB_NONE);
+                XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE, XCB_NONE);
     }
     for (i = 0; i < LENGTH(buttons); i++)
     {
@@ -561,7 +573,7 @@ grabbuttons(XCBWindow win, uint8_t focused)
                 XCBGrabButton(_wm->dpy, buttons[i].button, 
                         buttons[i].mask | modifiers[j], 
                         win, 0, BUTTONMASK, 
-                        XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_SYNC, 
+                        XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, 
                         XCB_NONE, XCB_NONE);
             }
         }
@@ -590,12 +602,18 @@ grabkeys(void)
     }
     for(j = 0; keycodes[j] != XCB_NO_SYMBOL; ++j)
     {
-        for(k = 0; k < LENGTH(modifiers); ++k)
+        for(i = 0; i < LENGTH(keys); ++i)
         {
-            XCBGrabKey(_wm->dpy, 
-                    keycodes[j], keys[i].mod | modifiers[k], 
-                    _wm->root, 1, 
-                    XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
+            if(keys[i].keysym == xcb_key_symbols_get_keysym(_wm->syms, keycodes[j], 0))
+            {
+                for(k = 0; k < LENGTH(modifiers); ++k)
+                {
+                    XCBGrabKey(_wm->dpy, 
+                            keycodes[j], keys[i].mod | modifiers[k], 
+                            _wm->root, 1, 
+                            XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
+                }
+            }
         }
     }
     free(keycodes);
@@ -612,7 +630,6 @@ manage(XCBWindow win)
 
     Client *c, *t = NULL;
     XCBWindow trans = None;
-    XCBWindowChanges wc;
     XCBWindowGeometry *wg;
     XCBCookie wgcookie = XCBGetWindowGeometryCookie(_wm->dpy, win);
     XCBCookie transcookie = XCBGetTransientForHintCookie(_wm->dpy, win);
@@ -652,7 +669,7 @@ manage(XCBWindow win)
     c->y = MAX(c->y, c->mon->wy);
 
     /* c->x = CFG_BORDER_WIDTH */
-    wc.border_width = c->bw;
+    XCBWindowChanges wc = { .border_width = c->bw };
     XCBConfigureWindow(_wm->dpy, win, XCB_CONFIG_WINDOW_BORDER_WIDTH, &wc);
     /*  XSetWindowBorder(dpy, w, scheme[SchemeBorder][ColBorder].pixel); */
     configure(c);   /* propagates border_width, if size doesn't change */
@@ -661,9 +678,7 @@ manage(XCBWindow win)
     updatesizehints(c);
     updatewmhints(c);
     
-    XCBSelectInput(_wm->dpy, win,   XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_FOCUS_CHANGE|XCB_EVENT_MASK_PROPERTY_CHANGE|
-                                    XCB_EVENT_MASK_STRUCTURE_NOTIFY
-                                    );
+    XCBSelectInput(_wm->dpy, win,   XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_FOCUS_CHANGE|XCB_EVENT_MASK_PROPERTY_CHANGE|XCB_EVENT_MASK_STRUCTURE_NOTIFY);
     grabbuttons(win, 0);
 
     if(!ISFLOATING(c))
@@ -678,10 +693,9 @@ manage(XCBWindow win)
     setclientstate(c, XCB_WINDOW_NORMAL_STATE);
 
     if(c->mon == _wm->selmon)
-    {   unfocus(_wm->selmon->sel, 0);
+    {   unfocus(_wm->selmon->desksel->sel, 0);
     }
-    c->mon->sel = c;
-
+    _wm->selmon->desksel->sel = c;
     setfullscreen(c, ISFULLSCREEN(c->mon));
     XCBMapWindow(_wm->dpy, win);
     focus(NULL);
@@ -763,19 +777,37 @@ resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
     configure(c);
 }
 
+void
+restack(Desktop *desk)
+{
+    Client *c;
+    XCBGenericEvent *ev;
+    XCBWindowChanges wc;
+
+    c = desk->clients;
+    if(!c)
+    {   return;
+    }
+
+    wc.stack_mode = XCB_STACK_MODE_ABOVE;
+    wc.sibling = c->mon->barwin;
+    /* configure windows */
+    while((c = nextclient(c)))
+    {   
+        XCBConfigureWindow(_wm->dpy, c->win, XCB_CONFIG_WINDOW_SIBLING|XCB_CONFIG_WINDOW_STACK_MODE, &wc);
+        wc.sibling = c->win;
+    }
+}
+
 void 
 run(void)
 {
     XCBGenericEvent *ev = NULL;
     uint8_t cleanev = 0;
-    XCBSync(_wm->dpy);    /* If this ever returns 0, the XServer probably died */
-    while(_wm->running && XCBNextEvent(_wm->dpy, &ev))
+    XCBSync(_wm->dpy);
+    while(_wm->running && ((ev = XCBPollForEvent(_wm->dpy)) || XCBNextEvent(_wm->dpy, &ev)))
     {
         cleanev = XCB_EVENT_RESPONSE_TYPE(ev);
-        if(handler[cleanev])
-        {   handler[cleanev](ev);
-        }
-        free(ev);
         switch(cleanev)
         {
             case XCB_KEY_PRESS:
@@ -886,6 +918,11 @@ run(void)
             default:
                 DEBUG("%s[%d]", "UNKNOWN EVENT CODE: ", cleanev);
         }
+        if(handler[cleanev])
+        {   handler[cleanev](ev);
+        }
+        free(ev);
+        ev = NULL;
     }
 }
 
@@ -900,6 +937,55 @@ scan(void)
 
     if((tree = XCBQueryTreeReply(_wm->dpy, cookie)))
     {
+        num = tree->children_len;
+        wins = XCBQueryTreeChildren(tree);
+        if(wins)
+        {
+            XCBCookie wa[num];
+            XCBCookie tfh[num];
+            for(i = 0; i < num; ++i)
+            {   
+                wa[i] = XCBGetWindowAttributesCookie(_wm->dpy, wins[i]);
+                tfh[i] = XCBGetTransientForHintCookie(_wm->dpy, wins[i]);
+            }
+            
+            XCBWindowAttributesReply *replies[num];
+            /* filled data no need to free */
+            XCBWindow trans[num];
+            uint8_t hastrans = 0;
+            /* get them replies back */
+            for(i = 0; i < num; ++i)
+            {
+                replies[i] = XCBGetWindowAttributesReply(_wm->dpy, wa[i]);
+                hastrans = XCBGetTransientForHintReply(_wm->dpy, tfh[i], &trans[i]);
+                trans[i] *= hastrans;
+
+                /* override_redirect only needed to be handled for old windows */
+                /* X auto redirects when running wm so no need to do anything else */
+                if(!replies[i] || replies[i]->override_redirect || trans[i]) 
+                {   continue;
+                }
+                if(replies[i]->map_state == XCB_MAP_STATE_VIEWABLE ||getstate(wins[i]) == XCB_WINDOW_ICONIC_STATE)
+                {   manage(wins[i]);
+                }
+            }
+
+            /* now the transients */
+            for(i = 0; i <  num; ++i)
+            {   
+                if(replies[i])
+                {   
+                    if(trans[i] && replies[i]->map_state == XCB_MAP_STATE_VIEWABLE && getstate(wins[i]) == XCB_WINDOW_ICONIC_STATE)
+                    {   
+                        /* technically we shouldnt have to do this but just in case */
+                        if(!wintoclient(wins[i]))
+                        {   manage(wins[i]);
+                        }
+                    }
+                    free(replies[i]);
+                }
+            }
+        }
         free(tree);
     }
     else
@@ -1056,9 +1142,6 @@ setup(void)
 {
     /* globals */
     _wm->running = 1;
-    _wm->has_error = 0;
-    _wm->msg = NULL;
-    _wm->numlockmask = 0;
     _wm->desktopcount = 10;
     _wm->syms = XCBKeySymbolsAlloc(_wm->dpy);
 
@@ -1073,7 +1156,7 @@ setup(void)
     const XCBCookie utf8cookie = XCBInternAtomCookie(_wm->dpy, "UTF8_STRING", False);
     XCBInitAtoms(_wm->dpy, wmatom, netatom);
     if(!wmatom[WMLast - 1] || !netatom[NetLast - 1])
-    {   DIE("%s", "FATAL: FAILED TO INIT ATOMS.");
+    {   DIECAT("%s", "FATAL: FAILED TO INIT ATOMS.");
     }
     const XCBAtom utf8str = XCBInternAtomReply(_wm->dpy, utf8cookie);
                             /* simple window */
@@ -1099,6 +1182,7 @@ setup(void)
                     XCB_EVENT_MASK_BUTTON_PRESS|XCB_EVENT_MASK_BUTTON_RELEASE|
                     XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_LEAVE_WINDOW|
                     XCB_EVENT_MASK_POINTER_MOTION|XCB_EVENT_MASK_POINTER_MOTION_HINT|
+                    XCB_EVENT_MASK_BUTTON_MOTION|
                     XCB_EVENT_MASK_BUTTON_1_MOTION|XCB_EVENT_MASK_BUTTON_2_MOTION|XCB_EVENT_MASK_BUTTON_3_MOTION|
                     XCB_EVENT_MASK_BUTTON_4_MOTION|XCB_EVENT_MASK_BUTTON_5_MOTION|
                     XCB_EVENT_MASK_BUTTON_MOTION|XCB_EVENT_MASK_KEYMAP_STATE|
@@ -1149,13 +1233,13 @@ void
 sighandler(void)
 {
     if(signal(SIGCHLD, &sigchld) == SIG_ERR)
-    {   DIE("%s", "FATAL: CANNOT_INSTALL_SIGCHLD_HANDLER");
+    {   DIECAT("%s", "FATAL: CANNOT_INSTALL_SIGCHLD_HANDLER");
     }
     /* wait for zombies to die */
     sigchld(0);
     if(signal(SIGTERM, &sigterm) == SIG_ERR) 
     {   
-        DIE("%s", "FATAL: CANNOT_INSTALL_SIGTERM_HANDLER");
+        DIECAT("%s", "FATAL: CANNOT_INSTALL_SIGTERM_HANDLER");
         signal(SIGTERM, SIG_DFL); /* default signal */
     }
     if(signal(SIGHUP, &sighup) == SIG_ERR) 
@@ -1180,20 +1264,25 @@ void
 sigterm(int signo)
 {
     (void)signo;
-    exit(0);
+    cleanup();
+    XCBCloseDisplay(_wm->dpy);
+    exit(EXIT_SUCCESS);
 }
 
 void
 startup(void)
 {
-    _wm = ecalloc(1, sizeof(WM));
+    _wm = calloc(1, sizeof(WM));
+    if(!_wm)
+    {   DIECAT("%s", "FATAL: NOT_ENOUGH_MEMORY");
+    }
     if(!setlocale(LC_CTYPE, ""))
     {   fputs("WARN: NO_LOCALE_SUPPORT\n", stderr);
     }
     /* XXX rember to set this to NULL when done testing */
     _wm->dpy = XCBOpenDisplay(":1", &_wm->screen);
     if(!_wm->dpy)
-    {   DIE("%s", "FATAL: CANNOT_CONNECT_TO_X_SERVER");
+    {   DIECAT("%s", "FATAL: CANNOT_CONNECT_TO_X_SERVER");
     }
     checkotherwm();
     XCBSetErrorHandler(xerror);
@@ -1355,10 +1444,16 @@ updategeom(void)
 void
 unmanage(Client *c)
 {
-    cleanupclient(c);
+    if(!c)
+    {   return;
+    }
     if(_wm->lastfocused == c)
     {   _wm->lastfocused = NULL;
     }
+    if(c->desktop->sel == c)
+    {   c->desktop->sel = NULL;
+    }
+    cleanupclient(c);
     updateclientlist();
     focus(NULL);
 }
@@ -1470,13 +1565,10 @@ wintoclient(XCBWindow win)
     /* while we should if its root to return early we dont cause we dont handle root as a client */
     for(m = _wm->mons; m; m = m->next)
     {
-        DEBUG("%s", "MONITOR");
         for(desk = m->desktops; desk; desk = desk->next)
         {
-            DEBUG("%s", "DESK");
             for(c = desk->clients; c; c = c->next)
             {
-                DEBUG("%d", c->win);
                 if(c->win == win)
                 {
                     return c;

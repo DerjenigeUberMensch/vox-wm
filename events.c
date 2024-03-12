@@ -97,6 +97,7 @@ keypress(XCBGenericEvent *event)
             }
         }
     }
+    XCBSync(_wm->dpy);
 }
 
 void
@@ -137,6 +138,7 @@ keyrelease(XCBGenericEvent *event)
             }
         }
     }
+    XCBSync(_wm->dpy);
 }
 
 void
@@ -163,18 +165,16 @@ buttonpress(XCBGenericEvent *event)
     {
         if(m != _wm->selmon)
         {
-            unfocus(_wm->selmon->sel, 1);
+            unfocus(_wm->selmon->desksel->sel, 1);
             _wm->selmon = m;
             focus(NULL);
         }
-        /* no need to handle any other clients */
-        return;
     }
 
     Client *c;
     if((c = wintoclient(eventwin)))
     {   
-        if(m && m->sel != c)   
+        if(m && m->desksel->sel != c)   
         {   
             if(c->mon != m)
             {   c->mon = m;
@@ -237,6 +237,7 @@ buttonrelease(XCBGenericEvent *event)
             break;
         }
     }
+    XCBSync(_wm->dpy);
 }
 
 void
@@ -266,12 +267,13 @@ motionnotify(XCBGenericEvent *event)
 
     if((m = recttomon(rootx, rooty, 1, 1)) != mon && mon)
     {
-        Client *c = _wm->selmon->sel;
+        Client *c = _wm->selmon->desksel->sel;
         if(c)
         {   unfocus(c, 1);
         }
         _wm->selmon = m;
         focus(NULL);
+        XCBSync(_wm->dpy);
     }
     mon = m;
 }
@@ -310,13 +312,14 @@ enternotify(XCBGenericEvent *event)
 
     if(m != _wm->selmon)
     {
-        unfocus(_wm->selmon->sel, 1);
+        unfocus(_wm->selmon->desksel->sel, 1);
         _wm->selmon = m;
     }
-    else if(!c || c == _wm->selmon->sel)
+    else if(!c || c == _wm->selmon->desksel->sel)
     {   return;
     }
     focus(c);
+    XCBSync(_wm->dpy);
 }
 
 void
@@ -347,8 +350,8 @@ focusin(XCBGenericEvent *event)
     const XCBWindow eventwin = ev->event;
     const u8 mode = ev->mode;
 
-    if(_wm->selmon->sel && eventwin != _wm->selmon->sel->win)
-    {   setfocus(_wm->selmon->sel);
+    if(_wm->selmon->desksel->sel && eventwin != _wm->selmon->desksel->sel->win)
+    {   setfocus(_wm->selmon->desksel->sel);
     }
     XCBSync(_wm->dpy);
 }
@@ -515,6 +518,7 @@ configurerequest(XCBGenericEvent *event)
         wc.stack_mode = stack;
         XCBConfigureWindow(_wm->dpy, win, mask, &wc);
     }
+    XCBSync(_wm->dpy);
 }
 
 void
@@ -525,7 +529,7 @@ maprequest(XCBGenericEvent *event)
     const XCBWindow win     = ev->window;
 
     if(!wintoclient(win))
-    {   manage(ev->window);
+    {   manage(win);
     }
     XCBSync(_wm->dpy);
 }
@@ -546,6 +550,7 @@ resizerequest(XCBGenericEvent *event)
     else
     {   XCBResizeWindow(_wm->dpy, win, w, h);
     }
+    XCBSync(_wm->dpy);
 }
 
 void
@@ -607,7 +612,6 @@ configurenotify(XCBGenericEvent *event)
             /* arrangeall */
         }
     }
-
     if(overrideredirect)
     {
         Client *c;
@@ -615,6 +619,7 @@ configurenotify(XCBGenericEvent *event)
         {   unmanage(c);
         }
     }
+    XCBSync(_wm->dpy);
 }
 
 /* The window manager technically doesnt have to abide by createnotify as it doesnt need to manage its own windows
@@ -655,10 +660,11 @@ destroynotify(XCBGenericEvent *event)
     const XCBWindow win         = ev->window;
     const XCBWindow eventwin    = ev->event;        /* The Event win is the window that sent the message */
 
-    Client *c;
+    Client *c = NULL;
     if((c = wintoclient(win)))
     {   unmanage(c);
     }
+    XCBSync(_wm->dpy);
 }
 
 void
@@ -688,6 +694,7 @@ mappingnotify(XCBGenericEvent *event)
     if(ev->request == XCB_MAPPING_KEYBOARD)
     {   grabkeys();
     }
+    XCBSync(_wm->dpy);
 }
 
 void
@@ -699,7 +706,7 @@ unmapnotify(XCBGenericEvent *event)
     const uint8_t isconfigure   = ev->from_configure;
 
     Client *c;
-    if((c = wintoclient(win)) || (c = wintoclient(eventwin)))
+    if((c = wintoclient(win)))
     {   unmanage(c);
     }
     XCBSync(_wm->dpy);
@@ -723,6 +730,7 @@ colormapnotify(XCBGenericEvent *event)
     XCBColormapNotifyEvent *ev = (XCBColormapNotifyEvent *)event;
 }
 
+/* TODO */
 void
 clientmessage(XCBGenericEvent *event)
 {

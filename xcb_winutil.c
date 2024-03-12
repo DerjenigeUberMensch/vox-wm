@@ -135,7 +135,6 @@ XCBInitAtoms(XCBDisplay *display, XCBAtom *wm_atom_return, XCBAtom *net_atom_ret
         netcookies[NetWMWindowsOpacity] = XCBInternAtomCookie(display, "_NET_WM_WINDOW_OPACITY", False);
     }
 
-
     if(wm_atom_return)
     {
         wm_atom_return[WMName] = XCBInternAtomReply(display, wmcookies[WMName]);
@@ -250,6 +249,7 @@ XCBInitAtoms(XCBDisplay *display, XCBAtom *wm_atom_return, XCBAtom *net_atom_ret
         /* stuff */
         net_atom_return[NetWMFullscreen] = XCBInternAtomReply(display, netcookies[NetWMFullscreen]);
         net_atom_return[NetWMAbove] = XCBInternAtomReply(display, netcookies[NetWMAbove]);
+
 
         /* other */
         net_atom_return[NetWMFullPlacement] = XCBInternAtomReply(display, netcookies[NetWMFullPlacement]);

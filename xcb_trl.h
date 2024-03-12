@@ -50,6 +50,10 @@
  * This is because the item is buffered to itself meaning that unless you call XCBSync() or XCBFlush() you will never get your event back.
  * This is bad as it makes some things harder to use but its mostly good cause you can make a buffered requests and then just send that 1 big buffer.
  * This saves on time asking for ping backs for every single requests.
+ * However do note that non-event type requests such as quering a windows attributes, cookies are sent immediatly to the XServer.
+ * The Caveat with these is that you have to wait for the reply back. via the _reply() version of the functions.
+ * Secondly with these if you never call for a _reply() of that cookie then you WILL leak memory. as you need to free 90% of the _reply() versions.
+ *
  *
  *
  * <<< Event handling >>>
@@ -486,8 +490,13 @@ typedef xcb_drawable_t XCBDrawable;
 typedef xcb_point_t XCBPoint;
 typedef xcb_font_t XCBFont;
 typedef xcb_generic_event_t XCBGenericEvent;
+typedef xcb_generic_event_t XCBEvent;
+
 typedef xcb_generic_reply_t XCBGenericReply;
+typedef xcb_generic_reply_t XCBReply;
+
 typedef xcb_generic_error_t XCBGenericError;
+typedef xcb_generic_error_t XCBError;
 
 typedef xcb_query_pointer_reply_t XCBPointerReply;
 
@@ -1034,6 +1043,19 @@ XCBQueryTreeReply(
         XCBDisplay *display,
         XCBCookie cookie
         );
+
+/* "Query" the trees children, really this is just a offset jmp.
+ * (tree + 1);
+ *
+ *
+ * NOTE: This call IS async.
+ *
+ * RETURN: XCBWindow * On Success.
+ * RETURN: NULL on Failure.
+ */
+XCBWindow *
+XCBQueryTreeChildren(
+        const XCBQueryTree *tree);
 
 XCBCookie
 XCBQueryPointerCookie(

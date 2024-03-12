@@ -22,10 +22,12 @@ static const Layout layouts[4] =
 
 /* key definitions */
 #define ALT         XCB_MOD_MASK_1
+#define NUMLOCK     XCB_MOD_MASK_2
 #define SUPER       XCB_MOD_MASK_4
 #define CTRL        XCB_MOD_MASK_CONTROL
 #define SHIFT       XCB_MOD_MASK_SHIFT
 #define CAPSLOCK    XCB_MOD_MASK_LOCK
+#define TAB         XK_Tab
 #define LMB         XCB_BUTTON_MASK_1
 #define MMB         XCB_BUTTON_MASK_2
 #define RMB         XCB_BUTTON_MASK_3
@@ -38,10 +40,7 @@ static const Layout layouts[4] =
 static const Key keys[] =
 {
     /* KeyType                  modifier                 key        function        argument */
-    { XCB_KEY_PRESS,            0|SHIFT,                      XK_a,      UserStats,              {0}},
-    { 0, XK_A, 0, 0},
-    { 0, XK_A, 0, 0},
-    { 0, XK_A, 0, 0},
+    { XCB_KEY_PRESS,            SUPER,                  XK_Return,  UserStats,        {0} },
 };
 
 /* button definitions */

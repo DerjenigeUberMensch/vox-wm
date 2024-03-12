@@ -22,6 +22,14 @@ typedef int64_t  i64;
 #define TRUNC(X,A,B)            (MAX((A), MIN((X), (B))))
 
 #define DIE(fmt, ...)           do { fprintf(stderr, "[%s:%d] by %s(): " fmt "\n", __FILE__,__LINE__,__func__,__VA_ARGS__); exit(EXIT_FAILURE); } while (0)
+#define DIECAT(fmt, ...)        do { fprintf(stderr, "[%s:%d] by %s()\n"  \
+                                    "________________________________\n" \
+                                    "|                    /)        |\n" \
+                                    "|           /\\___/\\ ((         |\n" \
+                                    "|           \\`@_@'/  ))        "  "   " fmt "\n"\
+                                    "|           {_:Y:.}_//         |\n" \
+                                    "|-----------{_}^-'{_}----------|\n" \
+                                    "\n", __FILE__,__LINE__,__func__,__VA_ARGS__); exit(EXIT_FAILURE); } while (0)
 #define ENABLE_DEBUGGING 1   /* enable debbuging */
 
 #if (ENABLE_DEBUGGING)
