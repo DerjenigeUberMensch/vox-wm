@@ -627,7 +627,6 @@ grid(Desktop *desk)
 Client *
 manage(XCBWindow win)
 {
-
     Client *c, *t = NULL;
     XCBWindow trans = None;
     XCBWindowGeometry *wg;
@@ -678,7 +677,7 @@ manage(XCBWindow win)
     updatesizehints(c);
     updatewmhints(c);
     
-    XCBSelectInput(_wm->dpy, win,   XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_FOCUS_CHANGE|XCB_EVENT_MASK_PROPERTY_CHANGE|XCB_EVENT_MASK_STRUCTURE_NOTIFY);
+    XCBSelectInput(_wm->dpy, win, XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_FOCUS_CHANGE|XCB_EVENT_MASK_PROPERTY_CHANGE|XCB_EVENT_MASK_STRUCTURE_NOTIFY);
     grabbuttons(win, 0);
 
     if(!ISFLOATING(c))
@@ -689,15 +688,14 @@ manage(XCBWindow win)
     }
     attachclient(c);
     XCBChangeProperty(_wm->dpy, _wm->root, netatom[NetClientList], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&win, 1);
-    XCBMoveResizeWindow(_wm->dpy, win, c->x + (_wm->sw << 1), c->y, c->w, c->h);
     setclientstate(c, XCB_WINDOW_NORMAL_STATE);
 
     if(c->mon == _wm->selmon)
     {   unfocus(_wm->selmon->desksel->sel, 0);
     }
     _wm->selmon->desksel->sel = c;
+    XCBMapWindow(_wm->dpy, win);    /* window must be mapped before resizing */
     setfullscreen(c, ISFULLSCREEN(c->mon));
-    XCBMapWindow(_wm->dpy, win);
     focus(NULL);
     return c;
 }
