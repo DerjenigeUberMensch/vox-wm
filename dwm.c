@@ -18,6 +18,9 @@
 
 #include <X11/X.h> /* error codes */
 
+/* keycodes */
+#include <X11/keysym.h>
+
 #include "xcb_trl.h"
 #include "xcb_winutil.h"
 #include "util.h"
@@ -25,33 +28,15 @@
 #include "dwm.h"
 
 #include "config.h"
+#include "keybinds.h"
 
 
 
 extern void (*handler[]) (XCBGenericEvent *);
-WM *_wm;
+WM *_wm = NULL;     /* prevent garbage values */
 
 XCBAtom netatom[NetLast];
 XCBAtom wmatom[WMLast];
-
-void
-UserStats(const Arg *arg)
-{
-    struct sigaction sig;
-    if(!fork())
-    {   
-        if(_wm->dpy)
-        {   close(XCBConnectionNumber(_wm->dpy));
-        }
-        setsid();
-        sigemptyset(&sig.sa_mask);
-        sig.sa_flags = 0;
-        sig.sa_handler = SIG_DFL;
-        sigaction(SIGCHLD, &sig, NULL);
-        char *arr[] = { "st", NULL };
-		execvp(((char **)arr)[0], (char **)arr);
-    }
-}
 
 void
 argcvhandler(int argc, char *argv[])
@@ -102,7 +87,8 @@ argcvhandler(int argc, char *argv[])
                     __BYTE_ORDER__,
                     __SIZEOF_POINTER__,
                     VERSION,
-                    NAME, WM_NAME
+                    NAME, 
+                    WM_NAME
                     );
             exit(EXIT_SUCCESS);
         }
@@ -319,6 +305,7 @@ checkotherwm(void)
         response = ev->response_type;
         free(ev);
         XCBCloseDisplay(_wm->dpy);
+        free(_wm);
         if(response == 0) 
         {   DIECAT("%s", "FATAL: ANOTHER WINDOW MANAGER IS RUNNING.");
         }
@@ -332,9 +319,14 @@ checkotherwm(void)
 void
 cleanup(void)
 {
+    XCBCookie cookie;
+
     cleanupmons();
+
+    cookie = XCBDestroyWindow(_wm->dpy, _wm->wmcheckwin);
+    XCBDiscardReply(_wm->dpy, cookie);
     XCBKeySymbolsFree(_wm->syms);
-    u8 status = XCBHasDisplayError(_wm->dpy);
+    XCBSync(_wm->dpy);
 }
 
 void
@@ -473,7 +465,6 @@ createmon(void)
 void
 exithandler(void)
 {
-    free(_wm);
     DEBUG("%s", "Process Terminated Successfully.");
 }
 
@@ -612,6 +603,7 @@ grabkeys(void)
                             keycodes[j], keys[i].mod | modifiers[k], 
                             _wm->root, 1, 
                             XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
+                    DEBUG("Grabbed: %d", keycodes[j]);
                 }
             }
         }
@@ -677,7 +669,8 @@ manage(XCBWindow win)
     updatesizehints(c);
     updatewmhints(c);
     
-    XCBSelectInput(_wm->dpy, win, XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_FOCUS_CHANGE|XCB_EVENT_MASK_PROPERTY_CHANGE|XCB_EVENT_MASK_STRUCTURE_NOTIFY);
+    XCBSelectInput(_wm->dpy, win, 
+            XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_FOCUS_CHANGE|XCB_EVENT_MASK_PROPERTY_CHANGE|XCB_EVENT_MASK_STRUCTURE_NOTIFY);
     grabbuttons(win, 0);
 
     if(!ISFLOATING(c))
@@ -735,6 +728,12 @@ lastvisible(Client *c)
 {
     for(; c && !ISVISIBLE(c); c = c->prev);
     return c;
+}
+
+void
+quit(void)
+{
+    _wm->running = 0;
 }
 
 Monitor *
@@ -797,11 +796,18 @@ restack(Desktop *desk)
     }
 }
 
+void
+restart(void)
+{
+    _wm->running = 0;
+    _wm->restart = 1;
+}
+
 void 
 run(void)
 {
     XCBGenericEvent *ev = NULL;
-    uint8_t cleanev = 0;
+    int cleanev = 0;
     XCBSync(_wm->dpy);
     while(_wm->running && ((ev = XCBPollForEvent(_wm->dpy)) || XCBNextEvent(_wm->dpy, &ev)))
     {
@@ -1138,14 +1144,13 @@ setsticky(Client *c, u8 sticky)
 void
 setup(void)
 {
-    /* globals */
-    _wm->running = 1;
-    _wm->desktopcount = 10;
-    _wm->syms = XCBKeySymbolsAlloc(_wm->dpy);
-
     /* clean up any zombies immediately */
     sighandler();
 
+    /* startup wm */
+    _wm->running = 1;
+    _wm->desktopcount = 10;
+    _wm->syms = XCBKeySymbolsAlloc(_wm->dpy);
     _wm->sw = XCBDisplayWidth(_wm->dpy, _wm->screen);
     _wm->sh = XCBDisplayHeight(_wm->dpy, _wm->screen);
     _wm->root = XCBRootWindow(_wm->dpy, _wm->screen);
@@ -1153,11 +1158,8 @@ setup(void)
     updategeom();
     const XCBCookie utf8cookie = XCBInternAtomCookie(_wm->dpy, "UTF8_STRING", False);
     XCBInitAtoms(_wm->dpy, wmatom, netatom);
-    if(!wmatom[WMLast - 1] || !netatom[NetLast - 1])
-    {   DIECAT("%s", "FATAL: FAILED TO INIT ATOMS.");
-    }
     const XCBAtom utf8str = XCBInternAtomReply(_wm->dpy, utf8cookie);
-                            /* simple window */
+    /* supporting window for NetWMCheck */
     _wm->wmcheckwin = XCBCreateSimpleWindow(_wm->dpy, _wm->root, 0, 0, 1, 1, 0, 0, 0);
     XCBChangeProperty(_wm->dpy, _wm->wmcheckwin, netatom[NetSupportingWMCheck], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&_wm->wmcheckwin, 1);
     XCBChangeProperty(_wm->dpy, _wm->wmcheckwin, netatom[NetWMName], utf8str, 8, XCB_PROP_MODE_REPLACE, WM_NAME, LENGTH(WM_NAME));
@@ -1166,29 +1168,21 @@ setup(void)
     XCBChangeProperty(_wm->dpy, _wm->root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&netatom, NetLast);
     XCBDeleteProperty(_wm->dpy, _wm->root, netatom[NetClientList]);
     
-    
     setdesktopnum();
     setdesktop();
     setdesktopnames();
     setviewport();
 
-
     XCBWindowAttributes wa;
     /* xcb_event_mask_t */
-    /* ~0 causes event errors */
-    wa.event_mask = XCB_EVENT_MASK_KEY_PRESS|XCB_EVENT_MASK_KEY_RELEASE|
+    /* ~0 causes event errors because some event masks override others, for some reason... */
+    wa.event_mask = 
                     XCB_EVENT_MASK_BUTTON_PRESS|XCB_EVENT_MASK_BUTTON_RELEASE|
                     XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_LEAVE_WINDOW|
-                    XCB_EVENT_MASK_POINTER_MOTION|XCB_EVENT_MASK_POINTER_MOTION_HINT|
-                    XCB_EVENT_MASK_BUTTON_MOTION|
-                    XCB_EVENT_MASK_BUTTON_1_MOTION|XCB_EVENT_MASK_BUTTON_2_MOTION|XCB_EVENT_MASK_BUTTON_3_MOTION|
-                    XCB_EVENT_MASK_BUTTON_4_MOTION|XCB_EVENT_MASK_BUTTON_5_MOTION|
-                    XCB_EVENT_MASK_BUTTON_MOTION|XCB_EVENT_MASK_KEYMAP_STATE|
-                    XCB_EVENT_MASK_EXPOSURE|XCB_EVENT_MASK_VISIBILITY_CHANGE|
-                    XCB_EVENT_MASK_STRUCTURE_NOTIFY|XCB_EVENT_MASK_RESIZE_REDIRECT|
-                    XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY|XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT|
-                    XCB_EVENT_MASK_FOCUS_CHANGE|XCB_EVENT_MASK_PROPERTY_CHANGE|
-                    XCB_EVENT_MASK_COLOR_MAP_CHANGE|XCB_EVENT_MASK_OWNER_GRAB_BUTTON;
+                    XCB_EVENT_MASK_POINTER_MOTION|
+                    XCB_EVENT_MASK_STRUCTURE_NOTIFY|XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY|XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT|
+                    XCB_EVENT_MASK_PROPERTY_CHANGE
+                    ;   /* the ; is here just so its out of the way */
     XCBChangeWindowAttributes(_wm->dpy, _wm->root, XCB_CW_EVENT_MASK, &wa);
     XCBSelectInput(_wm->dpy, _wm->root, wa.event_mask);
     grabkeys();
@@ -1255,16 +1249,13 @@ sighandler(void)
 void
 sighup(int signo) /* signal */
 {
-    (void)signo;
+    Restart(NULL);
 }
 
 void
 sigterm(int signo)
-{
-    (void)signo;
-    cleanup();
-    XCBCloseDisplay(_wm->dpy);
-    exit(EXIT_SUCCESS);
+{   
+    Quit(NULL);
 }
 
 void
@@ -1277,15 +1268,17 @@ startup(void)
     if(!setlocale(LC_CTYPE, ""))
     {   fputs("WARN: NO_LOCALE_SUPPORT\n", stderr);
     }
-    /* XXX rember to set this to NULL when done testing */
-    _wm->dpy = XCBOpenDisplay(":1", &_wm->screen);
+    const char *display = ":1";
+    _wm->dpy = XCBOpenDisplay(display, &_wm->screen);
     if(!_wm->dpy)
     {   DIECAT("%s", "FATAL: CANNOT_CONNECT_TO_X_SERVER");
     }
     checkotherwm();
     XCBSetErrorHandler(xerror);
     /* This allows for execvp and exec to only spawn process on the specified display rather than the default varaibles */
-    setenv("DISPLAY", ":1", 1);
+    if(display)
+    {   setenv("DISPLAY", display, 1);
+    }
     atexit(exithandler);
 }
 
@@ -1615,12 +1608,17 @@ main(int argc, char *argv[])
     startup();
     setup();
 #ifdef __OpenBSD__
-	if (pledge("stdio rpath proc exec", NULL) == -1)
-		die("pledge");
+        if (pledge("stdio rpath proc exec", NULL) == -1)
+            die("pledge");
 #endif /* __OpenBSD__ */
     scan();
     run();
     cleanup();
     XCBCloseDisplay(_wm->dpy);
+    u8 restart = _wm->restart;
+    free(_wm);
+    if(restart)
+    {   execvp(argv[0], argv);
+    }
     return EXIT_SUCCESS;
 }

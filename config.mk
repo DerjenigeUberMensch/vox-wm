@@ -24,10 +24,10 @@ DEBUGFLAGS = -ggdb -g -pg ${CCVERSION} ${WARNINGFLAGS} ${INCS} ${CPPFLAGS} ${BIN
 
 WARNINGFLAGS = -pedantic -Wall -Wno-deprecated-declarations -Wshadow -Wuninitialized
 LINKTIMEOPTIMIZATIONS = -flto
-PRELINKERFLAGS = -fprefetch-loop-arrays ${LINKTIMEOPTIMIZATIONS} -fstack-protector
+PRELINKERFLAGS = -fprefetch-loop-arrays ${LINKTIMEOPTIMIZATIONS} -fstack-protector-strong -pie -Wl,-z,relro,-z,now,-z,noexecstack,-z,defs
 # can set higher but function overhead is pretty small so meh
 INLINELIMIT = 15
-LINKERFLAGS = ${DYNAMICLINK} -Wl,--gc-sections,--as-needed,--relax,--strip-all -finline-functions -finline-limit=${INLINELIMIT}  ${LINKTIMEOPTIMIZATIONS} -fstack-protector
+LINKERFLAGS = ${DYNAMICLINK} -Wl,--gc-sections,--as-needed,--relax,--strip-all -finline-functions -finline-limit=${INLINELIMIT}  ${LINKTIMEOPTIMIZATIONS} -fstack-protector-strong -pie -Wl,-z,relro,-z,now,-z,noexecstack,-z,defs
 
 BINARY = ${X64}
 CPPFLAGS = -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L ${XINERAMAFLAGS}

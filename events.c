@@ -2,6 +2,7 @@
 #include "events.h"
 #include "util.h"
 #include "config.h"
+#include "keybinds.h"
 #include "dwm.h"
 
 extern WM *_wm;
@@ -169,6 +170,9 @@ buttonpress(XCBGenericEvent *event)
             _wm->selmon = m;
             focus(NULL);
         }
+        else if(_wm->selmon && _wm->selmon->desksel && _wm->selmon->desksel->sel)
+        {   unfocus(_wm->selmon->desksel->sel, 1);  /* focus nothing */
+        }
     }
 
     Client *c;
@@ -257,13 +261,14 @@ motionnotify(XCBGenericEvent *event)
     const XCBTimestamp tim      = ev->time;
 
 
-    static Monitor *mon = NULL;
-    Monitor *m;
-    const XCBWindow root = _wm->root;
-
-    if(eventwin != root)
+    /* due to the mouse being able to move a ton we want to limit the cycles burnt for non root events */
+    if(eventwin != _wm->root)
     {   return;
     }
+
+
+    static Monitor *mon = NULL;
+    Monitor *m;
 
     if((m = recttomon(rootx, rooty, 1, 1)) != mon && mon)
     {

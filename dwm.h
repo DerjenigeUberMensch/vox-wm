@@ -16,8 +16,6 @@
 #define NAME        "NOT_SET"
 #endif
 
-#define WM_NAME     "gamer"
-
 #define BUTTONMASK              (XCB_EVENT_MASK_BUTTON_PRESS|XCB_EVENT_MASK_BUTTON_RELEASE)
 #define CLEANMASK(mask)         (mask & ~(_wm->numlockmask|XCB_MOD_MASK_LOCK) & \
                                 (XCB_MOD_MASK_SHIFT|XCB_MOD_MASK_CONTROL| \
@@ -249,10 +247,12 @@ Desktop *nextdesktop(Desktop *desktop);
 Monitor *nextmonitor(Monitor *monitor);
 Client *nextvisible(Client *c);
 Client *lastvisible(Client *c);
+void quit(void);
 Monitor *recttomon(int16_t x, int16_t y, uint16_t width, uint16_t height);
 void resize(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height, uint8_t interact);
 void resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height);
 void restack(Desktop *desk);
+void restart(void);
 void run(void);
 void scan(void);
 void setalwaysontop(Client *c, uint8_t isalwaysontop);

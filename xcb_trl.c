@@ -152,7 +152,11 @@ XCBOpenDisplay(const char *displayName, int *defaultScreenReturn)
     }
     return display;
 }
-
+XCBDisplay *
+XCBOpenConnection(const char *displayName, int *defaultScreenReturn)
+{
+    return xcb_connect(displayName, defaultScreenReturn);
+}
 void 
 XCBCloseDisplay(XCBDisplay *display)
 {
@@ -348,6 +352,23 @@ XCBSync(XCBDisplay *display)
     xcb_aux_sync(display);
 }
 
+void
+XCBSyncf(XCBDisplay *display)
+{
+    /* analagous to XSync(display, True) */
+    XCBSync(display);
+    XCBGenericEvent *ev = NULL;
+    while(((ev = XCBPollForQueuedEvent(display))))
+    {   
+        if(!ev->response_type)
+        {   _xcb_err_handler(display, (xcb_generic_error_t *)ev);
+        }
+        else
+        {   free(ev);
+        }
+    }
+}
+
 
 
 
@@ -499,7 +520,6 @@ XCBAtom
 XCBInternAtomReply(XCBDisplay *display, XCBCookie cookie)
 {
     XCBGenericError *err = NULL;
-    xcb_atom_t atom = 0;
     const xcb_intern_atom_cookie_t cookie1 = { .sequence = cookie.sequence };
     xcb_intern_atom_reply_t *reply = xcb_intern_atom_reply(display, cookie1, &err);
     if(err)
@@ -507,7 +527,7 @@ XCBInternAtomReply(XCBDisplay *display, XCBCookie cookie)
         _xcb_err_handler(display, err);
         return 0;
     }
-    atom = reply->atom;
+    const xcb_atom_t atom = reply->atom;
     free(reply);
     return atom;
 }
@@ -690,8 +710,8 @@ XCBFlush(XCBDisplay *display)
 {
     /* This locks the XServer thread (pthread mutix lock).
      * and writes the buffer to the server.
-     * RETURN 0 on Success.
-     * RETURN 1 on Failure.
+     * RETURN 1 on Success.
+     * RETURN 0 on Failure.
      */
     return xcb_flush(display);
 }
@@ -748,8 +768,7 @@ XCBSetIOErrorHandler(XCBDisplay *display, void *IOHandler)
 char *
 XCBErrorCodeText(
         uint8_t error_code)
-{                                           /* array size - 1 */
-    error_code *= error_code > 0 && error_code < 18 - 1;
+{
     char *errs[18] =
     {
         [0] = NULL,
@@ -771,18 +790,15 @@ XCBErrorCodeText(
         [BadLength] = "BadLength",
         [BadImplementation] = "BadImplementation",
     };
-
-    if(errs[error_code])
-    {   return errs[error_code];
-    }
-    return NULL;
+    /* bounds check */      /* & over && for better inlining */
+    error_code *= (error_code > 0) & (error_code < 18);
+    return errs[error_code];
 }
 
 char *
 XCBErrorMajorCodeText(
         uint8_t major_code)
-{                                           /* array size - 1 */
-    major_code *= major_code > 0 && major_code < 128 - 1;
+{
     char *errs[128] = 
     {
         [0] = NULL,
@@ -907,11 +923,40 @@ XCBErrorMajorCodeText(
         [X_GetModifierMapping] = "GetModifierMapping",
         [X_NoOperation] = "NoOperation"
     };
-    if(errs[major_code])
-    {   return errs[major_code];
-    }
+    /* bounds check */      /* & over && for better inlining */
+    major_code *= (major_code > 0) & (major_code < 128);
+    return errs[major_code];
+}
+
+char *
+XCBErrorMinorCodeText(
+        uint16_t minor_code
+        )
+{   
     return NULL;
 }
+
+char *
+XCBErrorDisplayText(
+        uint8_t display_error
+        )
+{
+    char *errs[7] = 
+    {
+        [0] = NULL,
+        [XCB_CONN_ERROR] = "DisplayError",
+        [XCB_CONN_CLOSED_EXT_NOTSUPPORTED] = "ExtensionNotSupported",
+        [XCB_CONN_CLOSED_MEM_INSUFFICIENT] = "OutOfMemory",
+        [XCB_CONN_CLOSED_REQ_LEN_EXCEED] = "TooManyRequests",
+        [XCB_CONN_CLOSED_PARSE_ERR] = "InvalidDisplay",
+        [XCB_CONN_CLOSED_INVALID_SCREEN] = "InvalidScreen"
+    };
+    /* bounds check */              /* & over && for better inlining */
+    display_error *= (display_error > 0) & (display_error < 7);
+    return errs[display_error];
+}
+
+
 
 /* events */
 
@@ -1165,6 +1210,15 @@ XCBCookie
 XCBMapWindow(XCBDisplay *display, XCBWindow window)
 {
     return xcb_map_window(display, window);
+}
+
+XCBCookie
+XCBDestroyWindow(
+        XCBDisplay *display,
+        XCBWindow window
+        )
+{
+    return xcb_destroy_window(display, window);
 }
 
 XCBWindow 
