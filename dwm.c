@@ -322,7 +322,6 @@ cleanup(void)
     XCBCookie cookie;
 
     cleanupmons();
-
     cookie = XCBDestroyWindow(_wm->dpy, _wm->wmcheckwin);
     XCBDiscardReply(_wm->dpy, cookie);
     XCBKeySymbolsFree(_wm->syms);
@@ -577,38 +576,36 @@ grabkeys(void)
     updatenumlockmask();
     u32 i, j, k;
     u32 modifiers[4] = { 0, XCB_MOD_MASK_LOCK, _wm->numlockmask, _wm->numlockmask|XCB_MOD_MASK_LOCK };
-    XCBKeyCode *keycodes;
+    XCBKeyCode *keycodes[LENGTH(keys)];
     XCBUngrabKey(_wm->dpy, XCB_GRAB_ANY, XCB_MOD_MASK_ANY, _wm->root);
     
     /* This grabs all the keys */
     for(i = 0; i < LENGTH(keys); ++i)
-    {   keycodes = XCBKeySymbolsGetKeyCode(_wm->syms, keys[i].keysym);
+    {   keycodes[i] = XCBKeySymbolsGetKeyCode(_wm->syms, keys[i].keysym);
     }
-    /* --i because i will be (array_index + 1) this causes overflow errors resulting in keycodes[i] being negative */
-    --i;
-    if(!keycodes)
-    {   /* This is kinda a lie as it could occur but if it did we probably would have already called DIE() by then */
-        DEBUG("%s", "keycodes are undefined this should not be possible.");
-        return;
-    }
-    for(j = 0; keycodes[j] != XCB_NO_SYMBOL; ++j)
+
+    for(i = 0; i < LENGTH(keys); ++i)
     {
-        for(i = 0; i < LENGTH(keys); ++i)
+        for(j = 0; keycodes[i][j] != XCB_NO_SYMBOL; ++j)
         {
-            if(keys[i].keysym == xcb_key_symbols_get_keysym(_wm->syms, keycodes[j], 0))
-            {
+            if(keys[i].keysym == XCBKeySymbolsGetKeySym(_wm->syms, keycodes[i][j], 0))
+            {   
+                DEBUG("%d", keycodes[i][j]);
                 for(k = 0; k < LENGTH(modifiers); ++k)
                 {
-                    XCBGrabKey(_wm->dpy, 
-                            keycodes[j], keys[i].mod | modifiers[k], 
+                    XCBCookie c;
+                    c = XCBGrabKey(_wm->dpy, 
+                            keycodes[i][j], keys[i].mod | modifiers[k], 
                             _wm->root, 1, 
                             XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
-                    DEBUG("Grabbed: %d", keycodes[j]);
                 }
             }
         }
     }
-    free(keycodes);
+
+    for(i = 0; i < LENGTH(keys); ++i)
+    {   free(keycodes[i]);
+    }
 }
 
 void
@@ -670,7 +667,8 @@ manage(XCBWindow win)
     updatewmhints(c);
     
     XCBSelectInput(_wm->dpy, win, 
-            XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_FOCUS_CHANGE|XCB_EVENT_MASK_PROPERTY_CHANGE|XCB_EVENT_MASK_STRUCTURE_NOTIFY);
+            XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_FOCUS_CHANGE|XCB_EVENT_MASK_PROPERTY_CHANGE|XCB_EVENT_MASK_STRUCTURE_NOTIFY
+            );
     grabbuttons(win, 0);
 
     if(!ISFLOATING(c))

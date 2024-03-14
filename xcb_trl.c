@@ -1008,6 +1008,81 @@ XCBPollForQueuedEvent(XCBDisplay *display)
     return xcb_poll_for_queued_event(display);
 }
 
+void *
+XCBCheckReply(
+        XCBDisplay *display, 
+        XCBCookie request)
+{
+    XCBGenericError *err = NULL;
+    void *ret = NULL;
+    xcb_poll_for_reply(display, request.sequence, &ret, &err);
+
+    if(err)
+    {    _xcb_err_handler(display, err);
+        if(ret)
+        {   free(ret);
+        }
+        return NULL;
+    }
+    return ret;
+}
+
+void *
+XCBCheckReply64(
+        XCBDisplay *display, 
+        XCBCookie64 request)
+{   
+    XCBGenericError *err = NULL;
+    void *ret = NULL;
+    xcb_poll_for_reply64(display, request.sequence, &ret, &err);
+
+    if(err)
+    {    _xcb_err_handler(display, err);
+        if(ret)
+        {   free(ret);
+        }
+        return NULL;
+    }
+    return ret;
+}
+
+
+void *
+XCBWaitForReply(
+        XCBDisplay *display,
+        XCBCookie cookie
+        )
+{
+    XCBGenericError *err = NULL;
+    void *ret = xcb_wait_for_reply(display, cookie.sequence, &err);
+    if(err)
+    {   _xcb_err_handler(display, err);
+        if(ret)
+        {   free(ret);
+        }
+        return NULL;
+    }
+    return ret;
+}
+
+void *
+XCBWaitForReply64(
+        XCBDisplay *display,
+        XCBCookie64 cookie
+        )
+{
+    XCBGenericError *err = NULL;
+    void *ret = xcb_wait_for_reply64(display, cookie.sequence, &err);
+    if(err)
+    {   _xcb_err_handler(display, err);
+        if(ret)
+        {   free(ret);
+        }
+        return NULL;
+    }
+    return ret;
+}
+
 XCBCookie
 XCBGrabKey(XCBDisplay *display, XCBKeyCode keycode, u16 modifiers, XCBWindow grab_window, u8 owner_events, u8 pointer_mode, u8 keyboard_mode)
 {
@@ -1383,6 +1458,93 @@ XCBPrefetchMaximumRequestLength(XCBDisplay *display)
     xcb_prefetch_maximum_request_length(display);
 }
 
+XCBCookie64
+XCBWiden(XCBDisplay *display, XCBCookie cookie)
+{
+    /* this might break in the future so we dont want to typedef XCBDisplay */
+    struct spoofIn
+    {
+        pthread_cond_t event_cond;
+        int reading;
+        char queue[4096];
+        int queue_len;
+
+        uint64_t request_expected;
+        uint64_t request_read;
+        uint64_t request_completed;
+        uint64_t total_read;
+        struct reply_list *current_reply;
+        struct reply_list **current_reply_tail;
+
+        void *replies;
+        struct event_list *events;
+        struct event_list **events_tail;
+        struct reader_list *readers;
+        struct special_list *special_waiters;
+
+        struct pending_reply *pending_replies;
+        struct pending_reply **pending_replies_tail;
+    #if HAVE_SENDMSG
+        _xcb_fd in_fd;
+    #endif
+        struct xcb_special_event *special_events;
+    };
+    enum lazy_reply_tag
+    {
+        LAZY_NONE = 0,
+        LAZY_COOKIE,
+        LAZY_FORCED
+    };
+    struct spoofOut {
+        pthread_cond_t cond;
+        int writing;
+
+        pthread_cond_t socket_cond;
+        void (*return_socket)(void *closure);
+        void *socket_closure;
+        int socket_moving;
+
+        char queue[16384];
+        int queue_len;
+
+        uint64_t request;
+        uint64_t request_written;
+        uint64_t request_expected_written;
+        uint64_t total_written;
+
+        pthread_mutex_t reqlenlock;
+        enum lazy_reply_tag maximum_request_length_tag;
+        union {
+            unsigned int cookie;
+            uint32_t value;
+        } maximum_request_length;
+        #if HAVE_SENDMSG
+        _xcb_fd out_fd;
+        #endif
+    };
+    struct spoofDisplay
+    {
+        int has_error;
+        xcb_setup_t *setup;
+        int fd;
+        pthread_mutex_t iolock;
+        struct spoofIn in;
+        struct spoofOut out;
+        uint64_t infinity[1024];
+    };
+    struct spoofDisplay *disp = (struct spoofDisplay *)display;
+    u64 widen = (disp->out.request & UINT64_C(0xffffffff00000000)) | cookie.sequence;
+    if(widen > disp->out.request)
+    {   widen -= UINT64_C(1) << 32;
+    }
+    return (XCBCookie64){ .sequence = widen };
+}
+
+    XCBCookie64 
+XCBWidenCookie(XCBDisplay *display, XCBCookie cookie)
+{
+    return XCBWiden(display, cookie);
+}
 
 /* ICCCM */
 
@@ -1423,6 +1585,3 @@ XCBWipeGetWMProtocolsReply(
     xcb_icccm_get_wm_protocols_reply_wipe(protocols);
 }
 
-
-
-//xcb_generic_event_t *xcb_poll_for_queued_event(xcb_connection_t *c);

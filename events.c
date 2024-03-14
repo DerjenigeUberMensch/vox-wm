@@ -85,6 +85,7 @@ keypress(XCBGenericEvent *event)
     /* This Could work MAYBE allowing for upercase and lowercase Keybinds However that would complicate things due to our ability to mask Shift
      * sym = XCBKeySymbolsGetKeySym(_wm->syms, keydetail, cleanstate); 
      */
+    DEBUG("%d", sym);
     int i;
     for(i = 0; i < LENGTH(keys); ++i)
     {

@@ -331,32 +331,18 @@
 #include <xcb/xcb_xrm.h>
 
 
+
+
 /* Ghosts */
 
+
+
 /*  FILE xcb_conn.c ;
- *  PUBLIC: ;
- *  int has_error -> This is Nonzero on error ;
- *  XCBSetup *setup -> This is a struct pointer to the main display properties: {root, width, height...} ;
- *  int fd -> This is short for file descriptor (AKA connection number) ;
- *  PRIVATE: ;
- *  pthread_mutex_t iolock -> This should be considered READONLY ;
- *  _xcb_in in -> This should be considered READONLY ;
- *  _xcb_out out -> This should be considered READONLY ;
- *  _xcb_ext ext -> This should be considered READONLY ;
- *  _xcb_xid xid -> This should be considered READONLY ;
+ *  TROLL Opaque structure;
  */
 typedef xcb_connection_t XCBConnection;
 /*  FILE: src/xcb_conn.c ;
- *  PUBLIC: ;
- *  int has_error -> This is Nonzero on error ;
- *  XCBSetup *setup -> This is a struct pointer to the main display properties: {root, width, height...} ;
- *  int fd -> This is short for file descriptor (AKA connection number) ;
- *  PRIVATE: ;
- *  pthread_mutex_t iolock -> This should be considered READONLY ;
- *  _xcb_in in -> This should be considered READONLY ;
- *  _xcb_out out -> This should be considered READONLY ;
- *  _xcb_ext ext -> This should be considered READONLY ;
- *  _xcb_xid xid -> This should be considered READONLY ;
+ *  TROLL Opaque structure;
  */
 typedef xcb_connection_t XCBDisplay;
 /* FILE: xcb/xcb.h ;
@@ -390,6 +376,7 @@ typedef xcb_window_t XCBWindow;
 typedef xcb_cursor_t XCBCursor;
 typedef xcb_icccm_get_text_property_reply_t XCBTextProperty;
 typedef xcb_void_cookie_t XCBCookie;
+typedef struct XCBCookie64 XCBCookie64;
 typedef xcb_get_keyboard_mapping_reply_t XCBKeyboardMapping;
 typedef xcb_get_modifier_mapping_reply_t XCBKeyboardModifier;
 typedef xcb_atom_t XCBAtom;
@@ -556,6 +543,10 @@ typedef xcb_selection_request_event_t XCBSelectionRequestEvent;
 typedef xcb_ge_event_t XCBGeEvent;
 
 
+/* structs */
+struct XCBCookie64
+{   uint64_t sequence;
+};
 
 
 /* macros */
@@ -566,6 +557,7 @@ enum
     XCB_WINDOW_WITHDRAWN_STATE = XCB_ICCCM_WM_STATE_WITHDRAWN,
     XCB_WINDOW_WM_HINT_STATE = XCB_ICCCM_WM_HINT_STATE,
 };
+
 
 
 
@@ -1468,13 +1460,40 @@ XCBCheckReply(
 /* Check if a specified cookie request has a reply available from the XServer.
  * This is different from XCBCheckReply() as it assumes the request has already be widened.
  *
+ * NOTE: Casting a XCBCookie as a XCBCookie64 is not a safe operation.
+ *
  * RETURN: void * On Success.
  * RETURN: NULL On not Avaible/Failure.
  */
 void *
 XCBCheckReply64(
         XCBDisplay *display, 
-        XCBCookie request);
+        XCBCookie64 request);
+
+/* Waits for the specifed cookie value to be returned as a void *
+ * 
+ * RETURN: void * On Success.
+ * RETURN: NULL On IOError/Failure.
+ */
+void *
+XCBWaitForReply(
+        XCBDisplay *display,
+        XCBCookie cookie
+        );
+
+/* Waits for the specifed cookie value to be returned as a void *
+ * This is different from XCBWaitForReply() as it assumes the request has already be widened.
+ *
+ * NOTE: Casting a XCBCookie as a XCBCookie64 is not a safe operation.
+ *
+ * RETURN: void * On Success.
+ * RETURN: NULL On IOError/Failure.
+ */
+void *
+XCBWaitForReply64(
+        XCBDisplay *display,
+        XCBCookie64 cookie
+        );
 
 
 
@@ -2059,6 +2078,31 @@ XCBPrefetchMaximumRequestLength(
         XCBDisplay *display);
 
 
+/* This functions widens a cookies requets to match the 64 version of functions.
+ *
+ * NOTE: This function is NOT supported and may break at any time.
+ * NOTE: This function consumes alot of memory ~.03GiB.
+ * NOTE: DONOT USE THIS.
+ * NOTE: Seriously dont.
+ *
+ * RETURN: XCBCookie64
+ */
+XCBCookie64
+XCBWiden(XCBDisplay *display, XCBCookie cookie);
+/* This functions widens a cookies requets to match the 64 version of functions.
+ *
+ * NOTE: This function is NOT supported and may break at any time.
+ * NOTE: This function consumes alot of memory ~.03GiB.
+ * NOTE: DONOT USE THIS.
+ * NOTE: Seriously dont.
+ *
+ * RETURN: XCBCookie64
+ */
+XCBCookie64 
+XCBWidenCookie(XCBDisplay *display, XCBCookie cookie);
+
+
+
 
 
 /*
@@ -2095,7 +2139,32 @@ XCBWipeGetWMProtocolsReply(
 
 
 
-/* Events */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
