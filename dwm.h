@@ -41,6 +41,8 @@
 #define _NEVERFOCUS         ((1 << 6))
 #define _HIDDEN             ((1 << 7))
 #define _STICKY             ((1 << 8))
+#define _DIALOG             ((1 << 9))
+#define _MODAL              ((1 << 10))
 
 /* Client macros */
 
@@ -53,6 +55,8 @@
 #define NEVERFOCUS(C)           ((C->flags & _NEVERFOCUS))
 #define ISHIDDEN(C)             ((C->flags & _HIDDEN))
 #define ISSTICKY(C)             ((C->flags & _STICKY))
+#define ISDIALOG(C)             ((C->flags & _DIALOG))
+#define ISMODAL(C)              ((C->flags & _MODAL))
 #define ISVISIBLE(C)            ((C->mon->desksel == C->desktop || ISSTICKY(c)))
 
 /* Monitor struct flags */
@@ -259,9 +263,11 @@ void setalwaysontop(Client *c, uint8_t isalwaysontop);
 void setborderwidth(Client *c, uint16_t border_width);
 void setclientdesktop(Client *c, Desktop *desktop);
 void setclientstate(Client *c, uint8_t state);
+void setdialog(Client *c, uint8_t state);
 void setfloating(Client *c, uint8_t isfloating);
 void setfullscreen(Client *c, uint8_t isfullscreen);
 void setfocus(Client *c);
+void setmodal(Client *c, uint8_t state);
 void setneverfocus(Client *c, uint8_t state);
 void setsticky(Client *c, uint8_t state);
 void setup(void);
@@ -274,6 +280,7 @@ void sigterm(int signo);
 void startup(void);
 void tile(Desktop *desk);
 void unfocus(Client *c, uint8_t setfocus);
+void updatebarpos(Monitor *m);
 void updateclientlist(void);
 int  updategeom(void);
 void updatenumlockmask(void);
@@ -281,7 +288,7 @@ void updatesizehints(Client *c);
 void updatetitle(Client *c);
 void updateicon(Client *c);
 void updatewindowstate(Client *c, XCBAtom state, uint8_t data);
-void updatewindowtype(Client *c);
+void updatewindowtype(Client *c, XCBAtom windowtype);
 void updatewmhints(Client *c);
 void winsetstate(XCBWindow win, int32_t state);
 Client *wintoclient(XCBWindow win);

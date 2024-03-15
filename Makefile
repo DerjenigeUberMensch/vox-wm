@@ -2,29 +2,31 @@
 
 include config.mk
 
+BIN = binary
 SRC = $(wildcard *.c)
 SRCH= $(wildcard *.h)
-OBJ = ${SRC:.c=.o}
+OBJ = $(patsubst %.c,${BIN}/%.o,$(SRC))
 VERSION = 1.0.0
 EXE = dwm
+EXEPATH = ${BIN}/${EXE}
 CMACROS = -DVERSION=\"${VERSION}\" -DNAME=\"${EXE}\"
 CFLAGS += ${CMACROS}
 
 all: options default
 
-
+${BIN}:
+	mkdir -p ${BIN}
 options:
 	@echo ${EXE} build options:
 	@echo "CFLAGS   = ${CFLAGS}"
 	@echo "LDFLAGS  = ${LDFLAGS}"
 	@echo "CC       = ${CC}"
 
-.c.o:
-	${CC} -c ${CFLAGS} $< 
+${BIN}/%.o: %.c | ${BIN}
+	${CC} ${CFLAGS} -c $< -o $@
 
 default: ${OBJ}
-	${CC} -o ${EXE} ${OBJ} ${LDFLAGS}
-	rm -f -- $(wildcard *.o)
+	${CC} -o ${BIN}/${EXE} ${OBJ} ${LDFLAGS}
 
 release:
 	rm -rf -f -- ${EXE}-${VERSION}
@@ -34,7 +36,7 @@ release:
 
 install: all
 	mkdir -p ${DESTDIR}${PREFIX}/bin
-	cp -f ${EXE} ${DESTDIR}${PREFIX}/bin
+	cp -f ${EXEPATH} ${DESTDIR}${PREFIX}/bin
 	chmod 755 ${DESTDIR}${PREFIX}/bin/${EXE}
 
 uninstall:

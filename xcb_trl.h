@@ -935,7 +935,8 @@ XCBGetPropertyCookie(
  *
  * NOTE: reply must be freed by caller.
  *
- * RETURN: 0 on Failure.
+ * RETURN: XCBWindowProperty * on Success.
+ * RETURN: NULL on Failure.
  *
  */
 XCBWindowProperty *
@@ -953,6 +954,19 @@ XCBGetWindowPropertyCookie(
         uint32_t long_length,
         uint8_t _delete,
         XCBAtom req_type
+        );
+/*
+ *
+ * NOTE: reply must be freed by caller.
+ *
+ * RETURN: XCBWindowProperty * on Success.
+ * RETURN: NULL on Failure.
+ *
+ */
+XCBWindowProperty *
+XCBGetWindowPropertyReply(
+        XCBDisplay *display,
+        XCBCookie cookie
         );
 
 

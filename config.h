@@ -93,8 +93,6 @@
  * CFG_MAX_CLIENT_COUNT may limit your client count lower than usual when using a compositor.
  * FAST_INPUT feels janky
  */
-/* make vars static to avoid linker errs cause these are consts and we need sizeof()*/
-static const char *fonts[]      =   {"monospace:size=12" };
 static const char dmenufont[]   =   {"monospace:size=12"};
 
 /* layout(s) */

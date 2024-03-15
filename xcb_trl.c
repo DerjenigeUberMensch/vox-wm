@@ -587,6 +587,26 @@ XCBGetWindowPropertyCookie(
 }
 
 XCBWindowProperty *
+XCBGetWindowPropertyReply(
+        XCBDisplay *display,
+        XCBCookie cookie
+        )
+{
+    XCBGenericError *err = NULL;
+    const xcb_get_property_cookie_t cookie1 = { .sequence = cookie.sequence };
+    xcb_get_property_reply_t *ret = xcb_get_property_reply(display, cookie1, &err);
+    if(err)
+    {
+        _xcb_err_handler(display, err);
+        if(ret)
+        {   free(ret);
+        }
+        return NULL;
+    }
+    return ret;
+}
+
+XCBWindowProperty *
 XCBGetPropertyReply(
         XCBDisplay *display,
         XCBCookie cookie
@@ -598,6 +618,9 @@ XCBGetPropertyReply(
     if(err)
     {
         _xcb_err_handler(display, err);
+        if(ret)
+        {   free(ret);
+        }
         return NULL;
     }
     return ret;

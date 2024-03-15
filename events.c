@@ -829,7 +829,7 @@ selectionrequest(XCBGenericEvent *event)
 
 void
 genericevent(XCBGenericEvent *event)
-{   (void)event;
+{
 }
 
 void

@@ -1,5 +1,3 @@
-
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -444,7 +442,8 @@ createmon(void)
 {
     Monitor *m = calloc(1, sizeof(Monitor ));
     if(!m)
-    {   return NULL;
+    {   /* while calling "DIE" may seem extreme frankly we cannot afford a monitor to fail alloc. */
+        DIE("%s", "(OutOfMemory) Could not alloc enough memory for a Monitor");
     }
     m->mx = m->my = 0;
     m->mw = m->mh = 0;
@@ -453,6 +452,8 @@ createmon(void)
     m->flags = 0;
     m->next = NULL;
     m->barwin = 0;
+    m->bx = m->by = 0;
+    m->bw = m->bh = 0;
     int i;
     for(i = 0; i < _wm->desktopcount; ++i)
     {   createdesktop(m);
@@ -613,20 +614,35 @@ grid(Desktop *desk)
 Client *
 manage(XCBWindow win)
 {
-    Client *c, *t = NULL;
-    XCBWindow trans = None;
-    XCBWindowGeometry *wg;
-    XCBCookie wgcookie = XCBGetWindowGeometryCookie(_wm->dpy, win);
-    XCBCookie transcookie = XCBGetTransientForHintCookie(_wm->dpy, win);
-
+    /* checks */
     if(win == _wm->root)
     {   DEBUG("%s", "Cannot manage() root window.");
         return NULL;
     }
+
+    Client *c, *t = NULL;
+    XCBWindow trans = 0;
+    XCBWindowGeometry *wg;
+    XCBCookie wgcookie = XCBGetWindowGeometryCookie(_wm->dpy, win);
+    XCBCookie transcookie = XCBGetTransientForHintCookie(_wm->dpy, win);
+    XCBCookie wtypecookie = XCBGetWindowPropertyCookie(_wm->dpy, win, netatom[NetWMWindowType], 0L, sizeof(XCBAtom ), False, XCB_ATOM_ATOM);
+    XCBWindowProperty *unused;
+    XCBAtom wtype = 0;
+
     c = createclient(_wm->selmon);
     c->win = win;
 
+    /* wait for replies */
     wg = XCBGetWindowGeometryReply(_wm->dpy, wgcookie);
+    XCBGetTransientForHintReply(_wm->dpy, transcookie, &trans);
+    unused = XCBGetWindowPropertyReply(_wm->dpy, wtypecookie);
+
+    if(unused)
+    {   
+        wtype = unused->type;
+        free(unused);
+    }
+
     if(wg)
     {   /* init geometry */
         c->x = c->oldx = wg->x;
@@ -636,8 +652,7 @@ manage(XCBWindow win)
         c->oldbw = wg->border_width;
         free(wg);
     }
-
-    if(XCBGetTransientForHintReply(_wm->dpy, transcookie, &trans) && (t = wintoclient(trans)))
+    if(trans && (t = wintoclient(trans)))
     {
         c->mon = t->mon;
         c->desktop = t->desktop;
@@ -663,7 +678,7 @@ manage(XCBWindow win)
     /*  XSetWindowBorder(dpy, w, scheme[SchemeBorder][ColBorder].pixel); */
     configure(c);   /* propagates border_width, if size doesn't change */
     updatetitle(c);
-    updatewindowtype(c);
+    updatewindowtype(c, wtype);
     updatesizehints(c);
     updatewmhints(c);
     
@@ -934,7 +949,7 @@ void
 scan(void)
 {
     u16 i, num;
-    XCBWindow d1, d2, *wins = NULL;
+    XCBWindow *wins = NULL;
     const XCBCookie cookie = XCBQueryTreeCookie(_wm->dpy, _wm->root);
     XCBQueryTree *tree = NULL;
 
@@ -992,8 +1007,7 @@ scan(void)
         free(tree);
     }
     else
-    {
-        DEBUG("%s", "Failed to scan for clients.");
+    {   DEBUG("%s", "Failed to scan for clients.");
     }
 }
 
@@ -1055,11 +1069,12 @@ setdesktop(void)
 void
 setdesktopnames(void)
 {
-    XCBTextProperty text;
-    /*
-    Xutf8TextListToTextProperty(dpy, (char **)tags, TAGSLENGTH, XUTF8StringStyle, &text);
-    XSetTextProperty(dpy, root, &text, netatom[NetDesktopNames]);
-    */
+    char names[_wm->selmon->deskcount];
+    int i;
+    for(i = 0; i < _wm->selmon->deskcount; ++i)
+    {   names[i] = i;
+    }
+    XCBChangeProperty(_wm->dpy, _wm->root, netatom[NetDesktopNames], XCB_ATOM_STRING, 8, XCB_PROP_MODE_REPLACE, names, _wm->selmon->deskcount);
 }
 
 void
@@ -1067,6 +1082,13 @@ setdesktopnum(void)
 {
     i32 data[1] = { _wm->selmon->deskcount };
     XCBChangeProperty(_wm->dpy, _wm->root, netatom[NetNumberOfDesktops], XCB_ATOM_CARDINAL, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)data, 1);
+}
+
+void
+setdialog(Client *c, uint8_t state)
+{
+    c->flags &= (~_DIALOG);
+    c->flags |= (_DIALOG * !!state);
 }
 
 void
@@ -1122,9 +1144,16 @@ setfocus(Client *c)
 }
 
 void
+setmodal(Client *c, uint8_t state)
+{
+    c->flags &= (~_MODAL);
+    c->flags |= (_MODAL * !!state);
+}
+
+void
 setneverfocus(Client *c, uint8_t state)
 {
-    c->flags &= ~(_NEVERFOCUS);
+    c->flags &= (~_NEVERFOCUS);
     c->flags |= (_NEVERFOCUS * !!state);
 }
 
@@ -1136,7 +1165,7 @@ setsticky(Client *c, u8 sticky)
     XCBChangeProperty(_wm->dpy, win, netatom[NetWMState], XCB_ATOM_ATOM, 32, 
             XCB_PROP_MODE_REPLACE, (unsigned char *)&replace, !!replace);
 
-    c->flags &= ~(_STICKY);
+    c->flags &= (~_STICKY);
     c->flags |= (_STICKY * !!sticky);
 }
 
@@ -1320,13 +1349,13 @@ updategeom(void)
 {
 	int dirty = 0;
 
+#ifdef XINERAMA
     int xienabled;
     int xiactive;
     const XCBQueryExtension *extrep;
     XCBXineramaIsActive *xia;
     int xinerama_screen_number;
     int xid;
-#ifdef XINERAMA
 
     /* check if we even have the extension enabled */
     extrep = xcb_get_extension_data(_wm->dpy, &xid);
@@ -1389,7 +1418,7 @@ updategeom(void)
 				m->mw = m->ww = unique[i].width;
 				m->mh = m->wh = unique[i].height;
                 /* we should update the bar position if we have one */
-                //updatebarpos()
+                updatebarpos(m)
 			}
 		/* removed monitors if n > nn */
 		for (i = nn; i < n; ++i)
@@ -1421,7 +1450,7 @@ updategeom(void)
 			_wm->mons->mw = _wm->mons->ww = _wm->sw;
 			_wm->mons->mh = _wm->mons->wh = _wm->sh;
             /* we should update the bar position if we have one */
-            //updatebarpos()
+            updatebarpos(_wm->mons);
 		}
 	}
 	if (dirty) 
@@ -1451,6 +1480,13 @@ unmanage(Client *c, uint8_t destroyed)
     cleanupclient(c);
     updateclientlist();
     focus(NULL);
+}
+
+void
+updatebarpos(Monitor *m)
+{
+    m->wh = m->mh;
+    m->wh -= m->bh * !!(SHOWBAR(m));
 }
 
 void
@@ -1518,7 +1554,6 @@ updatenumlockmask(void)
 void
 updatesizehints(Client *c)
 {
-
 }
 
 void
@@ -1529,13 +1564,118 @@ updatetitle(Client *c)
 void
 updatewindowstate(Client *c, XCBAtom state, u8 data)
 {
+    if(!state)
+    {   return;
+    }
+    const uint8_t toggle = (data == 2);
 
+    Monitor *m;
+    Client *temp;
+    m = c->mon;
+    data = !!data;
+    /* This is similiar to those Windows 10 dialog boxes that play the err sound and cant click anything else */
+    if (state == netatom[NetWMStateModal])
+    {
+        if(toggle)
+        {
+        }
+        if(c->mon->desksel->sel != c)
+        {   focus(c);
+        }
+    }
+    else if (state == netatom[NetWMStateAbove] || state == netatom[NetWMStateAlwaysOnTop])
+    {
+    }
+    else if (state == netatom[NetWMStateDemandAttention])
+    {
+    }
+    else if (state == netatom[NetWMStateFullscreen])
+    {
+    }
+    else if (state == netatom[NetWMStateMaximizedHorz])
+    {
+    }
+    else if (state == netatom[NetWMStateMaximizedVert])
+    {
+    }
+    else if (state == netatom[NetWMStateSticky])
+    {
+    }
+    else if (state == netatom[NetWMStateBelow])
+    {
+    }
+    else if (state == netatom[NetWMStateSkipTaskbar])
+    {   
+    }
+    else if (state == netatom[NetWMStateSkipPager])
+    {   /* This is stupid; IGNORE */
+    }
+    else if (state == netatom[NetWMStateHidden])
+    {   
+    }
+    else if (state == netatom[NetWMStateFocused])
+    {
+    }
+    else if (state == netatom[NetWMStateShaded])
+    {
+    }
 }
 
 void
-updatewindowtype(Client *c)
+updatewindowtype(Client *c, XCBAtom wtype)
 {
-
+    if(!wtype)
+    {   return;
+    }
+    XCBCookie ck;
+    if (wtype == netatom[NetWMWindowTypeDesktop])
+    {   setneverfocus(c, 1);
+        /* TODO */
+    }
+    else if (wtype == netatom[NetWMWindowTypeDock])
+    {
+        if(ISSTICKY(c))   
+        {
+            /* strut */
+            /* TODO */
+        }
+    }
+    else if (wtype == netatom[NetWMWindowTypeToolbar])
+    {   /* TODO */
+    }
+    else if (wtype == netatom[NetWMWindowTypeMenu])
+    {   /* TODO */
+    }
+    else if (wtype == netatom[NetWMWindowTypeUtility])
+    {   /* TODO */
+    }
+    else if (wtype == netatom[NetWMWindowTypeSplash])
+    {   /* IGNORE */
+    }
+    else if (wtype == netatom[NetWMWindowTypeDialog])
+    {   
+    }
+    else if (wtype == netatom[NetWMWindowTypeDropdownMenu])
+    {   /* TODO */
+    }
+    else if (wtype == netatom[NetWMWindowTypePopupMenu])
+    {   /* override-redirect IGNORE */
+    }
+    else if (wtype == netatom[NetWMWindowTypeTooltip])
+    {   /* override-redirect IGNORE */
+    }
+    else if (wtype == netatom[NetWMWindowTypeNotification])
+    {   /* override-redirect IGNORE */
+    }
+    else if (wtype == netatom[NetWMWindowTypeCombo])
+    {   /* override-redirect IGNORE */
+    }
+    else if (wtype == netatom[NetWMWindowTypeDnd])
+    {   /* override-redirect IGNORE */
+    }
+    else if (wtype == netatom[NetWMWindowTypeNormal])
+    {   /* This hint indicates that this window has no special properties IGNORE */
+    }
 }
 
 void
