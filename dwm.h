@@ -288,7 +288,7 @@ Client *wintoclient(XCBWindow win);
 Monitor *wintomon(XCBWindow win);
 
 
-void unmanage(Client *c);
+void unmanage(Client *c, uint8_t destroyed);
 
 void xerror(XCBDisplay *display, XCBGenericError *error);
 

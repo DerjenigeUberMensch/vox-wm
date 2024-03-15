@@ -513,7 +513,7 @@ getstate(XCBWindow win)
 {
     i32 state = 0;
     const XCBCookie cookie = XCBGetWindowPropertyCookie(_wm->dpy, win, wmatom[WMState], 0L, 2L, False, wmatom[WMState]);
-    XCBWindowAttributesReply *reply = XCBGetWindowAttributesReply(_wm->dpy, cookie);
+    XCBGetWindowAttributes *reply = XCBGetWindowAttributesReply(_wm->dpy, cookie);
     if(reply)
     {
         state = reply->map_state;
@@ -583,18 +583,15 @@ grabkeys(void)
     for(i = 0; i < LENGTH(keys); ++i)
     {   keycodes[i] = XCBKeySymbolsGetKeyCode(_wm->syms, keys[i].keysym);
     }
-
     for(i = 0; i < LENGTH(keys); ++i)
     {
         for(j = 0; keycodes[i][j] != XCB_NO_SYMBOL; ++j)
         {
             if(keys[i].keysym == XCBKeySymbolsGetKeySym(_wm->syms, keycodes[i][j], 0))
             {   
-                DEBUG("%d", keycodes[i][j]);
                 for(k = 0; k < LENGTH(modifiers); ++k)
                 {
-                    XCBCookie c;
-                    c = XCBGrabKey(_wm->dpy, 
+                    XCBGrabKey(_wm->dpy, 
                             keycodes[i][j], keys[i].mod | modifiers[k], 
                             _wm->root, 1, 
                             XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
@@ -622,6 +619,10 @@ manage(XCBWindow win)
     XCBCookie wgcookie = XCBGetWindowGeometryCookie(_wm->dpy, win);
     XCBCookie transcookie = XCBGetTransientForHintCookie(_wm->dpy, win);
 
+    if(win == _wm->root)
+    {   DEBUG("%s", "Cannot manage() root window.");
+        return NULL;
+    }
     c = createclient(_wm->selmon);
     c->win = win;
 
@@ -951,7 +952,7 @@ scan(void)
                 tfh[i] = XCBGetTransientForHintCookie(_wm->dpy, wins[i]);
             }
             
-            XCBWindowAttributesReply *replies[num];
+            XCBGetWindowAttributes *replies[num];
             /* filled data no need to free */
             XCBWindow trans[num];
             uint8_t hastrans = 0;
@@ -1175,11 +1176,12 @@ setup(void)
     /* xcb_event_mask_t */
     /* ~0 causes event errors because some event masks override others, for some reason... */
     wa.event_mask = 
-                    XCB_EVENT_MASK_BUTTON_PRESS|XCB_EVENT_MASK_BUTTON_RELEASE|
-                    XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_LEAVE_WINDOW|
-                    XCB_EVENT_MASK_POINTER_MOTION|
-                    XCB_EVENT_MASK_STRUCTURE_NOTIFY|XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY|XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT|
-                    XCB_EVENT_MASK_PROPERTY_CHANGE
+                    XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT|XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY
+                    |XCB_EVENT_MASK_BUTTON_PRESS|XCB_EVENT_MASK_BUTTON_RELEASE
+                    |XCB_EVENT_MASK_POINTER_MOTION
+                    |XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_LEAVE_WINDOW
+                    |XCB_EVENT_MASK_STRUCTURE_NOTIFY
+                    |XCB_EVENT_MASK_PROPERTY_CHANGE
                     ;   /* the ; is here just so its out of the way */
     XCBChangeWindowAttributes(_wm->dpy, _wm->root, XCB_CW_EVENT_MASK, &wa);
     XCBSelectInput(_wm->dpy, _wm->root, wa.event_mask);
@@ -1320,8 +1322,8 @@ updategeom(void)
 
     int xienabled;
     int xiactive;
-    const XCBExtensionReply *extrep;
-    XCBXineramaIsActiveReply *xia;
+    const XCBQueryExtension *extrep;
+    XCBXineramaIsActive *xia;
     int xinerama_screen_number;
     int xid;
 #ifdef XINERAMA
@@ -1431,7 +1433,7 @@ updategeom(void)
 }
 
 void
-unmanage(Client *c)
+unmanage(Client *c, uint8_t destroyed)
 {
     if(!c)
     {   return;
@@ -1442,6 +1444,10 @@ unmanage(Client *c)
     if(c->desktop->sel == c)
     {   c->desktop->sel = NULL;
     }
+    /* TODO
+     * Memory leak if a client is unmaped and maped again
+     * (cause we would get the same input focus twice)
+     */
     cleanupclient(c);
     updateclientlist();
     focus(NULL);
@@ -1551,7 +1557,6 @@ wintoclient(XCBWindow win)
     Desktop *desk = NULL;
     Monitor *m = NULL;
 
-    /* while we should if its root to return early we dont cause we dont handle root as a client */
     for(m = _wm->mons; m; m = m->next)
     {
         for(desk = m->desktops; desk; desk = desk->next)

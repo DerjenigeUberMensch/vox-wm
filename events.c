@@ -622,7 +622,7 @@ configurenotify(XCBGenericEvent *event)
     {
         Client *c;
         if((c = wintoclient(win)))
-        {   unmanage(c);
+        {   unmanage(c, 0);
         }
     }
     XCBSync(_wm->dpy);
@@ -650,9 +650,8 @@ createnotify(XCBGenericEvent *event)
     }
 
     Client *c = wintoclient(win);
-    if(!c)
+    if(!c && ((c = manage(win))))
     {   
-        c = manage(win);
         setborderwidth(c, bw);
         resize(c, x, y, w, h, 0);
         XCBSync(_wm->dpy);
@@ -668,7 +667,7 @@ destroynotify(XCBGenericEvent *event)
 
     Client *c = NULL;
     if((c = wintoclient(win)))
-    {   unmanage(c);
+    {   unmanage(c, 1);
     }
     XCBSync(_wm->dpy);
 }
@@ -713,7 +712,7 @@ unmapnotify(XCBGenericEvent *event)
 
     Client *c;
     if((c = wintoclient(win)))
-    {   unmanage(c);
+    {   unmanage(c, 0);
     }
     XCBSync(_wm->dpy);
 }
