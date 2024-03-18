@@ -590,6 +590,7 @@ configurenotify(XCBGenericEvent *event)
         dirty = (_wm->sw != w || _wm->sh != h);
         _wm->sw = w;
         _wm->sh = h;
+        DEBUG("(w: %d, h: %d)", w, h);
 
         if(updategeom() || dirty)
         {
@@ -628,9 +629,6 @@ configurenotify(XCBGenericEvent *event)
     XCBSync(_wm->dpy);
 }
 
-/* The window manager technically doesnt have to abide by createnotify as it doesnt need to manage its own windows
- * However if a window manager wants to manage these windows instead of ignoring them you would do it here 
- */
 void
 createnotify(XCBGenericEvent *event)
 {
@@ -780,13 +778,15 @@ propertynotify(XCBGenericEvent *event)
         switch(atom)
         {
             case XCB_ATOM_WM_TRANSIENT_FOR:
-                  break;
+                break;
             case XCB_ATOM_WM_NORMAL_HINTS:
-                  break;
+                break;
             case XCB_ATOM_WM_HINTS:
-                  updatewmhints(c);
-                  /* draw bar */
-                  break;
+                XCBCookie cookie = XCBGetWMHintsCookie(_wm->dpy, c->win);
+                XCBWMHints *wmh = XCBGetWMHintsReply(_wm->dpy, cookie);
+                updatewmhints(c, wmh);
+                /* draw bar */
+                break;
             default:
                   break;
         }

@@ -130,11 +130,13 @@ _xcb_err_handler(XCBDisplay *display, XCBGenericError *err)
             }
         }
         free(err);
+        err = NULL;
         return;
     }
     /* this is unreachable if no handler is set */
     _handler(display, err);
     free(err);
+    err = NULL;
 }
 
 XCBDisplay *
@@ -1753,4 +1755,134 @@ XCBWipeGetWMProtocolsReply(
 {
     xcb_icccm_get_wm_protocols_reply_wipe(protocols);
 }
+
+
+XCBCookie
+XCBGetWMHintsCookie(
+        XCBDisplay *display,
+        XCBWindow win
+        )
+{
+    xcb_get_property_cookie_t cookie = xcb_icccm_get_wm_hints(display, win);
+    return (XCBCookie) { .sequence = cookie.sequence };
+}
+
+XCBWMHints *
+XCBGetWMHintsReply(
+        XCBDisplay *display,
+        XCBCookie cookie
+        )
+{
+    XCBGenericError *err = NULL;
+    xcb_get_property_cookie_t cookie1 = { .sequence = cookie.sequence };
+
+    xcb_get_property_reply_t *reply = xcb_get_property_reply(display, cookie1, &err);
+    XCBWMHints *ret = NULL;
+
+    /* error handling */
+    if(err)
+    {   
+        _xcb_err_handler(display, err);
+        if(reply)
+        {   free(reply);
+        }
+        return NULL;
+    }
+    /* make sure data matches */
+    if(!reply || reply->type != XCB_ATOM_WM_HINTS || reply->format != 32)
+    {   goto FAILURE;   
+    }
+
+    ret = xcb_get_property_value(reply);
+    if(!ret)
+    {   goto FAILURE;
+    }
+
+    u32 length = xcb_get_property_value_length(reply);
+    u32 num_elem = length / (reply->format / 8);
+    
+    if(num_elem < XCB_ICCCM_NUM_WM_HINTS_ELEMENTS - 1)
+    {   goto FAILURE;
+    }
+
+    if(num_elem < XCB_ICCCM_NUM_WM_HINTS_ELEMENTS)
+    {   ret->window_group = XCB_NONE;
+    }
+
+    if(length > sizeof(xcb_size_hints_t))
+    {   length = sizeof(xcb_size_hints_t);
+    }
+
+    XCBWMHints tmp;
+
+    memcpy(&tmp, (xcb_size_hints_t *)ret, length);
+    ret = realloc(reply, sizeof(xcb_size_hints_t));
+
+    if(!ret)
+    {   goto FAILURE;
+    }
+
+    memcpy(ret, &tmp, length);
+
+    return ret;
+FAILURE:
+    free(reply);
+    return NULL;
+}
+
+XCBCookie
+XCBSetWMHintsCookie(
+        XCBDisplay *display,
+        XCBWindow window,
+        XCBWMHints *wmhints
+        )
+{
+    return xcb_icccm_set_wm_hints(display, window, wmhints);
+}
+
+XCBCookie
+XCBGetWMNormalHintsCookie(
+        XCBDisplay *display,
+        XCBWindow win
+        )
+{
+    xcb_get_property_cookie_t cookie = xcb_icccm_get_wm_normal_hints(display, win);
+    return (XCBCookie) { .sequence = cookie.sequence };
+}
+
+uint8_t
+XCBGetWMNormalHintsReply(
+        XCBDisplay *display,
+        XCBCookie cookie,
+        XCBSizeHints *hints_return
+        )
+{
+    XCBGenericError *err = NULL;
+    xcb_get_property_cookie_t cookie1 = { .sequence = cookie.sequence };
+    u8 status = xcb_icccm_get_wm_normal_hints_reply(display, cookie1, hints_return, &err);
+
+    if(err)
+    {   _xcb_err_handler(display, err);
+        status = 0;
+    }
+    return status;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

@@ -45,6 +45,7 @@ typedef int64_t  i64;
 #endif
 
 
+#define ASM(X)                          __asm__(X)
 
 #define CLEARFLAG(FLAGS, FLAG)            ((FLAGS &= (~FLAG)))
 #define SETFLAG(FLAGS, FLAG)              (((FLAGS |= FLAG)))

@@ -123,6 +123,10 @@ applysizehints(Client *c, int16_t *x, int16_t *y, uint16_t *width, uint16_t *hei
 {
     int baseismin;
     Monitor *m = c->mon;
+    XCBCookie sizehintscookie;
+    if(ISFLOATING(c))
+    {   sizehintscookie = XCBGetWMNormalHintsCookie(_wm->dpy, c->win);
+    }
 
     /* set minimum possible */
     *width = MAX(1, *width);
@@ -165,7 +169,11 @@ applysizehints(Client *c, int16_t *x, int16_t *y, uint16_t *width, uint16_t *hei
     }
     if (ISFLOATING(c))
     {
-        updatesizehints(c);
+        XCBSizeHints hints;
+        u8 status = XCBGetWMNormalHintsReply(_wm->dpy, sizehintscookie, &hints);
+        /* On Failure clear flag and ignore hints */
+        hints.flags *= !!status;
+        updatesizehints(c, &hints);
         /* see last two sentences in ICCCM 4.1.2.3 */
         baseismin = c->basew == c->minw && c->baseh == c->minh;
         /* temporarily remove base dimensions */
@@ -213,6 +221,61 @@ applysizehints(Client *c, int16_t *x, int16_t *y, uint16_t *width, uint16_t *hei
 void
 arrange(Desktop *desk)
 {
+}
+
+void
+attachbar(Monitor *m, XCBWindow barwin)
+{
+    /* due to the infrequency of this we can afford multiple cycles wasted here */
+    if(!barwin)
+    {   
+        DEBUG0("Cant Attach no bar to monitor, this shouldnt be possible");
+        return;
+    }
+    if(!m)
+    {   
+        DEBUG0("Cant Attach barwin because the monitor is NULL, this shouldnt be possible");
+        return;
+    }
+    if(m->barwin)
+    {   
+        if(m->barwin == barwin)
+        {   
+            DEBUG0("Cant Attach barwin to same barwin");
+        }
+        else
+        {   
+            DEBUG0("Cant Attach barwin because another barwin is already attached");
+        }
+    }
+    else
+    {
+        DEBUG("Attached barwin: %d", barwin);
+        m->barwin = barwin;
+        Client *c = manage(barwin);
+        if(!c)
+        {   DEBUG0("Could not attach bar, for some reason...");
+            return;
+        }
+        sethidden(c, 1);
+        setalwaysontop(c, 1);
+        setfullscreen(c, 0);
+        setneverfocus(c, 1);
+        setsticky(c, 1);
+        setmodal(c, 1);
+        setfixed(c, 1);
+    }
+}
+
+void
+detachbar(Monitor *m)
+{
+    /* due to the infrequency of this we can afford multiple cycles wasted here */
+    if(!m)
+    {   DEBUG0("Cant Detach barwin as monitor is NULL");
+        return;
+    }
+    m->barwin = 0;
 }
 
 void
@@ -289,6 +352,108 @@ detachclient(Client *c)
     }
 }
 
+u8
+checknewbar(XCBWindow win)
+{
+    u8 status = 0;
+
+    if(_wm->selmon->barwin)
+    {   return status;
+    }
+
+    XCBCookie ckstrut = XCBGetWindowPropertyCookie(_wm->dpy, win, netatom[NetWMStrut], 0, 4, False, XCB_ATOM_CARDINAL);
+    XCBCookie ckstrutp = XCBGetWindowPropertyCookie(_wm->dpy, win, netatom[NetWMStrutPartial], 0, 12, False, XCB_ATOM_CARDINAL);
+
+    XCBWindowProperty *strut = XCBGetWindowPropertyReply(_wm->dpy, ckstrut);
+    XCBWindowProperty *strutp = XCBGetWindowPropertyReply(_wm->dpy, ckstrutp);
+
+    if(strut)
+    {
+        /* https://specifications.freedesktop.org/wm-spec/latest/ 
+         * _NET_WM_STRUT */
+        u32 *value = XCBGetWindowPropertyValue(strut);
+        const u32 left = value[0];
+        const u32 right = value[1];
+        const u32 top = value[2];
+        const u32 bottom = value[3];
+        if(left >= _wm->selmon->ww / 2 && right >= _wm->selmon->ww / 2)
+        {   
+            status = 1;
+            if(top && bottom)
+            {   /* This is undefined behaviour so just do nothing */
+            }
+            else if (top)
+            {   settopbar(_wm->selmon, 1);
+                _wm->selmon->bh = top;
+            }
+            else if(bottom)
+            {   settopbar(_wm->selmon, 0);
+                _wm->selmon->bh = bottom;
+            }
+            else
+            {   status = 0;     /* undefined behaviour assume its not a bar */
+            }
+        }
+        free(strut);
+    }
+
+    if(strutp)
+    {
+        if(!status)
+        {
+            /* https://specifications.freedesktop.org/wm-spec/latest/ 
+             * _NET_WM_STRUT_PARTIAL */
+            u32 *value = XCBGetWindowPropertyValue(strut);
+            const u32 left = value[0];
+            const u32 right = value[1];
+            const u32 top = value[2];
+            const u32 bottom = value[3];
+            const u32 left_start_y = value[4];
+            const u32 left_end_y = value[5];
+            const u32 right_start_y = value[6];
+            const u32 right_end_y = value[7];
+            const u32 top_start_x = value[8];
+            const u32 top_end_x = value[9];
+            const u32 bottom_start_x = value[10];
+            const u32 bottom_end_x = value[11];
+
+            (void)left_start_y;
+            (void)left_end_y;
+            (void)right_start_y;
+            (void)right_end_y;
+            (void)top_start_x;
+            (void)top_end_x;
+            (void)bottom_start_x;
+            (void)bottom_end_x;
+
+            /* while _NET_WM_STRUT_PARTIAL is good in theory in practice it's mostly a pain to implement properly and somewhat computationally expensive 
+             * So instead we just use the original _NET_WM_STRUT which worked fine...
+             */
+            if(left >= _wm->selmon->ww / 2 && right >= _wm->selmon->ww / 2)
+            {   
+                status = 1;
+                if(top && bottom)
+                {   /* This is undefined behaviour so just do nothing */
+                }
+                else if (top)
+                {   
+                    settopbar(_wm->selmon, 1);
+                    _wm->selmon->bh = top;
+                }
+                else if(bottom)
+                {   
+                    settopbar(_wm->selmon, 0);
+                    _wm->selmon->bh = bottom;
+                }
+                else
+                {   status = 0;     /* undefined behaviour assume its not a bar */
+                }
+            }
+        }
+        free(strutp);
+    }
+    return status;
+}
 
 void
 checkotherwm(void)
@@ -464,8 +629,7 @@ createmon(void)
 
 void
 exithandler(void)
-{
-    DEBUG("%s", "Process Terminated Successfully.");
+{   DEBUG("%s", "Process Terminated Successfully.");
 }
 
 void
@@ -529,7 +693,7 @@ getrootptr(i16 *x, i16 *y)
     u8 samescr;
 
     XCBCookie cookie = XCBQueryPointerCookie(_wm->dpy, _wm->root);
-    XCBPointerReply *reply = XCBQueryPointerReply(_wm->dpy, cookie);
+    XCBQueryPointer *reply = XCBQueryPointerReply(_wm->dpy, cookie);
 
     if(!reply)
     {   return 0;
@@ -622,25 +786,47 @@ manage(XCBWindow win)
 
     Client *c, *t = NULL;
     XCBWindow trans = 0;
+    u8 transstatus = 0;
     XCBWindowGeometry *wg;
-    XCBCookie wgcookie = XCBGetWindowGeometryCookie(_wm->dpy, win);
-    XCBCookie transcookie = XCBGetTransientForHintCookie(_wm->dpy, win);
-    XCBCookie wtypecookie = XCBGetWindowPropertyCookie(_wm->dpy, win, netatom[NetWMWindowType], 0L, sizeof(XCBAtom ), False, XCB_ATOM_ATOM);
-    XCBWindowProperty *unused;
-    XCBAtom wtype = 0;
+
+    /* get cookies first */
+
+    XCBCookie wgcookie    = XCBGetWindowGeometryCookie(_wm->dpy, win);
+    XCBCookie transcookie = XCBGetTransientForHintCookie(_wm->dpy, win);                        
+    XCBCookie wtypecookie = XCBGetWindowPropertyCookie(_wm->dpy, win, netatom[NetWMWindowType], 0L, UINT32_MAX, False, XCB_ATOM_ATOM);
+    XCBCookie statecookie = XCBGetWindowPropertyCookie(_wm->dpy, win, netatom[NetWMState], 0L, UINT32_MAX, False, XCB_ATOM_ATOM);
+    XCBCookie sizehcookie = XCBGetWMNormalHintsCookie(_wm->dpy, win);
+    XCBCookie wmhcookie   = XCBGetWMHintsCookie(_wm->dpy, win);
+
+    XCBWindowProperty *wtypeunused;
+    XCBWindowProperty *stateunused;
+    XCBSizeHints hints;
+    u8 hintstatus = 0;
+    XCBWMHints *wmh;
 
     c = createclient(_wm->selmon);
     c->win = win;
 
     /* wait for replies */
     wg = XCBGetWindowGeometryReply(_wm->dpy, wgcookie);
-    XCBGetTransientForHintReply(_wm->dpy, transcookie, &trans);
-    unused = XCBGetWindowPropertyReply(_wm->dpy, wtypecookie);
+    transstatus = XCBGetTransientForHintReply(_wm->dpy, transcookie, &trans);
+    wtypeunused = XCBGetWindowPropertyReply(_wm->dpy, wtypecookie);
+    stateunused = XCBGetWindowPropertyReply(_wm->dpy, statecookie);
+    hintstatus = XCBGetWMNormalHintsReply(_wm->dpy, sizehcookie, &hints);
+    wmh = XCBGetWMHintsReply(_wm->dpy, wmhcookie);
 
-    if(unused)
+    /* On Failure clear flag and ignore hints */
+    hints.flags *= !!hintstatus;    
+
+    if(wtypeunused)
     {   
-        wtype = unused->type;
-        free(unused);
+        XCBAtom *data = XCBGetPropertyValue(wtypeunused);
+        updatewindowtype(c, data, XCBGetPropertyValueLength(wtypeunused, sizeof(XCBAtom)));
+    }
+    if(stateunused)
+    {
+        XCBAtom *data = XCBGetPropertyValue(stateunused);
+        updatewindowstate(c, data, XCBGetPropertyValueLength(stateunused, sizeof(XCBAtom)));
     }
 
     if(wg)
@@ -650,9 +836,9 @@ manage(XCBWindow win)
         c->w = c->oldw = wg->width;
         c->h = c->oldh = wg->height;
         c->oldbw = wg->border_width;
-        free(wg);
     }
-    if(trans && (t = wintoclient(trans)))
+
+    if(transstatus && trans && (t = wintoclient(trans)))
     {
         c->mon = t->mon;
         c->desktop = t->desktop;
@@ -672,16 +858,15 @@ manage(XCBWindow win)
     c->x = MAX(c->x, c->mon->wx);
     c->y = MAX(c->y, c->mon->wy);
 
+    /* get the window type to see if we change the type managed or not */
     /* c->x = CFG_BORDER_WIDTH */
     XCBWindowChanges wc = { .border_width = c->bw };
     XCBConfigureWindow(_wm->dpy, win, XCB_CONFIG_WINDOW_BORDER_WIDTH, &wc);
     /*  XSetWindowBorder(dpy, w, scheme[SchemeBorder][ColBorder].pixel); */
     configure(c);   /* propagates border_width, if size doesn't change */
     updatetitle(c);
-    updatewindowtype(c, wtype);
-    updatesizehints(c);
-    updatewmhints(c);
-    
+    updatesizehints(c, &hints);
+    updatewmhints(c, wmh);
     XCBSelectInput(_wm->dpy, win, 
             XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_FOCUS_CHANGE|XCB_EVENT_MASK_PROPERTY_CHANGE|XCB_EVENT_MASK_STRUCTURE_NOTIFY
             );
@@ -704,6 +889,16 @@ manage(XCBWindow win)
     XCBMapWindow(_wm->dpy, win);    /* window must be mapped before resizing */
     setfullscreen(c, ISFULLSCREEN(c->mon));
     focus(NULL);
+
+
+    
+    /* reply cleanup */
+
+    free(wmh);
+    free(stateunused);
+    free(wtypeunused);
+    free(wg);
+
     return c;
 }
 
@@ -1092,6 +1287,13 @@ setdialog(Client *c, uint8_t state)
 }
 
 void
+setfixed(Client *c, uint8_t state)
+{
+    c->flags &= ~(_FIXED);
+    c->flags |= (_FIXED * !!state);
+}
+
+void
 setfloating(Client *c, uint8_t state)
 {
     /* set previous floating state */
@@ -1143,6 +1345,12 @@ setfocus(Client *c)
     }
 }
 
+void 
+sethidden(Client *c, uint8_t state)
+{
+    c->flags &= (~_HIDDEN);
+    c->flags |= (_HIDDEN * !!state);
+}
 void
 setmodal(Client *c, uint8_t state)
 {
@@ -1157,6 +1365,13 @@ setneverfocus(Client *c, uint8_t state)
     c->flags |= (_NEVERFOCUS * !!state);
 }
 
+void 
+setshowbar(Monitor *m, uint8_t state)
+{
+    m->flags &= ~(_SHOWBAR);
+    m->flags |= (_SHOWBAR * !!state);
+}
+
 void
 setsticky(Client *c, u8 sticky)
 {
@@ -1167,6 +1382,13 @@ setsticky(Client *c, u8 sticky)
 
     c->flags &= (~_STICKY);
     c->flags |= (_STICKY * !!sticky);
+}
+
+void 
+settopbar(Monitor *m, uint8_t state)
+{
+    m->flags &= (~_TOPBAR);
+    m->flags |= (_TOPBAR * !!state);
 }
 
 void
@@ -1333,6 +1555,7 @@ unfocus(Client *c, uint8_t setfocus)
     }
 }
 
+#ifdef XINERAMA
 static int
 isuniquegeom(XCBXineramaScreenInfo *unique, size_t n, XCBXineramaScreenInfo *info)
 {
@@ -1343,7 +1566,7 @@ isuniquegeom(XCBXineramaScreenInfo *unique, size_t n, XCBXineramaScreenInfo *inf
     }
     return 1;
 }
-
+#endif
 int
 updategeom(void)
 {
@@ -1485,8 +1708,26 @@ unmanage(Client *c, uint8_t destroyed)
 void
 updatebarpos(Monitor *m)
 {
+    m->wy = m->my;
     m->wh = m->mh;
-    m->wh -= m->bh * !!(SHOWBAR(m));
+
+    if(SHOWBAR(m))
+    {
+        m->wh -= m->bh;
+        if(TOPBAR(m))
+        {
+            m->by = m->wy;
+            m->wy+= m->bh;
+        }
+        else
+        {   
+            m->by = m->wy + m->wh;
+        }
+    }
+    else
+    {
+        m->by = -m->bh;
+    }
 }
 
 void
@@ -1552,8 +1793,59 @@ updatenumlockmask(void)
 }
 
 void
-updatesizehints(Client *c)
+updatesizehints(Client *c, XCBSizeHints *size)
 {
+    /* init values */
+    c->basew = c->baseh = 0;
+    c->incw = c->inch = 0;
+    c->maxw = c->maxh = 0;
+    c->minw = c->minh = 0;
+    c->maxa = c->mina = 0.0;
+
+    /* size is uninitialized, ensure that size.flags aren't used */
+    size->flags += !size->flags * XCB_SIZE_HINT_P_SIZE;
+
+    if(size->flags & XCB_SIZE_HINT_P_MIN_SIZE)
+    {
+        c->minw = size->min_width;
+        c->minh = size->min_height;
+    }
+    else if(size->flags & XCB_SIZE_HINT_P_BASE_SIZE)
+    {
+        c->minw = size->base_width;
+        c->minh = size->base_height;
+    }
+
+    if(size->flags & XCB_SIZE_HINT_P_BASE_SIZE)
+    {
+        c->basew = size->base_width;
+        c->baseh = size->base_height;
+    }
+    else if(size->flags & XCB_SIZE_HINT_P_MIN_SIZE)
+    {
+        c->basew = c->minw;
+        c->baseh = c->minh;
+    }
+
+    if(size->flags & XCB_SIZE_HINT_P_RESIZE_INC)
+    {
+        c->incw = size->width_inc;
+        c->inch = size->height_inc;
+    }
+    if(size->flags & XCB_SIZE_HINT_P_MIN_SIZE)
+    {
+        c->maxw = size->max_width;
+        c->maxh = size->max_height;
+    }
+    if(size->flags & XCB_SIZE_HINT_P_ASPECT)
+    {
+        c->mina = (float)size->min_aspect_den / size->min_aspect_num;
+        c->maxa = (float)size->max_aspect_num / size->max_aspect_den;
+    }
+
+    if((c->maxw && c->maxh && c->maxw == c->minw && c->maxh == c->minh))
+    {   setfixed(c, 1);
+    }
 }
 
 void
@@ -1562,132 +1854,169 @@ updatetitle(Client *c)
 }
 
 void
-updatewindowstate(Client *c, XCBAtom state, u8 data)
+updatewindowstate(Client *c, XCBAtom states[], uint32_t atomslength)
 {
-    if(!state)
+    if(!states || !c)
     {   return;
     }
-    const uint8_t toggle = (data == 2);
 
-    Monitor *m;
-    Client *temp;
-    m = c->mon;
-    data = !!data;
-    /* This is similiar to those Windows 10 dialog boxes that play the err sound and cant click anything else */
-    if (state == netatom[NetWMStateModal])
+    Monitor *m = c->mon;
+    u32 i;
+    XCBAtom state = 0;
+    for(i = 0; i < atomslength; ++i)
     {
-        if(toggle)
+        state = states[i];
+        /* This is similiar to those Windows 10 dialog boxes that play the err sound and cant click anything else */
+        if (state == netatom[NetWMStateModal])
+        {
+            if(c->mon->desksel->sel != c)
+            {   focus(c);
+            }
+        }
+        else if (state == netatom[NetWMStateAbove] || state == netatom[NetWMStateAlwaysOnTop])
+        {
+            setalwaysontop(c, 1);
+        }
+        else if (state == netatom[NetWMStateDemandAttention])
+        {
+            seturgent(c, 1);
+        }
+        else if (state == netatom[NetWMStateFullscreen])
+        {
+            setfullscreen(c, 1);
+        }
+        else if (state == netatom[NetWMStateMaximizedHorz])
+        {
+            resize(c, c->x, c->mon->wy, c->w, c->mon->wh, 0);
+        }
+        else if (state == netatom[NetWMStateMaximizedVert])
+        {
+            resize(c, c->mon->wx, c->y, c->mon->ww, c->h, 0);
+        }
+        else if (state == netatom[NetWMStateSticky])
+        {
+            setsticky(c, 1);
+        }
+        else if (state == netatom[NetWMStateBelow])
+        {   /* attach last */
+            XCBLowerWindow(_wm->dpy, c->win);
+        }
+        else if (state == netatom[NetWMStateSkipTaskbar])
+        {   
+        }
+        else if (state == netatom[NetWMStateSkipPager])
         {
         }
-        if(c->mon->desksel->sel != c)
-        {   focus(c);
+        else if (state == netatom[NetWMStateHidden])
+        {   sethidden(c, 1);
         }
-    }
-    else if (state == netatom[NetWMStateAbove] || state == netatom[NetWMStateAlwaysOnTop])
-    {
-    }
-    else if (state == netatom[NetWMStateDemandAttention])
-    {
-    }
-    else if (state == netatom[NetWMStateFullscreen])
-    {
-    }
-    else if (state == netatom[NetWMStateMaximizedHorz])
-    {
-    }
-    else if (state == netatom[NetWMStateMaximizedVert])
-    {
-    }
-    else if (state == netatom[NetWMStateSticky])
-    {
-    }
-    else if (state == netatom[NetWMStateBelow])
-    {
-    }
-    else if (state == netatom[NetWMStateSkipTaskbar])
-    {   
-    }
-    else if (state == netatom[NetWMStateSkipPager])
-    {   /* This is stupid; IGNORE */
-    }
-    else if (state == netatom[NetWMStateHidden])
-    {   
-    }
-    else if (state == netatom[NetWMStateFocused])
-    {
-    }
-    else if (state == netatom[NetWMStateShaded])
-    {
+        else if (state == netatom[NetWMStateFocused])
+        {
+            if(c->desktop->sel != c)
+            {   focus(c);
+            }
+        }
+        else if (state == netatom[NetWMStateShaded])
+        {
+        }
     }
 }
 
 void
-updatewindowtype(Client *c, XCBAtom wtype)
+updatewindowtype(Client *c, XCBAtom wtypes[], uint32_t atomslength)
 {
-    if(!wtype)
+    if(!wtypes || !c)
     {   return;
     }
-    XCBCookie ck;
-    if (wtype == netatom[NetWMWindowTypeDesktop])
-    {   setneverfocus(c, 1);
-        /* TODO */
-    }
-    else if (wtype == netatom[NetWMWindowTypeDock])
+    Monitor *m = c->mon;
+    XCBWindow win = c->win;
+    XCBAtom wtype = 0;
+    i32 i;
+    for(i = 0; i < atomslength; ++i)
     {
-        if(ISSTICKY(c))   
-        {
-            /* strut */
+        wtype = wtypes[i];
+        if (wtype == netatom[NetWMWindowTypeDesktop])
+        {   
+            setneverfocus(c, 1);
             /* TODO */
         }
+        else if (wtype == netatom[NetWMWindowTypeDock])
+        {
+            /* doesnt work */
+            if(checknewbar(c->win))
+            {
+                attachbar(m, c->win);
+                setshowbar(m, 1);
+                updatebarpos(m);
+            }
+        }
+        else if (wtype == netatom[NetWMWindowTypeToolbar])
+        {   /* TODO */
+        }
+        else if (wtype == netatom[NetWMWindowTypeMenu])
+        {   /* TODO */
+        }
+        else if (wtype == netatom[NetWMWindowTypeUtility])
+        {   /* TODO */
+        }
+        else if (wtype == netatom[NetWMWindowTypeSplash])
+        {   /* IGNORE */
+        }
+        else if (wtype == netatom[NetWMWindowTypeDialog])
+        {   setdialog(c, 1);
+        }
+        else if (wtype == netatom[NetWMWindowTypeDropdownMenu])
+        {   setdialog(c, 1);
+        }
+        else if (wtype == netatom[NetWMWindowTypePopupMenu])
+        {   /* override-redirect IGNORE */
+        }
+        else if (wtype == netatom[NetWMWindowTypeTooltip])
+        {   /* override-redirect IGNORE */
+        }
+        else if (wtype == netatom[NetWMWindowTypeNotification])
+        {   /* override-redirect IGNORE */
+        }
+        else if (wtype == netatom[NetWMWindowTypeCombo])
+        {   /* override-redirect IGNORE */
+        }
+        else if (wtype == netatom[NetWMWindowTypeDnd])
+        {   /* override-redirect IGNORE */
+        }
+        else if (wtype == netatom[NetWMWindowTypeNormal])
+        {   /* This hint indicates that this window has no special properties IGNORE */
+        }
     }
-    else if (wtype == netatom[NetWMWindowTypeToolbar])
-    {   /* TODO */
-    }
-    else if (wtype == netatom[NetWMWindowTypeMenu])
-    {   /* TODO */
-    }
-    else if (wtype == netatom[NetWMWindowTypeUtility])
-    {   /* TODO */
-    }
-    else if (wtype == netatom[NetWMWindowTypeSplash])
-    {   /* IGNORE */
-    }
-    else if (wtype == netatom[NetWMWindowTypeDialog])
-    {   
-    }
-    else if (wtype == netatom[NetWMWindowTypeDropdownMenu])
-    {   /* TODO */
-    }
-    else if (wtype == netatom[NetWMWindowTypePopupMenu])
-    {   /* override-redirect IGNORE */
-    }
-    else if (wtype == netatom[NetWMWindowTypeTooltip])
-    {   /* override-redirect IGNORE */
-    }
-    else if (wtype == netatom[NetWMWindowTypeNotification])
-    {   /* override-redirect IGNORE */
-    }
-    else if (wtype == netatom[NetWMWindowTypeCombo])
-    {   /* override-redirect IGNORE */
-    }
-    else if (wtype == netatom[NetWMWindowTypeDnd])
-    {   /* override-redirect IGNORE */
-    }
-    else if (wtype == netatom[NetWMWindowTypeNormal])
-    {   /* This hint indicates that this window has no special properties IGNORE */
-    }
+    DEBUG("%d", i);
 }
 
 void
-updatewmhints(Client *c)
+updatewmhints(Client *c, XCBWMHints *wmh)
 {
-
+    if(wmh)
+    {
+        if(c == c->desktop->sel && wmh->flags & XCB_WM_HINT_URGENCY)
+        {
+            wmh->flags &= ~XCB_WM_HINT_URGENCY;
+            XCBSetWMHintsCookie(_wm->dpy, c->win, wmh);
+        }
+        else
+        {   seturgent(c, !!(wmh->flags & XCB_WM_HINT_URGENCY));
+        }
+        if(wmh->flags & XCB_WM_HINT_INPUT)
+        {   setneverfocus(c, !wmh->input);
+        }
+        else
+        {   setneverfocus(c, 0);
+        }
+    }
 }
 
 void
 winsetstate(XCBWindow win, i32 state)
 {
-
+    i32 data[] = { state, XCB_NONE };
+    XCBChangeProperty(_wm->dpy, win, wmatom[WMState], wmatom[WMState], 32, XCB_PROP_MODE_REPLACE, (unsigned char *)data, 2);
 }
 
 Client *

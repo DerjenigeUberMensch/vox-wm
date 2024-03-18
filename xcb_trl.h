@@ -2288,6 +2288,42 @@ XCBWidenCookie(XCBDisplay *display, XCBCookie cookie);
  */
 
 typedef xcb_icccm_get_wm_protocols_reply_t XCBWMProtocols;
+typedef xcb_icccm_wm_hints_t XCBWMHints;
+/*
+ * min_aspect_num:          The minimum aspect ratios for the width.
+ * min_aspect_den:          The minimum aspect ratios for the height.
+ * max_aspect_num:          The maximum aspect ratios for the width.
+ * max_aspect_den:          The maximum aspect ratios for the height.
+ */
+typedef xcb_size_hints_t XCBSizeHints;
+
+
+
+enum
+{
+    XCB_WM_HINT_INPUT = XCB_ICCCM_WM_HINT_INPUT ,
+    XCB_WM_HINT_STATE = XCB_ICCCM_WM_HINT_STATE ,
+    XCB_WM_HINT_ICON_PIXMAP = XCB_ICCCM_WM_HINT_ICON_PIXMAP ,
+    XCB_WM_HINT_ICON_WINDOW = XCB_ICCCM_WM_HINT_ICON_WINDOW ,
+    XCB_WM_HINT_ICON_POSITION = XCB_ICCCM_WM_HINT_ICON_POSITION ,
+    XCB_WM_HINT_ICON_MASK = XCB_ICCCM_WM_HINT_ICON_MASK ,
+    XCB_WM_HINT_WINDOW_GROUP = XCB_ICCCM_WM_HINT_WINDOW_GROUP ,
+    XCB_WM_HINT_URGENCY = XCB_ICCCM_WM_HINT_X_URGENCY,
+};
+
+enum
+{
+    XCB_SIZE_HINT_P_SIZE = XCB_ICCCM_SIZE_HINT_P_SIZE,
+    XCB_SIZE_HINT_US_SIZE = XCB_ICCCM_SIZE_HINT_US_SIZE,
+    XCB_SIZE_HINT_P_ASPECT = XCB_ICCCM_SIZE_HINT_P_ASPECT,
+    XCB_SIZE_HINT_P_BASE_SIZE = XCB_ICCCM_SIZE_HINT_BASE_SIZE,
+    XCB_SIZE_HINT_P_MAX_SIZE = XCB_ICCCM_SIZE_HINT_P_MAX_SIZE,
+    XCB_SIZE_HINT_P_MIN_SIZE = XCB_ICCCM_SIZE_HINT_P_MIN_SIZE,
+    XCB_SIZE_HINT_P_POSITION = XCB_ICCCM_SIZE_HINT_P_POSITION,
+    XCB_SIZE_HINT_US_POSITION = XCB_ICCCM_SIZE_HINT_US_POSITION,
+    XCB_SIZE_HINT_P_RESIZE_INC = XCB_ICCCM_SIZE_HINT_P_RESIZE_INC,
+    XCB_SIZE_HINT_P_WIN_GRAVITY = XCB_ICCCM_SIZE_HINT_P_WIN_GRAVITY,
+};
 
 XCBCookie
 XCBGetWMProtocolsCookie(
@@ -2314,8 +2350,51 @@ void
 XCBWipeGetWMProtocolsReply(
         XCBWMProtocols *protocols);
 
+/*
+ *
+ * RETURN: Cookie to requets.
+ */
+XCBCookie
+XCBGetWMHintsCookie(
+        XCBDisplay *display,
+        XCBWindow win
+        );
 
+/* 
+ *
+ * NOTE: This function is "slow" as it makes use of the "realloc" feature.
+ * NOTE: RETURN MUST BE RELEASED BY CALLER USING free().
+ *
+ * RETURN: XCBWMHints * on Success.
+ * RETURN: NULL on Failure.
+ */
+XCBWMHints *
+XCBGetWMHintsReply(
+        XCBDisplay *display,
+        XCBCookie cookie
+        );
+/*
+ * RETURN: Cookie to requets.
+ */
+XCBCookie
+XCBSetWMHintsCookie(
+        XCBDisplay *display,
+        XCBWindow window,
+        XCBWMHints *wmhints
+        );
 
+XCBCookie
+XCBGetWMNormalHintsCookie(
+        XCBDisplay *display,
+        XCBWindow win
+        );
+
+uint8_t
+XCBGetWMNormalHintsReply(
+        XCBDisplay *display,
+        XCBCookie cookie,
+        XCBSizeHints *hints_return
+        );
 
 
 

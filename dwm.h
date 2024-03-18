@@ -57,7 +57,7 @@
 #define ISSTICKY(C)             ((C->flags & _STICKY))
 #define ISDIALOG(C)             ((C->flags & _DIALOG))
 #define ISMODAL(C)              ((C->flags & _MODAL))
-#define ISVISIBLE(C)            ((C->mon->desksel == C->desktop || ISSTICKY(c)))
+#define ISVISIBLE(C)            (((C->mon->desksel == C->desktop || ISSTICKY(c)) & (!ISHIDDEN(c))))
 
 /* Monitor struct flags */
 #define _SHOWBAR            ((1 << 0))
@@ -88,10 +88,13 @@ typedef struct WM WM;
 
 union Arg
 {
-    int i;              /* i -> int             */
-    unsigned int ui;    /* ui -> unsigned int   */
-    float f;            /* f -> float           */
-    const void *v;      /* v -> void pointer    */
+    int32_t i;              /* i -> int             */
+    uint32_t ui;            /* ui -> unsigned int   */
+    int64_t l;              /* l -> long int        */
+    uint64_t ul;            /* ul -> unsigned long  */
+    float f;                /* f -> float           */
+    double d;               /* d -> double          */
+    const void *v;          /* v -> void pointer    */
 };
 
 struct Key
@@ -223,12 +226,14 @@ struct WM
 void argcvhandler(int argc, char *argv[]);
 uint8_t applysizehints(Client *c, int16_t *x, int16_t *y, uint16_t *width, uint16_t *height, uint8_t interact);
 void arrange(Desktop *desk);
+void attachbar(Monitor *m, XCBWindow barwin);
+void detachbar(Monitor *m);
 void attachdesktop(Monitor *m, Desktop *desk);
 void detachdesktop(Monitor *m, Desktop *desk);
 void attachclient(Client *c);
 void detachclient(Client *c);
+uint8_t checknewbar(XCBWindow win);
 void checkotherwm(void);
-
 void cleanup(void);
 void cleanupclient(Client *c);
 void cleanupdesktop(Desktop *desk);
@@ -237,6 +242,7 @@ void cleanupmons(void);
 void configure(Client *c);
 Client *createclient(Monitor *m);
 Monitor *createmon(void);
+void dragwindow(XCBWindow win, uint16_t frametime);
 void exithandler(void);
 void floating(Desktop *desk);
 void focus(Client *c);
@@ -264,12 +270,16 @@ void setborderwidth(Client *c, uint16_t border_width);
 void setclientdesktop(Client *c, Desktop *desktop);
 void setclientstate(Client *c, uint8_t state);
 void setdialog(Client *c, uint8_t state);
+void setfixed(Client *c, uint8_t state);
 void setfloating(Client *c, uint8_t isfloating);
 void setfullscreen(Client *c, uint8_t isfullscreen);
 void setfocus(Client *c);
+void sethidden(Client *c, uint8_t state);
 void setmodal(Client *c, uint8_t state);
 void setneverfocus(Client *c, uint8_t state);
+void setshowbar(Monitor *m, uint8_t state);
 void setsticky(Client *c, uint8_t state);
+void settopbar(Monitor *m, uint8_t state);
 void setup(void);
 void seturgent(Client *c, uint8_t isurgent);
 void setviewport(void);
@@ -284,12 +294,12 @@ void updatebarpos(Monitor *m);
 void updateclientlist(void);
 int  updategeom(void);
 void updatenumlockmask(void);
-void updatesizehints(Client *c);
+void updatesizehints(Client *c, XCBSizeHints *size);
 void updatetitle(Client *c);
 void updateicon(Client *c);
-void updatewindowstate(Client *c, XCBAtom state, uint8_t data);
-void updatewindowtype(Client *c, XCBAtom windowtype);
-void updatewmhints(Client *c);
+void updatewindowstate(Client *c, XCBAtom state[], uint32_t atomslength);
+void updatewindowtype(Client *c, XCBAtom wtype[], uint32_t atomslength);
+void updatewmhints(Client *c, XCBWMHints *hints);
 void winsetstate(XCBWindow win, int32_t state);
 Client *wintoclient(XCBWindow win);
 Monitor *wintomon(XCBWindow win);
@@ -301,7 +311,6 @@ void xerror(XCBDisplay *display, XCBGenericError *error);
 
 /* toogle */
 void UserStats(const Arg *arg);
-
 
 
 
