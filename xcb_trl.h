@@ -1043,10 +1043,27 @@ XCBGetWindowGeometryCookie(
  * RETURN: NULL on Failure.
  *
  */
-XCBGeometry *
+XCBWindowGeometry *
 XCBGetWindowGeometryReply(
         XCBDisplay *display, 
         XCBCookie cookie);
+
+XCBCookie
+XCBGetGeometryCookie(
+        XCBDisplay *display,
+        XCBWindow window);
+/*
+ *
+ * NOTE: reply must be freed by caller.
+ *
+ * RETURN: NULL on Failure.
+ *
+ */
+XCBGeometry *
+XCBGetGeometryReply(
+        XCBDisplay *display,
+        XCBCookie cookie
+        );
 
 XCBPixmap 
 XCBCreatePixmap(

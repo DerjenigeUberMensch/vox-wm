@@ -242,7 +242,7 @@ void cleanupmons(void);
 void configure(Client *c);
 Client *createclient(Monitor *m);
 Monitor *createmon(void);
-void dragwindow(XCBWindow win, uint16_t frametime);
+Monitor *dirtomon(uint8_t dir);
 void exithandler(void);
 void floating(Desktop *desk);
 void focus(Client *c);

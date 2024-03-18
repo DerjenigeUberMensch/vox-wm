@@ -36,10 +36,8 @@ static const char *termcmd[]        = { "st", NULL };
 static const Key keys[] =
 {
     /* KeyType                  modifier                 key        function        argument */
-    { XCB_KEY_PRESS,            SUPER,                  XK_Return,  SpawnWindow,    { .v = termcmd  }  },
-    { XCB_KEY_PRESS,            SUPER,                  XK_d,       SpawnWindow,    { .v = dmenucmd }  },
-    { XCB_KEY_PRESS,            SUPER|CTRL,             XK_p,       Restart,            {0} },
-    { XCB_KEY_PRESS,            SUPER|SHIFT,            XK_p,       Quit,               {0} },
+    { XCB_KEY_PRESS,            SUPER,                  XK_Return,  SpawnWindow,        { .v = termcmd  }  },
+    { XCB_KEY_PRESS,            SUPER,                  XK_d,       SpawnWindow,        { .v = dmenucmd }  },
 };
 
 /* button definitions */

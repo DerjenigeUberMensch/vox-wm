@@ -9,9 +9,9 @@ void FocusMonitor(const Arg *arg);
 /* Changes the max number of master windows possible */
 void ChangeMasterWindow(const Arg *arg);
 /* Kills the current window */
-void KillWindow(const Arg *arg);
+void KillWindow(XCBDisplay *display, XCBWindow win);
 /* Attempts to kill the current window directly instead of just sending a signal and waiting for the window to respond */
-void TerminateWindow(const Arg *arg);
+void TerminateWindow(XCBDisplay *display, XCBWindow win);
 /* keybind to move the current window where the mouse cursor is */
 void DragWindow(XCBDisplay *display, XCBWindow win, const XCBKeyCode key_or_button);
 /* restarts dwm */
@@ -19,7 +19,7 @@ void Restart(const Arg *arg);
 /* quits dwm */
 void Quit(const Arg *arg);
 /* resizes the current window based on mouse position */
-void ResizeWindow(const Arg *arg);
+void ResizeWindow(XCBDisplay *display, XCBWindow win, const XCBKeyCode key_or_button);
 /* sets the window layout based on a enum in dwm.h -> Grid, Floating, Monocle, Tiled */
 void SetWindowLayout(const Arg *arg);
 /* Sets the size of the master window 0.0 -> 1.0 for the Tiled Layout

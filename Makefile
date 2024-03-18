@@ -28,6 +28,10 @@ ${BIN}/%.o: %.c | ${BIN}
 default: ${OBJ}
 	${CC} -o ${BIN}/${EXE} ${OBJ} ${LDFLAGS}
 
+clean: default
+	cd ${BIN} && rm *.o && cd ../
+
+
 release:
 	rm -rf -f -- ${EXE}-${VERSION}
 	cp -R . ${EXE}-${VERSION}
@@ -42,4 +46,4 @@ install: all
 uninstall:
 	rm -f ${DESTDIR}${PREFIX}/bin/${EXE}
 
-.PHONY: all options release dist install uninstall 
+.PHONY: all options clean release dist install uninstall 

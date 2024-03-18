@@ -23,6 +23,29 @@ UserStats(const Arg *arg)
 void
 FocusMonitor(const Arg *arg)
 {
+    Monitor *m;
+    if(!_wm->mons)
+    {   
+        DEBUG0("There are no monitors, this should not be possible.");
+        return;
+    }
+    if(!_wm->mons->next)
+    {   DEBUG0("There is no other monitor to focus.");
+    }
+
+    if(!_wm->selmon)
+    {   DEBUG0("No monitor selected in Context, this should not be possible");
+    }
+
+    if((m = dirtomon(arg->i)) == _wm->selmon)
+    {   return;
+    }
+
+    if(_wm->selmon->desksel->sel)
+    {   unfocus(_wm->selmon->desksel->sel, 0);
+    }
+    _wm->selmon = m;
+    focus(NULL);
 }
 
 void
@@ -31,17 +54,22 @@ ChangeMasterWindow(const Arg *arg)
 }
 
 void
-KillWindow(const Arg *arg)
+KillWindow(XCBDisplay *display, XCBWindow win)
 {
+    xcb_kill_client(display, win);
 }
 
 void
-TerminateWindow(const Arg *arg)
+TerminateWindow(XCBDisplay *display, XCBWindow win)
 {
+    xcb_kill_client(display, win);
 }
 
 void
-DragWindow(XCBDisplay *display, XCBWindow win, const XCBKeyCode key_or_button)
+DragWindow(
+    XCBDisplay *display, 
+    XCBWindow win,
+    const XCBKeyCode key_or_button)
 {
     i16 ox, oy;     /*    old   */
     i16 x, y;       /*  current */
@@ -85,7 +113,7 @@ DragWindow(XCBDisplay *display, XCBWindow win, const XCBKeyCode key_or_button)
         ev = (XCBMotionNotifyEvent *)XCBPollForEvent(display);
         cleanev = XCB_EVENT_RESPONSE_TYPE(ev);
 
-        if(cleanev == XCB_MOTION_NOTIFY)
+        if(ev->event == win && cleanev == XCB_MOTION_NOTIFY)
         {
             nx = ox + (ev->root_x - x);
             ny = oy + (ev->root_y - y);
@@ -93,30 +121,18 @@ DragWindow(XCBDisplay *display, XCBWindow win, const XCBKeyCode key_or_button)
         }
         if(cleanev == XCB_BUTTON_RELEASE)
         {   
-            detail = (XCBButtonReleaseEvent *)ev->detail;
+            detail = ev->detail;
         }
         free(ev);
     } while(cleanev != 0 && cleanev != XCB_BUTTON_RELEASE && detail != key_or_button);
 }
 
 void
-Restart(const Arg *arg)
-{
-    restart();
-    /* this just generates a event to wakeup the thread */
-    XCBMapWindow(_wm->dpy, _wm->root);
-}
-
-void
-Quit(const Arg *arg)
-{   
-    quit();
-    /* this just generates a event to wakeup the thread */
-    XCBMapWindow(_wm->dpy, _wm->root);
-}
-
-void
-ResizeWindow(const Arg *arg) /* resizemouse */
+ResizeWindow(
+    XCBDisplay *display, 
+    XCBWindow win,
+    const XCBKeyCode key_or_button
+    ) /* resizemouse */
 {
     i16 ox, oy;     /*    old   */
     i16 x, y;       /*  current */
@@ -125,6 +141,69 @@ ResizeWindow(const Arg *arg) /* resizemouse */
     u16 ow, oh;     /*    old   */
     u16 w, h;       /*  current */
     u16 nw, nh;     /*    new   */
+
+    i8 horiz;       /* bounds checks    */
+    i8 vert;        /* bounds checks    */
+
+    const XCBCursor cur = XCB_NONE;
+    XCBCookie qpcookie = XCBQueryPointerCookie(display, win);
+    XCBCookie gpcookie = XCBGrabPointerCookie(display, win, False, MOUSEMASK, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE, cur, XCB_CURRENT_TIME);
+    XCBCookie gmcookie = XCBGetGeometryCookie(display, win);
+
+
+    XCBQueryPointer *qp = XCBQueryPointerReply(display, qpcookie);
+    XCBGrabPointer *gb = XCBGrabPointerReply(display, gpcookie);
+    XCBGeometry *gm = XCBGetGeometryReply(display, gmcookie);
+
+    if(!qp)
+    {   return;
+    }
+    if(!gb || gb->status != XCB_GRAB_STATUS_SUCCESS)
+    {   free(qp);
+        return;
+    }
+    if(!gm)
+    {   
+        free(qp); 
+        free(gb);
+        return;
+    }
+
+    horiz = qp->win_x < (gm->width / 2) ? -1 : 1;
+    vert = qp->win_y < (gm->height / 2) ? -1 : 1;
+
+    x = qp->win_x;
+    y = qp->win_y; 
+
+    ox = gm->x;
+    oy = gm->y;
+
+    ow = gm->width;
+    oh = gm->height;
+
+
+    XCBMotionNotifyEvent *ev;
+    u8 cleanev;
+    u8 detail = 0;
+    do
+    {
+        ev = (XCBMotionNotifyEvent *)XCBPollForEvent(display);
+        if(!ev)
+        {   continue;
+        }
+        cleanev = XCB_EVENT_RESPONSE_TYPE(ev);
+
+        if(ev->event == win && cleanev == XCB_MOTION_NOTIFY)
+        {
+            nw = ow + (horiz * (ev->root_x - x));
+            nh = oh + (vert * (ev->root_y - y));
+            nx = ox + (!~horiz) * (ow - nw);
+            ny = oy + (!~vert) * (oh - nh);
+            XCBMoveResizeWindow(display, win, nx, ny, nw, nh);
+        }
+        detail = ev->detail;
+        free(ev);
+    } while(cleanev != 0 && (cleanev != XCB_BUTTON_RELEASE && detail != key_or_button));
 }
 
 void

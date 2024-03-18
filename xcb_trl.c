@@ -377,26 +377,23 @@ XCBSyncf(XCBDisplay *display)
 XCBCookie
 XCBMoveWindow(XCBDisplay *display, XCBWindow window, i32 x, i32 y)
 {
-    const i32 values[] = { x, y };
+    const i32 values[4] = { x, y };
     const u16 mask = XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y;
     return xcb_configure_window(display, window, mask, values);
 }
 
-/* NOT TYPE SAFE
- * OVERFLOW CAN OCCUR ON u32 > i32
- */
 XCBCookie
 XCBMoveResizeWindow(XCBDisplay *display, XCBWindow window, i32 x, i32 y, u32 width, u32 height)
 {
-    const i64 values[] = { x, y, width, height };
-    const u32 mask = XCB_CONFIG_WINDOW_X|XCB_CONFIG_WINDOW_Y|XCB_CONFIG_WINDOW_WIDTH|XCB_CONFIG_WINDOW_HEIGHT;
+    const i32 values[4] = { x, y, width, height };
+    const u16 mask = XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT;
     return xcb_configure_window(display, window, mask, values);
 }
 
 XCBCookie
 XCBResizeWindow(XCBDisplay *display, XCBWindow window, u32 width, u32 height)
 {
-    const u32 values[] = { width, height };
+    const u32 values[4] = { width, height };
     const u32 mask = XCB_CONFIG_WINDOW_WIDTH|XCB_CONFIG_WINDOW_HEIGHT;
     return xcb_configure_window(display, window, mask, values);
 }
@@ -404,7 +401,7 @@ XCBResizeWindow(XCBDisplay *display, XCBWindow window, u32 width, u32 height)
 XCBCookie
 XCBRaiseWindow(XCBDisplay *display, XCBWindow window)
 {
-    const u32 values = { XCB_STACK_MODE_ABOVE };
+    const u32 values[1] = { XCB_STACK_MODE_ABOVE };
     const u32 mask = XCB_CONFIG_WINDOW_STACK_MODE;
     return xcb_configure_window(display, window, mask, &values);
 }
@@ -513,6 +510,25 @@ XCBGetWindowGeometryReply(XCBDisplay *display, XCBCookie cookie)
     }
     return reply;
 }
+
+
+XCBCookie
+XCBGetGeometryCookie(
+        XCBDisplay *display,
+        XCBWindow window)
+{
+    return XCBGetWindowGeometryCookie(display, window);
+}
+
+XCBGeometry *
+XCBGetGeometryReply(
+        XCBDisplay *display,
+        XCBCookie cookie
+        )
+{
+    return XCBGetWindowGeometryReply(display, cookie);
+}
+
 
 XCBCookie
 XCBInternAtomCookie(XCBDisplay *display, const char *name, int only_if_exists)

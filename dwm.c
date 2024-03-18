@@ -279,6 +279,21 @@ detachbar(Monitor *m)
 }
 
 void
+attachclient(Client *c)
+{
+    c->next = c->desktop->clients;
+    c->desktop->clients = c;
+    if(c->next)
+    {   c->next->prev = c;
+    }
+    else
+    {   c->desktop->clast = c;
+    }
+    /* prevent circular linked list */
+    c->prev = NULL;
+}
+
+void
 attachdesktop(Monitor *m, Desktop *desktop)
 {
     desktop->next = m->desktops;
@@ -293,6 +308,26 @@ attachdesktop(Monitor *m, Desktop *desktop)
     /* prevent circular linked list */
     desktop->prev = NULL;
     ++m->deskcount;
+}
+
+void
+detachclient(Client *c)
+{
+    Client **tc;
+    for (tc = &c->desktop->clients; *tc && *tc != c; tc = &(*tc)->next);
+    *tc = c->next;
+    if(!(*tc)) 
+    {
+        c->desktop->clast = c->prev;
+    }
+    else if(c->next) 
+    {   c->next->prev = c->prev;
+    }
+    else if(c->prev) 
+    {   /* This should be UNREACHABLE but in case we do reach it then this should suffice*/
+        c->desktop->clast = c->prev;
+        c->prev->next = NULL;
+    }
 }
 
 void
@@ -315,41 +350,6 @@ detachdesktop(Monitor *m, Desktop *desktop)
         desktop->prev->next = NULL;
     }
     --m->deskcount;
-}
-
-void
-attachclient(Client *c)
-{
-    c->next = c->desktop->clients;
-    c->desktop->clients = c;
-    if(c->next)
-    {   c->next->prev = c;
-    }
-    else
-    {   c->desktop->clast = c;
-    }
-    /* prevent circular linked list */
-    c->prev = NULL;
-}
-
-void
-detachclient(Client *c)
-{
-    Client **tc;
-    for (tc = &c->desktop->clients; *tc && *tc != c; tc = &(*tc)->next);
-    *tc = c->next;
-    if(!(*tc)) 
-    {
-        c->desktop->clast = c->prev;
-    }
-    else if(c->next) 
-    {   c->next->prev = c->prev;
-    }
-    else if(c->prev) 
-    {   /* This should be UNREACHABLE but in case we do reach it then this should suffice*/
-        c->desktop->clast = c->prev;
-        c->prev->next = NULL;
-    }
 }
 
 u8
@@ -627,6 +627,24 @@ createmon(void)
     return m;
 }
 
+Monitor *
+dirtomon(u8 dir)
+{
+    Monitor *m = NULL;
+
+    if(dir > 0)
+    {   if(!(m = _wm->selmon->next)) m = _wm->mons;
+    }
+    else if (_wm->selmon == _wm->mons)
+    {
+        for(m = _wm->mons; m->next; m = nextmonitor(m));
+    }
+    else
+    {   for(m = _wm->mons; m->next != _wm->selmon; m = nextmonitor(m));
+    }
+    return m;
+}
+
 void
 exithandler(void)
 {   DEBUG("%s", "Process Terminated Successfully.");
@@ -778,19 +796,34 @@ grid(Desktop *desk)
 Client *
 manage(XCBWindow win)
 {
+    Client *c, *t = NULL;
+    XCBWindow trans = 0;
+    u8 transstatus = 0;
+    u32 inputmask = XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_FOCUS_CHANGE|XCB_EVENT_MASK_PROPERTY_CHANGE|XCB_EVENT_MASK_STRUCTURE_NOTIFY;
+    XCBWindowGeometry *wg;
+
     /* checks */
     if(win == _wm->root)
     {   DEBUG("%s", "Cannot manage() root window.");
         return NULL;
     }
 
-    Client *c, *t = NULL;
-    XCBWindow trans = 0;
-    u8 transstatus = 0;
-    XCBWindowGeometry *wg;
+    XCBCookie wacookie = XCBGetWindowAttributesCookie(_wm->dpy, win);
+    XCBGetWindowAttributes *waattributes;
+    /* this check avoids wasting anymore time than neccessary */
+    waattributes = XCBGetWindowAttributesReply(_wm->dpy, wacookie);
+    if(waattributes)
+    {   
+        if(waattributes->override_redirect)
+        {   free(waattributes);
+            return NULL;
+        }
+        inputmask |= waattributes->your_event_mask; 
+        inputmask &= ~waattributes->do_not_propagate_mask;
+        free(waattributes);
+    }
 
     /* get cookies first */
-
     XCBCookie wgcookie    = XCBGetWindowGeometryCookie(_wm->dpy, win);
     XCBCookie transcookie = XCBGetTransientForHintCookie(_wm->dpy, win);                        
     XCBCookie wtypecookie = XCBGetWindowPropertyCookie(_wm->dpy, win, netatom[NetWMWindowType], 0L, UINT32_MAX, False, XCB_ATOM_ATOM);
@@ -817,6 +850,7 @@ manage(XCBWindow win)
 
     /* On Failure clear flag and ignore hints */
     hints.flags *= !!hintstatus;    
+
 
     if(wtypeunused)
     {   
@@ -858,18 +892,13 @@ manage(XCBWindow win)
     c->x = MAX(c->x, c->mon->wx);
     c->y = MAX(c->y, c->mon->wy);
 
-    /* get the window type to see if we change the type managed or not */
-    /* c->x = CFG_BORDER_WIDTH */
-    XCBWindowChanges wc = { .border_width = c->bw };
-    XCBConfigureWindow(_wm->dpy, win, XCB_CONFIG_WINDOW_BORDER_WIDTH, &wc);
+    XCBSetWindowBorderWidth(_wm->dpy, win, c->bw);
     /*  XSetWindowBorder(dpy, w, scheme[SchemeBorder][ColBorder].pixel); */
     configure(c);   /* propagates border_width, if size doesn't change */
     updatetitle(c);
     updatesizehints(c, &hints);
     updatewmhints(c, wmh);
-    XCBSelectInput(_wm->dpy, win, 
-            XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_FOCUS_CHANGE|XCB_EVENT_MASK_PROPERTY_CHANGE|XCB_EVENT_MASK_STRUCTURE_NOTIFY
-            );
+    XCBSelectInput(_wm->dpy, win, inputmask);
     grabbuttons(win, 0);
 
     if(!ISFLOATING(c))
@@ -1500,13 +1529,13 @@ sighandler(void)
 void
 sighup(int signo) /* signal */
 {
-    Restart(NULL);
+    restart();
 }
 
 void
 sigterm(int signo)
-{   
-    Quit(NULL);
+{
+    quit();
 }
 
 void
@@ -1869,9 +1898,8 @@ updatewindowstate(Client *c, XCBAtom states[], uint32_t atomslength)
         /* This is similiar to those Windows 10 dialog boxes that play the err sound and cant click anything else */
         if (state == netatom[NetWMStateModal])
         {
-            if(c->mon->desksel->sel != c)
-            {   focus(c);
-            }
+            setmodal(c, 1);
+            setdialog(c, 1);
         }
         else if (state == netatom[NetWMStateAbove] || state == netatom[NetWMStateAlwaysOnTop])
         {
@@ -1912,9 +1940,6 @@ updatewindowstate(Client *c, XCBAtom states[], uint32_t atomslength)
         }
         else if (state == netatom[NetWMStateFocused])
         {
-            if(c->desktop->sel != c)
-            {   focus(c);
-            }
         }
         else if (state == netatom[NetWMStateShaded])
         {

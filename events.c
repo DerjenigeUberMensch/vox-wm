@@ -504,9 +504,8 @@ configurerequest(XCBGenericEvent *event)
             c->oldy = c->y;
             c->y = m->my + ((m->mh >> 1) - (HEIGHT(c) >> 1)); /* center in y direction */
         }
-        if(mask & (XCB_CONFIG_WINDOW_X|XCB_CONFIG_WINDOW_Y) 
-        && !(mask & (XCB_CONFIG_WINDOW_WIDTH|XCB_CONFIG_WINDOW_HEIGHT)))
-        {   configure(c);
+        if(mask & (XCB_CONFIG_WINDOW_X|XCB_CONFIG_WINDOW_Y) && !(mask & (XCB_CONFIG_WINDOW_WIDTH|XCB_CONFIG_WINDOW_HEIGHT)))
+        {    configure(c);
         }
         if(ISVISIBLE(c))
         {   XCBMoveResizeWindow(_wm->dpy, c->win, c->x, c->y, c->w, c->h);
@@ -522,6 +521,7 @@ configurerequest(XCBGenericEvent *event)
         wc.border_width = bw;
         wc.sibling = sibling;
         wc.stack_mode = stack;
+        /* some windows need to be mapped before configuring */
         XCBConfigureWindow(_wm->dpy, win, mask, &wc);
     }
     XCBSync(_wm->dpy);
@@ -641,19 +641,6 @@ createnotify(XCBGenericEvent *event)
     const u16 w                 = ev->width;
     const u16 h                 = ev->height;
     const u16 bw                = ev->border_width;
-
-    /* we dont want to make root/wmcheckwin killable so dont manage them */
-    if(win == _wm->root || win == _wm->wmcheckwin || overrideredirect)
-    {   return;
-    }
-
-    Client *c = wintoclient(win);
-    if(!c && ((c = manage(win))))
-    {   
-        setborderwidth(c, bw);
-        resize(c, x, y, w, h, 0);
-        XCBSync(_wm->dpy);
-    }
 }
 
 void
