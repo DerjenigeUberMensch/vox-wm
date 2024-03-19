@@ -209,6 +209,14 @@ ResizeWindow(
 void
 SetWindowLayout(const Arg *arg)
 {
+    Monitor *m;
+    Client *mnext;
+    m = _wm->selmon;
+
+    if(!m) return;
+    setdesktoplayout(m->desksel, arg->i);
+    arrange(m->desksel);
+    XCBSync(_wm->dpy);
 }
 
 void
