@@ -221,6 +221,19 @@ applysizehints(Client *c, int16_t *x, int16_t *y, uint16_t *width, uint16_t *hei
 void
 arrange(Desktop *desk)
 {
+    Client *c;
+    for(c = desk->clients; c; c = c->next) showhide(c);
+    arrangedesktop(desk);
+    restack(desk);
+}
+
+void
+arrangedesktop(Desktop *desk)
+{
+    if(layouts[desk->layout].symbol)
+    {   layouts[desk->layout].arrange(desk);
+    }
+    /* update the bar or something */
 }
 
 void
@@ -791,6 +804,57 @@ grabkeys(void)
 void
 grid(Desktop *desk)
 {
+    if(!desk->clients)
+    {   return;
+    }
+
+    i32 cx, cy;
+    u32 i, n, cw, ch, aw, ah, cols, rows;
+    u32 tmpcw, tmpch;
+    Client *c;
+    for(n = 0, c = nexttiled(desk->clients); c; c = nexttiled(c->next))
+    {   ++n;
+    }
+
+    if(!n) 
+    {   return;
+    }
+
+    /* grid dimensions */
+    for(rows = 0; rows <= n * 2; ++rows)
+    {
+        if(rows * rows >= n)
+        {   break;
+        }
+    }
+    cols = rows - !!(rows && (rows - 1) * rows >= n);
+    /* window geoms (cell height/width) */
+    ch = desk->clients->mon->wh / (rows + !rows);
+    cw = desk->clients->mon->ww / (cols + !cols);
+    for(i = 0, c = nexttiled(desk->clients); c; c = nexttiled(c->next))
+    {
+        cx = desk->clients->mon->wx + (i / rows) * cw;
+        cy = desk->clients->mon->wy + (i % rows) * ch;
+        /* adjust height/width of last row/column's windows */
+        ah = !!((i + 1) % rows) * (desk->clients->mon->wh - ch * rows);
+        aw = !!(i >= rows * (cols - 1)) * (desk->clients->mon->ww - cw * cols);
+
+        /* CFG_GAP_PX without fucking everything else */
+        cx += CFG_GAP_PX;
+        cy += CFG_GAP_PX;
+
+        tmpcw = cw - (c->bw << 1) + aw;
+        tmpch = ch - (c->bw << 1) + ah;
+
+        tmpcw -= CFG_GAP_PX;
+        tmpch -= CFG_GAP_PX;
+
+        tmpcw -= !!aw * CFG_GAP_PX;
+        tmpch -= !ah * CFG_GAP_PX;
+
+        resize(c, cx, cy, tmpcw, tmpch, 0);
+        ++i;
+    }
 }
 
 Client *
@@ -918,9 +982,7 @@ manage(XCBWindow win)
     XCBMapWindow(_wm->dpy, win);    /* window must be mapped before resizing */
     setfullscreen(c, ISFULLSCREEN(c->mon));
     focus(NULL);
-
-
-    
+    arrange(c->desktop);
     /* reply cleanup */
 
     free(wmh);
@@ -934,6 +996,20 @@ manage(XCBWindow win)
 void
 monocle(Desktop *desk)
 {
+    if(!desk->clients)
+    {   return;
+    }
+    Client *c;
+    u32 nw, nh;
+    const u32 nx = desk->clients->mon->wx;
+    const u32 ny = desk->clients->mon->wy;
+
+    for(c = nexttiled(desk->clients); c; c = nexttiled(c->next))
+    {
+        nw = desk->clients->mon->ww - (c->bw * 2);
+        nh = desk->clients->mon->wh - (c->bw * 2);
+        resize(c, nx, ny, nw, nh, 0); 
+    }
 }
 
 Client *
@@ -952,6 +1028,13 @@ Monitor *
 nextmonitor(Monitor *m)
 {
     return m ? m->next : m;
+}
+
+Client *
+nexttiled(Client *c)
+{
+    for(; c && (!ISVISIBLE(c) || ISFLOATING(c)); c = nextclient(c));
+    return c;
 }
 
 Client *
@@ -1018,6 +1101,7 @@ restack(Desktop *desk)
     Client *c;
     XCBGenericEvent *ev;
     XCBWindowChanges wc;
+    u32 cc = 0;
 
     c = desk->clients;
     if(!c)
@@ -1025,12 +1109,49 @@ restack(Desktop *desk)
     }
 
     wc.stack_mode = XCB_STACK_MODE_ABOVE;
-    wc.sibling = c->mon->barwin;
+    if(c->mon->barwin)
+    {   wc.sibling = c->mon->barwin;
+    }
+    else
+    {   wc.sibling = c->win;
+    }
     /* configure windows */
-    while((c = nextclient(c)))
-    {   
+    while((c = nextclient(desk->clients)))
+    {
         XCBConfigureWindow(_wm->dpy, c->win, XCB_CONFIG_WINDOW_SIBLING|XCB_CONFIG_WINDOW_STACK_MODE, &wc);
         wc.sibling = c->win;
+    }
+
+    while((c = nextclient(desk->clients)))
+    {
+        if(ISFLOATING(c))
+        {
+            XCBRaiseWindow(_wm->dpy, c->win);
+        }
+    }
+
+    while((c = nextclient(desk->clients)))
+    {
+        if(ISDIALOG(c))
+        {
+            XCBRaiseWindow(_wm->dpy, c->win);
+        }
+    }
+
+    while((c = nextclient(desk->clients)))
+    {
+        if(ISMODAL(c))
+        {
+            XCBRaiseWindow(_wm->dpy, c->win);
+        }
+    }
+
+    while((c = nextclient(desk->clients)))
+    {
+        if(ISALWAYSONTOP(c))
+        {
+            XCBRaiseWindow(_wm->dpy, c->win);
+        }
     }
 }
 
@@ -1291,6 +1412,12 @@ setdesktop(void)
 }
 
 void
+setdesktoplayout(Desktop *desk, uint8_t layout)
+{
+    desk->olayout = layout;
+    desk->layout = layout;
+}
+void
 setdesktopnames(void)
 {
     char names[_wm->selmon->deskcount];
@@ -1493,6 +1620,23 @@ setviewport(void)
             XCB_ATOM_CARDINAL, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)data, 2);
 }
 
+
+void NOINLINE
+showhide(Client *c)
+{
+    /* this is called alot we need very little overhead */
+    int x = ISVISIBLE(c);
+    x = !x * (c->mon->mx - (WIDTH(c) / 2));
+    x+= (!x * c->x);
+    XCBMoveWindow(_wm->dpy, c->win, x, c->y);
+    /*
+    if(ISVISIBLE(c))
+        XMoveWindow(dpy, c->win, c->x, c->y);
+    else
+        XMoveWindow(dpy, c->win, c->mon->mx - (WIDTH(c) << 1), c->y);
+    */
+}
+
 void
 sigchld(int signo) /* signal */
 {
@@ -1565,7 +1709,7 @@ startup(void)
 void
 tile(Desktop *desk)
 {
-    
+
 }
 
 void

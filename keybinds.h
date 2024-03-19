@@ -38,6 +38,10 @@ static const Key keys[] =
     /* KeyType                  modifier                 key        function        argument */
     { XCB_KEY_PRESS,            SUPER,                  XK_Return,  SpawnWindow,        { .v = termcmd  }  },
     { XCB_KEY_PRESS,            SUPER,                  XK_d,       SpawnWindow,        { .v = dmenucmd }  },
+    { XCB_KEY_PRESS,            SUPER,                  XK_z,       SetWindowLayout,        { .ui = Tiled}  },
+    { XCB_KEY_PRESS,            SUPER,                  XK_x,       SetWindowLayout,        { .ui = Floating }  },
+    { XCB_KEY_PRESS,            SUPER,                  XK_c,       SetWindowLayout,        { .ui = Monocle}  },
+    { XCB_KEY_PRESS,            SUPER,                  XK_g,       SetWindowLayout,        { .ui = Grid}  },
 };
 
 /* button definitions */

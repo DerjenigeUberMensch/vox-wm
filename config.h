@@ -105,7 +105,7 @@ static const Layout layouts[4] =
 {
     /* Name          symbol     arrange function */
     [Tiled]     = { "[T]",      tile            },
-    [Floating]  = { "[F]",      NULL            },
+    [Floating]  = { "[F]",      floating        },
     [Monocle]   = { "[M]",      monocle         },
     [Grid]      = { "[G]",      grid            },
 };

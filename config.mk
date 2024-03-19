@@ -51,7 +51,7 @@ BUILDSELF = ${RELEASEFLAGS} ${XNATIVE} -O3
 # uncomment for debugging
 LINKERFLAGS = ${DYNAMICLINK} -Wl,--gc-sections
 # Set your options or presets (see above) ex: ${PRESETNAME} (Compiler used is on top)
-CFLAGS = ${RELEASES}
+CFLAGS = ${DEBUG}
 # Linker flags
 LDFLAGS =  ${LIBS} ${LINKERFLAGS} ${BINARY} 
 # Solaris
