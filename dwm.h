@@ -82,6 +82,7 @@ typedef struct Key Key;
 typedef struct Button Button;
 typedef struct Monitor Monitor;
 typedef struct Client Client;
+typedef struct Stack Stack;
 typedef struct Layout Layout;
 typedef struct Desktop Desktop;
 typedef struct WM WM;
@@ -132,7 +133,9 @@ struct Client
     XCBWindow win;      /* Client Window            */
 
     Client *next;       /* The next client in list  */
+    Client *snext;      /* The next client in stack */
     Client *prev;       /* The previous client      */
+    Client *sprev;      /* The prev stack order clnt*/
     Monitor *mon;       /* Client Monitor           */
     Desktop *desktop;   /* Client Associated Desktop*/
 
@@ -196,7 +199,9 @@ struct Desktop
 
     Client *clients;            /* First Client in linked list  */
     Client *clast;              /* Last Client in linked list   */
-    Client *sel;                /* Selected Client                          */
+    Client *stack;              /* Client Stack Order           */
+    Client *slast;              /* Last client in stack order   */
+    Client *sel;                /* Selected Client              */
     Desktop *next;              /* Next Client in linked list   */
     Desktop *prev;              /* Previous Client in list      */
 };
@@ -232,7 +237,9 @@ void detachbar(Monitor *m);
 void attachdesktop(Monitor *m, Desktop *desk);
 void detachdesktop(Monitor *m, Desktop *desk);
 void attachclient(Client *c);
+void attachstack(Client *c);
 void detachclient(Client *c);
+void detachstack(Client *c);
 uint8_t checknewbar(XCBWindow win);
 void checkotherwm(void);
 void cleanup(void);
@@ -242,7 +249,10 @@ void cleanupmon(Monitor *m);
 void cleanupmons(void);
 void configure(Client *c);
 Client *createclient(Monitor *m);
+Desktop *createdeskop(Monitor *m);
 Monitor *createmon(void);
+Stack *createstack(void);
+
 Monitor *dirtomon(uint8_t dir);
 void exithandler(void);
 void floating(Desktop *desk);

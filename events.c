@@ -651,6 +651,7 @@ destroynotify(XCBGenericEvent *event)
     const XCBWindow eventwin    = ev->event;        /* The Event win is the window that sent the message */
 
     Client *c = NULL;
+    /* destroyed windows no longer need to be managed */
     if((c = wintoclient(win)))
     {   unmanage(c, 1);
     }

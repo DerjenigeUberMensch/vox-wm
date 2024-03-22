@@ -103,32 +103,19 @@ _xcb_err_handler(XCBDisplay *display, XCBGenericError *err)
                     err->full_sequence
                     );
         }
-        if(!errtxt)
-        {
-            fprintf(stderr, "error_code: [%d], major_code: [%d], minor_code: [%d]\n"
-                    "sequence: [%d], response_type: [%d], resource_id: [%d]\n"
-                    "full_sequence: [%d]\n"
-                    , 
-                    err->error_code, err->major_code, err->minor_code,
-                    err->sequence, err->response_type, err->resource_id,
-                    err->full_sequence);
-            if(mjrtxt)
-            {   fprintf(stderr, "This likely is a %s major code error.\n", mjrtxt);
-            }
-        }
-        else if(!mjrtxt)
-        {
-            fprintf(stderr, "error_code: [%d], major_code: [%d], minor_code: [%d]\n"
-                    "sequence: [%d], response_type: [%d], resource_id: [%d]\n"
-                    "full_sequence: [%d]\n"
-                    , 
-                    err->error_code, err->major_code, err->minor_code,
-                    err->sequence, err->response_type, err->resource_id,
-                    err->full_sequence);
-            if(errtxt)
-            {   fprintf(stderr, "This liekly is a %s error.\n", errtxt);
-            }
-        }
+
+        fprintf(stderr, "%s %s\n", XCBErrorCodeText(err->error_code), XCBErrorMajorCodeText(err->major_code));
+        fprintf(stderr, "error_code: [%d], major_code: [%d], minor_code: [%d]\n"
+              "sequence: [%d], response_type: [%d], resource_id: [%d]\n"
+              "full_sequence: [%d]\n"
+              ,
+           err->error_code, err->major_code, err->minor_code, 
+           err->sequence, err->response_type, err->resource_id, 
+           err->full_sequence);
+#if     XCB_TRL_ENABLE_EXTENSIVE_DEBUG != 0
+        /* TODO */
+        fprintf(stderr, "This occured at function: %s", NULL);
+#endif
         free(err);
         err = NULL;
         return;
