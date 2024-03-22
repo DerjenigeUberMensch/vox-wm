@@ -23,6 +23,7 @@
 #include "xcb_winutil.h"
 #include "util.h"
 #include "events.h"
+#include "bar.h"
 #include "dwm.h"
 
 #include "config.h"
@@ -222,7 +223,7 @@ void
 arrange(Desktop *desk)
 {
     Client *c;
-    for(c = desk->clients; c; c = c->next) showhide(c);
+    for(c = desk->stack; c; c = c->snext) showhide(c);
     arrangedesktop(desk);
     restack(desk);
 }
@@ -324,6 +325,24 @@ attachdesktop(Monitor *m, Desktop *desktop)
 }
 
 void
+attachstack(Client *c)
+{
+    Desktop *desk = c->desktop;
+    c->snext = desk->stack;
+    desk->stack = c;
+    if(c->snext)
+    {   
+        c->snext->sprev = c;
+    }
+    else
+    {   
+        desk->slast = c;
+    }
+    /* prevent dangling pointers */
+    c->sprev = NULL;
+}
+
+void
 detachclient(Client *c)
 {
     Client **tc;
@@ -363,6 +382,34 @@ detachdesktop(Monitor *m, Desktop *desktop)
         desktop->prev->next = NULL;
     }
     --m->deskcount;
+}
+
+void
+detachstack(Client *c)
+{
+    Desktop *desk = c->desktop;
+    Client **tc, *t;
+
+    for(tc = &desk->stack; *tc && *tc != c; tc = &(*tc)->snext);
+    *tc = c->snext;
+    if(!(*tc))
+    {
+        desk->slast = c->sprev;
+    }
+    else if(c->snext)
+    {   
+        c->snext->sprev = c->sprev;
+    }
+    else if(c->sprev)
+    {   /* this should be UNREACHABLE but if it does this should suffice */
+        desk->slast = c->sprev;
+        c->sprev->snext = NULL;
+    }
+    if(c == desk->sel)
+    {
+        for(t = desk->stack; t && !ISVISIBLE(t); t = t->snext);
+        desk->sel = t;
+    }
 }
 
 u8
@@ -524,6 +571,7 @@ void
 cleanupclient(Client *c)
 {
     detachclient(c);
+    detachstack(c);
     free(c);
     c = NULL;
 }
@@ -575,22 +623,6 @@ configure(Client *c)
     XCBSendEvent(_wm->dpy, c->win, False, XCB_EVENT_MASK_STRUCTURE_NOTIFY, (const char *)&ce);
 }
 
-Desktop *
-createdesktop(Monitor *m)
-{
-    Desktop *desk = calloc(1, sizeof(Desktop));
-    if(!desk)
-    {
-        DEBUG("%s", "WARN: FAILED TO CREATE DESKTOP");
-        return NULL;
-    }
-    desk->layout = _wm->default_layout;
-    desk->olayout= _wm->default_layout;
-    desk->clients= NULL;
-    attachdesktop(m, desk);
-    return desk;
-}
-
 Client *
 createclient(Monitor *m)
 {
@@ -613,6 +645,23 @@ createclient(Monitor *m)
     c->pid = 0;
     c->desktop = m->desksel;
     return c;
+}
+
+Desktop *
+createdesktop(Monitor *m)
+{
+    Desktop *desk = calloc(1, sizeof(Desktop));
+    if(!desk)
+    {
+        DEBUG("%s", "WARN: FAILED TO CREATE DESKTOP");
+        return NULL;
+    }
+    desk->layout = _wm->default_layout;
+    desk->olayout= _wm->default_layout;
+    desk->clients= NULL;
+    desk->stack = NULL;
+    attachdesktop(m, desk);
+    return desk;
 }
 
 Monitor *
@@ -671,22 +720,27 @@ floating(Desktop *desk)
 void
 focus(Client *c)
 {
+    Monitor *selmon = _wm->selmon;
+    Desktop *desk  = selmon->desksel;
     if(!c || !ISVISIBLE(c))
     {   /* selmon should have atleast 1 desktop so no need to check */
-        c = nextvisible(_wm->selmon->desksel->clients);
+        for(c = desk->stack; c && !ISVISIBLE(c); c = c->snext);
     }
-    if(_wm->selmon->desksel->sel && _wm->selmon->desksel->sel != c)
-    {   unfocus(_wm->selmon->desksel->sel, 0);
+    if(desk->sel && desk->sel != c)
+    {   unfocus(desk->sel, 0);
     }
     if(c)
     {   
         if(c->mon != _wm->selmon)
         {   _wm->selmon = c->mon;
         }
+
         if(ISURGENT(c))
         {   seturgent(c, 0);
         }
         /* make it first on the stack */
+        detachstack(c);
+        attachstack(c);
         detachclient(c);
         attachclient(c);
         grabbuttons(c->win, 1);
@@ -701,7 +755,7 @@ focus(Client *c)
         XCBSetInputFocus(_wm->dpy, _wm->root, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
         XCBDeleteProperty(_wm->dpy, _wm->root, netatom[NetActiveWindow]);
     }
-    _wm->selmon->desksel->sel = c;
+    desk->sel = c;
 }
 
 i32
@@ -872,22 +926,9 @@ manage(XCBWindow win)
         return NULL;
     }
 
-    XCBCookie wacookie = XCBGetWindowAttributesCookie(_wm->dpy, win);
-    XCBGetWindowAttributes *waattributes;
-    /* this check avoids wasting anymore time than neccessary */
-    waattributes = XCBGetWindowAttributesReply(_wm->dpy, wacookie);
-    if(waattributes)
-    {   
-        if(waattributes->override_redirect)
-        {   free(waattributes);
-            return NULL;
-        }
-        inputmask |= waattributes->your_event_mask; 
-        inputmask &= ~waattributes->do_not_propagate_mask;
-        free(waattributes);
-    }
 
     /* get cookies first */
+    XCBCookie wacookie = XCBGetWindowAttributesCookie(_wm->dpy, win);
     XCBCookie wgcookie    = XCBGetWindowGeometryCookie(_wm->dpy, win);
     XCBCookie transcookie = XCBGetTransientForHintCookie(_wm->dpy, win);                        
     XCBCookie wtypecookie = XCBGetWindowPropertyCookie(_wm->dpy, win, netatom[NetWMWindowType], 0L, UINT32_MAX, False, XCB_ATOM_ATOM);
@@ -895,6 +936,7 @@ manage(XCBWindow win)
     XCBCookie sizehcookie = XCBGetWMNormalHintsCookie(_wm->dpy, win);
     XCBCookie wmhcookie   = XCBGetWMHintsCookie(_wm->dpy, win);
 
+    XCBGetWindowAttributes *waattributes;
     XCBWindowProperty *wtypeunused;
     XCBWindowProperty *stateunused;
     XCBSizeHints hints;
@@ -905,6 +947,7 @@ manage(XCBWindow win)
     c->win = win;
 
     /* wait for replies */
+    waattributes = XCBGetWindowAttributesReply(_wm->dpy, wacookie);
     wg = XCBGetWindowGeometryReply(_wm->dpy, wgcookie);
     transstatus = XCBGetTransientForHintReply(_wm->dpy, transcookie, &trans);
     wtypeunused = XCBGetWindowPropertyReply(_wm->dpy, wtypecookie);
@@ -915,6 +958,24 @@ manage(XCBWindow win)
     /* On Failure clear flag and ignore hints */
     hints.flags *= !!hintstatus;    
 
+    if(waattributes)
+    {   
+        if(waattributes->override_redirect)
+        {   
+            free(c);
+            free(waattributes);
+            free(wmh);
+            free(stateunused);
+            free(wtypeunused);
+            free(wg);
+            return NULL;
+        }
+        /* sometimes clients do dumb stuff that messes with out window managing */
+        /*
+        inputmask |= waattributes->your_event_mask; 
+        inputmask &= ~waattributes->do_not_propagate_mask;
+        */
+    }
 
     if(wtypeunused)
     {   
@@ -972,19 +1033,15 @@ manage(XCBWindow win)
         setfloating(c, trans != XCB_NONE || ISALWAYSONTOP(c) || ISFLOATING(c));
     }
     attachclient(c);
+    attachstack(c);
     XCBChangeProperty(_wm->dpy, _wm->root, netatom[NetClientList], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&win, 1);
     setclientstate(c, XCB_WINDOW_NORMAL_STATE);
-
-    if(c->mon == _wm->selmon)
-    {   unfocus(_wm->selmon->desksel->sel, 0);
-    }
-    _wm->selmon->desksel->sel = c;
     XCBMapWindow(_wm->dpy, win);    /* window must be mapped before resizing */
     setfullscreen(c, ISFULLSCREEN(c->mon));
     focus(NULL);
     arrange(c->desktop);
     /* reply cleanup */
-
+    free(waattributes);
     free(wmh);
     free(stateunused);
     free(wtypeunused);
@@ -1099,9 +1156,7 @@ void
 restack(Desktop *desk)
 {
     Client *c;
-    XCBGenericEvent *ev;
     XCBWindowChanges wc;
-    u32 cc = 0;
 
     c = desk->clients;
     if(!c)
@@ -1113,16 +1168,25 @@ restack(Desktop *desk)
     {   wc.sibling = c->mon->barwin;
     }
     else
-    {   wc.sibling = c->win;
+    {   
+        Client *tmp = nextclient(c);
+        if(tmp)
+        {   
+            wc.sibling = tmp->win;
+        }
+        else
+        {   /* nothing to restack */
+            return;
+        }
     }
     /* configure windows */
-    while((c = nextclient(desk->clients)))
+    while((c = nextclient(c)))
     {
         XCBConfigureWindow(_wm->dpy, c->win, XCB_CONFIG_WINDOW_SIBLING|XCB_CONFIG_WINDOW_STACK_MODE, &wc);
         wc.sibling = c->win;
     }
 
-    while((c = nextclient(desk->clients)))
+    while((c = nextclient(c)))
     {
         if(ISFLOATING(c))
         {
@@ -1130,7 +1194,7 @@ restack(Desktop *desk)
         }
     }
 
-    while((c = nextclient(desk->clients)))
+    while((c = nextclient(c)))
     {
         if(ISDIALOG(c))
         {
@@ -1138,7 +1202,7 @@ restack(Desktop *desk)
         }
     }
 
-    while((c = nextclient(desk->clients)))
+    while((c = nextclient(c)))
     {
         if(ISMODAL(c))
         {
@@ -1146,12 +1210,17 @@ restack(Desktop *desk)
         }
     }
 
-    while((c = nextclient(desk->clients)))
+    while((c = nextclient(c)))
     {
         if(ISALWAYSONTOP(c))
         {
             XCBRaiseWindow(_wm->dpy, c->win);
         }
+    }
+
+    while((c = nextclient(c)))
+    {   
+        DEBUG("%s", c->name);
     }
 }
 
@@ -1364,6 +1433,7 @@ sendmon(Client *c, Monitor *m)
     }
     unfocus(c, 1);
     detachclient(c);
+    detachstack(c);
     c->mon = m;
     c->desktop = m->desksel;
     attachclient(c);
@@ -1692,11 +1762,12 @@ startup(void)
     if(!setlocale(LC_CTYPE, ""))
     {   fputs("WARN: NO_LOCALE_SUPPORT\n", stderr);
     }
-    const char *display = ":1";
+    const char *display = NULL;
     _wm->dpy = XCBOpenDisplay(display, &_wm->screen);
     if(!_wm->dpy)
     {   DIECAT("%s", "FATAL: CANNOT_CONNECT_TO_X_SERVER");
     }
+    DEBUG("DISPLAY -> %s", display ? display : getenv("DISPLAY"));
     checkotherwm();
     XCBSetErrorHandler(xerror);
     /* This allows for execvp and exec to only spawn process on the specified display rather than the default varaibles */
@@ -1860,14 +1931,15 @@ updategeom(void)
 void
 unmanage(Client *c, uint8_t destroyed)
 {
+    Desktop *desk = c->desktop;
     if(!c)
     {   return;
     }
     if(_wm->lastfocused == c)
     {   _wm->lastfocused = NULL;
     }
-    if(c->desktop->sel == c)
-    {   c->desktop->sel = NULL;
+    if(!destroyed && c->desktop->sel == c)
+    {   unfocus(c, 0);
     }
     /* TODO
      * Memory leak if a client is unmaped and maped again
@@ -1876,6 +1948,7 @@ unmanage(Client *c, uint8_t destroyed)
     cleanupclient(c);
     updateclientlist();
     focus(NULL);
+    arrange(desk);
 }
 
 void
@@ -2195,20 +2268,22 @@ wintoclient(XCBWindow win)
     Desktop *desk = NULL;
     Monitor *m = NULL;
 
-    for(m = _wm->mons; m; m = m->next)
+    m = _wm->mons;
+    while((m = nextmonitor(m)))
     {
-        for(desk = m->desktops; desk; desk = desk->next)
+        desk = m->desktops;
+        while((desk = nextdesktop(desk)))
         {
-            for(c = desk->clients; c; c = c->next)
+            c = desk->clients;
+            while((c = nextclient(c)))
             {
                 if(c->win == win)
-                {
-                    return c;
+                {   return c;
                 }
             }
         }
     }
-    return c;
+    return NULL;
 }
 
 Monitor *

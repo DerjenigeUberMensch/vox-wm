@@ -28,7 +28,7 @@ ${BIN}/%.o: %.c | ${BIN}
 default: ${OBJ}
 	${CC} -o ${BIN}/${EXE} ${OBJ} ${LDFLAGS}
 
-clean: default
+clean:
 	cd ${BIN} && rm *.o && cd ../
 
 
