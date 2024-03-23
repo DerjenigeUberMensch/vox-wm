@@ -29,8 +29,7 @@ default: ${OBJ}
 	${CC} -o ${BIN}/${EXE} ${OBJ} ${LDFLAGS}
 
 clean:
-	cd ${BIN} && rm *.o && cd ../
-
+	${RM} ${BIN}/*.o ${EXEPATH}
 
 release:
 	rm -rf -f -- ${EXE}-${VERSION}

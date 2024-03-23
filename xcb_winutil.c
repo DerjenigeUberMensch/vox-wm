@@ -266,8 +266,6 @@ XCBGetTextProp(
         char *text, 
         size_t size)
 {
-	char **list = NULL;
-	int n;
     XCBCookie cookie;
 	XCBTextProperty name;
 

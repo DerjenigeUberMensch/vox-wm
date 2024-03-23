@@ -335,13 +335,23 @@
 
 
 /* TODO */
-#define XCB_TRL_ENABLE_DEBUG        0           /* This enables XCB_TRL to use as much memory + cpu
+#define XCB_TRL_ENABLE_DEBUG        1           /* This enables XCB_TRL to use as much memory + cpu
                                                  * This allows more specific information about certain errors, things
                                                  * Regarding the information of XCB_TRL.
                                                  * This should NOT be enabled when releasing a non debug build
                                                  * as it uses a considerable amount of memory and binary size.
-                                                 * Instead it is recommended to disable this to allow for optimizations
+                                                 * Instead it is recommended to disable this to allow for optimizations.
+                                                 * It is also further recommended not not use a error handler as this will print out the info already.
                                                  */
+
+
+
+#ifdef XCB_TRL_ENABLE_DEBUG
+    #if XCB_TRL_ENABLE_DEBUG != 0
+        /* if you want to pause execution right as we hit something and just check whatever is next you are free to do so */
+        void XCBBreakPoint(void);
+    #endif
+#endif
 
 /* Ghosts */
 
@@ -2422,8 +2432,6 @@ XCBGetWMNormalHintsReply(
         XCBCookie cookie,
         XCBSizeHints *hints_return
         );
-
-
 
 
 

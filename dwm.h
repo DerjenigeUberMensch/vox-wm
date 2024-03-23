@@ -17,7 +17,7 @@
 #endif
 
 #define BUTTONMASK              (XCB_EVENT_MASK_BUTTON_PRESS|XCB_EVENT_MASK_BUTTON_RELEASE)
-#define CLEANMASK(mask)         (mask & ~(_wm->numlockmask|XCB_MOD_MASK_LOCK) & \
+#define CLEANMASK(mask)         (mask & ~(_wm.numlockmask|XCB_MOD_MASK_LOCK) & \
                                 (XCB_MOD_MASK_SHIFT|XCB_MOD_MASK_CONTROL| \
                                  XCB_MOD_MASK_1|XCB_MOD_MASK_2|XCB_MOD_MASK_3|XCB_MOD_MASK_4|XCB_MOD_MASK_5))
 #define INTERSECT(x,y,w,h,m)    (MAX(0, MIN((x)+(w),(m)->wx+(m)->ww) - MAX((x),(m)->wx)) \
@@ -95,7 +95,7 @@ union Arg
     uint64_t ul;            /* ul -> unsigned long  */
     float f;                /* f -> float           */
     double d;               /* d -> double          */
-    const void *v;          /* v -> void pointer    */
+    void *v;          /* v -> void pointer    */
 };
 
 struct Key
@@ -215,8 +215,6 @@ struct WM
     int numlockmask;                /* numlockmask          */
     int running;                    /* Running flag         */
     int restart;                    /* Restart flag         */
-    uint8_t default_layout;         /* default layout index */
-    uint16_t desktopcount;          /* desktopcount         */
     uint16_t sw;                    /* Screen Height        */
     uint16_t sh;                    /* Screen Width         */
     XCBWindow root;                 /* The root window      */
@@ -236,9 +234,10 @@ void attachbar(Monitor *m, XCBWindow barwin);
 void detachbar(Monitor *m);
 void attachdesktop(Monitor *m, Desktop *desk);
 void detachdesktop(Monitor *m, Desktop *desk);
-void attachclient(Client *c);
+void attach(Client *c);
 void attachstack(Client *c);
-void detachclient(Client *c);
+void detach(Client *c);
+void detachcompletely(Client *c);
 void detachstack(Client *c);
 uint8_t checknewbar(XCBWindow win);
 void checkotherwm(void);
@@ -254,6 +253,7 @@ Monitor *createmon(void);
 Stack *createstack(void);
 
 Monitor *dirtomon(uint8_t dir);
+void eventhandler(XCBGenericEvent *ev);
 void exithandler(void);
 void floating(Desktop *desk);
 void focus(Client *c);
@@ -266,6 +266,7 @@ void monocle(Desktop *desk);
 Client *nextclient(Client *c);
 Desktop *nextdesktop(Desktop *desktop);
 Monitor *nextmonitor(Monitor *monitor);
+Client *nextstack(Client *c);
 Client *nexttiled(Client *c);
 Client *nextvisible(Client *c);
 Client *lastvisible(Client *c);
@@ -301,6 +302,7 @@ void sigchld(int signo);
 void sighandler(void);
 void sighup(int signo);
 void sigterm(int signo);
+void specialconds(int argc, char *argcv[]);
 void startup(void);
 void tile(Desktop *desk);
 void unfocus(Client *c, uint8_t setfocus);
