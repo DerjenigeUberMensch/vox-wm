@@ -38,12 +38,15 @@ static const Key keys[] =
     /* KeyType                  modifier                 key        function        argument */
     { XCB_KEY_PRESS,            SUPER,                  XK_Return,  SpawnWindow,        { .v = termcmd  }  },
     { XCB_KEY_PRESS,            SUPER,                  XK_d,       SpawnWindow,        { .v = dmenucmd }  },
-    { XCB_KEY_PRESS,            SUPER,                  XK_z,       SetWindowLayout,        { .ui = Tiled}  },
-    { XCB_KEY_PRESS,            SUPER,                  XK_x,       SetWindowLayout,        { .ui = Floating }  },
-    { XCB_KEY_PRESS,            SUPER,                  XK_c,       SetWindowLayout,        { .ui = Monocle}  },
-    { XCB_KEY_PRESS,            SUPER,                  XK_g,       SetWindowLayout,        { .ui = Grid}  },
-};
+    { XCB_KEY_PRESS,            SUPER,                  XK_z,       SetWindowLayout,    { .ui = Tiled}  },
+    { XCB_KEY_PRESS,            SUPER,                  XK_x,       SetWindowLayout,    { .ui = Floating }  },
+    { XCB_KEY_PRESS,            SUPER,                  XK_c,       SetWindowLayout,    { .ui = Monocle}  },
+    { XCB_KEY_PRESS,            SUPER,                  XK_g,       SetWindowLayout,    { .ui = Grid}  },
 
+    { XCB_KEY_PRESS,            CTRL|SUPER,                  XK_p,       Restart,    {0}  },
+    { XCB_KEY_RELEASE,          SHIFT|SUPER,                 XK_p,        Quit,    { 0}  }
+
+};
 /* button definitions */
 /* click can be ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle, ClkClientWin, or ClkRootWin */
 static const Button buttons[] = 

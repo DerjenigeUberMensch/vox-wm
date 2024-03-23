@@ -5,7 +5,7 @@
 #include "keybinds.h"
 #include "dwm.h"
 
-extern WM *_wm;
+extern WM _wm;
 extern void xerror(XCBDisplay *display, XCBGenericError *error);
 
 void (*handler[LASTEvent]) (XCBGenericEvent *) = 
@@ -78,12 +78,12 @@ keypress(XCBGenericEvent *event)
     const i32 cleanstate = CLEANMASK(state);
 
     /* ONLY use lowercase cause we dont know how to handle anything else */
-    const XCBKeysym sym = XCBKeySymbolsGetKeySym(_wm->syms, keydetail, 0);
+    const XCBKeysym sym = XCBKeySymbolsGetKeySym(_wm.syms, keydetail, 0);
     /* Only use upercase cause we dont know how to handle anything else
-     * sym = XCBKeySymbolsGetKeySym(_wm->syms,  keydetail, 0);
+     * sym = XCBKeySymbolsGetKeySym(_wm.syms,  keydetail, 0);
      */
     /* This Could work MAYBE allowing for upercase and lowercase Keybinds However that would complicate things due to our ability to mask Shift
-     * sym = XCBKeySymbolsGetKeySym(_wm->syms, keydetail, cleanstate); 
+     * sym = XCBKeySymbolsGetKeySym(_wm.syms, keydetail, cleanstate); 
      */
     DEBUG("%d", sym);
     int i;
@@ -99,7 +99,7 @@ keypress(XCBGenericEvent *event)
             }
         }
     }
-    XCBSync(_wm->dpy);
+    XCBSync(_wm.dpy);
 }
 
 void
@@ -120,12 +120,12 @@ keyrelease(XCBGenericEvent *event)
 
     const i32 cleanstate = CLEANMASK(state);
     /* ONLY use lowercase cause we dont know how to handle anything else */
-    const XCBKeysym sym = XCBKeySymbolsGetKeySym(_wm->syms, keydetail, 0);
+    const XCBKeysym sym = XCBKeySymbolsGetKeySym(_wm.syms, keydetail, 0);
     /* Only use upercase cause we dont know how to handle anything else
-     * sym = XCBKeySymbolsGetKeySym(_wm->syms,  keydetail, 0);
+     * sym = XCBKeySymbolsGetKeySym(_wm.syms,  keydetail, 0);
      */
     /* This Could work MAYBE allowing for upercase and lowercase Keybinds However that would complicate things due to our ability to mask Shift
-     * sym = XCBKeySymbolsGetKeySym(_wm->syms, keydetail, cleanstate); 
+     * sym = XCBKeySymbolsGetKeySym(_wm.syms, keydetail, cleanstate); 
      */
     int i;
     for(i = 0; i < LENGTH(keys); ++i)
@@ -140,7 +140,7 @@ keyrelease(XCBGenericEvent *event)
             }
         }
     }
-    XCBSync(_wm->dpy);
+    XCBSync(_wm.dpy);
 }
 
 void
@@ -161,18 +161,17 @@ buttonpress(XCBGenericEvent *event)
 
     const i32 cleanstate = CLEANMASK(state);
 
+    u8 sync = 0;
     Monitor *m;
     /* focus monitor if necessary */
     if ((m = wintomon(eventwin)))
     {
-        if(m != _wm->selmon)
+        if(m != _wm.selmon)
         {
-            unfocus(_wm->selmon->desksel->sel, 1);
-            _wm->selmon = m;
+            unfocus(_wm.selmon->desksel->sel, 1);
+            _wm.selmon = m;
             focus(NULL);
-        }
-        else if(_wm->selmon && _wm->selmon->desksel && _wm->selmon->desksel->sel)
-        {   unfocus(_wm->selmon->desksel->sel, 1);  /* focus nothing */
+            sync = 1;
         }
     }
 
@@ -184,13 +183,12 @@ buttonpress(XCBGenericEvent *event)
             if(c->mon != m)
             {   c->mon = m;
             }
-            detachclient(c);
-            attachclient(c);
             focus(c);
             if(ISFLOATING(c) || ISALWAYSONTOP(c))
-            {   XCBRaiseWindow(_wm->dpy, c->win);
+            {   XCBRaiseWindow(_wm.dpy, c->win);
             }
-            XCBAllowEvents(_wm->dpy, XCB_ALLOW_REPLAY_POINTER, XCB_TIME_CURRENT_TIME);
+            XCBAllowEvents(_wm.dpy, XCB_ALLOW_REPLAY_POINTER, XCB_TIME_CURRENT_TIME);
+            sync = 1;
         }
     }
     int i;
@@ -204,10 +202,13 @@ buttonpress(XCBGenericEvent *event)
             Arg arg;
             arg.v = ev;
             buttons[i].func(&arg);
+            sync = 1;
             break;
         }
     }
-    XCBSync(_wm->dpy);
+    if(sync)
+    {   XCBSync(_wm.dpy);
+    }
 }
 
 void
@@ -228,7 +229,9 @@ buttonrelease(XCBGenericEvent *event)
 
     const i32 cleanstate = CLEANMASK(state);
 
-    int i;
+    u8 sync = 0;
+
+    i16 i;
     for(i = 0; i < LENGTH(buttons); ++i)
     {   
         if(buttons[i].type == XCB_BUTTON_RELEASE
@@ -239,10 +242,14 @@ buttonrelease(XCBGenericEvent *event)
             Arg arg;
             arg.v = ev;
             buttons[i].func(&arg);
+            sync = 1;
             break;
         }
     }
-    XCBSync(_wm->dpy);
+    
+    if(sync)
+    {   XCBSync(_wm.dpy);
+    }
 }
 
 void
@@ -263,25 +270,30 @@ motionnotify(XCBGenericEvent *event)
 
 
     /* due to the mouse being able to move a ton we want to limit the cycles burnt for non root events */
-    if(eventwin != _wm->root)
+    if(eventwin != _wm.root)
     {   return;
     }
 
 
+    u8 sync = 0;
     static Monitor *mon = NULL;
     Monitor *m;
 
     if((m = recttomon(rootx, rooty, 1, 1)) != mon && mon)
     {
-        Client *c = _wm->selmon->desksel->sel;
+        Client *c = _wm.selmon->desksel->sel;
         if(c)
         {   unfocus(c, 1);
         }
-        _wm->selmon = m;
+        _wm.selmon = m;
         focus(NULL);
-        XCBSync(_wm->dpy);
+        sync = 1;
     }
     mon = m;
+
+    if(sync)
+    {   XCBSync(_wm.dpy);
+    }
 }
 
 void
@@ -301,6 +313,7 @@ enternotify(XCBGenericEvent *event)
     const uint8_t mode   = ev->mode;
     const uint8_t samescreenfocus = ev->same_screen_focus;
 
+    if(!CFG_HOVER_FOCUS) return;
 
 
     /* hover focus */
@@ -309,23 +322,23 @@ enternotify(XCBGenericEvent *event)
     Client *c;
     Monitor *m;
 
-    if((mode != XCB_NOTIFY_MODE_NORMAL || detail == XCB_NOTIFY_DETAIL_INFERIOR) || eventwin != _wm->root)
+    if((mode != XCB_NOTIFY_MODE_NORMAL || detail == XCB_NOTIFY_DETAIL_INFERIOR) && eventwin != _wm.root)
     {   return;
     }
 
     c = wintoclient(eventwin);
     m = c ? c->mon : wintomon(eventwin);
 
-    if(m != _wm->selmon)
+    if(m != _wm.selmon)
     {
-        unfocus(_wm->selmon->desksel->sel, 1);
-        _wm->selmon = m;
+        unfocus(_wm.selmon->desksel->sel, 1);
+        _wm.selmon = m;
     }
-    else if(!c || c == _wm->selmon->desksel->sel)
+    else if(!c || c == _wm.selmon->desksel->sel)
     {   return;
     }
     focus(c);
-    XCBSync(_wm->dpy);
+    XCBSync(_wm.dpy);
 }
 
 void
@@ -356,10 +369,11 @@ focusin(XCBGenericEvent *event)
     const XCBWindow eventwin = ev->event;
     const u8 mode = ev->mode;
 
-    if(_wm->selmon->desksel->sel && eventwin != _wm->selmon->desksel->sel->win)
-    {   setfocus(_wm->selmon->desksel->sel);
+    if(_wm.selmon->desksel->sel && eventwin != _wm.selmon->desksel->sel->win)
+    {   
+        setfocus(_wm.selmon->desksel->sel);
+        XCBSync(_wm.dpy);
     }
-    XCBSync(_wm->dpy);
 }
 
 void
@@ -508,7 +522,7 @@ configurerequest(XCBGenericEvent *event)
         {    configure(c);
         }
         if(ISVISIBLE(c))
-        {   XCBMoveResizeWindow(_wm->dpy, c->win, c->x, c->y, c->w, c->h);
+        {   XCBMoveResizeWindow(_wm.dpy, c->win, c->x, c->y, c->w, c->h);
         }
     }
     else
@@ -522,9 +536,9 @@ configurerequest(XCBGenericEvent *event)
         wc.sibling = sibling;
         wc.stack_mode = stack;
         /* some windows need to be mapped before configuring */
-        XCBConfigureWindow(_wm->dpy, win, mask, &wc);
+        XCBConfigureWindow(_wm.dpy, win, mask, &wc);
     }
-    XCBSync(_wm->dpy);
+    XCBSync(_wm.dpy);
 }
 
 void
@@ -537,7 +551,7 @@ maprequest(XCBGenericEvent *event)
     if(!wintoclient(win))
     {   manage(win);
     }
-    XCBSync(_wm->dpy);
+    XCBSync(_wm.dpy);
 }
 /* popup windows sometimes need this */
 void
@@ -554,9 +568,9 @@ resizerequest(XCBGenericEvent *event)
     {   resize(c, c->x, c->y, w, h, 0);
     }
     else
-    {   XCBResizeWindow(_wm->dpy, win, w, h);
+    {   XCBResizeWindow(_wm.dpy, win, w, h);
     }
-    XCBSync(_wm->dpy);
+    XCBSync(_wm.dpy);
 }
 
 void
@@ -584,12 +598,13 @@ configurenotify(XCBGenericEvent *event)
     const u16 borderwidth = ev->border_width;
     const u8 overrideredirect = ev->override_redirect;
 
-    if(win == _wm->root)
+    u8 sync = 0;
+    if(win == _wm.root)
     {
         u8 dirty;
-        dirty = (_wm->sw != w || _wm->sh != h);
-        _wm->sw = w;
-        _wm->sh = h;
+        dirty = (_wm.sw != w || _wm.sh != h);
+        _wm.sw = w;
+        _wm.sh = h;
         DEBUG("(w: %d, h: %d)", w, h);
 
         if(updategeom() || dirty)
@@ -599,24 +614,22 @@ configurenotify(XCBGenericEvent *event)
             Client *c;
             /* update the bar */
 
-            m = _wm->mons;
-            while((m = nextmonitor(m)))
+            for(m = _wm.mons; m; m = nextmonitor(m))
             {
-                desk = m->desktops;
-                while((desk = nextdesktop(desk)))
+                for(desk = m->desktops; desk; desk = nextdesktop(desk))
                 {
-                    c = desk->clients;
-                    while((c = nextclient(c)))
+                    for(c = desk->clients; c; c = nextclient(c))
                     {
                         if(ISFULLSCREEN(c))
                         {   resizeclient(c, m->mx, m->my, m->mw, m->mh);
                         }
-                        XCBMoveResizeWindow(_wm->dpy, m->barwin, m->wx, m->by, m->ww, m->bh);
+                        XCBMoveResizeWindow(_wm.dpy, m->barwin, m->wx, m->by, m->ww, m->bh);
                     }
                 }
             }
             focus(NULL);
             /* arrangeall */
+            sync = 1;
         }
     }
     if(overrideredirect)
@@ -625,8 +638,11 @@ configurenotify(XCBGenericEvent *event)
         if((c = wintoclient(win)))
         {   unmanage(c, 0);
         }
+        sync = 1;
     }
-    XCBSync(_wm->dpy);
+    if(sync)
+    {   XCBSync(_wm.dpy);
+    }
 }
 
 void
@@ -653,9 +669,10 @@ destroynotify(XCBGenericEvent *event)
     Client *c = NULL;
     /* destroyed windows no longer need to be managed */
     if((c = wintoclient(win)))
-    {   unmanage(c, 1);
+    {   
+        unmanage(c, 1);
+        XCBSync(_wm.dpy);
     }
-    XCBSync(_wm->dpy);
 }
 
 void
@@ -681,11 +698,11 @@ mappingnotify(XCBGenericEvent *event)
     const uint8_t count            = ev->count;
     const uint8_t request          = ev->request;
 
-    XCBRefreshKeyboardMapping(_wm->syms, ev);
+    XCBRefreshKeyboardMapping(_wm.syms, ev);
     if(ev->request == XCB_MAPPING_KEYBOARD)
     {   grabkeys();
     }
-    XCBSync(_wm->dpy);
+    XCBSync(_wm.dpy);
 }
 
 void
@@ -698,9 +715,10 @@ unmapnotify(XCBGenericEvent *event)
 
     Client *c;
     if((c = wintoclient(win)))
-    {   unmanage(c, 0);
+    {   
+        unmanage(c, 0);
+        XCBSync(_wm.dpy);
     }
-    XCBSync(_wm->dpy);
 }
 
 void
@@ -746,14 +764,7 @@ propertynotify(XCBGenericEvent *event)
 
     Client *c = NULL;
     XCBWindow trans;
-
-    int nfyname;
-    int nfyicon;
-    int nfytype;
-    int nfymotif;
-    int nfybar;
-
-    if((win == _wm->root) && atom == XCB_ATOM_WM_NAME)
+    if((win == _wm.root) && atom == XCB_ATOM_WM_NAME)
     {   /* updatestatus */
     }
 
@@ -763,6 +774,8 @@ propertynotify(XCBGenericEvent *event)
 
     if((c = wintoclient(win)))
     {   
+        XCBCookie cookie;
+        XCBWMHints *wmh;
         switch(atom)
         {
             case XCB_ATOM_WM_TRANSIENT_FOR:
@@ -770,8 +783,8 @@ propertynotify(XCBGenericEvent *event)
             case XCB_ATOM_WM_NORMAL_HINTS:
                 break;
             case XCB_ATOM_WM_HINTS:
-                XCBCookie cookie = XCBGetWMHintsCookie(_wm->dpy, c->win);
-                XCBWMHints *wmh = XCBGetWMHintsReply(_wm->dpy, cookie);
+                cookie = XCBGetWMHintsCookie(_wm.dpy, c->win);
+                wmh = XCBGetWMHintsReply(_wm.dpy, cookie);
                 updatewmhints(c, wmh);
                 /* draw bar */
                 break;
@@ -792,6 +805,7 @@ propertynotify(XCBGenericEvent *event)
         if (nfymotif) updatemotifhints(c);
         if (nfybar)   drawbar(c->mon);
         */
+        XCBSync(_wm.dpy);
     }
 
 }
@@ -822,5 +836,5 @@ genericevent(XCBGenericEvent *event)
 
 void
 errorhandler(XCBGenericEvent *event)
-{   xerror(_wm->dpy, (XCBGenericError *)event);
+{   xerror(_wm.dpy, (XCBGenericError *)event);
 }

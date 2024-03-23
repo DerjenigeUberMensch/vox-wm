@@ -13,7 +13,7 @@
 
 
 
-extern WM *_wm;
+extern WM _wm;
 
 void
 UserStats(const Arg *arg)
@@ -24,27 +24,27 @@ void
 FocusMonitor(const Arg *arg)
 {
     Monitor *m;
-    if(!_wm->mons)
+    if(!_wm.mons)
     {   
         DEBUG0("There are no monitors, this should not be possible.");
         return;
     }
-    if(!_wm->mons->next)
+    if(!_wm.mons->next)
     {   DEBUG0("There is no other monitor to focus.");
     }
 
-    if(!_wm->selmon)
+    if(!_wm.selmon)
     {   DEBUG0("No monitor selected in Context, this should not be possible");
     }
 
-    if((m = dirtomon(arg->i)) == _wm->selmon)
+    if((m = dirtomon(arg->i)) == _wm.selmon)
     {   return;
     }
 
-    if(_wm->selmon->desksel->sel)
-    {   unfocus(_wm->selmon->desksel->sel, 0);
+    if(_wm.selmon->desksel->sel)
+    {   unfocus(_wm.selmon->desksel->sel, 0);
     }
-    _wm->selmon = m;
+    _wm.selmon = m;
     focus(NULL);
 }
 
@@ -125,6 +125,18 @@ DragWindow(
         }
         free(ev);
     } while(cleanev != 0 && cleanev != XCB_BUTTON_RELEASE && detail != key_or_button);
+}
+
+void
+Restart(const Arg *arg)
+{
+    restart();
+}
+
+void
+Quit(const Arg *arg)
+{
+    quit();
 }
 
 void
@@ -211,12 +223,11 @@ SetWindowLayout(const Arg *arg)
 {
     Monitor *m;
     Client *mnext;
-    m = _wm->selmon;
+    m = _wm.selmon;
 
     if(!m) return;
     setdesktoplayout(m->desksel, arg->i);
     arrange(m->desksel);
-    XCBSync(_wm->dpy);
 }
 
 void
@@ -229,8 +240,8 @@ SpawnWindow(const Arg *arg)
 {
     if (fork() == 0)
     {
-        if (_wm->dpy)
-            close(XCBConnectionNumber(_wm->dpy));
+        if (_wm.dpy)
+            close(XCBConnectionNumber(_wm.dpy));
         setsid();
         execvp(((char **)arg->v)[0], (char **)arg->v);
         /* UNREACHABLE */
@@ -261,13 +272,15 @@ AltTab(const Arg *arg)
 void
 ToggleStatusBar(const Arg *arg)
 {
-    setshowbar(_wm->selmon, !SHOWBAR(_wm->selmon));
-    updatebarpos(_wm->selmon);
-    XCBMoveResizeWindow(_wm->dpy, _wm->selmon->barwin, _wm->selmon->wx, _wm->selmon->by, _wm->selmon->ww, _wm->selmon->bh);
-    arrange(_wm->selmon->desksel);
+    setshowbar(_wm.selmon, !SHOWBAR(_wm.selmon));
+    updatebarpos(_wm.selmon);
+    XCBMoveResizeWindow(_wm.dpy, _wm.selmon->barwin, _wm.selmon->wx, _wm.selmon->by, _wm.selmon->ww, _wm.selmon->bh);
+    arrange(_wm.selmon->desksel);
 }
 
 void
 ToggleFullscreen(const Arg *arg)
 {
 }
+
+

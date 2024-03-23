@@ -45,6 +45,14 @@ typedef int64_t  i64;
 
 static void (*_handler)(XCBDisplay *, XCBGenericError *) = NULL;
 
+
+#ifdef XCB_TRL_ENABLE_DEBUG
+    #if XCB_TRL_ENABLE_DEBUG != 0
+    #define DBG             1
+    #define _fn             __func__
+    #endif
+#endif
+
 /* HELPER FUNCTION */
 static XCBScreen *
 screen_of_display(XCBDisplay *display, int screen)
@@ -61,24 +69,47 @@ screen_of_display(XCBDisplay *display, int screen)
     return NULL;
 }
 
+#ifdef DBG
 static void
-_xcb_die(const char *fmt, ...)
+jmpck(XCBDisplay *d, XCBGenericError *err)
 {
-    va_list ap;
+    fprintf(stderr, "%s %s\n", XCBErrorCodeText(err->error_code), XCBErrorMajorCodeText(err->major_code));
+    fprintf(stderr, 
+            "error_code:    [%d]\n"
+            "major_code:    [%d]\n"
+            "minor_code:    [%d]\n"
+            "sequence:      [%d]\n"
+            "response_type: [%d]\n"
+            "resource_id:   [%d]\n"
+            "full_sequence: [%d]\n"
+              ,
+           err->error_code, err->major_code, err->minor_code, 
+           err->sequence, err->response_type, err->resource_id, 
+           err->full_sequence);
 
-    va_start(ap, fmt);
-    vfprintf(stderr, fmt, ap);
-    va_end(ap);
-
-    if (fmt[0] && fmt[strlen(fmt)-1] == ':')
-    {   fputc(' ', stderr);
-        perror(NULL);
-    }
-    else 
-    {   fputc('\n', stderr);
-    }
-    exit(1);
 }
+
+static void
+ck(XCBDisplay *d, XCBCookie c, const char *func)
+{
+    XCBGenericError *err = NULL;
+    err = xcb_request_check(d, c);
+    if(err)
+    {
+        jmpck(d, err);
+        fprintf(stderr, "Occured at: %s\n", func);
+        free(err);
+        XCBBreakPoint();
+    }
+}
+
+void  __attribute__ ((noinline)) 
+XCBBreakPoint(void) 
+{
+}
+
+#endif
+
 
 static void
 _xcb_err_handler(XCBDisplay *display, XCBGenericError *err)
@@ -87,41 +118,14 @@ _xcb_err_handler(XCBDisplay *display, XCBGenericError *err)
     if(!err || !display)
     {   return;
     }
-    if(!_handler)
-    {   
-        const char *errtxt = XCBErrorCodeText(err->error_code);
-        const char *mjrtxt = XCBErrorMajorCodeText(err->major_code);
-        /* if it wasnt in our list it probably was an extension we dont cover those so just die */
-        if(!errtxt && !mjrtxt)
-        {
-            _xcb_die("error_code: [%d], major_code: [%d], minor_code: [%d]\n"
-                    "sequence: [%d], response_type: [%d], resource_id: [%d]\n"
-                    "full_sequence: [%d]\n"
-                    , 
-                    err->error_code, err->major_code, err->minor_code,
-                    err->sequence, err->response_type, err->resource_id,
-                    err->full_sequence
-                    );
-        }
-
-        fprintf(stderr, "%s %s\n", XCBErrorCodeText(err->error_code), XCBErrorMajorCodeText(err->major_code));
-        fprintf(stderr, "error_code: [%d], major_code: [%d], minor_code: [%d]\n"
-              "sequence: [%d], response_type: [%d], resource_id: [%d]\n"
-              "full_sequence: [%d]\n"
-              ,
-           err->error_code, err->major_code, err->minor_code, 
-           err->sequence, err->response_type, err->resource_id, 
-           err->full_sequence);
-#if     XCB_TRL_ENABLE_EXTENSIVE_DEBUG != 0
-        /* TODO */
-        fprintf(stderr, "This occured at function: %s", NULL);
+#ifdef DBG
+    jmpck(display, err);
+    free(err);
+    return;
 #endif
-        free(err);
-        err = NULL;
-        return;
+    if(_handler)
+    {   _handler(display, err);
     }
-    /* this is unreachable if no handler is set */
-    _handler(display, err);
     free(err);
     err = NULL;
 }
@@ -295,18 +299,35 @@ XCBDefaultDepth(XCBDisplay *display, int screen)
 XCBCookie
 XCBSelectInput(XCBDisplay *display, XCBWindow window, u32 mask)
 {
+#ifdef DBG
+    XCBCookie cookie = xcb_change_window_attributes_checked(display, window, XCB_CW_EVENT_MASK, &mask);
+    ck(display, cookie, _fn);
+    return cookie;
+#endif
+
     return xcb_change_window_attributes(display, window, XCB_CW_EVENT_MASK, &mask);
 }
 
 XCBCookie
 XCBSetInputFocus(XCBDisplay *display, XCBWindow window, u8 revert_to, XCBTimestamp tim)
 {
+#ifdef DBG
+    XCBCookie cookie = xcb_set_input_focus_checked(display, revert_to, window, tim);
+    ck(display, cookie, _fn);
+    return cookie;
+#endif
+
     return xcb_set_input_focus(display, revert_to, window, tim);
 }
 
 XCBCookie
 XCBChangeWindowAttributes(XCBDisplay *display, XCBWindow window, u32 mask, XCBWindowAttributes *window_attributes)
 {
+#ifdef DBG
+    XCBCookie cookie = xcb_change_window_attributes_aux_checked(display, window, mask, window_attributes);
+    ck(display, cookie, _fn);
+    return cookie;
+#endif
     return xcb_change_window_attributes_aux(display, window, mask, window_attributes);
 }
 
@@ -366,15 +387,20 @@ XCBMoveWindow(XCBDisplay *display, XCBWindow window, i32 x, i32 y)
 {
     const i32 values[4] = { x, y };
     const u16 mask = XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y;
+#ifdef DBG
+    XCBCookie cookie = xcb_configure_window_checked(display, window, mask, values);
+    ck(display, cookie, _fn);
+    return cookie;
+#endif
     return xcb_configure_window(display, window, mask, values);
 }
 
 XCBCookie
 XCBMoveResizeWindow(XCBDisplay *display, XCBWindow window, i32 x, i32 y, u32 width, u32 height)
 {
-    const i32 values[4] = { x, y, width, height };
-    const u16 mask = XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT;
-    return xcb_configure_window(display, window, mask, values);
+    /* fucks up sometimes so this will do */
+    XCBMoveWindow(display, window, x, y);
+    return XCBResizeWindow(display, window, width, height);
 }
 
 XCBCookie
@@ -382,6 +408,13 @@ XCBResizeWindow(XCBDisplay *display, XCBWindow window, u32 width, u32 height)
 {
     const u32 values[4] = { width, height };
     const u32 mask = XCB_CONFIG_WINDOW_WIDTH|XCB_CONFIG_WINDOW_HEIGHT;
+
+#ifdef DBG
+    XCBCookie cookie = xcb_configure_window_checked(display, window, mask, values);
+    ck(display, cookie, _fn);
+    return cookie;
+#endif
+
     return xcb_configure_window(display, window, mask, values);
 }
 
@@ -390,6 +423,11 @@ XCBRaiseWindow(XCBDisplay *display, XCBWindow window)
 {
     const u32 values[1] = { XCB_STACK_MODE_ABOVE };
     const u32 mask = XCB_CONFIG_WINDOW_STACK_MODE;
+#ifdef DBG
+    XCBCookie cookie = xcb_configure_window_checked(display, window, mask, values);
+    ck(display, cookie, _fn);
+    return cookie;
+#endif
     return xcb_configure_window(display, window, mask, &values);
 }
 
@@ -397,54 +435,89 @@ XCBCookie
 XCBMapRaised(XCBDisplay *display, XCBWindow window)
 {
     xcb_map_window(display, window);
+#ifdef DBG
+    XCBCookie cookie = xcb_map_window_checked(display, window);
+    ck(display, cookie, _fn);
+    return XCBRaiseWindow(display, window);
+#endif
     return XCBRaiseWindow(display, window);
 }
 
 XCBCookie
 XCBLowerWindow(XCBDisplay *display, XCBWindow window)
 {
-    const u32 values = { XCB_STACK_MODE_BELOW };
+    const u32 values[1] = { XCB_STACK_MODE_BELOW };
     const u32 mask = XCB_CONFIG_WINDOW_STACK_MODE;
+#ifdef DBG
+    XCBCookie cookie = xcb_configure_window_checked(display, window, mask, values);
+    ck(display, cookie, _fn);
+    return cookie;
+#endif
     return xcb_configure_window(display, window, mask, &values);
 }
 
 XCBCookie
 XCBRaiseWindowIf(XCBDisplay *display, XCBWindow window)
 {
-    const u32 values = { XCB_STACK_MODE_TOP_IF };
+    const u32 values[1] = { XCB_STACK_MODE_TOP_IF };
     const u32 mask = XCB_CONFIG_WINDOW_STACK_MODE;
+#ifdef DBG
+    XCBCookie cookie = xcb_configure_window_checked(display, window, mask, values);
+    ck(display, cookie, _fn);
+    return cookie;
+#endif
     return xcb_configure_window(display, window, mask, &values);
 }
 
 XCBCookie
 XCBLowerWindowIf(XCBDisplay *display, XCBWindow window)
 {
-    const u32 values = { XCB_STACK_MODE_BOTTOM_IF };
+    const u32 values[1] = { XCB_STACK_MODE_BOTTOM_IF };
     const u32 mask = XCB_CONFIG_WINDOW_STACK_MODE;
+#ifdef DBG
+    XCBCookie cookie = xcb_configure_window_checked(display, window, mask, values);
+    ck(display, cookie, _fn);
+    return cookie;
+#endif
     return xcb_configure_window(display, window, mask, &values);
 }
 
 XCBCookie
 XCBRaiseLowerWindow(XCBDisplay *display, XCBWindow window)
 {
-    const u32 values = { XCB_STACK_MODE_OPPOSITE };
+    const u32 values[1] = { XCB_STACK_MODE_OPPOSITE };
     const u32 mask = XCB_CONFIG_WINDOW_STACK_MODE;
+#ifdef DBG
+    XCBCookie cookie = xcb_configure_window_checked(display, window, mask, values);
+    ck(display, cookie, _fn);
+    return cookie;
+#endif
     return xcb_configure_window(display, window, mask, &values);
 }
 
 XCBCookie
 XCBSetWindowBorderWidth(XCBDisplay *display, XCBWindow window, u32 border_width)
 {
-    const u32 values = { border_width };
+    const u32 values[1] = { border_width };
     const u32 mask = XCB_CONFIG_WINDOW_BORDER_WIDTH;
+#ifdef DBG
+    XCBCookie cookie = xcb_configure_window_checked(display, window, mask, values);
+    ck(display, cookie, _fn);
+    return cookie;
+#endif
     return xcb_configure_window(display, window, mask, &values);
 }
 
 XCBCookie
 XCBSetSibling(XCBDisplay *display, XCBWindow window, XCBWindow sibling)
 {
-    const u32 values = { sibling };
+    const u32 values[1] = { sibling };
     const u32 mask = XCB_CONFIG_WINDOW_SIBLING;
+#ifdef DBG
+    XCBCookie cookie = xcb_configure_window_checked(display, window, mask, values);
+    ck(display, cookie, _fn);
+    return cookie;
+#endif
     return xcb_configure_window(display, window, mask, &values);
 }
 
@@ -686,6 +759,13 @@ XCBPixmap
 XCBCreatePixmap(XCBDisplay *display, XCBWindow root, u16 width, u16 height, u8 depth)
 {
     const XCBPixmap id = xcb_generate_id(display);
+
+#ifdef DBG
+    XCBCookie cookie = xcb_create_pixmap(display, depth, id, root, width, height);
+    ck(display, cookie, _fn);
+    return id;
+#endif
+
     xcb_create_pixmap(display, depth, id, root, width, height);
     return id;
 }
@@ -711,6 +791,16 @@ XCBCreateFontCursor(XCBDisplay *display, int shape)
     xcb_open_font(display, font, strlenofcursor, "cursor");
 
     const xcb_cursor_t id = xcb_generate_id(display);
+
+
+#ifdef DBG
+    XCBCookie cookie = xcb_create_glyph_cursor_checked(display, id, font, font, shape, shape + 1,
+                            fgred, fggreen, fgblue,
+                            bgred, bggreen, bgblue);
+    ck(display, cookie, _fn);
+    return id;
+#endif
+
     xcb_create_glyph_cursor(display, id, font, font, shape, shape + 1,
                             fgred, fggreen, fgblue,
                             bgred, bggreen, bgblue);
@@ -727,6 +817,11 @@ XCBCookie
 XCBDefineCursor(XCBDisplay *display, XCBWindow window, XCBCursor id)
 {   
     const u32 mask = XCB_CW_CURSOR;
+#if DBG
+    XCBCookie cookie = xcb_change_window_attributes_checked(display, window, mask, &id);
+    ck(display, cookie, _fn);
+    return cookie;
+#endif
     return xcb_change_window_attributes(display, window, mask, &id);
 }
 
@@ -734,6 +829,13 @@ XCBCookie
 XCBOpenFont(XCBDisplay *display, XCBFont id, const char *name)
 {
     const u16 len = strlen(name);
+
+#if DBG
+    XCBCookie cookie = xcb_open_font_checked(display, id, len, name);
+    ck(display, cookie, _fn);
+    return cookie;
+#endif
+
     return xcb_open_font(display, id, len, name);
 }
 
@@ -1034,6 +1136,12 @@ XCBErrorDisplayText(
 XCBCookie
 XCBAllowEvents(XCBDisplay *display, u8 mode, XCBTimestamp tim)
 {
+#if DBG
+    XCBCookie cookie = xcb_allow_events_checked(display, mode, tim);
+    ck(display, cookie, _fn);
+    return cookie;
+#endif
+
     return xcb_allow_events(display, mode, tim);
 }
 
@@ -1195,24 +1303,48 @@ XCBUngrabKeyboard(
         XCBTimestamp tim
         )
 {
+#if DBG
+    XCBCookie cookie = xcb_ungrab_keyboard_checked(display, tim);
+    ck(display, cookie, _fn);
+    return cookie;
+#endif
+
     return xcb_ungrab_keyboard(display, tim);
 }
 
 XCBCookie
 XCBGrabKey(XCBDisplay *display, XCBKeyCode keycode, u16 modifiers, XCBWindow grab_window, u8 owner_events, u8 pointer_mode, u8 keyboard_mode)
 {
+#if DBG
+    XCBCookie cookie = xcb_grab_key_checked(display, owner_events, grab_window, modifiers, keycode, pointer_mode, keyboard_mode);
+    ck(display, cookie, _fn);
+    return cookie;
+#endif
+
     return xcb_grab_key(display, owner_events, grab_window, modifiers, keycode, pointer_mode, keyboard_mode);
 }
 
 XCBCookie 
 XCBUngrabKey(XCBDisplay *display, XCBKeyCode key, u16 modifiers, XCBWindow grab_window)
 {
+#if DBG
+    XCBCookie cookie = xcb_ungrab_key_checked(display, key, grab_window, modifiers);
+    ck(display, cookie, _fn);
+    return cookie;
+#endif
+
     return xcb_ungrab_key(display, key, grab_window, modifiers);
 }
 
 XCBCookie
 XCBUngrabButton(XCBDisplay *display, uint8_t button, uint16_t modifier, XCBWindow window)
 {
+#if DBG
+    XCBCookie cookie = xcb_ungrab_button_checked(display, button, window, modifier);
+    ck(display, cookie, _fn);
+    return cookie;
+#endif
+
     return xcb_ungrab_button(display, button, window, modifier);
 }
 
@@ -1229,6 +1361,12 @@ XCBGrabButton(
         XCBWindow confine_to,
         XCBCursor cursor)
 {
+#if DBG
+    XCBCookie cookie = xcb_grab_button_checked(display, owner_events, grab_window, event_mask, pointer_mode, keyboard_mode, confine_to, cursor, button, modifiers);
+    ck(display, cookie, _fn);
+    return cookie;
+#endif
+
     return xcb_grab_button(display, owner_events, grab_window, event_mask, pointer_mode, keyboard_mode, confine_to, cursor, button, modifiers);
 }
 
@@ -1448,6 +1586,12 @@ XCBQueryPointerReply(XCBDisplay *display, XCBCookie cookie)
 XCBCookie
 XCBMapWindow(XCBDisplay *display, XCBWindow window)
 {
+#if DBG
+    XCBCookie cookie = xcb_map_window_checked(display, window);
+    ck(display, cookie, _fn);
+    return cookie;
+#endif
+
     return xcb_map_window(display, window);
 }
 
@@ -1458,6 +1602,11 @@ XCBUnmapWindow(
         XCBWindow window
         )
 {
+#if DBG
+    XCBCookie cookie = xcb_unmap_window_checked(display, window);
+    ck(display, cookie, _fn);
+    return cookie;
+#endif
     return xcb_unmap_window(display, window);
 }
 
@@ -1468,6 +1617,11 @@ XCBDestroyWindow(
         XCBWindow window
         )
 {
+#if DBG
+    XCBCookie cookie = xcb_destroy_window_checked(display, window);
+    ck(display, cookie, _fn);
+    return cookie;
+#endif
     return xcb_destroy_window(display, window);
 }
 
@@ -1488,6 +1642,15 @@ XCBCreateWindow(
 {
     const XCBWindow id = xcb_generate_id(display);
     const void *used = NULL;
+
+
+#if DBG
+    XCBCookie cookie = xcb_create_window_checked(display, depth, id, parent, x, y, width, height, border_width, 
+    class, visual, valuemask, used);
+    ck(display, cookie, _fn);
+    return id;
+#endif
+
     xcb_create_window(display, depth, id, parent, x, y, width, height, border_width, 
     class, visual, valuemask, used);
     return id;
@@ -1507,11 +1670,19 @@ XCBCreateSimpleWindow(
         )
 {
     const XCBWindow id = xcb_generate_id(display);
+    const u8 depth = XCB_COPY_FROM_PARENT;
     const XCBVisual visual = XCBGetScreen(display)->root_visual;
     const u8  class = XCB_WINDOW_CLASS_INPUT_OUTPUT;
     const u32 mask = XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL;
     const u32 color[2] = { background_color, border_color };
-    xcb_create_window(display, XCB_COPY_FROM_PARENT, id, parent, x, y, width, height, border_width, class, visual, mask, &color);
+
+#if DBG
+    XCBCookie cookie = xcb_create_window_checked(display, depth, id, parent, x, y, width, height, border_width, class, visual, mask, &color);
+    ck(display, cookie, _fn);
+    return id;
+#endif
+
+    xcb_create_window(display, depth, id, parent, x, y, width, height, border_width, class, visual, mask, &color);
     return id;
 }
 
@@ -1521,6 +1692,13 @@ XCBCreateGC(XCBDisplay *display, XCBDrawable drawable,
 u32 valuemask, const void *valuelist)
 {
     const XCBGC id = xcb_generate_id(display);
+
+#if DBG
+    XCBCookie cookie = xcb_create_gc_checked(display, id, drawable, valuemask, valuelist);
+    ck(display, cookie, _fn);
+    return id;
+#endif
+
     xcb_create_gc(display, id, drawable, valuemask, valuelist);
     return id;
 }
@@ -1545,6 +1723,12 @@ XCBSetLineAttributes(XCBDisplay *display, XCBGC gc, u32 linewidth, u32 linestyle
     gcvalist[i++] = joinstyle;
 
 
+#if DBG
+    XCBCookie cookie = xcb_change_gc_checked(display, gc, mask, gcvalist);
+    ck(display, cookie, _fn);
+    return 1;
+#endif
+
     /* This returns a cookie but changing the gc isnt doesnt really require a reply as you are directly manupulating your own gc
      */
     xcb_change_gc(display, gc, mask, gcvalist);
@@ -1555,12 +1739,24 @@ XCBSetLineAttributes(XCBDisplay *display, XCBGC gc, u32 linewidth, u32 linestyle
 XCBCookie
 XCBChangeProperty(XCBDisplay *display, XCBWindow window, XCBAtom property, XCBAtom type, u8 format, u8 mode, const void *data, u32 nelements)
 {
+#if DBG
+    XCBCookie cookie = xcb_change_property_checked(display, mode, window, property, type, format, nelements, data);
+    ck(display, cookie, _fn);
+    return cookie;
+#endif
+
     return xcb_change_property(display, mode, window, property, type, format, nelements, data);
 }
 
 XCBCookie
 XCBDeleteProperty(XCBDisplay *display, XCBWindow window, XCBAtom property)
 {
+#if DBG
+    XCBCookie cookie = xcb_delete_property_checked(display, window, property);
+    ck(display, cookie, _fn);
+    return cookie;
+#endif
+
     return xcb_delete_property(display, window, property);
 }
 
@@ -1571,6 +1767,12 @@ XCBConfigureWindow(
         u16 value_mask,
         XCBWindowChanges *changes)
 {
+#if DBG
+    XCBCookie cookie = xcb_configure_window_aux_checked(display, window, value_mask, changes);
+    ck(display, cookie, _fn);
+    return cookie;
+#endif
+
     return xcb_configure_window_aux(display, window, value_mask, changes);
 }
 
@@ -1578,6 +1780,11 @@ XCBCookie
 XCBSetClassHint(XCBDisplay *display, XCBWindow window, const char *class_name)
 {
     const int len = strlen(class_name);
+#if DBG
+    XCBCookie cookie = xcb_icccm_set_wm_class_checked(display, window, len, class_name);
+    ck(display, cookie, _fn);
+    return cookie;
+#endif
     return xcb_icccm_set_wm_class(display, window, len, class_name);
 }
 
@@ -1585,12 +1792,24 @@ XCBSetClassHint(XCBDisplay *display, XCBWindow window, const char *class_name)
 XCBCookie
 XCBChangeGC(XCBDisplay *display, XCBGC gc, u32 valuemask, const void *valuelist)
 {
+#if DBG
+    XCBCookie cookie = xcb_change_gc_checked(display, gc, valuemask, valuelist);
+    ck(display, cookie, _fn);
+    return cookie;
+#endif
+
     return xcb_change_gc(display, gc, valuemask, valuelist);
 }
 
 XCBCookie
 XCBDrawPoint(XCBDisplay *display, u8 coordinatemode, XCBDrawable drawable, XCBGC gc, uint32_t points_len, XCBPoint *points)
 {
+#if DBG
+    XCBCookie cookie = xcb_poly_point_checked(display, coordinatemode, drawable, gc, points_len, points);
+    ck(display, cookie, _fn);
+    return cookie;
+#endif
+
     return xcb_poly_point(display, coordinatemode, drawable, gc, points_len, points);
 }
 
@@ -1780,24 +1999,21 @@ XCBGetWMHintsReply(
     xcb_get_property_cookie_t cookie1 = { .sequence = cookie.sequence };
 
     xcb_get_property_reply_t *reply = xcb_get_property_reply(display, cookie1, &err);
-    XCBWMHints *ret = NULL;
+    XCBWMHints *data = NULL;
 
     /* error handling */
     if(err)
     {   
         _xcb_err_handler(display, err);
-        if(reply)
-        {   free(reply);
-        }
-        return NULL;
+        goto FAILURE;
     }
     /* make sure data matches */
     if(!reply || reply->type != XCB_ATOM_WM_HINTS || reply->format != 32)
     {   goto FAILURE;   
     }
 
-    ret = xcb_get_property_value(reply);
-    if(!ret)
+    data = xcb_get_property_value(reply);
+    if(!data)
     {   goto FAILURE;
     }
 
@@ -1809,25 +2025,22 @@ XCBGetWMHintsReply(
     }
 
     if(num_elem < XCB_ICCCM_NUM_WM_HINTS_ELEMENTS)
-    {   ret->window_group = XCB_NONE;
+    {   data->window_group = XCB_NONE;
     }
 
+    /* yes this this is xcb_size_hints_t no its not a mistake */
     if(length > sizeof(xcb_size_hints_t))
     {   length = sizeof(xcb_size_hints_t);
     }
 
-    XCBWMHints tmp;
+    /* yes this this is xcb_size_hints_t no its not a mistake */
+    xcb_size_hints_t safedata;
 
-    memcpy(&tmp, (xcb_size_hints_t *)ret, length);
-    ret = realloc(reply, sizeof(xcb_size_hints_t));
 
-    if(!ret)
-    {   goto FAILURE;
-    }
+    memcpy(&safedata, (xcb_size_hints_t *)data, length);
+    memcpy(reply, (xcb_size_hints_t *)&safedata, length);
 
-    memcpy(ret, &tmp, length);
-
-    return ret;
+    return (XCBWMHints *)reply;
 FAILURE:
     free(reply);
     return NULL;
@@ -1870,22 +2083,4 @@ XCBGetWMNormalHintsReply(
     }
     return status;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
