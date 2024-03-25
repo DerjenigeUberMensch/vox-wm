@@ -401,6 +401,7 @@ typedef xcb_void_cookie_t XCBCookie;
 typedef struct XCBCookie64 XCBCookie64;
 typedef xcb_get_keyboard_mapping_reply_t XCBKeyboardMapping;
 typedef xcb_get_modifier_mapping_reply_t XCBKeyboardModifier;
+typedef xcb_colormap_t XCBColormap;
 typedef xcb_atom_t XCBAtom;
 typedef xcb_time_t XCBTime;
 typedef xcb_timestamp_t XCBTimestamp;

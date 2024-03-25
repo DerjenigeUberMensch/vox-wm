@@ -12,6 +12,7 @@ XCBInitAtoms(XCBDisplay *display, XCBAtom *wm_atom_return, XCBAtom *net_atom_ret
     /* wm */
     XCBCookie wmcookies[WMLast];
     XCBCookie netcookies[NetLast];
+
     if(wm_atom_return)
     {
         wmcookies[WMName] = XCBInternAtomCookie(display, "WM_NAME", False);
