@@ -6,6 +6,9 @@
 #include "dwm.h"
 
 extern WM _wm;
+extern XCBAtom netatom[NetLast];
+extern XCBAtom wmatom[WMLast];
+
 extern void xerror(XCBDisplay *display, XCBGenericError *error);
 
 void (*handler[LASTEvent]) (XCBGenericEvent *) = 
@@ -74,9 +77,17 @@ keypress(XCBGenericEvent *event)
     const XCBKeyCode keydetail  = ev->detail;
     const XCBTimestamp tim      = ev->time;
 
+    (void)rootx;
+    (void)rooty;
+    (void)eventx;
+    (void)eventy;
+    (void)eventroot;
+    (void)eventwin;
+    (void)eventchild;
+    (void)samescreen;
+    (void)tim;
 
     const i32 cleanstate = CLEANMASK(state);
-
     /* ONLY use lowercase cause we dont know how to handle anything else */
     const XCBKeysym sym = XCBKeySymbolsGetKeySym(_wm.syms, keydetail, 0);
     /* Only use upercase cause we dont know how to handle anything else
@@ -87,6 +98,7 @@ keypress(XCBGenericEvent *event)
      */
     DEBUG("%d", sym);
     int i;
+    u8 sync = 0;
     for(i = 0; i < LENGTH(keys); ++i)
     {
         if(keys[i].type == XCB_KEY_PRESS)
@@ -94,12 +106,16 @@ keypress(XCBGenericEvent *event)
             if (sym == keys[i].keysym
                     && CLEANMASK(keys[i].mod) == cleanstate
                     && keys[i].func) 
-            {   keys[i].func(&(keys[i].arg));
-                return;
+            {   
+                keys[i].func(&(keys[i].arg));
+                sync = 1;
+                break;
             }
         }
     }
-    XCBSync(_wm.dpy);
+    if(sync)
+    {   XCBSync(_wm.dpy);
+    }
 }
 
 void
@@ -118,6 +134,17 @@ keyrelease(XCBGenericEvent *event)
     const XCBKeyCode keydetail  = ev->detail;
     const XCBTimestamp tim      = ev->time;
 
+    (void)rootx;
+    (void)rooty;
+    (void)eventx;
+    (void)eventy;
+    (void)eventroot;
+    (void)eventwin;
+    (void)eventchild;
+    (void)samescreen;
+    (void)tim;
+
+
     const i32 cleanstate = CLEANMASK(state);
     /* ONLY use lowercase cause we dont know how to handle anything else */
     const XCBKeysym sym = XCBKeySymbolsGetKeySym(_wm.syms, keydetail, 0);
@@ -128,6 +155,7 @@ keyrelease(XCBGenericEvent *event)
      * sym = XCBKeySymbolsGetKeySym(_wm.syms, keydetail, cleanstate); 
      */
     int i;
+    u8 sync = 0;
     for(i = 0; i < LENGTH(keys); ++i)
     {
         if(keys[i].type == XCB_KEY_RELEASE)
@@ -135,12 +163,16 @@ keyrelease(XCBGenericEvent *event)
             if (sym == keys[i].keysym
                     && CLEANMASK(keys[i].mod) == cleanstate
                     && keys[i].func) 
-            {   keys[i].func(&(keys[i].arg));
-                return;
+            {   
+                keys[i].func(&(keys[i].arg));
+                sync = 1;
+                break;
             }
         }
     }
-    XCBSync(_wm.dpy);
+    if(sync)
+    {   XCBSync(_wm.dpy);
+    }
 }
 
 void
@@ -158,6 +190,17 @@ buttonpress(XCBGenericEvent *event)
     const u8 samescreen         = ev->same_screen;
     const XCBKeyCode keydetail  = ev->detail;
     const XCBTimestamp tim      = ev->time;
+
+
+    (void)rootx;
+    (void)rooty;
+    (void)eventx;
+    (void)eventy;
+    (void)eventroot;
+    (void)eventchild;
+    (void)samescreen;
+    (void)tim;
+
 
     const i32 cleanstate = CLEANMASK(state);
 
@@ -227,6 +270,17 @@ buttonrelease(XCBGenericEvent *event)
     const XCBKeyCode keydetail  = ev->detail;
     const XCBTimestamp tim      = ev->time;
 
+
+    (void)rootx;
+    (void)rooty;
+    (void)eventx;
+    (void)eventy;
+    (void)eventroot;
+    (void)eventwin;
+    (void)eventchild;
+    (void)samescreen;
+    (void)tim;
+
     const i32 cleanstate = CLEANMASK(state);
 
     u8 sync = 0;
@@ -267,6 +321,16 @@ motionnotify(XCBGenericEvent *event)
     const u8 samescreen         = ev->same_screen;
     const XCBKeyCode keydetail  = ev->detail;
     const XCBTimestamp tim      = ev->time;
+
+
+    (void)eventx;
+    (void)eventy;
+    (void)eventroot;
+    (void)state;
+    (void)eventchild;
+    (void)samescreen;
+    (void)keydetail;
+    (void)tim;
 
 
     /* due to the mouse being able to move a ton we want to limit the cycles burnt for non root events */
@@ -313,6 +377,21 @@ enternotify(XCBGenericEvent *event)
     const uint8_t mode   = ev->mode;
     const uint8_t samescreenfocus = ev->same_screen_focus;
 
+
+
+    (void)detail;
+    (void)tim;
+    (void)eventroot;
+    (void)eventwin;
+    (void)eventchild;
+    (void)rootx;
+    (void)rooty;
+    (void)eventx;
+    (void)eventy;
+    (void)state;
+    (void)mode;
+    (void)samescreenfocus;
+
     if(!CFG_HOVER_FOCUS) return;
 
 
@@ -321,6 +400,7 @@ enternotify(XCBGenericEvent *event)
 
     Client *c;
     Monitor *m;
+    u8 sync = 0;
 
     if((mode != XCB_NOTIFY_MODE_NORMAL || detail == XCB_NOTIFY_DETAIL_INFERIOR) && eventwin != _wm.root)
     {   return;
@@ -333,12 +413,16 @@ enternotify(XCBGenericEvent *event)
     {
         unfocus(_wm.selmon->desksel->sel, 1);
         _wm.selmon = m;
+        sync = 1;
     }
     else if(!c || c == _wm.selmon->desksel->sel)
     {   return;
     }
     focus(c);
-    XCBSync(_wm.dpy);
+    sync = 1;
+    if(sync)
+    {   XCBSync(_wm.dpy);
+    }
 }
 
 void
@@ -357,6 +441,19 @@ leavenotify(XCBGenericEvent *event)
     const uint16_t state = ev->state;
     const uint8_t mode   = ev->mode;
     const uint8_t samescreenfocus = ev->same_screen_focus;
+
+    (void)detail;
+    (void)tim;
+    (void)eventroot;
+    (void)eventwin;
+    (void)eventchild;
+    (void)rootx;
+    (void)rooty;
+    (void)eventx;
+    (void)eventy;
+    (void)state;
+    (void)mode;
+    (void)samescreenfocus;
     
 }
 
@@ -369,10 +466,19 @@ focusin(XCBGenericEvent *event)
     const XCBWindow eventwin = ev->event;
     const u8 mode = ev->mode;
 
+    (void)detail;
+    (void)mode;
+
+    u8 sync = 0;
+
     if(_wm.selmon->desksel->sel && eventwin != _wm.selmon->desksel->sel->win)
     {   
         setfocus(_wm.selmon->desksel->sel);
-        XCBSync(_wm.dpy);
+        sync = 1;
+    }
+
+    if(sync)
+    {   XCBSync(_wm.dpy);
     }
 }
 
@@ -383,6 +489,10 @@ focusout(XCBGenericEvent *event)
     const u8 detail = ev->detail;
     const XCBWindow eventwin = ev->event;
     const u8 mode = ev->mode;
+
+    (void)detail;
+    (void)eventwin;
+    (void)mode;
 }
 
 void
@@ -390,6 +500,8 @@ keymapnotify(XCBGenericEvent *event)
 {
     XCBKeymapNotifyEvent *ev = (XCBKeymapNotifyEvent *)event;
     u8 *eventkeys   = ev->keys;        /* DONOT FREE */
+
+    (void)eventkeys;
 }
 
 void
@@ -403,8 +515,14 @@ expose(XCBGenericEvent *event)
     const u16 h             = ev->height;
     const u16 count         = ev->count;
 
-    Monitor *m;
-    if(count == 0 && (m = wintomon(win)))
+
+    (void)x;
+    (void)y;
+    (void)w;
+    (void)h;
+
+    Monitor *m = wintomon(win);
+    if(count == 0 && m)
     {   /* redrawbar */
     }
 }
@@ -421,6 +539,16 @@ graphicsexpose(XCBGenericEvent *event)
     const XCBDrawable drawable  = ev->drawable;
     const u8 majoropcode        = ev->major_opcode;
     const u16 minoropcode       = ev->minor_opcode;
+
+
+    (void)x;
+    (void)y;
+    (void)w;
+    (void)h;
+    (void)count;
+    (void)drawable;
+    (void)majoropcode;
+    (void)minoropcode;
 }
 
 void
@@ -433,6 +561,14 @@ noexpose(XCBGenericEvent *event)
     const u16 h                 = ev->height;
     const u16 count             = ev->count;
     const XCBWindow win         = ev->window;
+
+
+    (void)x;
+    (void)y;
+    (void)w;
+    (void)h;
+    (void)count;
+    (void)win;
 }
 
 void
@@ -442,6 +578,10 @@ circulaterequest(XCBGenericEvent *event)
     const XCBWindow win         = ev->window;
     const XCBWindow eventwin    = ev->event;
     const u8 place              = ev->place;
+
+    (void)win;
+    (void)eventwin;
+    (void)place;
 }
 
 void
@@ -459,8 +599,12 @@ configurerequest(XCBGenericEvent *event)
     const XCBWindow parent  = ev->parent;
     const XCBWindow sibling = ev->sibling;
 
+
+    (void)parent;
+
     Client *c;
     Monitor *m;
+    u8 sync = 0;
     if((c = wintoclient(win)))
     {
         m = c->mon;
@@ -524,6 +668,7 @@ configurerequest(XCBGenericEvent *event)
         if(ISVISIBLE(c))
         {   XCBMoveResizeWindow(_wm.dpy, c->win, c->x, c->y, c->w, c->h);
         }
+        sync = 1;
     }
     else
     {
@@ -537,8 +682,11 @@ configurerequest(XCBGenericEvent *event)
         wc.stack_mode = stack;
         /* some windows need to be mapped before configuring */
         XCBConfigureWindow(_wm.dpy, win, mask, &wc);
+        sync = 1;
     }
-    XCBSync(_wm.dpy);
+    if(sync)
+    {   XCBSync(_wm.dpy);
+    }
 }
 
 void
@@ -548,10 +696,19 @@ maprequest(XCBGenericEvent *event)
     const XCBWindow parent  = ev->parent;
     const XCBWindow win     = ev->window;
 
+    (void)parent;
+
+    u8 sync = 0;
+
     if(!wintoclient(win))
-    {   manage(win);
+    {   
+        manage(win);
+        sync = 1;
     }
-    XCBSync(_wm.dpy);
+
+    if(sync)
+    {   XCBSync(_wm.dpy);
+    }
 }
 /* popup windows sometimes need this */
 void
@@ -564,19 +721,35 @@ resizerequest(XCBGenericEvent *event)
 
     Client *c;
     
+    u8 sync = 0;
+
     if((c = wintoclient(win)))
-    {   resize(c, c->x, c->y, w, h, 0);
+    {   
+        resize(c, c->x, c->y, w, h, 0);
+        sync = 1;
     }
     else
-    {   XCBResizeWindow(_wm.dpy, win, w, h);
+    {   
+        XCBResizeWindow(_wm.dpy, win, w, h);
+        sync = 1;   /* we dont technically need to sync here but its just to catch up on somethings if we fucked up */
     }
-    XCBSync(_wm.dpy);
+
+    if(sync)
+    {   XCBSync(_wm.dpy);
+    }
 }
 
 void
 circulatenotify(XCBGenericEvent *event)
 {
     XCBCirculateNotifyEvent *ev = (XCBCirculateNotifyEvent *)event;
+    const u8 place                    = ev->place;
+    const XCBWindow win               = ev->window;
+    const XCBWindow eventwin          = ev->event;
+
+    (void)place;
+    (void)win;
+    (void)eventwin;
 }
 
 /* These events are mostly just Info events of stuff that has happened already
@@ -597,6 +770,12 @@ configurenotify(XCBGenericEvent *event)
     const u16 h = ev->height;
     const u16 borderwidth = ev->border_width;
     const u8 overrideredirect = ev->override_redirect;
+
+    (void)eventwin;
+    (void)abovesibling;
+    (void)x;
+    (void)y;
+    (void)borderwidth;
 
     u8 sync = 0;
     if(win == _wm.root)
@@ -636,9 +815,10 @@ configurenotify(XCBGenericEvent *event)
     {
         Client *c;
         if((c = wintoclient(win)))
-        {   unmanage(c, 0);
+        {
+            unmanage(c, 0);
+            sync = 1;
         }
-        sync = 1;
     }
     if(sync)
     {   XCBSync(_wm.dpy);
@@ -657,6 +837,16 @@ createnotify(XCBGenericEvent *event)
     const u16 w                 = ev->width;
     const u16 h                 = ev->height;
     const u16 bw                = ev->border_width;
+
+
+    (void)overrideredirect;
+    (void)win;
+    (void)parentwin;
+    (void)x;
+    (void)y;
+    (void)w;
+    (void)h;
+    (void)bw;
 }
 
 void
@@ -666,12 +856,18 @@ destroynotify(XCBGenericEvent *event)
     const XCBWindow win         = ev->window;
     const XCBWindow eventwin    = ev->event;        /* The Event win is the window that sent the message */
 
+    (void)eventwin;
+
     Client *c = NULL;
+    u8 sync = 0;
     /* destroyed windows no longer need to be managed */
     if((c = wintoclient(win)))
     {   
         unmanage(c, 1);
-        XCBSync(_wm.dpy);
+        sync = 1;
+    }
+    if(sync)
+    {   XCBSync(_wm.dpy);
     }
 }
 
@@ -679,6 +875,15 @@ void
 gravitynotify(XCBGenericEvent *event)
 {
     XCBGravityNotifyEvent *ev = (XCBGravityNotifyEvent *)event;
+    const XCBWindow eventwin          = ev->event;
+    const XCBWindow win               = ev->window;
+    const i16 x                       = ev->x;
+    const i16 y                       = ev->y;
+
+    (void)eventwin;
+    (void)win;
+    (void)x;
+    (void)y;
 }
 
 void
@@ -688,6 +893,10 @@ mapnotify(XCBGenericEvent *event)
     const XCBWindow win             = ev->window;
     const XCBWindow eventwin        = ev->event;
     const uint8_t override_redirect = ev->override_redirect;
+
+    (void)win;
+    (void)eventwin;
+    (void)override_redirect;
 }
 
 void
@@ -698,8 +907,11 @@ mappingnotify(XCBGenericEvent *event)
     const uint8_t count            = ev->count;
     const uint8_t request          = ev->request;
 
+    (void)count;
+    (void)first_keycode;
+
     XCBRefreshKeyboardMapping(_wm.syms, ev);
-    if(ev->request == XCB_MAPPING_KEYBOARD)
+    if(request == XCB_MAPPING_KEYBOARD)
     {   grabkeys();
     }
     XCBSync(_wm.dpy);
@@ -713,11 +925,19 @@ unmapnotify(XCBGenericEvent *event)
     const XCBWindow win         = ev->window;
     const uint8_t isconfigure   = ev->from_configure;
 
+    (void)eventwin;
+    (void)isconfigure;
+
     Client *c;
+    u8 sync = 0;
     if((c = wintoclient(win)))
     {   
         unmanage(c, 0);
-        XCBSync(_wm.dpy);
+        sync = 1;
+    }
+
+    if(sync)
+    {   XCBSync(_wm.dpy);
     }
 }
 
@@ -725,18 +945,45 @@ void
 visibilitynotify(XCBGenericEvent *event)
 {
     XCBVisibilityNotifyEvent *ev = (XCBVisibilityNotifyEvent *)event;
+    const XCBWindow win         = ev->window;
+    const u8 state              = ev->state;
+
+    (void)win;
+    (void)state;
 }
 
 void
 reparentnotify(XCBGenericEvent *event)
 {
     XCBReparentNotifyEvent *ev = (XCBReparentNotifyEvent *)event;
+    const XCBWindow parent      = ev->parent;
+    const XCBWindow win         = ev->window;
+    const XCBWindow eventwin    = ev->event;
+    const i16 x                 = ev->x;
+    const i16 y                 = ev->y;
+    const u8 override_redirect  = ev->override_redirect;
+
+    (void)parent;
+    (void)win;
+    (void)eventwin;
+    (void)x;
+    (void)y;
+    (void)override_redirect;
 }
 
 void
 colormapnotify(XCBGenericEvent *event)
 {
     XCBColormapNotifyEvent *ev = (XCBColormapNotifyEvent *)event;
+    const XCBWindow win         = ev->window;
+    const u8 state              = ev->state;
+    const XCBColormap colormap  = ev->colormap;
+    const u8 new                = ev->_new;
+
+    (void)win;
+    (void)state;
+    (void)colormap;
+    (void)new;
 }
 
 /* TODO */
@@ -748,6 +995,57 @@ clientmessage(XCBGenericEvent *event)
     const XCBAtom atom              = ev->type;
     const u8 format                 = ev->format;
     const XCBClientMessageData data = ev->data;     /* union "same" as xlib data8 -> b[20] data16 -> s[10] data32 = l[5] */
+
+
+    /* These cover most of the important message's */
+    /*
+     * _NET_NUMBER_OF_DESKTOPS
+     * _NET_DESKTOP_GEOMETRY
+     * _NET_DESKTOP_VIEWPORT
+     * _NET_CURRENT_DESKTOP
+     * _NET_ACTIVE_WINDO
+     * _NET_SHOWING_DESKTOP
+     * _NET_CLOSE_WINDOW
+     * _NET_MOVERESIZE_WINDOW
+     * _NET_WM_MOVERESIZE
+     * _NET_RESTACK_WINDOW
+     * _NET_REQUEST_FRAME_EXTENTS
+     * _NET_WM_DESKTOP
+     * 
+     *
+     * _NET_WM_STATE
+     * _NET_WM_WINDOW_TYPE
+     * 
+     *
+     * _NET_WM_FULLSCREEN_MONITORS
+     * 
+     * subtypes:
+     *
+     * WM_PROTOCOLS:
+     *      data.l[0]       _NET_WM_PING
+     *      data.l[0]       _NET_WM_SYNC_REQUEST
+     */
+
+    Client *c = wintoclient(win);
+    if(c)
+    {
+        /* long data is often used and anything else is just padding */
+        const i32 l0 = data.data32[0];
+        const i32 l1 = data.data32[1];
+        const i32 l2 = data.data32[2];
+        const i32 l3 = data.data32[3];
+        const i32 l4 = data.data32[4];
+        if(atom == netatom[NetWMState])
+        {
+            const u8 action = l0;   /* remove: 0 
+                                     * add: 1 
+                                     * toggle: 2 
+                                     */
+            const XCBAtom prop1 = l1;
+            const XCBAtom prop2 = l2;
+            (void)l3;
+        }
+    }
 }
 
 void
@@ -761,9 +1059,10 @@ propertynotify(XCBGenericEvent *event)
 
 
 
+    (void)timestamp;
 
     Client *c = NULL;
-    XCBWindow trans;
+    u8 sync = 0;
     if((win == _wm.root) && atom == XCB_ATOM_WM_NAME)
     {   /* updatestatus */
     }
@@ -786,47 +1085,66 @@ propertynotify(XCBGenericEvent *event)
                 cookie = XCBGetWMHintsCookie(_wm.dpy, c->win);
                 wmh = XCBGetWMHintsReply(_wm.dpy, cookie);
                 updatewmhints(c, wmh);
-                /* draw bar */
+                sync = 1;
                 break;
             default:
                   break;
         }
-
-        /*
-        nfyname = ev->atom == XCB_ATOM_WM_NAME || ev->atom == netatom[NetWMName];
-        nfyicon = ev->atom == netatom[NetWMIcon];
-        nfytype = ev->atom == netatom[NetWMWindowType];
-        nfymotif= ev->atom == motifatom;
-
-        nfybar = nfyname || nfyicon || nfytype || nfymotif;
-        if (nfyname)  updatetitle(c);
-        if (nfyicon)  updateicon(c);
-        if (nfytype)  updatewindowtype(c);
-        if (nfymotif) updatemotifhints(c);
-        if (nfybar)   drawbar(c->mon);
-        */
-        XCBSync(_wm.dpy);
     }
-
+    if(sync)
+    {   XCBSync(_wm.dpy);
+    }
 }
 
 void
 selectionclear(XCBGenericEvent *event)
 {
     XCBSelectionClearEvent *ev = (XCBSelectionClearEvent *)event;
+    const XCBWindow owner       = ev->owner;
+    const XCBAtom selection     = ev->selection;
+    const XCBTimestamp tim      = ev->time;
+
+    (void)owner;
+    (void)selection;
+    (void)tim;
 }
 
 void
 selectionnotify(XCBGenericEvent *event)
 {
-    XCBSelectionNotifyEvent *ev = (XCBSelectionNotifyEvent *)event;
+    XCBSelectionNotifyEvent *ev     = (XCBSelectionNotifyEvent *)event;
+    const XCBWindow requestor       = ev->requestor;
+    const XCBAtom property          = ev->property;
+    const XCBAtom target            = ev->target;
+    const XCBAtom selection         = ev->selection;
+    const XCBTimestamp tim          = ev->time;
+
+    (void)requestor;
+    (void)property;
+    (void)target;
+    (void)selection;
+    (void)tim;
 }
 
 void
 selectionrequest(XCBGenericEvent *event)
 {
     XCBSelectionRequestEvent *ev = (XCBSelectionRequestEvent *)event;
+    const XCBWindow owner       = ev->owner;
+    const XCBWindow requestor   = ev->requestor;
+    const XCBAtom property      = ev->property;
+    const XCBAtom target        = ev->target;
+    const XCBAtom selection     = ev->selection;
+    const XCBTimestamp tim      = ev->time;
+
+    (void)owner;
+    (void)requestor;
+    (void)property;
+    (void)target;
+    (void)selection;
+    (void)tim;
 }
+
 
 
 void

@@ -151,7 +151,6 @@ ResizeWindow(
     i16 nx, ny;     /*    new   */
 
     u16 ow, oh;     /*    old   */
-    u16 w, h;       /*  current */
     u16 nw, nh;     /*    new   */
 
     i8 horiz;       /* bounds checks    */
@@ -161,7 +160,6 @@ ResizeWindow(
     XCBCookie qpcookie = XCBQueryPointerCookie(display, win);
     XCBCookie gpcookie = XCBGrabPointerCookie(display, win, False, MOUSEMASK, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE, cur, XCB_CURRENT_TIME);
     XCBCookie gmcookie = XCBGetGeometryCookie(display, win);
-
 
     XCBQueryPointer *qp = XCBQueryPointerReply(display, qpcookie);
     XCBGrabPointer *gb = XCBGrabPointerReply(display, gpcookie);
@@ -195,7 +193,7 @@ ResizeWindow(
 
 
     XCBMotionNotifyEvent *ev;
-    u8 cleanev;
+    u8 cleanev = 0;
     u8 detail = 0;
     do
     {
@@ -207,23 +205,22 @@ ResizeWindow(
 
         if(ev->event == win && cleanev == XCB_MOTION_NOTIFY)
         {
-            nw = ow + (horiz * (ev->root_x - x));
-            nh = oh + (vert * (ev->root_y - y));
+            nw = ow + (horiz    * (ev->root_x - x));
+            nh = oh + (vert     * (ev->root_y - y));
             nx = ox + (!~horiz) * (ow - nw);
-            ny = oy + (!~vert) * (oh - nh);
+            ny = oy + (!~vert)  * (oh - nh);
             XCBMoveResizeWindow(display, win, nx, ny, nw, nh);
         }
         detail = ev->detail;
         free(ev);
+        ev = NULL;
     } while(cleanev != 0 && (cleanev != XCB_BUTTON_RELEASE && detail != key_or_button));
 }
 
 void
 SetWindowLayout(const Arg *arg)
 {
-    Monitor *m;
-    Client *mnext;
-    m = _wm.selmon;
+    const Monitor *m = _wm.selmon;
 
     if(!m) return;
     setdesktoplayout(m->desksel, arg->i);

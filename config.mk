@@ -1,5 +1,6 @@
 # compiler 
-CC = clang
+# side note clang doesnt work with -flto for some reason
+CC = cc
 
 # paths
 PREFIX = /usr/local/
@@ -51,7 +52,7 @@ BUILDSELF = ${RELEASEFLAGS} ${XNATIVE} -O3
 # uncomment for debugging
 LINKERFLAGS = ${DYNAMICLINK} -Wl,--gc-sections
 # Set your options or presets (see above) ex: ${PRESETNAME} (Compiler used is on top)
-CFLAGS = ${SIZEONLY}
+CFLAGS = ${RELEASES}
 # Linker flags
 LDFLAGS =  ${LIBS} ${LINKERFLAGS} ${BINARY} 
 # Solaris

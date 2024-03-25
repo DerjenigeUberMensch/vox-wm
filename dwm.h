@@ -46,17 +46,29 @@
 
 /* Client macros */
 
+/* This returns non zero on true, but not necessarly 1 */
 #define ISALWAYSONTOP(C)        ((C->flags & _ALWAYSONTOP))
+/* This returns non zero on true, but not necessarly 1 */
 #define ISFULLSCREEN(C)         ((C->flags & _FULLSCREEN))
+/* This returns non zero on true, but not necessarly 1 */
 #define WASFLOATING(C)          ((C->flags & _WASFLOATING))
+/* This returns non zero on true, but not necessarly 1 */
 #define ISFLOATING(C)           ((C->flags & _WASFLOATING))
+/* This returns non zero on true, but not necessarly 1 */
 #define ISFIXED(C)              ((C->flags & _FIXED))
+/* This returns non zero on true, but not necessarly 1 */
 #define ISURGENT(C)             ((C->flags & _URGENT))
+/* This returns non zero on true, but not necessarly 1 */
 #define NEVERFOCUS(C)           ((C->flags & _NEVERFOCUS))
+/* This returns non zero on true, but not necessarly 1 */
 #define ISHIDDEN(C)             ((C->flags & _HIDDEN))
+/* This returns non zero on true, but not necessarly 1 */
 #define ISSTICKY(C)             ((C->flags & _STICKY))
+/* This returns non zero on true, but not necessarly 1 */
 #define ISDIALOG(C)             ((C->flags & _DIALOG))
+/* This returns non zero on true, but not necessarly 1 */
 #define ISMODAL(C)              ((C->flags & _MODAL))
+/* This returns 1 when true */
 #define ISVISIBLE(C)            (((C->mon->desksel == C->desktop || ISSTICKY(c)) & (!ISHIDDEN(c))))
 
 /* Monitor struct flags */
@@ -66,8 +78,11 @@
 
 /* Monitor Macros */
 
+/* This returns non zero on true, but not necessarly 1 */
 #define SHOWBAR(M)              ((M->flags & _SHOWBAR))
+/* This returns non zero on true, but not necessarly 1 */
 #define OSHOWBAR(M)             ((M->flags & _OSHOWBAR))
+/* This returns non zero on true, but not necessarly 1 */
 #define TOPBAR(M)               ((M->flags & _TOPBAR))
 
 
@@ -89,22 +104,23 @@ typedef struct WM WM;
 
 union Arg
 {
-    int32_t i;              /* i -> int             */
+    int32_t i;              /* i  -> int            */
     uint32_t ui;            /* ui -> unsigned int   */
-    int64_t l;              /* l -> long int        */
+    int64_t l;              /* l  -> long int       */
     uint64_t ul;            /* ul -> unsigned long  */
-    float f;                /* f -> float           */
-    double d;               /* d -> double          */
-    void *v;          /* v -> void pointer    */
+    float f;                /* f  -> float          */
+    double d;               /* d  -> double         */
+    void *v;                /* v  -> void pointer   */
 };
 
 struct Key
 {
-    uint16_t type;              /* KeyPress/KeyRelease  */
+    uint8_t type;               /* KeyPress/KeyRelease  */
     uint16_t mod;               /* Modifier             */
     XCBKeysym keysym;           /* Key symbol           */
     void (*func)(const Arg *);  /* Function             */
-    const Arg arg;              /* Argument             */
+    Arg arg;                    /* Argument             */
+    uint8_t pad0[8];
 };
 
 struct Button
@@ -114,7 +130,7 @@ struct Button
     uint32_t mask;                  /* Modifier                     */
     uint32_t button;                /* Button                       */
     void (*func)(const Arg *arg);   /* Function                     */
-    const Arg arg;                  /* Argument                     */
+    Arg arg;                        /* Argument                     */
 };
 
 struct Client
@@ -129,7 +145,6 @@ struct Client
     uint16_t oldh;      /* Previous Height          */
 
     uint16_t flags;     /* Flags for client         */
-
     XCBWindow win;      /* Client Window            */
 
     Client *next;       /* The next client in list  */
@@ -146,18 +161,17 @@ struct Client
     float maxa;         /* Maximum Aspect           */
     uint16_t basew;     /* Base Width               */
     uint16_t baseh;     /* Base Height              */
-    int16_t incw;       /* Increment Width          */
-    int16_t inch;       /* Increment Height         */
+    uint16_t incw;      /* Increment Width          */
+    uint16_t inch;      /* Increment Height         */
     uint16_t maxw;      /* Max Width                */
     uint16_t maxh;      /* Max Height               */
     uint16_t minw;      /* Minimum Width            */
     uint16_t minh;      /* Minimum Height           */
 
     pid_t pid;          /* Client Pid               */
+    char *name;         /* Client Name              */
 
-            /* +1 for \0 */
-    char name[256 + 1]; /* Client Name              */
-
+    uint8_t pad0[16];
 };
 
 struct Monitor
@@ -206,17 +220,15 @@ struct Desktop
     Desktop *prev;              /* Previous Client in list      */
 };
 
-/* WM
- * This struct does not use flags as it retains commonly used information that must be quickly accessible due to its vital nature 
- */
 struct WM
 {
     int screen;                     /* Screen id            */
     int numlockmask;                /* numlockmask          */
-    int running;                    /* Running flag         */
-    int restart;                    /* Restart flag         */
-    uint16_t sw;                    /* Screen Height        */
-    uint16_t sh;                    /* Screen Width         */
+    uint8_t running;                /* Running flag         */
+    uint8_t restart;                /* Restart flag         */
+    uint8_t has_error;              /* Error flag           */
+    uint16_t sw;                    /* Screen Height u16    */
+    uint16_t sh;                    /* Screen Width  u16    */
     XCBWindow root;                 /* The root window      */
     XCBWindow wmcheckwin;           /* window manager check */
     XCBDisplay *dpy;                /* The current display  */
@@ -313,8 +325,10 @@ void updatenumlockmask(void);
 void updatesizehints(Client *c, XCBSizeHints *size);
 void updatetitle(Client *c);
 void updateicon(Client *c);
-void updatewindowstate(Client *c, XCBAtom state[], uint32_t atomslength);
-void updatewindowtype(Client *c, XCBAtom wtype[], uint32_t atomslength);
+void updatewindowstate(Client *c, XCBAtom state, uint8_t add_remove_toggle);
+void updatewindowstates(Client *c, XCBAtom state[], uint32_t atomslength);
+void updatewindowtype(Client *c, XCBAtom wtype, uint8_t add_remove_toggle);
+void updatewindowtypes(Client *c, XCBAtom wtype[], uint32_t atomslength);
 void updatewmhints(Client *c, XCBWMHints *hints);
 void winsetstate(XCBWindow win, int32_t state);
 Client *wintoclient(XCBWindow win);

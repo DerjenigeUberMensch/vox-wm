@@ -28,8 +28,24 @@ ${BIN}/%.o: %.c | ${BIN}
 default: ${OBJ}
 	${CC} -o ${BIN}/${EXE} ${OBJ} ${LDFLAGS}
 
+
+__CLEANARGS = ${RM} ${BIN}/*.o ${EXEPATH}
+
 clean:
-	${RM} ${BIN}/*.o ${EXEPATH}
+	${__CLEANARGS}
+claen:
+	${__CLEANARGS}
+clen:
+	${__CLEANARGS}
+clena:
+	${__CLEANARGS}
+clane:
+	${__CLEANARGS}
+
+
+
+
+
 
 release:
 	rm -rf -f -- ${EXE}-${VERSION}

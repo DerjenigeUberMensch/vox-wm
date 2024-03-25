@@ -1116,12 +1116,12 @@ manage(XCBWindow win)
     if(wtypeunused)
     {   
         XCBAtom *data = XCBGetPropertyValue(wtypeunused);
-        updatewindowtype(c, data, XCBGetPropertyValueLength(wtypeunused, sizeof(XCBAtom)));
+        updatewindowtypes(c, data, XCBGetPropertyValueLength(wtypeunused, sizeof(XCBAtom)));
     }
     if(stateunused)
     {
         XCBAtom *data = XCBGetPropertyValue(stateunused);
-        updatewindowstate(c, data, XCBGetPropertyValueLength(stateunused, sizeof(XCBAtom)));
+        updatewindowstates(c, data, XCBGetPropertyValueLength(stateunused, sizeof(XCBAtom)));
     }
 
     if(wg)
@@ -1311,7 +1311,7 @@ restack(Desktop *desk)
     {   return;
     }
 
-    wc.stack_mode = XCB_STACK_MODE_ABOVE;
+    wc.stack_mode = XCB_STACK_MODE_BELOW;
     if(c->mon->barwin)
     {   wc.sibling = c->mon->barwin;
     }
@@ -1326,38 +1326,6 @@ restack(Desktop *desk)
         XCBConfigureWindow(_wm.dpy, c->win, XCB_CONFIG_WINDOW_SIBLING|XCB_CONFIG_WINDOW_STACK_MODE, &wc);
         wc.sibling = c->win;
     }
-
-    for(c = desk->stack; c; c = nextstack(c))
-    {
-        if(ISFLOATING(c))
-        {
-            XCBRaiseWindow(_wm.dpy, c->win);
-        }
-    }
-
-    for(c = desk->stack; c; c = nextstack(c))
-    {
-        if(ISDIALOG(c))
-        {
-            XCBRaiseWindow(_wm.dpy, c->win);
-        }
-    }
-
-    for(c = desk->stack; c; c = nextstack(c))
-    {
-        if(ISMODAL(c))
-        {
-            XCBRaiseWindow(_wm.dpy, c->win);
-        }
-    }
-
-    for(c = desk->stack; c; c = nextstack(c))
-    {
-        if(ISALWAYSONTOP(c))
-        {
-            XCBRaiseWindow(_wm.dpy, c->win);
-        }
-    }
 }
 
 void
@@ -1371,7 +1339,6 @@ void
 run(void)
 {
     XCBGenericEvent *ev = NULL;
-    /* int cause speed */
     XCBSync(_wm.dpy);
     while(_wm.running && (((ev = XCBPollForEvent(_wm.dpy))) || (XCBNextEvent(_wm.dpy, &ev))))
     {
@@ -1379,6 +1346,7 @@ run(void)
         free(ev);
         ev = NULL;
     }
+    _wm.has_error = XCBCheckDisplayError(_wm.dpy);
 }
 
 /* scan for clients initally */
@@ -1714,15 +1682,22 @@ setviewport(void)
 }
 
 
-void NOINLINE
+void
 showhide(Client *c)
 {
+    /* this is called alot so we need speed */
+    const u8 v = !!ISVISIBLE(c);
+    const i16 x = v * c->x + !v * (c->mon->mx - (WIDTH(c) << 1));
+    XCBMoveWindow(_wm.dpy, c->win, x, c->y);
+    /* what it is */
+    /*
     if(ISVISIBLE(c))
     {   XCBMoveWindow(_wm.dpy, c->win, c->x, c->y);
     }
     else
     {   XCBMoveWindow(_wm.dpy, c->win, (c->mon->mx - (WIDTH(c) / 2)), c->y);
     }
+    */
 }
 
 void
@@ -1779,13 +1754,66 @@ specialconds(int argc, char *argv[])
     {   DEBUG("%s", strerror_l(errno, uselocale((locale_t)0)));
     }
 
+    err = NULL;
+    switch(_wm.has_error)
+    {
+        case XCB_CONN_ERROR:
+            err =   "Could not connect to the XServer for whatever reason BadConnection Error.";
+            break;
+        case XCB_CONN_CLOSED_EXT_NOTSUPPORTED:
+            err =   "The XServer could not find an extention ExtensionNotSupported Error.\n"
+                    "This is more or less a developer error, but if you messed up your build this could happen."
+                    ;
+            break;
+        case XCB_CONN_CLOSED_MEM_INSUFFICIENT:
+            err =   "The XServer died due to an OutOfMemory Error.\n"
+                    "This can be for several reasons but the the main few are as follows:\n"
+                    "1.) Alloc Failure, due to system calls failing xcb could die, but probably didnt.\n"
+                    "2.) No Memory, basically you ran out of memory for the system.\n"
+                    "3.) ulimit issues, basically your system set memory limits programs."
+                    ;
+            break;
+        case XCB_CONN_CLOSED_REQ_LEN_EXCEED:
+            err =   "The XServer died due to an TooBigRequests Error.\n"
+                    "Basically we either.\n"
+                    "A.) Dont use the BigRequests extension and we ran into a \"Big Request.\" \n"
+                    "Or\n"
+                    "B.) We did use the BigRequests extension and some rogue app sent a massive requests bigger than ~16GiB of data.\n"
+                    "This mostly occurs with rogue app's for B but more likely for A due to regular requests being small ~256kB."
+                    ;
+            break;
+        case XCB_CONN_CLOSED_PARSE_ERR:
+            err =   "The XServer died to due an BadParse Error.\n"
+                    "While the XServer probably didnt and shouldnt die on a BadParse error it really just depends.\n"
+                    "In essence however the XServer simply couldnt parse som form of requests that was sent."
+                    ;
+            break;
+        case XCB_CONN_CLOSED_INVALID_SCREEN:
+            err =   "Could not connect to specified screen.\n"
+                    "You should check if your DISPLAY variable is correctly set, or if you incorrectly passed a screen as a display connection.\n"
+                    "You may have incorrectly set your DISPLAY variable using setenv(\"DISPLAY\", (char *)) the correct format is as follows:\n"
+                    "char *display = \":0\"; /* you pass in the thing ':' and the the number so display 5 would be \":5\" */\n"
+                    "setenv(\"DISPLAY\", display);\n"
+                    "The same applies when connection to the XServer using so XOpenDisplay(\":2\"); would open the second display.\n"
+                    "For more information see: https://www.x.org/releases/X11R7.7/doc/man/man3/XOpenDisplay.3.xhtml"
+                    ;
+            break;
+        case 0:
+            /* no error occured */
+            break;
+        default:
+            err = "The XServer died with an unexpected error.";
+            break;
+    }
+    if(err)
+    {   DEBUG("%s\nError code: %d", err, _wm.has_error);
+    }
+    XCBCheckDisplayError(_wm.dpy);
+
     if(_wm.restart)
     {   execvp(argv[0], argv);
         /* UNREACHABLE */
         DEBUG("%s", "Failed to restart " NAME);
-    }
-    if(_wm.running)
-    {   DIECAT("%s", NAME " Called exit, Did the Server Die?");
     }
 }
 
@@ -2134,136 +2162,237 @@ updatetitle(Client *c)
 }
 
 void
-updatewindowstate(Client *c, XCBAtom states[], uint32_t atomslength)
+updatewindowstate(Client *c, XCBAtom state, uint8_t add_remove_toggle)
+{
+    if(!c || !state)
+    {   return;
+    }
+    const u8 toggle = add_remove_toggle == 2;
+    /* This is similiar to those Windows 10 dialog boxes that play the err sound and cant click anything else */
+    if (state == netatom[NetWMStateModal])
+    {
+        if(toggle)
+        {   
+            setmodal(c, !ISMODAL(c));
+            setdialog(c, !ISDIALOG(c));
+        }
+        else
+        {
+            setmodal(c, add_remove_toggle);
+            setdialog(c, add_remove_toggle);
+        }
+    }                                                           /* This is just syntax sugar, really its just a alias to NetWMStateAbove */
+    else if (state == netatom[NetWMStateAbove] || state == netatom[NetWMStateAlwaysOnTop])
+    {
+        if(toggle)
+        {
+            setalwaysontop(c, !ISALWAYSONTOP(c));
+        }
+        else
+        {
+            setalwaysontop(c, add_remove_toggle);
+        }
+    }
+    else if (state == netatom[NetWMStateDemandAttention])
+    {
+        if(toggle)
+        {   
+            seturgent(c, !ISURGENT(c));
+        }
+        else
+        {
+            seturgent(c, add_remove_toggle);
+        }
+    }
+    else if (state == netatom[NetWMStateFullscreen])
+    {
+        if(toggle)
+        {
+            setfullscreen(c, !ISFULLSCREEN(c));
+        }
+        else
+        {
+            setfullscreen(c, add_remove_toggle);
+        }
+    }
+    else if (state == netatom[NetWMStateMaximizedHorz])
+    {
+    }
+    else if (state == netatom[NetWMStateMaximizedVert])
+    {
+    }
+    else if (state == netatom[NetWMStateSticky])
+    {
+        if(toggle)
+        {   
+            setsticky(c, !ISSTICKY(c));
+        }
+        else
+        {
+            setsticky(c, add_remove_toggle);
+        }
+    }
+    else if (state == netatom[NetWMStateBelow])
+    {   
+        /* this is a wierd state to even configure so idk */
+        if(toggle)
+        {
+        }
+        else
+        {
+            /* attach last */
+            XCBLowerWindow(_wm.dpy, c->win);
+        }
+    }
+    else if (state == netatom[NetWMStateSkipTaskbar])
+    {   
+    }
+    else if (state == netatom[NetWMStateSkipPager])
+    {
+    }
+    else if (state == netatom[NetWMStateHidden])
+    {   
+        if(toggle)
+        {
+            sethidden(c, !ISHIDDEN(c));
+        }
+        else
+        {
+            sethidden(c, add_remove_toggle);
+        }
+    }
+    else if (state == netatom[NetWMStateFocused])
+    {
+        if(c->desktop->sel != c)
+        {   /* idk, we dont really care too much */
+        }
+    }
+    else if (state == netatom[NetWMStateShaded])
+    {
+    }
+}
+
+void
+updatewindowstates(Client *c, XCBAtom states[], uint32_t atomslength)
 {
     if(!states || !c)
     {   return;
     }
 
-    Monitor *m = c->mon;
     u32 i;
-    XCBAtom state = 0;
     for(i = 0; i < atomslength; ++i)
     {
-        state = states[i];
-        /* This is similiar to those Windows 10 dialog boxes that play the err sound and cant click anything else */
-        if (state == netatom[NetWMStateModal])
-        {
-            setmodal(c, 1);
-            setdialog(c, 1);
-        }
-        else if (state == netatom[NetWMStateAbove] || state == netatom[NetWMStateAlwaysOnTop])
-        {
-            setalwaysontop(c, 1);
-        }
-        else if (state == netatom[NetWMStateDemandAttention])
-        {
-            seturgent(c, 1);
-        }
-        else if (state == netatom[NetWMStateFullscreen])
-        {
-            setfullscreen(c, 1);
-        }
-        else if (state == netatom[NetWMStateMaximizedHorz])
-        {
-            resize(c, c->x, c->mon->wy, c->w, c->mon->wh, 0);
-        }
-        else if (state == netatom[NetWMStateMaximizedVert])
-        {
-            resize(c, c->mon->wx, c->y, c->mon->ww, c->h, 0);
-        }
-        else if (state == netatom[NetWMStateSticky])
-        {
-            setsticky(c, 1);
-        }
-        else if (state == netatom[NetWMStateBelow])
-        {   /* attach last */
-            XCBLowerWindow(_wm.dpy, c->win);
-        }
-        else if (state == netatom[NetWMStateSkipTaskbar])
-        {   
-        }
-        else if (state == netatom[NetWMStateSkipPager])
-        {
-        }
-        else if (state == netatom[NetWMStateHidden])
-        {   sethidden(c, 1);
-        }
-        else if (state == netatom[NetWMStateFocused])
-        {
-        }
-        else if (state == netatom[NetWMStateShaded])
-        {
-        }
+        /* Even though the wm-spec says that we should remove things that arent in the list 
+         * The client will ussually tell us in clientmessage if its important. 
+         * It also says however that if its in the list assume its a prop so...
+         */
+        updatewindowstate(c, states[i], 1);
     }
 }
 
 void
-updatewindowtype(Client *c, XCBAtom wtypes[], uint32_t atomslength)
+updatewindowtype(Client *c, XCBAtom wtype, uint8_t add_remove_toggle)
+{
+    if(!c || !wtype)
+    {   return;
+    }
+    Monitor *m = c->mon;
+    if(!m)
+    {   DEBUG0("This client doesnt have a monitor this shouldnt be possible");
+        return;
+    }
+
+    const u8 toggle = add_remove_toggle == 2;
+
+    if (wtype == netatom[NetWMWindowTypeDesktop])
+    {
+        if(toggle)   
+        {
+            setneverfocus(c, !NEVERFOCUS(c));
+        }
+        else
+        {
+            setneverfocus(c, add_remove_toggle);
+        }
+        /* TODO */
+    }
+    else if (wtype == netatom[NetWMWindowTypeDock])
+    {
+        /* doesnt work */
+        if(checknewbar(c->win))
+        {
+            attachbar(m, c->win);
+            /* this makes the bar 'popup' */
+            setshowbar(m, 1);
+            updatebarpos(m);
+        }
+    }
+    else if (wtype == netatom[NetWMWindowTypeToolbar])
+    {   /* TODO */
+    }
+    else if (wtype == netatom[NetWMWindowTypeMenu])
+    {   /* TODO */
+    }
+    else if (wtype == netatom[NetWMWindowTypeUtility])
+    {   /* TODO */
+    }
+    else if (wtype == netatom[NetWMWindowTypeSplash])
+    {   /* IGNORE */
+    }
+    else if (wtype == netatom[NetWMWindowTypeDialog])
+    {   
+        if(toggle)
+        { 
+            setdialog(c, !ISDIALOG(c));
+        }
+        else
+        {
+            setdialog(c, add_remove_toggle);
+        }
+    }
+    else if (wtype == netatom[NetWMWindowTypeDropdownMenu])
+    {   
+        if(toggle)
+        { 
+            setdialog(c, !ISDIALOG(c));
+        }
+        else
+        {
+            setdialog(c, add_remove_toggle);
+        }
+    }
+    else if (wtype == netatom[NetWMWindowTypePopupMenu])
+    {   /* override-redirect IGNORE */
+    }
+    else if (wtype == netatom[NetWMWindowTypeTooltip])
+    {   /* override-redirect IGNORE */
+    }
+    else if (wtype == netatom[NetWMWindowTypeNotification])
+    {   /* override-redirect IGNORE */
+    }
+    else if (wtype == netatom[NetWMWindowTypeCombo])
+    {   /* override-redirect IGNORE */
+    }
+    else if (wtype == netatom[NetWMWindowTypeDnd])
+    {   /* override-redirect IGNORE */
+    }
+    else if (wtype == netatom[NetWMWindowTypeNormal])
+    {   /* This hint indicates that this window has no special properties IGNORE */
+    }
+}
+
+void
+updatewindowtypes(Client *c, XCBAtom wtypes[], uint32_t atomslength)
 {
     if(!wtypes || !c)
     {   return;
     }
-    Monitor *m = c->mon;
-    XCBWindow win = c->win;
-    XCBAtom wtype = 0;
     i32 i;
     for(i = 0; i < atomslength; ++i)
-    {
-        wtype = wtypes[i];
-        if (wtype == netatom[NetWMWindowTypeDesktop])
-        {   
-            setneverfocus(c, 1);
-            /* TODO */
-        }
-        else if (wtype == netatom[NetWMWindowTypeDock])
-        {
-            /* doesnt work */
-            if(checknewbar(c->win))
-            {
-                attachbar(m, c->win);
-                setshowbar(m, 1);
-                updatebarpos(m);
-            }
-        }
-        else if (wtype == netatom[NetWMWindowTypeToolbar])
-        {   /* TODO */
-        }
-        else if (wtype == netatom[NetWMWindowTypeMenu])
-        {   /* TODO */
-        }
-        else if (wtype == netatom[NetWMWindowTypeUtility])
-        {   /* TODO */
-        }
-        else if (wtype == netatom[NetWMWindowTypeSplash])
-        {   /* IGNORE */
-        }
-        else if (wtype == netatom[NetWMWindowTypeDialog])
-        {   setdialog(c, 1);
-        }
-        else if (wtype == netatom[NetWMWindowTypeDropdownMenu])
-        {   setdialog(c, 1);
-        }
-        else if (wtype == netatom[NetWMWindowTypePopupMenu])
-        {   /* override-redirect IGNORE */
-        }
-        else if (wtype == netatom[NetWMWindowTypeTooltip])
-        {   /* override-redirect IGNORE */
-        }
-        else if (wtype == netatom[NetWMWindowTypeNotification])
-        {   /* override-redirect IGNORE */
-        }
-        else if (wtype == netatom[NetWMWindowTypeCombo])
-        {   /* override-redirect IGNORE */
-        }
-        else if (wtype == netatom[NetWMWindowTypeDnd])
-        {   /* override-redirect IGNORE */
-        }
-        else if (wtype == netatom[NetWMWindowTypeNormal])
-        {   /* This hint indicates that this window has no special properties IGNORE */
-        }
+    {   
+        /* wm-spec says that we should assume anythings in the list are props so we just pass into "add" */
+        updatewindowtype(c, wtypes[i], 1);
     }
-    DEBUG("%d", i);
 }
 
 void
