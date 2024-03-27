@@ -29,6 +29,7 @@ default: ${OBJ}
 	${CC} -o ${BIN}/${EXE} ${OBJ} ${LDFLAGS}
 
 
+
 __CLEANARGS = ${RM} ${BIN}/*.o ${EXEPATH}
 
 clean:
@@ -43,6 +44,7 @@ clane:
 	${__CLEANARGS}
 
 
+rebuild: clean default
 
 
 

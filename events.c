@@ -784,6 +784,8 @@ configurenotify(XCBGenericEvent *event)
         dirty = (_wm.sw != w || _wm.sh != h);
         _wm.sw = w;
         _wm.sh = h;
+
+
         DEBUG("(w: %d, h: %d)", w, h);
 
         if(updategeom() || dirty)
@@ -802,12 +804,14 @@ configurenotify(XCBGenericEvent *event)
                         if(ISFULLSCREEN(c))
                         {   resizeclient(c, m->mx, m->my, m->mw, m->mh);
                         }
-                        XCBMoveResizeWindow(_wm.dpy, m->barwin, m->wx, m->by, m->ww, m->bh);
+                    }
+                    if(m->barwin)
+                    {   XCBMoveResizeWindow(_wm.dpy, m->barwin, m->wx, m->by, m->ww, m->bh);
                     }
                 }
             }
             focus(NULL);
-            /* arrangeall */
+            arrangemons();
             sync = 1;
         }
     }
@@ -996,6 +1000,19 @@ clientmessage(XCBGenericEvent *event)
     const u8 format                 = ev->format;
     const XCBClientMessageData data = ev->data;     /* union "same" as xlib data8 -> b[20] data16 -> s[10] data32 = l[5] */
 
+    /* move resize */
+    #define _NET_WM_MOVERESIZE_SIZE_TOPLEFT      0
+    #define _NET_WM_MOVERESIZE_SIZE_TOP          1
+    #define _NET_WM_MOVERESIZE_SIZE_TOPRIGHT     2
+    #define _NET_WM_MOVERESIZE_SIZE_RIGHT        3
+    #define _NET_WM_MOVERESIZE_SIZE_BOTTOMRIGHT  4
+    #define _NET_WM_MOVERESIZE_SIZE_BOTTOM       5
+    #define _NET_WM_MOVERESIZE_SIZE_BOTTOMLEFT   6
+    #define _NET_WM_MOVERESIZE_SIZE_LEFT         7
+    #define _NET_WM_MOVERESIZE_MOVE              8   /* movement only */
+    #define _NET_WM_MOVERESIZE_SIZE_KEYBOARD     9   /* size via keyboard */
+    #define _NET_WM_MOVERESIZE_MOVE_KEYBOARD    10   /* move via keyboard */
+    #define _NET_WM_MOVERESIZE_CANCEL           11   /* cancel operation */
 
     /* These cover most of the important message's */
     /*
@@ -1043,7 +1060,125 @@ clientmessage(XCBGenericEvent *event)
                                      */
             const XCBAtom prop1 = l1;
             const XCBAtom prop2 = l2;
-            (void)l3;
+            updatewindowstate(c, prop1, action);
+            updatewindowstate(c, prop2, action);
+        }
+        else if(atom == netatom[NetActiveWindow])
+        {
+            if(c->desktop && c->desktop->sel != c && !ISURGENT(c))
+            {   seturgent(c, 1);
+            }
+        }
+        else if(atom == netatom[NetCloseWindow])
+        {   
+        }
+        else if(atom == netatom[NetMoveResizeWindow])
+        {
+            const u32 gravity = l0;
+            /* 64bit to cover bounds checks */
+            i64 x = l1;
+            i64 y = l2;
+            i64 w = l3;
+            i64 h = l4;
+
+            /* bounds check */
+            if(x > INT16_MAX || x < -INT16_MAX)
+            {   
+                x = c->x;
+                DEBUG0("A Client is using bad data for x axis.");
+            }
+            if(y > INT16_MAX || y < -INT16_MAX)
+            {   
+                y = c->y;
+                DEBUG0("A Client is using bad data for y axis.");
+            }
+            if(w > UINT16_MAX || w < 0)
+            {   
+                w = c->w;
+                DEBUG0("A Client is using bad data for w axis.");
+            }
+            if(h > UINT16_MAX || h < 0)
+            {   
+                h = c->h;
+                DEBUG0("A Client is using bad data for h axis.");
+            }
+            i16 cleanx = x;
+            i16 cleany = y;
+            const u16 cleanw = w;
+            const u16 cleanh = h;
+            applygravity(gravity, &cleanx, &cleany, c->w, c->h, c->bw);
+            resize(c, cleanx, cleany, cleanw, cleanh, 0);
+        }
+        else if(atom == netatom[NetMoveResize])
+        {
+            const int netwmstate = l2;
+            /* TODO */
+            switch(netwmstate)
+            {
+                case _NET_WM_MOVERESIZE_SIZE_TOPLEFT:
+                case _NET_WM_MOVERESIZE_SIZE_TOP:
+                case _NET_WM_MOVERESIZE_SIZE_TOPRIGHT:
+                case _NET_WM_MOVERESIZE_SIZE_RIGHT:
+                case _NET_WM_MOVERESIZE_SIZE_BOTTOMRIGHT:
+                case _NET_WM_MOVERESIZE_SIZE_BOTTOM:
+                case _NET_WM_MOVERESIZE_SIZE_BOTTOMLEFT:
+                case _NET_WM_MOVERESIZE_SIZE_LEFT:
+                    break;
+                case _NET_WM_MOVERESIZE_MOVE:
+                    break;
+                case _NET_WM_MOVERESIZE_SIZE_KEYBOARD: 
+                    break;
+                case _NET_WM_MOVERESIZE_MOVE_KEYBOARD: 
+                    break;
+                case _NET_WM_MOVERESIZE_CANCEL: 
+                    break;
+            }
+        }
+        else if (atom == netatom[NetNumberOfDesktops])
+        {   /* ignore */
+        }
+        else if (atom == netatom[NetDesktopGeometry])
+        {   /* ignore */
+        }
+        else if (atom == netatom[NetDesktopViewport])
+        {   /* TODO */
+        }
+        else if (atom == netatom[NetCurrentDesktop])
+        {   
+            u32 target = l0;
+            Monitor *m = c->mon;
+            detachcompletely(c);
+            if(m)
+            {
+                Desktop *desk;
+                u32 i = 0;
+                for(desk = m->desktops; desk && i != target; desk = nextdesktop(desk), ++i);
+                if(desk)
+                {  
+                    attachstack(c);
+                    attach(c);
+                }
+            }
+        }
+        else if (atom == netatom[NetShowingDesktop])
+        {   /* TODO */
+        }
+        else if (atom == netatom[NetWMDesktop])
+        {
+            /* refer: https://specifications.freedesktop.org/wm-spec/latest/ _NET_WM_DESKTOP */
+
+            /* long 64 bit */       /* long 32 bit */
+            if(l0 == 0xFFFFFFFF || l0 == ~0)
+            {   
+                setsticky(c, 1);
+                return;
+            }
+        }
+        else if (atom == netatom[WMProtocols])
+        {   /* Protocol handler */
+        }
+        else if (atom == netatom[NetWMFullscreenMonitors])
+        {   /* TODO */
         }
     }
 }
