@@ -101,6 +101,7 @@ typedef struct Stack Stack;
 typedef struct Layout Layout;
 typedef struct Desktop Desktop;
 typedef struct WM WM;
+typedef struct CFG CFG;
 
 union Arg
 {
@@ -238,9 +239,38 @@ struct WM
     XCBKeySymbols *syms;            /* keysym alloc         */
 };
 
+/* 
+ * While flags would be more memory efficient they are a massive hastle
+ */
+struct CFG
+{
+    uint16_t nmaster;
+    uint16_t bw;
+    uint16_t bgw;
+
+
+    uint16_t snap;
+    uint16_t rfrate;
+
+    uint16_t bh;
+    uint16_t maxcc;
+
+
+    uint8_t hoverfocus;
+    uint8_t topbar;
+
+
+
+    float mfact;
+    char *wmname;
+};
+
 void argcvhandler(int argc, char *argv[]);
+void applygravity(uint32_t gravity, int16_t *x, int16_t *y, const uint16_t width, const uint16_t height, const uint16_t border_width);
 uint8_t applysizehints(Client *c, int16_t *x, int16_t *y, uint16_t *width, uint16_t *height, uint8_t interact);
 void arrange(Desktop *desk);
+void arrangemon(Monitor *m);
+void arrangemons(void);
 void arrangedesktop(Desktop *desk);
 void attachbar(Monitor *m, XCBWindow barwin);
 void detachbar(Monitor *m);
@@ -308,8 +338,7 @@ void setsticky(Client *c, uint8_t state);
 void settopbar(Monitor *m, uint8_t state);
 void setup(void);
 void seturgent(Client *c, uint8_t isurgent);
-void setviewport(void);
-void showhide(Client *c);
+void showhide(const Client *c);
 void sigchld(int signo);
 void sighandler(void);
 void sighup(int signo);
@@ -321,10 +350,12 @@ void unfocus(Client *c, uint8_t setfocus);
 void updatebarpos(Monitor *m);
 void updateclientlist(void);
 int  updategeom(void);
+void updateicon(Client *c);
 void updatenumlockmask(void);
+void updatesettings(void);
 void updatesizehints(Client *c, XCBSizeHints *size);
 void updatetitle(Client *c);
-void updateicon(Client *c);
+void updateviewport(void);
 void updatewindowstate(Client *c, XCBAtom state, uint8_t add_remove_toggle);
 void updatewindowstates(Client *c, XCBAtom state[], uint32_t atomslength);
 void updatewindowtype(Client *c, XCBAtom wtype, uint8_t add_remove_toggle);

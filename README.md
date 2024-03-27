@@ -11,7 +11,7 @@ Xcb has proven to be quite the hastle with text, actually displaying text in gen
 ## Early Release
 This build of xcb-wswm is ***not*** fully feature ready.
 
-Currently it is bare bones only meaning, no tiling (aside from grid/monocle) and does not support windowtypes.
+Currently it is bare bones only meaning, no window moving (aside from grid/monocle/tile).
 
 Nor does it support anything in config.h
 

@@ -46,7 +46,6 @@
 #define CFG_RESIZE_THRESHOLD_PX 15          /* Threshold in pixels for when to detect resizing in corners       */
 #define CFG_WIN10_FLOATING      0           /* Use windows 10 terrible ordering of windows                      */
 /* Status Bar */
-#define WM_NAME                 "dwm.exe"   /* wm name displayed when using X (type neofetch to see this)       */
 #define CFG_SHOW_WM_NAME        0           /* 1 Show window manager name at end of status bar; 0 to disable    */
 #define CFG_BAR_HEIGHT          0           /* 1 enable specific bar height; 0 use default height               */
 #define CFG_TOP_BAR             0           /* 1 show bar on top; 0 for bottom bar                              */

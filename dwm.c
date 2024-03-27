@@ -34,6 +34,7 @@
 
 extern void (*handler[]) (XCBGenericEvent *);
 WM _wm;
+CFG _cfg;
 
 XCBAtom netatom[NetLast];
 XCBAtom wmatom[WMLast];
@@ -79,7 +80,6 @@ argcvhandler(int argc, char *argv[])
                     "Version Information.\n"
                     "  VERSION:         [%s]\n"
                     "  MARK:            [%s]\n"
-                    "  WM_NAME:         [%s]\n"
                     , 
                     __DATE__, __TIME__,
                     compiler, majorversion, minorversion, patchversion,
@@ -87,8 +87,7 @@ argcvhandler(int argc, char *argv[])
                     __BYTE_ORDER__,
                     __SIZEOF_POINTER__,
                     VERSION,
-                    NAME, 
-                    WM_NAME
+                    NAME
                     );
             exit(EXIT_SUCCESS);
         }
@@ -119,6 +118,62 @@ argcvhandler(int argc, char *argv[])
     }
 }
 
+void
+applygravity(u32 gravity, i16 *x, i16 *y, const u16 w, const u16 h, const u16 bw)
+{
+    if(!gravity || !x || !y)
+    {   return;
+    }
+    /* This is bullshit just reference relative to this point */
+    if(gravity & XCB_GRAVITY_STATIC)
+    {   /* default do nothing */
+    }
+    else if(gravity & XCB_GRAVITY_NORTH_WEST)
+    {
+        *x -= bw;
+        *y -= bw;
+    }
+    else if(gravity & XCB_GRAVITY_NORTH)
+    {   
+        *x += w >> 1;
+        *y -= bw;
+    }
+    else if(gravity & XCB_GRAVITY_NORTH_EAST)
+    {
+        *x += w + bw;
+        *y -= bw;
+    }
+    else if(gravity & XCB_GRAVITY_EAST)
+    {
+        *x += w + bw;
+        *y += h >> 1;
+    }
+    else if(gravity & XCB_GRAVITY_SOUTH_EAST)
+    {
+        *x += w + bw;
+        *y += h + bw;
+    }
+    else if(gravity & XCB_GRAVITY_SOUTH)
+    {
+        *x += w >> 1;
+        *y += h + bw;
+    }
+    else if(gravity & XCB_GRAVITY_SOUTH_WEST)
+    {
+        *x -= bw;
+        *y += h + bw;
+    }
+    else if(gravity & XCB_GRAVITY_WEST)
+    {
+        *x -= bw;
+        *y += h >> 1;
+    }
+    else if(gravity & XCB_GRAVITY_CENTER)
+    {
+        *x += w >> 1;
+        *y += h >> 1;
+    }
+}
 
 uint8_t
 applysizehints(Client *c, int16_t *x, int16_t *y, uint16_t *width, uint16_t *height, uint8_t interact)
@@ -229,6 +284,25 @@ arrange(Desktop *desk)
     }
     arrangedesktop(desk);
     restack(desk);
+}
+
+void
+arrangemon(Monitor *m)
+{
+    Desktop *desk;
+    for(desk = m->desktops; desk; desk = nextdesktop(desk))
+    {   arrange(desk);
+    }
+}
+
+
+void
+arrangemons(void)
+{
+    Monitor *m;
+    for(m = _wm.mons; m; m = nextmonitor(m))
+    {   arrangemon(m);
+    }
 }
 
 void
@@ -1029,18 +1103,18 @@ grid(Desktop *desk)
         ah = !!((i + 1) % rows) * (desk->clients->mon->wh - ch * rows);
         aw = !!(i >= rows * (cols - 1)) * (desk->clients->mon->ww - cw * cols);
 
-        /* CFG_GAP_PX without fucking everything else */
-        cx += CFG_GAP_PX;
-        cy += CFG_GAP_PX;
+        /* _cfg.bgw without fucking everything else */
+        cx += _cfg.bgw;
+        cy += _cfg.bgw;
 
         tmpcw = cw - (c->bw << 1) + aw;
         tmpch = ch - (c->bw << 1) + ah;
 
-        tmpcw -= CFG_GAP_PX;
-        tmpch -= CFG_GAP_PX;
+        tmpcw -= _cfg.bgw;
+        tmpch -= _cfg.bgw;
 
-        tmpcw -= !!aw * CFG_GAP_PX;
-        tmpch -= !ah * CFG_GAP_PX;
+        tmpcw -= !!aw * _cfg.bgw;
+        tmpch -= !ah * _cfg.bgw;
 
         resize(c, cx, cy, tmpcw, tmpch, 0);
         ++i;
@@ -1162,12 +1236,8 @@ manage(XCBWindow win)
     XCBSelectInput(_wm.dpy, win, inputmask);
     grabbuttons(win, 0);
 
-    if(!ISFLOATING(c))
-    {
-        /* set both wasfloating and is floating to the same value */
-        setfloating(c, trans != XCB_NONE); /* this just covers a few other checks */
-        setfloating(c, trans != XCB_NONE || ISALWAYSONTOP(c) || ISFLOATING(c));
-    }
+    setfloating(c, trans != XCB_NONE); /* this just covers a few other checks */
+    setfloating(c, trans != XCB_NONE || ISALWAYSONTOP(c) || ISFLOATING(c));
     attach(c);
     attachstack(c);
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientList], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&win, 1);
@@ -1466,9 +1536,9 @@ setclientstate(Client *c, u8 state)
 }
 
 void
-setdesktop(void)
+updatedesktop(void)
 {
-    i32 data[1] = { 0 };
+    i32 data[1] = { _wm.selmon->desksel->num };
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetCurrentDesktop], XCB_ATOM_CARDINAL, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)data, 1);
 }
 
@@ -1479,7 +1549,7 @@ setdesktoplayout(Desktop *desk, uint8_t layout)
     desk->layout = layout;
 }
 void
-setdesktopnames(void)
+updatedesktopnames(void)
 {
     char names[_wm.selmon->deskcount];
     u16 i;
@@ -1490,7 +1560,7 @@ setdesktopnames(void)
 }
 
 void
-setdesktopnum(void)
+updatedesktopnum(void)
 {
     i32 data[1] = { _wm.selmon->deskcount };
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetNumberOfDesktops], XCB_ATOM_CARDINAL, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)data, 1);
@@ -1621,6 +1691,8 @@ setup(void)
     _wm.sh = XCBDisplayHeight(_wm.dpy, _wm.screen);
     _wm.root = XCBRootWindow(_wm.dpy, _wm.screen);
 
+    updatesettings();
+
     updategeom();
     const XCBCookie utf8cookie = XCBInternAtomCookie(_wm.dpy, "UTF8_STRING", False);
     XCBInitAtoms(_wm.dpy, wmatom, netatom);
@@ -1629,16 +1701,16 @@ setup(void)
     _wm.wmcheckwin = XCBCreateSimpleWindow(_wm.dpy, _wm.root, 0, 0, 1, 1, 0, 0, 0);
     XCBSelectInput(_wm.dpy, _wm.wmcheckwin, XCB_NONE);
     XCBChangeProperty(_wm.dpy, _wm.wmcheckwin, netatom[NetSupportingWMCheck], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&_wm.wmcheckwin, 1);
-    XCBChangeProperty(_wm.dpy, _wm.wmcheckwin, netatom[NetWMName], utf8str, 8, XCB_PROP_MODE_REPLACE, WM_NAME, LENGTH(WM_NAME));
+    XCBChangeProperty(_wm.dpy, _wm.wmcheckwin, netatom[NetWMName], utf8str, 8, XCB_PROP_MODE_REPLACE, _cfg.wmname, strlen(_cfg.wmname) + 1);
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupportingWMCheck], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&_wm.wmcheckwin, 1);
     /* EWMH support per view */
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&netatom, NetLast);
     XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetClientList]);
     
-    setdesktopnum();
-    setdesktop();
-    setdesktopnames();
-    setviewport();
+    updatedesktopnum();
+    updatedesktop();
+    updatedesktopnames();
+    updateviewport();
 
     XCBWindowAttributes wa;
     /* xcb_event_mask_t */
@@ -1674,7 +1746,7 @@ seturgent(Client *c, uint8_t state)
 }
 
 void
-setviewport(void)
+updateviewport(void)
 {
     i32 data[2] = { 0, 0 };
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetDesktopViewport], 
@@ -1683,21 +1755,16 @@ setviewport(void)
 
 
 void
-showhide(Client *c)
+showhide(const Client *restrict c)
 {
-    /* this is called alot so we need speed */
-    const u8 v = !!ISVISIBLE(c);
-    const i16 x = v * c->x + !v * (c->mon->mx - (WIDTH(c) << 1));
-    XCBMoveWindow(_wm.dpy, c->win, x, c->y);
-    /* what it is */
-    /*
     if(ISVISIBLE(c))
     {   XCBMoveWindow(_wm.dpy, c->win, c->x, c->y);
     }
     else
-    {   XCBMoveWindow(_wm.dpy, c->win, (c->mon->mx - (WIDTH(c) / 2)), c->y);
+    {   
+        const i16 x = (c->mon->mx - (WIDTH(c) / 2));
+        XCBMoveWindow(_wm.dpy, c->win, x, c->y);
     }
-    */
 }
 
 void
@@ -1823,7 +1890,7 @@ startup(void)
     if(!setlocale(LC_CTYPE, ""))
     {   fputs("WARN: NO_LOCALE_SUPPORT\n", stderr);
     }
-    const char *display = ":1";
+    const char *display = NULL;
     _wm.dpy = XCBOpenDisplay(display, &_wm.screen);
     if(!_wm.dpy)
     {   DIECAT("%s", "FATAL: CANNOT_CONNECT_TO_X_SERVER");
@@ -1841,7 +1908,77 @@ startup(void)
 void
 tile(Desktop *desk)
 {
+    unsigned int h, mw, my, ty;
+    int n, i;
+    int nx, ny;
+    int nw, nh;
+    Client *c = NULL;
+    Monitor *m = NULL;
 
+    if(!desk->clients)
+    {   return;
+    }
+
+
+    m = desk->clients->mon;
+
+    for(n = 0, c = nexttiled(desk->clients); c; c = nexttiled(c->next))
+    {   ++n;
+    }
+
+    if(!n) 
+    {   return;
+    }
+    
+    if(n > _cfg.nmaster)
+    {   mw = _cfg.nmaster ? m->ww * _cfg.mfact: 0;
+    }
+    else
+    {   mw = m->ww;
+    }
+
+    DEBUG(" %d %d ", n, mw);
+    for (i = my = ty = 0, c = nexttiled(desk->clients); c; c = nexttiled(c->next), ++i)
+    {
+        if (i < _cfg.nmaster)
+        {
+            h = (m->wh - my) / (MIN(n, _cfg.nmaster) - i);
+            nx = m->wx;
+            ny = m->wy + my;
+            nw = mw - (c->bw << 1);
+            nh = h - (c->bw << 1);
+
+            /* we divide nw also to get even gaps
+             * if we didnt the center gap would be twices as big
+             * Although this may be desired, one would simply remove the shift ">>" by 1 in nw 
+             */
+            nx += _cfg.bgw;
+            ny += _cfg.bgw;
+            nw -= _cfg.bgw << 1;
+            nh -= _cfg.bgw << 1;
+            resize(c, nx, ny, nw, nh, 0);
+                                                                        /* spacing for windows below */
+            if (my + HEIGHT(c) < (unsigned int)m->wh) my += HEIGHT(c) + _cfg.bgw;
+        }
+        else
+        {
+            h = (m->wh - ty) / (n - i);
+            nx = m->wx + mw;
+            ny = m->wy + ty;
+            nw = m->ww - mw - (c->bw << 1);
+            nh = h - (c->bw << 1);
+
+            nx += _cfg.bgw >> 1;
+            ny += _cfg.bgw;
+            nw -= _cfg.bgw << 1;
+            nh -= _cfg.bgw << 1;
+
+            resize(c, nx, ny, nw, nh, 0);
+                                                                    /* spacing for windows below */ 
+            if (ty + HEIGHT(c) < (unsigned int)m->wh) ty += HEIGHT(c) + _cfg.bgw;
+        }
+        DEBUG("x: %d y: %d w: %d h: %d", nx, ny, nw, nh);
+    }
 }
 
 void
@@ -2061,12 +2198,6 @@ updateclientlist(void)
     }
 }
 
-void
-updatedesktop(void)
-{
-    i32 data[1] = { _wm.selmon->desksel->num };
-    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetCurrentDesktop], XCB_ATOM_CARDINAL, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)data, 1);
-}
 
 
 void
@@ -2098,6 +2229,22 @@ updatenumlockmask(void)
 			if(codes[i * reply->keycodes_per_modifier + j] == target)
 				_wm.numlockmask = (1 << i);
     free(reply);
+}
+
+void
+updatesettings(void)
+{
+    _cfg.mfact = 0.55f;
+    _cfg.nmaster = 1;
+    _cfg.bw = 0;
+    _cfg.bgw = 15;
+    _cfg.snap = 10;
+    _cfg.rfrate = 120;
+    _cfg.bh = 10;
+    _cfg.maxcc = 256;
+    _cfg.hoverfocus = 0;
+    _cfg.topbar = 0;
+    _cfg.wmname = "Gamer";
 }
 
 void
@@ -2279,6 +2426,11 @@ updatewindowstates(Client *c, XCBAtom states[], uint32_t atomslength)
     {   return;
     }
 
+    /* bullshit client is trying to mess with us */
+    u16 MAX_LIMIT = 1000;
+    atomslength = MIN(atomslength, MAX_LIMIT);
+
+
     u32 i;
     for(i = 0; i < atomslength; ++i)
     {
@@ -2387,6 +2539,10 @@ updatewindowtypes(Client *c, XCBAtom wtypes[], uint32_t atomslength)
     if(!wtypes || !c)
     {   return;
     }
+    /* bullshit client is trying to mess with us */
+    u8 MAX_LIMIT = 255;
+    atomslength = MIN(atomslength, MAX_LIMIT);
+
     i32 i;
     for(i = 0; i < atomslength; ++i)
     {   

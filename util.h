@@ -22,7 +22,6 @@ typedef int64_t  i64;
 #define TRUNC(X,A,B)            (MAX((A), MIN((X), (B))))
 
 
-#define NOINLINE                __attribute__ ((noinline))
 
 #define DIE(fmt, ...)           do { fprintf(stderr, "[%s:%d] by %s(): " fmt "\n", __FILE__,__LINE__,__func__,__VA_ARGS__); exit(EXIT_FAILURE); } while (0)
 #define DIECAT(fmt, ...)        do { fprintf(stderr, "[%s:%d] by %s()\n"  \
@@ -48,7 +47,11 @@ typedef int64_t  i64;
 #endif
 
 
+/* gcc */
 #define ASM(X)                          __asm__(X)
+#define NOINLINE                __attribute__ ((noinline))
+
+
 
 #define CLEARFLAG(FLAGS, FLAG)            ((FLAGS &= (~FLAG)))
 #define SETFLAG(FLAGS, FLAG)              (((FLAGS |= FLAG)))
