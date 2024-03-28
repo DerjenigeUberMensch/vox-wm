@@ -32,29 +32,33 @@ typedef int64_t  i64;
                                     "|           {_:Y:.}_//         |\n" \
                                     "|-----------{_}^-'{_}----------|\n" \
                                     "\n", __FILE__,__LINE__,__func__,__VA_ARGS__); exit(EXIT_FAILURE); } while (0)
-#define ENABLE_DEBUGGING 1   /* enable debbuging */
-
-#if (ENABLE_DEBUGGING)
-#define DEBUG(fmt, ...) fprintf(stderr, "[%s:%d] by %s(): " fmt "\n", __FILE__,__LINE__,__func__,__VA_ARGS__)
+#ifdef ENABLE_DEBUG
+#define DEBUG(fmt, ...) (fprintf(stderr, "[%s:%d] by %s(): " fmt "\n", __FILE__,__LINE__,__func__,__VA_ARGS__))
 #else
 #define DEBUG(fmt, ...) ((void)0)
 #endif
 
-#if (ENABLE_DEBUGGING)
-#define DEBUG0(X) fprintf(stderr, "[%s:%d] by %s(): " X "\n", __FILE__, __LINE__, __func__)
+#ifdef ENABLE_DEBUGGING
+#define DEBUG0(X) (fprintf(stderr, "[%s:%d] by %s(): " X "\n", __FILE__, __LINE__, __func__))
 #else
 #define DEBUG0(X) ((void)0)
 #endif
 
 
 /* gcc */
-#define ASM(X)                          __asm__(X)
-#define NOINLINE                __attribute__ ((noinline))
+#define ASM(X)                          (__asm__(X))
+#define NOINLINE                        __attribute__ ((noinline))
 
 
 
-#define CLEARFLAG(FLAGS, FLAG)            ((FLAGS &= (~FLAG)))
-#define SETFLAG(FLAGS, FLAG)              (((FLAGS |= FLAG)))
+#define CLEARFLAG(FLAGS, FLAG)            (((FLAGS) &= (~FLAG)))
+
+#define SETFLAG(FLAGS, FLAG, STATE)       do \
+                                          { \
+                                              ((FLAGS) &= (~FLAG)); \
+                                              ((FLAGS) |= ((FLAG * !!(STATE)))); \
+                                          } while(0)
+
 
 void *ecalloc(size_t nmemb, size_t size);
 char *smprintf(char *fmt, ...);

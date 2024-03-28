@@ -49,10 +49,17 @@ RELEASES= ${RELEASEFLAGS} -O3
 # Build using cpu specific instruction set for more performance (Optional)
 BUILDSELF = ${RELEASEFLAGS} ${XNATIVE} -O3
 
-# uncomment for debugging
-LINKERFLAGS = ${DYNAMICLINK} -Wl,--gc-sections
 # Set your options or presets (see above) ex: ${PRESETNAME} (Compiler used is on top)
-CFLAGS = ${DEBUG}
+CFLAGS = ${RELEASES}
+
+CMACROS = 
+
+ifeq ($(CFLAGS), $(DEBUG)) 
+	LINKERFLAGS = ${DYNAMICLINK} -Wl,--gc-sections
+	CMACROS += -DENABLE_DEBUG=\"\"
+endif
+
+
 # Linker flags
 LDFLAGS =  ${LIBS} ${LINKERFLAGS} ${BINARY} 
 # Solaris

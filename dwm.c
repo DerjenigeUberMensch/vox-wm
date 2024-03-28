@@ -632,14 +632,17 @@ checkotherwm(void)
 void
 cleanup(void)
 {
-    XCBCookie cookie;
-
-    cleanupmons();
-    cookie = XCBDestroyWindow(_wm.dpy, _wm.wmcheckwin);
+    XCBCookie cookie = XCBDestroyWindow(_wm.dpy, _wm.wmcheckwin);
     XCBDiscardReply(_wm.dpy, cookie);
-    XCBKeySymbolsFree(_wm.syms);
+    if(_wm.syms)
+    {   
+        XCBKeySymbolsFree(_wm.syms);
+        _wm.syms = NULL;
+    }
+    cleanupmons();
     XCBSync(_wm.dpy);
     XCBCloseDisplay(_wm.dpy);
+    _wm.dpy = NULL;
 }
 
 void
@@ -687,6 +690,7 @@ cleanupmons(void)
     Monitor *m = NULL;
     Monitor *mnext = NULL;
     m = _wm.mons;
+
     while(m)
     {   
         mnext = m->next;
@@ -795,6 +799,17 @@ dirtomon(u8 dir)
     {   for(m = _wm.mons; m->next != _wm.selmon; m = nextmonitor(m));
     }
     return m;
+}
+
+uint8_t
+docked(Client *c)
+{
+    uint8_t dockd = 0;
+    if(c->mon)
+    {   
+        dockd = (c->mon->wx == c->x) & (c->mon->wy == c->y) & (WIDTH(c) == c->mon->ww) & (HEIGHT(c) == c->mon->wh);
+    }
+    return dockd;
 }
 
 void
@@ -926,6 +941,7 @@ exithandler(void)
 void
 floating(Desktop *desk)
 {
+    monocle(desk);
 }
 
 void
@@ -1016,16 +1032,13 @@ grabbuttons(XCBWindow win, uint8_t focused)
     }
     for (i = 0; i < LENGTH(buttons); i++)
     {
-        if (buttons[i].click == ClkClientWin)
+        for (j = 0; j < LENGTH(modifiers); j++)
         {
-            for (j = 0; j < LENGTH(modifiers); j++)
-            {
-                XCBGrabButton(_wm.dpy, buttons[i].button, 
-                        buttons[i].mask | modifiers[j], 
-                        win, 0, BUTTONMASK, 
-                        XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, 
-                        XCB_NONE, XCB_NONE);
-            }
+            XCBGrabButton(_wm.dpy, buttons[i].button, 
+                    buttons[i].mask | modifiers[j], 
+                    win, 0, BUTTONMASK, 
+                    XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, 
+                    XCB_NONE, XCB_NONE);
         }
     }
 }
@@ -1279,6 +1292,9 @@ monocle(Desktop *desk)
         nw = desk->clients->mon->ww - (c->bw * 2);
         nh = desk->clients->mon->wh - (c->bw * 2);
         resize(c, nx, ny, nw, nh, 0); 
+        if(docked(c))
+        {   setfloating(c, 0);
+        }
     }
 }
 
@@ -1396,12 +1412,39 @@ restack(Desktop *desk)
         XCBConfigureWindow(_wm.dpy, c->win, XCB_CONFIG_WINDOW_SIBLING|XCB_CONFIG_WINDOW_STACK_MODE, &wc);
         wc.sibling = c->win;
     }
+
+    if(layouts[desk->layout].arrange != floating)
+    {
+        for(c = desk->stack; c; c = nextstack(c))
+        {
+            if(ISFLOATING(c) && ISVISIBLE(c))
+            {   XCBRaiseWindow(_wm.dpy, c->win);
+            }
+        }
+    }
+    for(c = desk->stack; c; c = nextstack(c))
+    {
+        if(ISALWAYSONTOP(c) && ISVISIBLE(c))
+        {   XCBRaiseWindow(_wm.dpy, c->win);
+        }
+    }
+    for(c = desk->stack; c; c = nextstack(c))
+    {
+        if(ISDIALOG(c) && ISVISIBLE(c))
+        {   XCBRaiseWindow(_wm.dpy, c->win);
+        }
+    }
+    for(c = desk->stack; c; c = nextstack(c))
+    {
+        if(ISMODAL(c) && ISVISIBLE(c))
+        {   XCBRaiseWindow(_wm.dpy, c->win);
+        }
+    }
 }
 
 void
 restart(void)
 {
-    _wm.running = 0;
     _wm.restart = 1;
 }
 
@@ -1410,7 +1453,7 @@ run(void)
 {
     XCBGenericEvent *ev = NULL;
     XCBSync(_wm.dpy);
-    while(_wm.running && (((ev = XCBPollForEvent(_wm.dpy))) || (XCBNextEvent(_wm.dpy, &ev))))
+    while((_wm.running && !_wm.restart) && (((ev = XCBPollForEvent(_wm.dpy))) || (XCBNextEvent(_wm.dpy, &ev))))
     {
         eventhandler(ev);
         free(ev);
@@ -1505,7 +1548,7 @@ sendmon(Client *c, Monitor *m)
 void
 setalwaysontop(Client *c, u8 state)
 {
-    c->flags &= (~_ALWAYSONTOP);
+    CLEARFLAG(c->flags, _ALWAYSONTOP);
     c->flags |= (_ALWAYSONTOP * !!state);
 }
 
@@ -1569,14 +1612,14 @@ updatedesktopnum(void)
 void
 setdialog(Client *c, uint8_t state)
 {
-    c->flags &= (~_DIALOG);
+    CLEARFLAG(c->flags, _DIALOG);
     c->flags |= (_DIALOG * !!state);
 }
 
 void
 setfixed(Client *c, uint8_t state)
 {
-    c->flags &= ~(_FIXED);
+    CLEARFLAG(c->flags, _FIXED);
     c->flags |= (_FIXED * !!state);
 }
 
@@ -1875,12 +1918,22 @@ specialconds(int argc, char *argv[])
     if(err)
     {   DEBUG("%s\nError code: %d", err, _wm.has_error);
     }
-    XCBCheckDisplayError(_wm.dpy);
 
     if(_wm.restart)
     {   execvp(argv[0], argv);
         /* UNREACHABLE */
         DEBUG("%s", "Failed to restart " NAME);
+    }
+
+
+
+    /* this is the end of the exithandler so we dont really care if we segfault here if at all.
+     * But this covers some cases where system skips to here. (AKA manual interrupt)
+     * Really this is mostly just to prevent XKeyboard saying we didnt free stuff. (its annoying)
+     * Though it sometimes doesnt work, it works 90% of the time which is good enough.
+     */
+    if(_wm.dpy)
+    {   cleanup();
     }
 }
 
@@ -1937,7 +1990,6 @@ tile(Desktop *desk)
     {   mw = m->ww;
     }
 
-    DEBUG(" %d %d ", n, mw);
     for (i = my = ty = 0, c = nexttiled(desk->clients); c; c = nexttiled(c->next), ++i)
     {
         if (i < _cfg.nmaster)
@@ -1977,7 +2029,6 @@ tile(Desktop *desk)
                                                                     /* spacing for windows below */ 
             if (ty + HEIGHT(c) < (unsigned int)m->wh) ty += HEIGHT(c) + _cfg.bgw;
         }
-        DEBUG("x: %d y: %d w: %d h: %d", nx, ny, nw, nh);
     }
 }
 
