@@ -19,7 +19,7 @@ void Restart(const Arg *arg);
 /* quits dwm */
 void Quit(const Arg *arg);
 /* resizes the current window based on mouse position */
-void ResizeWindow(XCBDisplay *display, XCBWindow win, const XCBKeyCode key_or_button);
+void ResizeWindow(const Arg *arg);
 /* sets the window layout based on a enum in dwm.h -> Grid, Floating, Monocle, Tiled */
 void SetWindowLayout(const Arg *arg);
 /* Sets the size of the master window 0.0 -> 1.0 for the Tiled Layout

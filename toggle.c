@@ -131,6 +131,13 @@ void
 Restart(const Arg *arg)
 {
     restart();
+    quit();
+}
+
+void
+Restartf(const Arg *arg)
+{
+    restart();
 }
 
 void
@@ -140,7 +147,7 @@ Quit(const Arg *arg)
 }
 
 void
-ResizeWindow(
+_ResizeWindow(
     XCBDisplay *display, 
     XCBWindow win,
     const XCBKeyCode key_or_button
@@ -215,6 +222,16 @@ ResizeWindow(
         free(ev);
         ev = NULL;
     } while(cleanev != 0 && (cleanev != XCB_BUTTON_RELEASE && detail != key_or_button));
+}
+
+void
+ResizeWindow(const Arg *arg)
+{
+    if(_wm.selmon->desksel->sel)
+    {
+        XCBButtonPressEvent *ev = arg->v;
+        _ResizeWindow(_wm.dpy, _wm.selmon->desksel->sel->win, ev->detail);
+    }
 }
 
 void

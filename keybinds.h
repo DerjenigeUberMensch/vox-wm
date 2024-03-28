@@ -43,15 +43,14 @@ static const Key keys[] =
     { XCB_KEY_PRESS,            SUPER,                  XK_c,       SetWindowLayout,    { .ui = Monocle}  },
     { XCB_KEY_PRESS,            SUPER,                  XK_g,       SetWindowLayout,    { .ui = Grid}  },
 
-    { XCB_KEY_PRESS,            CTRL|SUPER,                  XK_p,       Restart,    {0}  },
-    { XCB_KEY_RELEASE,          SHIFT|SUPER,                 XK_p,        Quit,    { 0}  }
-
+    { XCB_KEY_PRESS,            CTRL|SUPER,             XK_p,       Restart,            { 0 }  },
+    { XCB_KEY_RELEASE,          SHIFT|SUPER,            XK_p,       Quit,               { 0 }  }
 };
 /* button definitions */
 /* click can be ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle, ClkClientWin, or ClkRootWin */
 static const Button buttons[] = 
 {
-    {0,0,0,0}
+    { XCB_BUTTON_PRESS,     SUPER,      RMB,        ResizeWindow,   {.i = RMB} },
 };
 
 

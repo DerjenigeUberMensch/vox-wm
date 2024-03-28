@@ -47,29 +47,29 @@
 /* Client macros */
 
 /* This returns non zero on true, but not necessarly 1 */
-#define ISALWAYSONTOP(C)        ((C->flags & _ALWAYSONTOP))
+#define ISALWAYSONTOP(C)        (((C)->flags & _ALWAYSONTOP))
 /* This returns non zero on true, but not necessarly 1 */
-#define ISFULLSCREEN(C)         ((C->flags & _FULLSCREEN))
+#define ISFULLSCREEN(C)         (((C)->flags & _FULLSCREEN))
 /* This returns non zero on true, but not necessarly 1 */
-#define WASFLOATING(C)          ((C->flags & _WASFLOATING))
+#define WASFLOATING(C)          (((C)->flags & _WASFLOATING))
 /* This returns non zero on true, but not necessarly 1 */
-#define ISFLOATING(C)           ((C->flags & _WASFLOATING))
+#define ISFLOATING(C)           (((C)->flags & _WASFLOATING))
 /* This returns non zero on true, but not necessarly 1 */
-#define ISFIXED(C)              ((C->flags & _FIXED))
+#define ISFIXED(C)              (((C)->flags & _FIXED))
 /* This returns non zero on true, but not necessarly 1 */
-#define ISURGENT(C)             ((C->flags & _URGENT))
+#define ISURGENT(C)             (((C)->flags & _URGENT))
 /* This returns non zero on true, but not necessarly 1 */
-#define NEVERFOCUS(C)           ((C->flags & _NEVERFOCUS))
+#define NEVERFOCUS(C)           (((C)->flags & _NEVERFOCUS))
 /* This returns non zero on true, but not necessarly 1 */
-#define ISHIDDEN(C)             ((C->flags & _HIDDEN))
+#define ISHIDDEN(C)             (((C)->flags & _HIDDEN))
 /* This returns non zero on true, but not necessarly 1 */
-#define ISSTICKY(C)             ((C->flags & _STICKY))
+#define ISSTICKY(C)             (((C)->flags & _STICKY))
 /* This returns non zero on true, but not necessarly 1 */
-#define ISDIALOG(C)             ((C->flags & _DIALOG))
+#define ISDIALOG(C)             (((C)->flags & _DIALOG))
 /* This returns non zero on true, but not necessarly 1 */
-#define ISMODAL(C)              ((C->flags & _MODAL))
+#define ISMODAL(C)              (((C)->flags & _MODAL))
 /* This returns 1 when true */
-#define ISVISIBLE(C)            (((C->mon->desksel == C->desktop || ISSTICKY(c)) & (!ISHIDDEN(c))))
+#define ISVISIBLE(C)            ((((C)->mon->desksel == (C)->desktop || ISSTICKY(c)) & (!ISHIDDEN(c))))
 
 /* Monitor struct flags */
 #define _SHOWBAR            ((1 << 0))
@@ -79,13 +79,11 @@
 /* Monitor Macros */
 
 /* This returns non zero on true, but not necessarly 1 */
-#define SHOWBAR(M)              ((M->flags & _SHOWBAR))
+#define SHOWBAR(M)              (((M)->flags & _SHOWBAR))
 /* This returns non zero on true, but not necessarly 1 */
-#define OSHOWBAR(M)             ((M->flags & _OSHOWBAR))
+#define OSHOWBAR(M)             (((M)->flags & _OSHOWBAR))
 /* This returns non zero on true, but not necessarly 1 */
-#define TOPBAR(M)               ((M->flags & _TOPBAR))
-
-
+#define TOPBAR(M)               (((M)->flags & _TOPBAR))
 
 enum { CurNormal, CurResize, CurMove, CurLast }; /* cursor */
 enum { SchemeNorm, SchemeSel }; /* color schemes */
@@ -127,7 +125,6 @@ struct Key
 struct Button
 {
     uint16_t type;                  /* ButtonPress/ButtonRelease    */
-    uint16_t click;                 /* enum ClkType                 */
     uint32_t mask;                  /* Modifier                     */
     uint32_t button;                /* Button                       */
     void (*func)(const Arg *arg);   /* Function                     */
@@ -225,8 +222,8 @@ struct WM
 {
     int screen;                     /* Screen id            */
     int numlockmask;                /* numlockmask          */
-    uint8_t running;                /* Running flag         */
-    uint8_t restart;                /* Restart flag         */
+    int running;                    /* Running flag         */
+    int restart;                    /* Restart flag         */
     uint8_t has_error;              /* Error flag           */
     uint16_t sw;                    /* Screen Height u16    */
     uint16_t sh;                    /* Screen Width  u16    */
@@ -293,8 +290,8 @@ Client *createclient(Monitor *m);
 Desktop *createdeskop(Monitor *m);
 Monitor *createmon(void);
 Stack *createstack(void);
-
 Monitor *dirtomon(uint8_t dir);
+uint8_t docked(Client *c);
 void eventhandler(XCBGenericEvent *ev);
 void exithandler(void);
 void floating(Desktop *desk);

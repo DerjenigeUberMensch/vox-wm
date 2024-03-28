@@ -92,13 +92,28 @@ jmpck(XCBDisplay *d, XCBGenericError *err)
 static void
 ck(XCBDisplay *d, XCBCookie c, const char *func)
 {
+    if(!d || !c.sequence)   /* sequence shouldnt and cant be 0, so we dont handle that */
+    {   
+        fprintf(stderr, "Could not load display into error handler.");
+        XCBBreakPoint();
+        return;
+    }
     XCBGenericError *err = NULL;
     err = xcb_request_check(d, c);
     if(err)
     {
         jmpck(d, err);
         fprintf(stderr, "Occured at: %s\n", func);
+        /* to retain some functionaly we just push these to the event queue */
+        const XCBScreen *scr = xcb_setup_roots_iterator(xcb_get_setup(d)).data;
+        if(scr && scr->root)   
+        {
+            XCBGenericError r;
+            memcpy(&r, err, sizeof(XCBGenericError));
+            xcb_send_event(d, 0, scr->root, XCB_EVENT_MASK_NO_EVENT, (char *)&r);
+        }
         free(err);
+        XCBFlush(d);
         XCBBreakPoint();
     }
 }
@@ -1161,7 +1176,7 @@ int
 XCBNextEvent(XCBDisplay *display, XCBGenericEvent **event_return) 
 {
     /* waits till next event happens before returning */
-    return !!(*event_return = xcb_wait_for_event(display));
+    return !!((*event_return = xcb_wait_for_event(display)));
 }
 
 XCBGenericEvent *

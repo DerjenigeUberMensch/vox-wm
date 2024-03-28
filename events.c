@@ -246,12 +246,14 @@ buttonpress(XCBGenericEvent *event)
             arg.v = ev;
             buttons[i].func(&arg);
             sync = 1;
+            DEBUG("%d", buttons[i].button);
             break;
         }
     }
     if(sync)
     {   XCBSync(_wm.dpy);
     }
+    DEBUG("ButtonPress: (x: %d, y: %d)", rootx, rooty);
 }
 
 void
@@ -297,6 +299,7 @@ buttonrelease(XCBGenericEvent *event)
             arg.v = ev;
             buttons[i].func(&arg);
             sync = 1;
+            DEBUG("%d", buttons[i].button);
             break;
         }
     }

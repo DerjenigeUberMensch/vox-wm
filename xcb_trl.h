@@ -335,7 +335,7 @@
 
 
 /* TODO */
-#define XCB_TRL_ENABLE_DEBUG        1           /* This enables XCB_TRL to use as much memory + cpu
+#define XCB_TRL_ENABLE_DEBUG        0           /* This enables XCB_TRL to use as much memory + cpu
                                                  * This allows more specific information about certain errors, things
                                                  * Regarding the information of XCB_TRL.
                                                  * This should NOT be enabled when releasing a non debug build
