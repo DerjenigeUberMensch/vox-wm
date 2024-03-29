@@ -9,11 +9,18 @@
  */
 
 
+
+
+
+
+/*
+ * TODO: xcb for some reason doesnt have a 32bit version of alot of the xlib to xcb ports for some reason... so we have to do it ourselves
+ */
+
 #include "xcb_trl.h"
 
 #include <xcb/xcb.h>
 #include <xcb/xcb_aux.h>
-#include <xcb/xcb_icccm.h>
 #include <xcb/xcb_event.h>
 #include <xcb/xcbext.h>
 #include <xcb/xcb_ewmh.h>
@@ -30,7 +37,13 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <limits.h> /* UINT_MAX */
 #include <stdarg.h>
+
+/** Number of elements in this structure */
+#define XCB_ICCCM_NUM_WM_HINTS_ELEMENTS 9
+
+
 
 
 typedef uint8_t  u8;
@@ -47,10 +60,10 @@ static void (*_handler)(XCBDisplay *, XCBGenericError *) = NULL;
 
 
 #ifdef XCB_TRL_ENABLE_DEBUG
-    #if XCB_TRL_ENABLE_DEBUG != 0
-    #define DBG             1
-    #define _fn             __func__
-    #endif
+#define DBG             1
+#define _fn             __func__
+#define _XCB_MANUAL_DEBUG(fmt, ...)            (fprintf(stderr, "_XCB_DEBUG_ [%s:%d] by %s(): " fmt "\n", __FILE__,__LINE__,__func__,__VA_ARGS__))
+#define _XCB_MANUAL_DEBUG0(X)                   (fprintf(stderr, "_XCB_DEBUG_ [%s:%d] by %s(): " X "\n", __FILE__, __LINE__, __func__))
 #endif
 
 /* HELPER FUNCTION */
@@ -73,6 +86,7 @@ screen_of_display(XCBDisplay *display, int screen)
 static void
 jmpck(XCBDisplay *d, XCBGenericError *err)
 {
+    fprintf(stderr, "_XCB_DEBUG_\n");
     fprintf(stderr, "%s %s\n", XCBErrorCodeText(err->error_code), XCBErrorMajorCodeText(err->major_code));
     fprintf(stderr, 
             "error_code:    [%d]\n"
@@ -636,7 +650,7 @@ XCBGetTransientForHintCookie(
         XCBDisplay *display, 
         XCBWindow win)
 {
-    xcb_get_property_cookie_t cookie = xcb_icccm_get_wm_transient_for(display, win);
+    xcb_get_property_cookie_t cookie = xcb_get_property(display, 0, win, XCB_ATOM_WM_TRANSIENT_FOR, XCB_ATOM_WINDOW, 0, 1);
     return (XCBCookie) { .sequence = cookie.sequence };
 }
 
@@ -649,12 +663,32 @@ XCBGetTransientForHintReply(
 {
     XCBGenericError *err = NULL;
     xcb_get_property_cookie_t cookie1 = { .sequence = cookie.sequence };
-    const u8 status = xcb_icccm_get_wm_transient_for_reply(display, cookie1, win, &err);
+    xcb_get_property_reply_t *reply = xcb_get_property_reply(display, cookie1, &err);
+    u8 status = 1;
+
+    if(!reply || reply->type != XCB_ATOM_WINDOW || reply->format != 32 || !reply->length)
+    {   status = 0;
+    }
+    else
+    {
+        if(win)
+        {   *win = *((xcb_window_t *) xcb_get_property_value(reply));
+        }
+        else
+        {   
+            status = 0;
+            #ifdef DBG
+                _XCB_MANUAL_DEBUG0("No adress specified in the 'win' field.");
+                XCBBreakPoint();
+            #endif
+        }
+    }
 
     if(err)
     {   _xcb_err_handler(display, err);
         return 0;
     }
+    free(reply);
     return status;
 }
 
@@ -866,7 +900,7 @@ XCBCloseFont(XCBDisplay *display, XCBFont id)
 XCBCookie
 XCBGetTextPropertyCookie(XCBDisplay *display, XCBWindow window, XCBAtom property)
 {
-    const xcb_get_property_cookie_t cookie = xcb_icccm_get_text_property(display, window, property);
+    const xcb_get_property_cookie_t cookie = xcb_get_property(display, 0, window, property, XCB_GET_PROPERTY_TYPE_ANY, 0, UINT_MAX);
     return (XCBCookie) {.sequence = cookie.sequence };
 }
 
@@ -874,20 +908,43 @@ int
 XCBGetTextPropertyReply(XCBDisplay *display, XCBCookie cookie, XCBTextProperty *reply_return)
 {
     XCBGenericError *err = NULL;
-    int status = 0;
+    u8 status = 1;
     const xcb_get_property_cookie_t cookie1 = { .sequence = cookie.sequence };
-    status = xcb_icccm_get_text_property_reply(display, cookie1, reply_return, &err);
+
+    xcb_get_property_reply_t *reply = xcb_get_property_reply(display, cookie1, &err);
+    
+    if(!reply || reply->type == XCB_NONE)
+    {
+        status = 0;
+    }
+    else
+    {
+        reply_return->_reply = reply;
+        reply_return->encoding = reply_return->_reply->type;
+        reply_return->format = reply_return->_reply->format;
+        reply_return->name_len = xcb_get_property_value_length(reply_return->_reply);
+        reply_return->name = xcb_get_property_value(reply_return->_reply);
+    }
+
     if(err)
     {   
         _xcb_err_handler(display, err);
-        return 0;
+        status = 0;
     }
+    free(reply);
     return status;
 }
 int
 XCBFreeTextProperty(XCBTextProperty *prop)
 {   
-    xcb_icccm_get_text_property_reply_wipe(prop);
+#ifdef DBG
+    if(!prop)
+    {
+        _XCB_MANUAL_DEBUG0("No prop in context.");
+        XCBBreakPoint();
+    }
+#endif
+    free(prop->_reply);
     return 1;
 }
 
@@ -952,10 +1009,73 @@ XCBSetIOErrorHandler(XCBDisplay *display, void *IOHandler)
 }
 
 char *
+XCBGetEventName(
+        uint8_t response_type
+        )
+{
+    /* cant use const cause compiler complains boo hoo */
+    XCBGenericEvent ev = { .response_type = response_type };
+    return XCBGetEventNameFromEvent(&ev);
+}
+
+char *
+XCBGetEventNameFromEvent(
+        XCBGenericEvent *event
+        )
+{
+    const char *evs[36] = 
+    {
+        [XCB_NONE] = NULL,
+        [XCB_KEY_PRESS] = "XCB_KEY_PRESS", 
+        [XCB_KEY_RELEASE] = "XCB_KEY_RELEASE", 
+        [XCB_BUTTON_PRESS] = "XCB_BUTTON_PRESS", 
+        [XCB_BUTTON_RELEASE] = "XCB_BUTTON_RELEASE", 
+        [XCB_MOTION_NOTIFY] = "XCB_MOTION_NOTIFY", 
+        [XCB_ENTER_NOTIFY] = "XCB_ENTER_NOTIFY", 
+        [XCB_LEAVE_NOTIFY] = "XCB_LEAVE_NOTIFY", 
+        [XCB_FOCUS_IN] = "XCB_FOCUS_IN", 
+        [XCB_FOCUS_OUT] = "XCB_FOCUS_OUT", 
+        [XCB_KEYMAP_NOTIFY] = "XCB_KEYMAP_NOTIFY", 
+        [XCB_EXPOSE] = "XCB_EXPOSE", 
+        [XCB_GRAPHICS_EXPOSURE] = "XCB_GRAPHICS_EXPOSURE", 
+        [XCB_NO_EXPOSURE] = "XCB_NO_EXPOSURE", 
+        [XCB_VISIBILITY_NOTIFY] = "XCB_VISIBILITY_NOTIFY", 
+        [XCB_CREATE_NOTIFY] = "XCB_CREATE_NOTIFY", 
+        [XCB_DESTROY_NOTIFY] = "XCB_DESTROY_NOTIFY", 
+        [XCB_UNMAP_NOTIFY] = "XCB_UNMAP_NOTIFY", 
+        [XCB_MAP_NOTIFY] = "XCB_MAP_NOTIFY", 
+        [XCB_MAP_REQUEST] = "XCB_MAP_REQUEST", 
+        [XCB_REPARENT_NOTIFY] = "XCB_REPARENT_NOTIFY", 
+        [XCB_CONFIGURE_NOTIFY] = "XCB_CONFIGURE_NOTIFY", 
+        [XCB_CONFIGURE_REQUEST] = "XCB_CONFIGURE_REQUEST", 
+        [XCB_GRAVITY_NOTIFY] = "XCB_GRAVITY_NOTIFY", 
+        [XCB_RESIZE_REQUEST] = "XCB_RESIZE_REQUEST", 
+        [XCB_CIRCULATE_NOTIFY] = "XCB_CIRCULATE_NOTIFY", 
+        [XCB_CIRCULATE_REQUEST] = "XCB_CIRCULATE_REQUEST", 
+        [XCB_PROPERTY_NOTIFY] = "XCB_PROPERTY_NOTIFY", 
+        [XCB_SELECTION_CLEAR] = "XCB_SELECTION_CLEAR", 
+        [XCB_SELECTION_REQUEST] = "XCB_SELECTION_REQUEST", 
+        [XCB_SELECTION_NOTIFY] = "XCB_SELECTION_NOTIFY", 
+        [XCB_COLORMAP_NOTIFY] = "XCB_COLORMAP_NOTIFY", 
+        [XCB_CLIENT_MESSAGE] = "XCB_CLIENT_MESSAGE", 
+        [XCB_MAPPING_NOTIFY] = "XCB_MAPPING_NOTIFY", 
+        [XCB_GE_GENERIC] = "XCB_GE_GENERIC", 
+    };
+    if(!event)
+    {   return NULL;
+    }
+    u8 cleanev = XCB_EVENT_RESPONSE_TYPE(event);
+    /* bounds check */    /* & over && for better inlining */
+    cleanev *= (cleanev > 0) & (cleanev < 35);
+
+    return (char *)evs[cleanev];
+}
+
+char *
 XCBErrorCodeText(
         uint8_t error_code)
 {
-    char *errs[18] =
+    const char *errs[18] =
     {
         [0] = NULL,
         [BadRequest] = "BadRequest",
@@ -976,16 +1096,16 @@ XCBErrorCodeText(
         [BadLength] = "BadLength",
         [BadImplementation] = "BadImplementation",
     };
-    /* bounds check */      /* & over && for better inlining */
+    /* bounds check */          /* & over && for better inlining */
     error_code *= (error_code > 0) & (error_code < 18);
-    return errs[error_code];
+    return (char *)errs[error_code];
 }
 
 char *
 XCBErrorMajorCodeText(
         uint8_t major_code)
 {
-    char *errs[128] = 
+    const char *errs[128] = 
     {
         [0] = NULL,
         [X_CreateWindow] = "CreateWindow",
@@ -1109,9 +1229,9 @@ XCBErrorMajorCodeText(
         [X_GetModifierMapping] = "GetModifierMapping",
         [X_NoOperation] = "NoOperation"
     };
-    /* bounds check */      /* & over && for better inlining */
+    /* bounds check */          /* & over && for better inlining */
     major_code *= (major_code > 0) & (major_code < 128);
-    return errs[major_code];
+    return (char *)errs[major_code];
 }
 
 char *
@@ -1796,11 +1916,15 @@ XCBSetClassHint(XCBDisplay *display, XCBWindow window, const char *class_name)
 {
     const int len = strlen(class_name);
 #if DBG
-    XCBCookie cookie = xcb_icccm_set_wm_class_checked(display, window, len, class_name);
+    XCBCookie cookie = xcb_change_property_checked(display, XCB_PROP_MODE_REPLACE, window,
+                                                XCB_ATOM_WM_CLASS, XCB_ATOM_STRING, 8,
+                                                len, class_name);
     ck(display, cookie, _fn);
     return cookie;
 #endif
-    return xcb_icccm_set_wm_class(display, window, len, class_name);
+    return xcb_change_property(display, XCB_PROP_MODE_REPLACE, window, 
+                             XCB_ATOM_WM_CLASS, XCB_ATOM_STRING, 8,
+                             len, class_name);
 }
 
 
@@ -1963,7 +2087,7 @@ XCBGetWMProtocolsCookie(
         XCBWindow window, 
         XCBAtom protocol)
 {
-    const xcb_get_property_cookie_t cookie = xcb_icccm_get_wm_protocols(display, window, protocol);
+    const xcb_get_property_cookie_t cookie = xcb_get_property(display, 0, window, protocol, XCB_ATOM_ATOM, 0, UINT_MAX);
     return (XCBCookie) { .sequence = cookie.sequence };
 }
 
@@ -1976,13 +2100,34 @@ XCBGetWMProtocolsReply(
 {
     XCBGenericError *err = NULL;
     const xcb_get_property_cookie_t cookie1 = { .sequence = cookie.sequence };
-    const int ret = xcb_icccm_get_wm_protocols_reply(display, cookie1, protocol_return, &err);
+    xcb_get_property_reply_t *reply = xcb_get_property_reply(display, cookie1, &err);
+    u8 status = 1;
+
+    if(!reply || reply->type != XCB_ATOM_ATOM || reply->format != 32)
+    {   status = 0;
+    }
+    else
+    {
+        #ifdef DBG
+            if(!protocol_return)
+            {   
+                _XCB_MANUAL_DEBUG0("'protocol_return' does not have a valid adress.");
+                XCBBreakPoint();
+            }
+        #endif
+        protocol_return->_reply = reply;                                    /* not sure why we divided by 8 */
+        protocol_return->atoms_len = xcb_get_property_value_length(reply) / (reply->format / 8);
+        protocol_return->atoms = (xcb_atom_t *) xcb_get_property_value(reply);
+    }
+
     if(err)
     {   
         _xcb_err_handler(display, err);
-        return 0;
+        status = 0;
     }
-    return ret;
+
+    free(reply);
+    return status;
 
 }
 
@@ -1990,7 +2135,7 @@ void
 XCBWipeGetWMProtocolsReply(
         XCBWMProtocols *protocols)
 {
-    xcb_icccm_get_wm_protocols_reply_wipe(protocols);
+    free(protocols->_reply);
 }
 
 
@@ -2000,7 +2145,8 @@ XCBGetWMHintsCookie(
         XCBWindow win
         )
 {
-    xcb_get_property_cookie_t cookie = xcb_icccm_get_wm_hints(display, win);
+    xcb_get_property_cookie_t cookie = xcb_get_property(display, 0, win, XCB_ATOM_WM_HINTS, XCB_ATOM_WM_HINTS, 0L,
+                                                        XCB_ICCCM_NUM_WM_HINTS_ELEMENTS);
     return (XCBCookie) { .sequence = cookie.sequence };
 }
 
@@ -2068,7 +2214,14 @@ XCBSetWMHintsCookie(
         XCBWMHints *wmhints
         )
 {
-    return xcb_icccm_set_wm_hints(display, window, wmhints);
+#ifdef DBG
+    XCBCookie cookie = xcb_change_property_checked(display, XCB_PROP_MODE_REPLACE, window, XCB_ATOM_WM_HINTS,
+                                                    XCB_ATOM_WM_HINTS, 32, sizeof(*wmhints) >> 2, wmhints);
+    ck(display, cookie, _fn);
+    return cookie;
+#endif
+    return xcb_change_property(display, XCB_PROP_MODE_REPLACE, window, XCB_ATOM_WM_HINTS,
+                                XCB_ATOM_WM_HINTS, 32, sizeof(*wmhints) >> 2, wmhints);
 }
 
 XCBCookie
@@ -2077,7 +2230,8 @@ XCBGetWMNormalHintsCookie(
         XCBWindow win
         )
 {
-    xcb_get_property_cookie_t cookie = xcb_icccm_get_wm_normal_hints(display, win);
+    const xcb_get_property_cookie_t cookie = xcb_get_property(display, 0, win, XCB_ATOM_WM_NORMAL_HINTS, XCB_ATOM_WM_SIZE_HINTS, 0L, 
+                                            XCB_ICCCM_NUM_WM_SIZE_HINTS_ELEMENTS);
     return (XCBCookie) { .sequence = cookie.sequence };
 }
 
@@ -2090,11 +2244,55 @@ XCBGetWMNormalHintsReply(
 {
     XCBGenericError *err = NULL;
     xcb_get_property_cookie_t cookie1 = { .sequence = cookie.sequence };
-    u8 status = xcb_icccm_get_wm_normal_hints_reply(display, cookie1, hints_return, &err);
+    xcb_get_property_reply_t *reply = xcb_get_property_reply(display, cookie1, &err);
+
+    u8 status = 1;
+
+        
+    uint32_t flags;
+    int length;
+
+    if(!reply || reply->type != XCB_ATOM_WM_SIZE_HINTS || reply->format != 32)
+    {
+        status = 0;
+    }
+    else
+    {
+        length = xcb_get_property_value_length(reply) / (reply->format / 8);
+        if(length > XCB_ICCCM_NUM_WM_SIZE_HINTS_ELEMENTS)
+        {   length = XCB_ICCCM_NUM_WM_SIZE_HINTS_ELEMENTS;
+        }
+        #ifdef DBG
+        if(!hints_return)
+        {
+            _XCB_MANUAL_DEBUG0("No adress for 'hints_return'.");
+            XCBBreakPoint();
+        }
+        #endif
+        memcpy(hints_return, (xcb_size_hints_t *) xcb_get_property_value (reply), length * (reply->format / 8));
+        flags = (XCB_ICCCM_SIZE_HINT_US_POSITION | XCB_ICCCM_SIZE_HINT_US_SIZE |
+                XCB_ICCCM_SIZE_HINT_P_POSITION | XCB_ICCCM_SIZE_HINT_P_SIZE |
+                XCB_ICCCM_SIZE_HINT_P_MIN_SIZE | XCB_ICCCM_SIZE_HINT_P_MAX_SIZE |
+                XCB_ICCCM_SIZE_HINT_P_RESIZE_INC | XCB_ICCCM_SIZE_HINT_P_ASPECT);
+
+        /* NumPropSizeElements = 18 (ICCCM version 1) */
+        if(length >= 18)
+        {   flags |= (XCB_ICCCM_SIZE_HINT_BASE_SIZE | XCB_ICCCM_SIZE_HINT_P_WIN_GRAVITY);
+        }
+        else
+        {
+            hints_return->base_width = 0;
+            hints_return->base_height = 0;
+            hints_return->win_gravity = 0;
+        }
+        /* get rid of unwanted bits */
+        hints_return->flags &= flags;
+    }
 
     if(err)
     {   _xcb_err_handler(display, err);
         status = 0;
     }
+    free(reply);
     return status;
 }

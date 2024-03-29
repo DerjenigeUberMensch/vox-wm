@@ -123,129 +123,9 @@
  *      // However you can discard certain replies, (mainly ones that return a cookie) using XCBDiscardReply(), which allows use to not need to free the reply,
  *      // but we dont get it back either, See the section "Self Spoofing"
  *      free(ev);
- *      switch(cleanev)
- *      {
-            case XCB_KEY_PRESS:
-                DEBUG("%s", "XCB_KEY_PRESS");
-                break;
-            case XCB_KEY_RELEASE:
-                DEBUG("%s", "XCB_KEY_RELEASE");
-                break;
-            case XCB_BUTTON_PRESS:
-                DEBUG("%s", "XCB_BUTTON_PRESS");
-                break;
-            case XCB_BUTTON_RELEASE:
-                DEBUG("%s", "XCB_BUTTON_RELEASE");
-                break;
-            case XCB_MOTION_NOTIFY:
-                DEBUG("%s", "XCB_MOTION_NOTIFY");
-                break;
-            case XCB_ENTER_NOTIFY:
-                DEBUG("%s", "XCB_ENTER_NOTIFY");
-                break;
-            case XCB_LEAVE_NOTIFY:
-                DEBUG("%s", "XCB_LEAVE_NOTIFY");
-                break;
-            case XCB_FOCUS_IN :
-                DEBUG("%s", "XCB_FOCUS_IN");
-                break;
-            case XCB_FOCUS_OUT:
-                DEBUG("%s", "XCB_FOCUS_OUT");
-                break;
-            case XCB_KEYMAP_NOTIFY:
-                DEBUG("%s", "XCB_KEYMAP_NOTIFY");
-                break;
-            case XCB_EXPOSE:
-                DEBUG("%s", "XCB_EXPOSE");
-                break;
-            case XCB_GRAPHICS_EXPOSURE:
-                DEBUG("%s", "XCB_GRAPHICS_EXPOSURE");
-                break;
-            case XCB_NO_EXPOSURE:
-                DEBUG("%s", "XCB_NO_EXPOSURE");
-                break;
-            case XCB_VISIBILITY_NOTIFY:
-                DEBUG("%s", "XCB_VISIBILITY_NOTIFY");
-                break;
-            case XCB_CREATE_NOTIFY:
-                DEBUG("%s", "XCB_CREATE_NOTIFY");
-                break;
-            case XCB_DESTROY_NOTIFY:
-                DEBUG("%s", "XCB_DESTROY_NOTIFY");
-                break;
-            case XCB_UNMAP_NOTIFY:
-                DEBUG("%s", "XCB_UNMAP_NOTIFY"); 
-                break;
-            case XCB_MAP_NOTIFY:
-                DEBUG("%s", "XCB_MAP_NOTIFY");
-                break;
-            case XCB_MAP_REQUEST:
-                DEBUG("%s", "XCB_MAP_REQUEST");
-                break;
-            case XCB_REPARENT_NOTIFY:
-                DEBUG("%s", "XCB_REPARENT_NOTIFY");
-                break;
-            case XCB_CONFIGURE_NOTIFY:
-                DEBUG("%s", "XCB_CONFIGURE_NOTIFY");
-                break;
-            case XCB_CONFIGURE_REQUEST:
-                DEBUG("%s", "XCB_CONFIGURE_REQUEST");
-                break;
-            case XCB_GRAVITY_NOTIFY:
-                DEBUG("%s", "XCB_GRAVITY_NOTIFY");
-                break;
-            case XCB_RESIZE_REQUEST: 
-                DEBUG("%s", "XCB_RESIZE_REQUEST");
-                break;
-            case XCB_CIRCULATE_NOTIFY:
-                DEBUG("%s", "XCB_CIRCULATE_NOTIFY");
-                break;
-            case XCB_CIRCULATE_REQUEST:
-                DEBUG("%s", "XCB_CIRCULATE_REQUEST");
-                break;
-            case XCB_PROPERTY_NOTIFY:
-                DEBUG("%s", "XCB_PROPERTY_NOTIFY");
-                break;
-            case XCB_SELECTION_CLEAR:
-                DEBUG("%s", "XCB_SELECTION_CLEAR");
-                break;
-            case XCB_SELECTION_REQUEST:
-                DEBUG("%s", "XCB_SELECTION_REQUEST");
-                break;
-            case XCB_SELECTION_NOTIFY:
-                DEBUG("%s", "XCB_SELECTION_NOTIFY");
-                break;
-            case XCB_COLORMAP_NOTIFY:
-                DEBUG("%s", "XCB_COLORMAP_NOTIFY");
-                break;
-            case XCB_CLIENT_MESSAGE:
-                DEBUG("%s", "XCB_CLIENT_MESSAGE");
-                break;
-            case XCB_MAPPING_NOTIFY:
-                DEBUG("%s", "XCB_MAPPING_NOTIFY");
-                break;
-            case XCB_GE_GENERIC:
-                DEBUG("%s", "XCB_GE_GENERIC");
-            case XCB_NONE:
-                break;
-            default:
-                printf("%s", "UNKNOWN EVENT");
-                break;
- *      }
- * }
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
+ *      // Technically you dont need to 'clean' the response_type for this function its just an example.
+ *      printf("%s\n", XCBGetEventName(cleanev));
+ *  }
  *
  * Cookies;
  *
@@ -321,7 +201,6 @@
 #include <xcb/xcb.h>
 #include <xcb/xcb_atom.h>
 #include <xcb/xcb_aux.h>
-#include <xcb/xcb_icccm.h>
 #include <xcb/xcb_event.h>
 #include <xcb/xcbext.h>
 #include <xcb/xcb_ewmh.h>
@@ -334,25 +213,136 @@
 
 
 
-/* TODO */
-#define XCB_TRL_ENABLE_DEBUG        0           /* This enables XCB_TRL to use as much memory + cpu
-                                                 * This allows more specific information about certain errors, things
+/* #define XCB_TRL_ENABLE_DEBUG */              /* This allows more specific information about certain errors, things
                                                  * Regarding the information of XCB_TRL.
                                                  * This should NOT be enabled when releasing a non debug build
                                                  * as it uses a considerable amount of memory and binary size.
                                                  * Instead it is recommended to disable this to allow for optimizations.
                                                  * It is also further recommended not not use a error handler as this will print out the info already.
+                                                 * Secondly this may cause unintended behaviour due to the use of the _checked version of the functions.
                                                  */
 
 
 
 #ifdef XCB_TRL_ENABLE_DEBUG
-    #if XCB_TRL_ENABLE_DEBUG != 0
-        /* if you want to pause execution right as we hit something and just check whatever is next you are free to do so */
-        void XCBBreakPoint(void);
-    #endif
+/* if you want to pause execution right as we hit something and just check whatever is next you are free to do so */
+void XCBBreakPoint(void);
 #endif
 
+
+
+
+
+
+
+
+
+
+/* stupid stuff */
+#ifndef __XCB_ICCCM_H__
+
+/** Number of elements in this structure */
+#define XCB_ICCCM_NUM_WM_SIZE_HINTS_ELEMENTS 18
+
+typedef struct {
+/** Store reply to avoid memory allocation, should normally not be
+    used directly */
+xcb_get_property_reply_t *_reply;
+/** Encoding used */
+xcb_atom_t encoding;
+/** Length of the name field above */
+uint32_t name_len;
+/** Property value */
+char *name;
+/** Format, may be 8, 16 or 32 */
+uint8_t format;
+} xcb_icccm_get_text_property_reply_t;
+
+typedef struct {
+  /** Length of the atoms list */
+  uint32_t atoms_len;
+  /** Atoms list */
+  xcb_atom_t *atoms;
+  /** Store reply to avoid memory allocation, should normally not be
+      used directly */
+  xcb_get_property_reply_t *_reply;
+}xcb_icccm_get_wm_protocols_reply_t;
+
+typedef struct {
+/** Marks which fields in this structure are defined */
+int32_t flags;
+/** Does this application rely on the window manager to get keyboard
+    input? */
+  uint32_t input;
+  /** See below */
+  int32_t initial_state;
+  /** Pixmap to be used as icon */
+  xcb_pixmap_t icon_pixmap;
+  /** Window to be used as icon */
+  xcb_window_t icon_window;
+  /** Initial position of icon */
+  int32_t icon_x, icon_y;
+  /** Icon mask bitmap */
+  xcb_pixmap_t icon_mask;
+  /* Identifier of related window group */
+  xcb_window_t window_group;
+} xcb_icccm_wm_hints_t;
+
+
+typedef struct {
+/** User specified flags */
+uint32_t flags;
+/** User-specified position */
+int32_t x, y;
+/** User-specified size */
+int32_t width, height;
+/** Program-specified minimum size */
+int32_t min_width, min_height;
+/** Program-specified maximum size */
+int32_t max_width, max_height;
+/** Program-specified resize increments */
+int32_t width_inc, height_inc;
+/** Program-specified minimum aspect ratios */
+int32_t min_aspect_num, min_aspect_den;
+/** Program-specified maximum aspect ratios */
+int32_t max_aspect_num, max_aspect_den;
+/** Program-specified base size */
+int32_t base_width, base_height;
+/** Program-specified window gravity */
+uint32_t win_gravity;
+} xcb_size_hints_t;
+
+typedef enum {
+  XCB_ICCCM_SIZE_HINT_US_POSITION = 1 << 0,
+  XCB_ICCCM_SIZE_HINT_US_SIZE = 1 << 1,
+  XCB_ICCCM_SIZE_HINT_P_POSITION = 1 << 2,
+  XCB_ICCCM_SIZE_HINT_P_SIZE = 1 << 3,
+  XCB_ICCCM_SIZE_HINT_P_MIN_SIZE = 1 << 4,
+  XCB_ICCCM_SIZE_HINT_P_MAX_SIZE = 1 << 5,
+  XCB_ICCCM_SIZE_HINT_P_RESIZE_INC = 1 << 6,
+  XCB_ICCCM_SIZE_HINT_P_ASPECT = 1 << 7,
+  XCB_ICCCM_SIZE_HINT_BASE_SIZE = 1 << 8,
+  XCB_ICCCM_SIZE_HINT_P_WIN_GRAVITY = 1 << 9
+} xcb_icccm_size_hints_flags_t;
+
+typedef enum {
+  XCB_ICCCM_WM_STATE_WITHDRAWN = 0,
+  XCB_ICCCM_WM_STATE_NORMAL = 1,
+  XCB_ICCCM_WM_STATE_ICONIC = 3
+} xcb_icccm_wm_state_t;
+
+typedef enum {
+  XCB_ICCCM_WM_HINT_INPUT = (1L << 0),
+  XCB_ICCCM_WM_HINT_STATE = (1L << 1),
+  XCB_ICCCM_WM_HINT_ICON_PIXMAP = (1L << 2),
+  XCB_ICCCM_WM_HINT_ICON_WINDOW = (1L << 3),
+  XCB_ICCCM_WM_HINT_ICON_POSITION = (1L << 4),
+  XCB_ICCCM_WM_HINT_ICON_MASK = (1L << 5),
+  XCB_ICCCM_WM_HINT_WINDOW_GROUP = (1L << 6),
+  XCB_ICCCM_WM_HINT_X_URGENCY = (1L << 8)
+} xcb_icccm_wm_t;
+
+#endif
 /* Ghosts */
 
 
@@ -656,13 +646,14 @@ int
 XCBConnectionNumber(
         XCBDisplay *display);
 /*
- * 
+ * RETURN: a pointer to the indicated screen.
  */
 XCBScreen *
 XCBScreenOfDisplay(
         XCBDisplay *display, 
         int scren);
 /*
+ * RETURN: a pointer to the default screen.
  */
 XCBScreen *
 XCBDefaultScreenOfDisplay(
@@ -694,9 +685,9 @@ XCBProtocolVersion(
 int 
 XCBProtocolRevision(
         XCBDisplay *display);
-/*
- * display 	Specifies the connection to the X server.
- * return a number related to a vendor's release of the X server.
+/* Returns a number related to a vendor's release of the X server.
+ *
+ * RETURN: int
  */
 int 
 XCBVendorRelease(
@@ -722,24 +713,31 @@ int
 XCBRootOfScreen(
         XCBDisplay *display);
 
-/* Gets the screen setup struct AKA screen stuff */
+/* Gets the screen setup struct AKA screen stuff 
+ *
+ * RETURN: XCBSetup *
+ */
 const XCBSetup *
 XCBGetSetup(
         XCBDisplay *display);
-
+/*
+ * 
+ * RETURN: XCBScreen *
+*/
 XCBScreen *
 XCBGetScreen(
         XCBDisplay *display);
 
 /*
  * These are useful with functions that need a drawable of a particular screen and for creating top-level windows.
- * return the root window. 
+ * RETURN: Root window of current display.
  */
 XCBWindow 
 XCBRootWindow(
         XCBDisplay *display, 
         int screen);
 /*
+ * RETURN: The default root window of the current display.
  */
 XCBWindow 
 XCBDefaultRootWindow(
@@ -757,6 +755,10 @@ uint16_t
 XCBDisplayHeight(
         XCBDisplay *display, 
         int screen);
+/* Returns the current display depth.
+ *
+ * 
+*/
 uint8_t 
 XCBDisplayDepth(
         XCBDisplay *display, 
@@ -765,6 +767,30 @@ uint8_t
 XCBDefaultDepth(
         XCBDisplay *display, 
         int screen);
+/* <From https://tronche.com/gui/x/xlib/event-handling/XSelectInput.html>
+ * 
+ * The XCBSelectInput() function requests that the X server report the events associated with the specified event mask. Initially, X will not report any of these events. Events are reported relative to a window. 
+ * If a window is not interested in a device event, 
+ * it usually propagates to the closest ancestor that is interested, unless the do_not_propagate mask prohibits it.
+ *
+ * Setting the event-mask attribute of a window overrides any previous call for the same window but not for other clients. 
+ * Multiple clients can select for the same events on the same window with the following restrictions:
+ *      - Multiple clients can select events on the same window because their event masks are disjoint. 
+ *        When the X server generates an event, it reports it to all interested client.
+ *
+ *      - Only one client at a time can select XCB_CIRCULATE_REQUEST, XCB_CONFIGURE_REQUEST, or XCB_MAP_REQUEST events, 
+ *        Which are associated with the event mask XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT.
+ *      - Only one client at a time can select a XCB_RESIZE_REQUEST event, which is associated with the event mask XCB_EVENT_MASK_RESIZE_REDIRECT.
+ *      - Only one client at a time can select a XCB_BUTTON_PRESS event, which is associated with the event mask XCB_EVENT_MASK_BUTTON_PRESS.
+ *
+ * The server reports the event to all interested clients.
+ *
+ * XSelectInput() can generate a BadWindow error.
+ *
+ *
+ *
+ * RETURN: Cookie to request.
+*/
 XCBCookie
 XCBSelectInput(
         XCBDisplay *display, 
@@ -799,6 +825,25 @@ XCBSetInputFocus(
         XCBTimestamp time 
         );
 /*
+ * Depending on the valuemask, XCBChangeWindowAttributes() uses the window attributes in the XCBWindowAttributes structure to change the specified window attributes. 
+ * Changing the background does not cause the window contents to be changed. 
+ * To repaint the window and its background, use XCBClearWindow().
+ *  
+ * Setting the border or changing the background such that the border tile origin changes causes the border to be repainted. 
+ * Changing the background of a root window to None or ParentRelative restores the default background pixmap. 
+ * Changing the border of a root window to CopyFromParent restores the default border pixmap. 
+ * Changing the win-gravity does not affect the current position of the window. 
+ * Changing the backing-store of an obscured window to WhenMapped or Always, or changing the backing-planes, backing-pixel, or save-under of a mapped window may have no immediate effect. 
+ * Changing the colormap of a window (that is, defining a new map, not changing the contents of the existing map) generates a ColormapNotify event. 
+ * Changing the colormap of a visible window may have no immediate effect on the screen because the map may not be installed (see XInstallColormap()). 
+ * Changing the cursor of a root window to None restores the default cursor. 
+ * Whenever possible, you are encouraged to share colormaps.
+ * Multiple clients can select input on the same window. Their event masks are maintained separately. 
+ * When an event is generated, it is reported to all interested clients. 
+ * However, only one client at a time can select for SubstructureRedirectMask ResizeRedirectMask and ButtonPressMask If a client attempts to select any of these event masks and some other client has already selected one, a BadAccess error results. 
+ * There is only one do-not-propagate-mask for a window, not one per client.
+ *
+ * XChangeWindowAttributes() can generate BadAccess, BadColor, BadCursor, BadMatch, BadPixmap, BadValue, and BadWindow errors.
  */
 XCBCookie
 XCBChangeWindowAttributes(
@@ -1311,6 +1356,24 @@ XCBSetIOErrorHandler(
         void *IOHandler);
 
 
+
+/* This gets the XCB event name from a list of possible events using the specified reponse_type.
+ *
+ * RETURN: Name of event.
+ */
+char *
+XCBGetEventName(
+        uint8_t response_type
+        );
+
+/* This gets the XCB event name from a list of possible events using the specified event.
+ *
+ * RETURN: Name of event.
+ */
+char *
+XCBGetEventNameFromEvent(
+        XCBGenericEvent *event
+        );
 /* Returns Bad(The error) using a number provided.
  * The number is from the generic structure XCBGenericError.
  * XCBGenericError *err;
