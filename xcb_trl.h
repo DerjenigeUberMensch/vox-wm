@@ -4,9 +4,11 @@
  */
 
 /* compiling
+ * SUPPORTED: X86, X64
+ *
  * xcb is dumb and sometimes doesnt find the required stuff so you just guess or search it up
  * but this shhould cover most if not all of xcb's libraries, atleast the ones used here
- * `pkg-config --cflags --libs xcb` -lxcb-util -lxcb-icccm -lxcb-keysyms
+ * `pkg-config --cflags --libs xcb xcb-util xcb-aux xcb-xinerama xcb-event xcb-keysyms`
  */
 
 
@@ -210,6 +212,8 @@
 #include <xcb/xcb_xrm.h>
 
 
+#include "icccm.h"
+
 
 
 
@@ -232,117 +236,6 @@ void XCBBreakPoint(void);
 
 
 
-
-
-
-
-
-
-/* stupid stuff */
-#ifndef __XCB_ICCCM_H__
-
-/** Number of elements in this structure */
-#define XCB_ICCCM_NUM_WM_SIZE_HINTS_ELEMENTS 18
-
-typedef struct {
-/** Store reply to avoid memory allocation, should normally not be
-    used directly */
-xcb_get_property_reply_t *_reply;
-/** Encoding used */
-xcb_atom_t encoding;
-/** Length of the name field above */
-uint32_t name_len;
-/** Property value */
-char *name;
-/** Format, may be 8, 16 or 32 */
-uint8_t format;
-} xcb_icccm_get_text_property_reply_t;
-
-typedef struct {
-  /** Length of the atoms list */
-  uint32_t atoms_len;
-  /** Atoms list */
-  xcb_atom_t *atoms;
-  /** Store reply to avoid memory allocation, should normally not be
-      used directly */
-  xcb_get_property_reply_t *_reply;
-}xcb_icccm_get_wm_protocols_reply_t;
-
-typedef struct {
-/** Marks which fields in this structure are defined */
-int32_t flags;
-/** Does this application rely on the window manager to get keyboard
-    input? */
-  uint32_t input;
-  /** See below */
-  int32_t initial_state;
-  /** Pixmap to be used as icon */
-  xcb_pixmap_t icon_pixmap;
-  /** Window to be used as icon */
-  xcb_window_t icon_window;
-  /** Initial position of icon */
-  int32_t icon_x, icon_y;
-  /** Icon mask bitmap */
-  xcb_pixmap_t icon_mask;
-  /* Identifier of related window group */
-  xcb_window_t window_group;
-} xcb_icccm_wm_hints_t;
-
-
-typedef struct {
-/** User specified flags */
-uint32_t flags;
-/** User-specified position */
-int32_t x, y;
-/** User-specified size */
-int32_t width, height;
-/** Program-specified minimum size */
-int32_t min_width, min_height;
-/** Program-specified maximum size */
-int32_t max_width, max_height;
-/** Program-specified resize increments */
-int32_t width_inc, height_inc;
-/** Program-specified minimum aspect ratios */
-int32_t min_aspect_num, min_aspect_den;
-/** Program-specified maximum aspect ratios */
-int32_t max_aspect_num, max_aspect_den;
-/** Program-specified base size */
-int32_t base_width, base_height;
-/** Program-specified window gravity */
-uint32_t win_gravity;
-} xcb_size_hints_t;
-
-typedef enum {
-  XCB_ICCCM_SIZE_HINT_US_POSITION = 1 << 0,
-  XCB_ICCCM_SIZE_HINT_US_SIZE = 1 << 1,
-  XCB_ICCCM_SIZE_HINT_P_POSITION = 1 << 2,
-  XCB_ICCCM_SIZE_HINT_P_SIZE = 1 << 3,
-  XCB_ICCCM_SIZE_HINT_P_MIN_SIZE = 1 << 4,
-  XCB_ICCCM_SIZE_HINT_P_MAX_SIZE = 1 << 5,
-  XCB_ICCCM_SIZE_HINT_P_RESIZE_INC = 1 << 6,
-  XCB_ICCCM_SIZE_HINT_P_ASPECT = 1 << 7,
-  XCB_ICCCM_SIZE_HINT_BASE_SIZE = 1 << 8,
-  XCB_ICCCM_SIZE_HINT_P_WIN_GRAVITY = 1 << 9
-} xcb_icccm_size_hints_flags_t;
-
-typedef enum {
-  XCB_ICCCM_WM_STATE_WITHDRAWN = 0,
-  XCB_ICCCM_WM_STATE_NORMAL = 1,
-  XCB_ICCCM_WM_STATE_ICONIC = 3
-} xcb_icccm_wm_state_t;
-
-typedef enum {
-  XCB_ICCCM_WM_HINT_INPUT = (1L << 0),
-  XCB_ICCCM_WM_HINT_STATE = (1L << 1),
-  XCB_ICCCM_WM_HINT_ICON_PIXMAP = (1L << 2),
-  XCB_ICCCM_WM_HINT_ICON_WINDOW = (1L << 3),
-  XCB_ICCCM_WM_HINT_ICON_POSITION = (1L << 4),
-  XCB_ICCCM_WM_HINT_ICON_MASK = (1L << 5),
-  XCB_ICCCM_WM_HINT_WINDOW_GROUP = (1L << 6),
-  XCB_ICCCM_WM_HINT_X_URGENCY = (1L << 8)
-} xcb_icccm_wm_t;
-
-#endif
 /* Ghosts */
 
 
@@ -2462,8 +2355,6 @@ XCBGetWMHintsCookie(
         );
 
 /* 
- *
- * NOTE: This function is "slow" as it makes use of the "realloc" feature.
  * NOTE: RETURN MUST BE RELEASED BY CALLER USING free().
  *
  * RETURN: XCBWMHints * on Success.

@@ -88,6 +88,7 @@
 
 /* WM struct flags */
 #define _CFG_HOVERFOCUS         ((1 << 0))
+/*
 #define _CFG_                   ((1 << 1))
 #define _CFG_                   ((1 << 2))
 #define _CFG_                   ((1 << 3))
@@ -95,13 +96,17 @@
 #define _CFG_                   ((1 << 5))
 #define _CFG_                   ((1 << 6))
 #define _CFG_                   ((1 << 7))
+*/
 
 /* WM Macros */
 
+
 #define CFG_ISHOVERFOCUS(G)     ((G)->flags & (_CFG_HOVERFOCUS))
+/*
 #define CFG(G)                  ((G)->flags & ())
 #define CFG(G)                  ((G)->flags & ())
 #define CFG(G)                  ((G)->flags & ())
+*/
 
 
 
@@ -293,6 +298,7 @@ void attachstack(Client *c);
 void detach(Client *c);
 void detachcompletely(Client *c);
 void detachstack(Client *c);
+void cfgsethoverfocus(Client *c, uint8_t state);
 uint8_t checknewbar(XCBWindow win);
 void checkotherwm(void);
 void cleanup(void);

@@ -18,9 +18,9 @@ ${BIN}:
 	mkdir -p ${BIN}
 options:
 	@echo ${EXE} build options:
-	@echo "CFLAGS   = ${CFLAGS}"
-	@echo "LDFLAGS  = ${LDFLAGS}"
-	@echo "CC       = ${CC}"
+	@echo "CFLAGS  = ${CFLAGS}"
+	@echo "LDFLAGS = ${LDFLAGS}"
+	@echo "CC      = ${CC}"
 
 ${BIN}/%.o: %.c | ${BIN}
 	@${CC} ${CFLAGS} -c $< -o $@

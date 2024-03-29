@@ -341,11 +341,11 @@ motionnotify(XCBGenericEvent *event)
     {   return;
     }
 
-
     u8 sync = 0;
     static Monitor *mon = NULL;
     Monitor *m;
 
+    DEBUG("(x: %d, y: %d)", rootx, rooty);
     if((m = recttomon(rootx, rooty, 1, 1)) != mon && mon)
     {
         Client *c = _wm.selmon->desksel->sel;
@@ -794,23 +794,11 @@ configurenotify(XCBGenericEvent *event)
         if(updategeom() || dirty)
         {
             Monitor *m;
-            Desktop *desk;
-            Client *c;
             /* update the bar */
-
             for(m = _wm.mons; m; m = nextmonitor(m))
             {
-                for(desk = m->desktops; desk; desk = nextdesktop(desk))
-                {
-                    for(c = desk->clients; c; c = nextclient(c))
-                    {
-                        if(ISFULLSCREEN(c))
-                        {   resizeclient(c, m->mx, m->my, m->mw, m->mh);
-                        }
-                    }
-                    if(m->barwin)
-                    {   XCBMoveResizeWindow(_wm.dpy, m->barwin, m->wx, m->by, m->ww, m->bh);
-                    }
+                if(m->barwin)
+                {   XCBMoveResizeWindow(_wm.dpy, m->barwin, m->wx, m->by, m->ww, m->bh);
                 }
             }
             focus(NULL);
@@ -818,7 +806,7 @@ configurenotify(XCBGenericEvent *event)
             sync = 1;
         }
     }
-    if(overrideredirect)
+    else if(overrideredirect)
     {
         Client *c;
         if((c = wintoclient(win)))
@@ -1002,6 +990,9 @@ clientmessage(XCBGenericEvent *event)
     const XCBAtom atom              = ev->type;
     const u8 format                 = ev->format;
     const XCBClientMessageData data = ev->data;     /* union "same" as xlib data8 -> b[20] data16 -> s[10] data32 = l[5] */
+
+
+    (void)format;
 
     /* move resize */
     #define _NET_WM_MOVERESIZE_SIZE_TOPLEFT      0
@@ -1213,9 +1204,23 @@ propertynotify(XCBGenericEvent *event)
     {   
         XCBCookie cookie;
         XCBWMHints *wmh;
+        XCBWindow trans;
+        uint8_t transstatus = 0;
+        Client *tmp = NULL;
         switch(atom)
         {
             case XCB_ATOM_WM_TRANSIENT_FOR:
+                cookie = XCBGetTransientForHintCookie(_wm.dpy, win);
+                transstatus = XCBGetTransientForHintReply(_wm.dpy, cookie, &trans);
+                if(transstatus)
+                {
+                    if((tmp = wintoclient(trans)))
+                    {   
+                        setfloating(tmp, 1);
+                        setdialog(tmp, 1);
+                        sync = 1;
+                    }
+                }
                 break;
             case XCB_ATOM_WM_NORMAL_HINTS:
                 break;
