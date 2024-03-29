@@ -817,116 +817,7 @@ eventhandler(XCBGenericEvent *ev)
 {
     /* int for speed */
     int cleanev = XCB_EVENT_RESPONSE_TYPE(ev);
-    switch(cleanev)
-    {
-        case XCB_KEY_PRESS:
-            DEBUG("%s", "XCB_KEY_PRESS");
-            break;
-        case XCB_KEY_RELEASE:
-            DEBUG("%s", "XCB_KEY_RELEASE");
-            break;
-        case XCB_BUTTON_PRESS:
-            DEBUG("%s", "XCB_BUTTON_PRESS");
-            break;
-        case XCB_BUTTON_RELEASE:
-            DEBUG("%s", "XCB_BUTTON_RELEASE");
-            break;
-        case XCB_MOTION_NOTIFY:
-            DEBUG("%s", "XCB_MOTION_NOTIFY");
-            break;
-        case XCB_ENTER_NOTIFY:
-            DEBUG("%s", "XCB_ENTER_NOTIFY");
-            break;
-        case XCB_LEAVE_NOTIFY:
-            DEBUG("%s", "XCB_LEAVE_NOTIFY");
-            break;
-        case XCB_FOCUS_IN :
-            DEBUG("%s", "XCB_FOCUS_IN");
-            break;
-        case XCB_FOCUS_OUT:
-            DEBUG("%s", "XCB_FOCUS_OUT");
-            break;
-        case XCB_KEYMAP_NOTIFY:
-            DEBUG("%s", "XCB_KEYMAP_NOTIFY");
-            break;
-        case XCB_EXPOSE:
-            DEBUG("%s", "XCB_EXPOSE");
-            break;
-        case XCB_GRAPHICS_EXPOSURE:
-            DEBUG("%s", "XCB_GRAPHICS_EXPOSURE");
-            break;
-        case XCB_NO_EXPOSURE:
-            DEBUG("%s", "XCB_NO_EXPOSURE");
-            break;
-        case XCB_VISIBILITY_NOTIFY:
-            DEBUG("%s", "XCB_VISIBILITY_NOTIFY");
-            break;
-        case XCB_CREATE_NOTIFY:
-            DEBUG("%s", "XCB_CREATE_NOTIFY");
-            break;
-        case XCB_DESTROY_NOTIFY:
-            DEBUG("%s", "XCB_DESTROY_NOTIFY");
-            break;
-        case XCB_UNMAP_NOTIFY:
-            DEBUG("%s", "XCB_UNMAP_NOTIFY"); 
-            break;
-        case XCB_MAP_NOTIFY:
-            DEBUG("%s", "XCB_MAP_NOTIFY");
-            break;
-        case XCB_MAP_REQUEST:
-            DEBUG("%s", "XCB_MAP_REQUEST");
-            break;
-        case XCB_REPARENT_NOTIFY:
-            DEBUG("%s", "XCB_REPARENT_NOTIFY");
-            break;
-        case XCB_CONFIGURE_NOTIFY:
-            DEBUG("%s", "XCB_CONFIGURE_NOTIFY");
-            break;
-        case XCB_CONFIGURE_REQUEST:
-            DEBUG("%s", "XCB_CONFIGURE_REQUEST");
-            break;
-        case XCB_GRAVITY_NOTIFY:
-            DEBUG("%s", "XCB_GRAVITY_NOTIFY");
-            break;
-        case XCB_RESIZE_REQUEST: 
-            DEBUG("%s", "XCB_RESIZE_REQUEST");
-            break;
-        case XCB_CIRCULATE_NOTIFY:
-            DEBUG("%s", "XCB_CIRCULATE_NOTIFY");
-            break;
-        case XCB_CIRCULATE_REQUEST:
-            DEBUG("%s", "XCB_CIRCULATE_REQUEST");
-            break;
-        case XCB_PROPERTY_NOTIFY:
-            DEBUG("%s", "XCB_PROPERTY_NOTIFY");
-            break;
-        case XCB_SELECTION_CLEAR:
-            DEBUG("%s", "XCB_SELECTION_CLEAR");
-            break;
-        case XCB_SELECTION_REQUEST:
-            DEBUG("%s", "XCB_SELECTION_REQUEST");
-            break;
-        case XCB_SELECTION_NOTIFY:
-            DEBUG("%s", "XCB_SELECTION_NOTIFY");
-            break;
-        case XCB_COLORMAP_NOTIFY:
-            DEBUG("%s", "XCB_COLORMAP_NOTIFY");
-            break;
-        case XCB_CLIENT_MESSAGE:
-            DEBUG("%s", "XCB_CLIENT_MESSAGE");
-            break;
-        case XCB_MAPPING_NOTIFY:
-            DEBUG("%s", "XCB_MAPPING_NOTIFY");
-            break;
-        case XCB_GE_GENERIC:
-            DEBUG("%s", "XCB_GE_GENERIC");
-            break;
-        case XCB_NONE:
-            DEBUG("%s", "AN ERROR OCCURED");
-            break;
-        default:
-            DEBUG("%s[%d]", "UNKNOWN EVENT CODE: ", cleanev);
-    }
+    DEBUG("%s", XCBGetEventName(cleanev));
     if(handler[cleanev])
     {   handler[cleanev](ev);
     }
@@ -941,7 +832,15 @@ exithandler(void)
 void
 floating(Desktop *desk)
 {
-    monocle(desk);
+    /* this is just a safety check incase we change this later. */
+    if(!desk->clients)
+    {   return;
+    }
+
+    Client *c = NULL;
+    for(c = nextclient(desk->clients); c; c = nextclient(c->next))
+    {   setfloating(c, 1);
+    }
 }
 
 void
@@ -1413,6 +1312,7 @@ restack(Desktop *desk)
         wc.sibling = c->win;
     }
 
+    /* This prevents a redudant re-order on the floating layout */
     if(layouts[desk->layout].arrange != floating)
     {
         for(c = desk->stack; c; c = nextstack(c))
@@ -1422,24 +1322,28 @@ restack(Desktop *desk)
             }
         }
     }
+    
     for(c = desk->stack; c; c = nextstack(c))
     {
         if(ISALWAYSONTOP(c) && ISVISIBLE(c))
         {   XCBRaiseWindow(_wm.dpy, c->win);
         }
     }
+
     for(c = desk->stack; c; c = nextstack(c))
     {
         if(ISDIALOG(c) && ISVISIBLE(c))
         {   XCBRaiseWindow(_wm.dpy, c->win);
         }
     }
+
     for(c = desk->stack; c; c = nextstack(c))
     {
         if(ISMODAL(c) && ISVISIBLE(c))
         {   XCBRaiseWindow(_wm.dpy, c->win);
         }
     }
+    
 }
 
 void
@@ -1943,7 +1847,7 @@ startup(void)
     if(!setlocale(LC_CTYPE, ""))
     {   fputs("WARN: NO_LOCALE_SUPPORT\n", stderr);
     }
-    const char *display = NULL;
+    const char *display = ":1";
     _wm.dpy = XCBOpenDisplay(display, &_wm.screen);
     if(!_wm.dpy)
     {   DIECAT("%s", "FATAL: CANNOT_CONNECT_TO_X_SERVER");
@@ -2293,8 +2197,6 @@ updatesettings(void)
     _cfg.rfrate = 120;
     _cfg.bh = 10;
     _cfg.maxcc = 256;
-    _cfg.hoverfocus = 0;
-    _cfg.topbar = 0;
     _cfg.wmname = "Gamer";
 }
 

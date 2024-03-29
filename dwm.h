@@ -85,6 +85,26 @@
 /* This returns non zero on true, but not necessarly 1 */
 #define TOPBAR(M)               (((M)->flags & _TOPBAR))
 
+
+/* WM struct flags */
+#define _CFG_HOVERFOCUS         ((1 << 0))
+#define _CFG_                   ((1 << 1))
+#define _CFG_                   ((1 << 2))
+#define _CFG_                   ((1 << 3))
+#define _CFG_                   ((1 << 4))
+#define _CFG_                   ((1 << 5))
+#define _CFG_                   ((1 << 6))
+#define _CFG_                   ((1 << 7))
+
+/* WM Macros */
+
+#define CFG_ISHOVERFOCUS(G)     ((G)->flags & (_CFG_HOVERFOCUS))
+#define CFG(G)                  ((G)->flags & ())
+#define CFG(G)                  ((G)->flags & ())
+#define CFG(G)                  ((G)->flags & ())
+
+
+
 enum { CurNormal, CurResize, CurMove, CurLast }; /* cursor */
 enum { SchemeNorm, SchemeSel }; /* color schemes */
 enum { ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle,
@@ -241,21 +261,16 @@ struct WM
  */
 struct CFG
 {
-    uint16_t nmaster;
-    uint16_t bw;
-    uint16_t bgw;
+    uint16_t nmaster;        /* number of clients in master area                                */
+    uint16_t bw;             /* Default Border Width                                            */
+    uint16_t bgw;            /* Default Border Gap Width                                        */
 
 
-    uint16_t snap;
-    uint16_t rfrate;
+    uint16_t snap;           /* Window Resize/Move Snap to grid size                            */
+    uint16_t rfrate;         /* max refresh rate when resizing, moving windows;  0 to disable   */
 
-    uint16_t bh;
-    uint16_t maxcc;
-
-
-    uint8_t hoverfocus;
-    uint8_t topbar;
-
+    uint16_t bh;             /* Bar Height.                                                     */
+    uint16_t maxcc;          /* Max Client Count                                                */
 
 
     float mfact;
