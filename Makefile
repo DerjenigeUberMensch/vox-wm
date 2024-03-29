@@ -23,11 +23,13 @@ options:
 	@echo "CC       = ${CC}"
 
 ${BIN}/%.o: %.c | ${BIN}
-	${CC} ${CFLAGS} -c $< -o $@
+	@${CC} ${CFLAGS} -c $< -o $@
+	@echo "Building:" $< 
 
 default: ${OBJ}
-	${CC} -o ${BIN}/${EXE} ${OBJ} ${LDFLAGS}
-
+	@echo "_Linking:" ${OBJ}
+	@${CC} -o ${BIN}/${EXE} ${OBJ} ${LDFLAGS}
+	@echo "Done."
 
 
 __CLEANARGS = ${RM} ${BIN}/*.o ${EXEPATH}
@@ -42,6 +44,7 @@ clena:
 	${__CLEANARGS}
 clane:
 	${__CLEANARGS}
+clear: clean
 
 
 rebuild: clean default
@@ -63,4 +66,4 @@ install: all
 uninstall:
 	rm -f ${DESTDIR}${PREFIX}/bin/${EXE}
 
-.PHONY: all options clean release dist install uninstall 
+.PHONY: all options clean clear release dist install uninstall 
