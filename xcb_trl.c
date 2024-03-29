@@ -62,7 +62,7 @@ static void (*_handler)(XCBDisplay *, XCBGenericError *) = NULL;
 #ifdef XCB_TRL_ENABLE_DEBUG
 #define DBG             1
 #define _fn             __func__
-#define _XCB_MANUAL_DEBUG(fmt, ...)            (fprintf(stderr, "_XCB_DEBUG_ [%s:%d] by %s(): " fmt "\n", __FILE__,__LINE__,__func__,__VA_ARGS__))
+#define _XCB_MANUAL_DEBUG(fmt, ...)             (fprintf(stderr, "_XCB_DEBUG_ [%s:%d] by %s(): " fmt "\n", __FILE__,__LINE__,__func__,__VA_ARGS__))
 #define _XCB_MANUAL_DEBUG0(X)                   (fprintf(stderr, "_XCB_DEBUG_ [%s:%d] by %s(): " X "\n", __FILE__, __LINE__, __func__))
 #endif
 
@@ -127,8 +127,8 @@ ck(XCBDisplay *d, XCBCookie c, const char *func)
             xcb_send_event(d, 0, scr->root, XCB_EVENT_MASK_NO_EVENT, (char *)&r);
         }
         free(err);
-        XCBFlush(d);
         XCBBreakPoint();
+        XCBFlush(d);
     }
 }
 
@@ -2087,7 +2087,7 @@ XCBGetWMProtocolsCookie(
         XCBWindow window, 
         XCBAtom protocol)
 {
-    const xcb_get_property_cookie_t cookie = xcb_get_property(display, 0, window, protocol, XCB_ATOM_ATOM, 0, UINT_MAX);
+    const xcb_get_property_cookie_t cookie = xcb_icccm_get_wm_protocols(display, window, protocol);
     return (XCBCookie) { .sequence = cookie.sequence };
 }
 
@@ -2097,45 +2097,24 @@ XCBGetWMProtocolsReply(
         XCBCookie cookie,
         XCBWMProtocols *protocol_return
         )
-{
+{  
     XCBGenericError *err = NULL;
     const xcb_get_property_cookie_t cookie1 = { .sequence = cookie.sequence };
-    xcb_get_property_reply_t *reply = xcb_get_property_reply(display, cookie1, &err);
-    u8 status = 1;
-
-    if(!reply || reply->type != XCB_ATOM_ATOM || reply->format != 32)
-    {   status = 0;
-    }
-    else
-    {
-        #ifdef DBG
-            if(!protocol_return)
-            {   
-                _XCB_MANUAL_DEBUG0("'protocol_return' does not have a valid adress.");
-                XCBBreakPoint();
-            }
-        #endif
-        protocol_return->_reply = reply;                                    /* not sure why we divided by 8 */
-        protocol_return->atoms_len = xcb_get_property_value_length(reply) / (reply->format / 8);
-        protocol_return->atoms = (xcb_atom_t *) xcb_get_property_value(reply);
-    }
-
+    const int ret = xcb_icccm_get_wm_protocols_reply(display, cookie1, protocol_return, &err);
     if(err)
     {   
         _xcb_err_handler(display, err);
-        status = 0;
+        return 0;
     }
-
-    free(reply);
-    return status;
-
+    return ret;
 }
 
 void
 XCBWipeGetWMProtocolsReply(
         XCBWMProtocols *protocols)
 {
-    free(protocols->_reply);
+    /* this is dumb */
+    xcb_icccm_get_wm_protocols_reply_wipe(protocols);
 }
 
 
@@ -2144,9 +2123,8 @@ XCBGetWMHintsCookie(
         XCBDisplay *display,
         XCBWindow win
         )
-{
-    xcb_get_property_cookie_t cookie = xcb_get_property(display, 0, win, XCB_ATOM_WM_HINTS, XCB_ATOM_WM_HINTS, 0L,
-                                                        XCB_ICCCM_NUM_WM_HINTS_ELEMENTS);
+{ 
+    xcb_get_property_cookie_t cookie = xcb_icccm_get_wm_hints(display, win);
     return (XCBCookie) { .sequence = cookie.sequence };
 }
 
@@ -2215,13 +2193,11 @@ XCBSetWMHintsCookie(
         )
 {
 #ifdef DBG
-    XCBCookie cookie = xcb_change_property_checked(display, XCB_PROP_MODE_REPLACE, window, XCB_ATOM_WM_HINTS,
-                                                    XCB_ATOM_WM_HINTS, 32, sizeof(*wmhints) >> 2, wmhints);
+    XCBCookie cookie = xcb_icccm_set_wm_hints_checked(display, window, wmhints);
     ck(display, cookie, _fn);
     return cookie;
 #endif
-    return xcb_change_property(display, XCB_PROP_MODE_REPLACE, window, XCB_ATOM_WM_HINTS,
-                                XCB_ATOM_WM_HINTS, 32, sizeof(*wmhints) >> 2, wmhints);
+    return xcb_icccm_set_wm_hints(display, window, wmhints);
 }
 
 XCBCookie
@@ -2230,8 +2206,7 @@ XCBGetWMNormalHintsCookie(
         XCBWindow win
         )
 {
-    const xcb_get_property_cookie_t cookie = xcb_get_property(display, 0, win, XCB_ATOM_WM_NORMAL_HINTS, XCB_ATOM_WM_SIZE_HINTS, 0L, 
-                                            XCB_ICCCM_NUM_WM_SIZE_HINTS_ELEMENTS);
+    const xcb_get_property_cookie_t cookie = xcb_icccm_get_wm_normal_hints(display, win);
     return (XCBCookie) { .sequence = cookie.sequence };
 }
 
@@ -2244,55 +2219,11 @@ XCBGetWMNormalHintsReply(
 {
     XCBGenericError *err = NULL;
     xcb_get_property_cookie_t cookie1 = { .sequence = cookie.sequence };
-    xcb_get_property_reply_t *reply = xcb_get_property_reply(display, cookie1, &err);
-
-    u8 status = 1;
-
-        
-    uint32_t flags;
-    int length;
-
-    if(!reply || reply->type != XCB_ATOM_WM_SIZE_HINTS || reply->format != 32)
-    {
-        status = 0;
-    }
-    else
-    {
-        length = xcb_get_property_value_length(reply) / (reply->format / 8);
-        if(length > XCB_ICCCM_NUM_WM_SIZE_HINTS_ELEMENTS)
-        {   length = XCB_ICCCM_NUM_WM_SIZE_HINTS_ELEMENTS;
-        }
-        #ifdef DBG
-        if(!hints_return)
-        {
-            _XCB_MANUAL_DEBUG0("No adress for 'hints_return'.");
-            XCBBreakPoint();
-        }
-        #endif
-        memcpy(hints_return, (xcb_size_hints_t *) xcb_get_property_value (reply), length * (reply->format / 8));
-        flags = (XCB_ICCCM_SIZE_HINT_US_POSITION | XCB_ICCCM_SIZE_HINT_US_SIZE |
-                XCB_ICCCM_SIZE_HINT_P_POSITION | XCB_ICCCM_SIZE_HINT_P_SIZE |
-                XCB_ICCCM_SIZE_HINT_P_MIN_SIZE | XCB_ICCCM_SIZE_HINT_P_MAX_SIZE |
-                XCB_ICCCM_SIZE_HINT_P_RESIZE_INC | XCB_ICCCM_SIZE_HINT_P_ASPECT);
-
-        /* NumPropSizeElements = 18 (ICCCM version 1) */
-        if(length >= 18)
-        {   flags |= (XCB_ICCCM_SIZE_HINT_BASE_SIZE | XCB_ICCCM_SIZE_HINT_P_WIN_GRAVITY);
-        }
-        else
-        {
-            hints_return->base_width = 0;
-            hints_return->base_height = 0;
-            hints_return->win_gravity = 0;
-        }
-        /* get rid of unwanted bits */
-        hints_return->flags &= flags;
-    }
+    u8 status = xcb_icccm_get_wm_normal_hints_reply(display, cookie1, hints_return, &err);
 
     if(err)
     {   _xcb_err_handler(display, err);
         status = 0;
     }
-    free(reply);
     return status;
 }

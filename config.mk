@@ -38,7 +38,7 @@ CPPFLAGS = -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L ${XINERAMAF
 CCFLAGS  = ${CCVERSION} ${WARNINGFLAGS} ${INCS} ${CPPFLAGS} ${BINARY} ${PRELINKERFLAGS} ${SECTIONCODE} 
 RELEASEFLAGS = ${CCFLAGS} 
 
-DEBUG 	= ${DEBUGFLAGS} -O3
+DEBUG 	= ${DEBUGFLAGS} -O0
 
 SIZE  	= ${RELEASEFLAGS} -Os
 # This rarely saves a substantial amount of instructions
@@ -53,7 +53,7 @@ RELEASES= ${RELEASEFLAGS} -O3
 BUILDSELF = ${RELEASEFLAGS} ${XNATIVE} -O3
 
 # Set your options or presets (see above) ex: ${PRESETNAME} (Compiler used is on top)
-CFLAGS = ${SIZEONLY}
+CFLAGS = ${DEBUG}
 
 CMACROS = 
 
@@ -69,7 +69,8 @@ endif
 
 # debug macros
 ifeq ($(CFLAGS), $(DEBUG)) 
-	CMACROS += -DENABLE_DEBUG=\"\" -DXCB_TRL_ENABLE_DEBUG
+	CMACROS += -DENABLE_DEBUG 
+	CMACROS += -DXCB_TRL_ENABLE_DEBUG
 endif
 
 # Linker flags

@@ -15,7 +15,6 @@
 #include <xcb/xproto.h>
 #include <xcb/xkb.h>
 
-
 #include <X11/X.h> /* error codes */
 
 /* keycodes */
@@ -503,6 +502,13 @@ detachstack(Client *c)
     c->snext = NULL;
 }
 
+
+void
+cfgsethoverfocus(Client *c, uint8_t state)
+{
+    SETFLAG(c->flags, _CFG_HOVERFOCUS, !!state);
+}
+
 u8
 checknewbar(XCBWindow win)
 {
@@ -832,6 +838,7 @@ exithandler(void)
 void
 floating(Desktop *desk)
 {
+    return;
     /* this is just a safety check incase we change this later. */
     if(!desk->clients)
     {   return;
@@ -1452,8 +1459,7 @@ sendmon(Client *c, Monitor *m)
 void
 setalwaysontop(Client *c, u8 state)
 {
-    CLEARFLAG(c->flags, _ALWAYSONTOP);
-    c->flags |= (_ALWAYSONTOP * !!state);
+    SETFLAG(c->flags, _ALWAYSONTOP, !!state);
 }
 
 void
@@ -1516,26 +1522,20 @@ updatedesktopnum(void)
 void
 setdialog(Client *c, uint8_t state)
 {
-    CLEARFLAG(c->flags, _DIALOG);
-    c->flags |= (_DIALOG * !!state);
+    SETFLAG(c->flags, _DIALOG, !!state);
 }
 
 void
 setfixed(Client *c, uint8_t state)
 {
-    CLEARFLAG(c->flags, _FIXED);
-    c->flags |= (_FIXED * !!state);
+    SETFLAG(c->flags, _FIXED, !!state);
 }
 
 void
 setfloating(Client *c, uint8_t state)
 {
-    /* set previous floating state */
-    c->flags &= (~_WASFLOATING);
-    c->flags |= (_WASFLOATING * !!(c->flags & _FLOATING));
-
-    c->flags &= (~_FLOATING);
-    c->flags |= (_FLOATING * !!state);
+    SETFLAG(c->flags, _WASFLOATING, !!ISFLOATING(c));
+    SETFLAG(c->flags, _FLOATING, !!state);
 }
 
 void
@@ -1557,8 +1557,7 @@ setfullscreen(Client *c, u8 state)
         setborderwidth(c, c->oldbw);
         resizeclient(c, c->oldx, c->oldy, c->oldw, c->oldh);
     }
-    c->flags &= (~_FULLSCREEN);
-    c->flags |= (_FULLSCREEN * !!state);
+    SETFLAG(c->flags, _FULLSCREEN, !!state);
 }
 
 void
@@ -1582,47 +1581,41 @@ setfocus(Client *c)
 void 
 sethidden(Client *c, uint8_t state)
 {
-    c->flags &= (~_HIDDEN);
-    c->flags |= (_HIDDEN * !!state);
+    SETFLAG(c->flags, _HIDDEN, !!state);
 }
 void
 setmodal(Client *c, uint8_t state)
 {
-    c->flags &= (~_MODAL);
-    c->flags |= (_MODAL * !!state);
+    SETFLAG(c->flags, _MODAL, !!state);
 }
 
 void
 setneverfocus(Client *c, uint8_t state)
 {
-    c->flags &= (~_NEVERFOCUS);
-    c->flags |= (_NEVERFOCUS * !!state);
+    SETFLAG(c->flags, _NEVERFOCUS, !!state);
 }
 
 void 
 setshowbar(Monitor *m, uint8_t state)
 {
-    m->flags &= ~(_SHOWBAR);
-    m->flags |= (_SHOWBAR * !!state);
+    SETFLAG(m->flags, _SHOWBAR, !!state);
 }
 
 void
-setsticky(Client *c, u8 sticky)
+setsticky(Client *c, u8 state)
 {
     const XCBWindow win = c->win;
-    const XCBAtom replace = !!sticky * netatom[NetWMStateSticky];
+    const XCBAtom replace = !!state * netatom[NetWMStateSticky];
     XCBChangeProperty(_wm.dpy, win, netatom[NetWMState], XCB_ATOM_ATOM, 32, 
             XCB_PROP_MODE_REPLACE, (unsigned char *)&replace, !!replace);
 
-    c->flags &= (~_STICKY);
-    c->flags |= (_STICKY * !!sticky);
+    SETFLAG(c->flags, _STICKY, !!state);
 }
 
 void 
 settopbar(Monitor *m, uint8_t state)
 {
-    m->flags &= (~_TOPBAR);
-    m->flags |= (_TOPBAR * !!state);
+    SETFLAG(m->flags, _TOPBAR, !!state);
 }
 
 void
@@ -1679,17 +1672,24 @@ setup(void)
 void
 seturgent(Client *c, uint8_t state) 
 {
-    /* flags stuff */
-    c->flags &= (~_URGENT);
-    c->flags |= (_URGENT * !!state);
+    XCBCookie wmhcookie = XCBGetWMHintsCookie(_wm.dpy, c->win);
+    XCBWMHints *wmh = NULL;
 
+    SETFLAG(c->flags, _URGENT, !!state);
     if(state)
-    {   
+    {   /* set window border */   
     }
     else
-    {
+    {   /* set window border */   
     }
-    /* TODO XXX */
+
+    if((wmh = XCBGetWMHintsReply(_wm.dpy, wmhcookie)))
+    {
+        wmh->flags = state ? (wmh->flags | XCB_WM_HINT_URGENCY) : (wmh->flags & ~XCB_WM_HINT_URGENCY);
+        XCBSetWMHintsCookie(_wm.dpy, c->win, wmh);
+        free(wmh);
+    }
+    /* drawbar */
 }
 
 void
@@ -2513,9 +2513,12 @@ updatewmhints(Client *c, XCBWMHints *wmh)
         {
             wmh->flags &= ~XCB_WM_HINT_URGENCY;
             XCBSetWMHintsCookie(_wm.dpy, c->win, wmh);
+            /* dont put seturgent() here cause that would just undo what we did and be recursive */
         }
         else
-        {   seturgent(c, !!(wmh->flags & XCB_WM_HINT_URGENCY));
+        {   
+            /* dont put seturgent() here cause that would just undo what we did and be recursive */
+            SETFLAG(c->flags, _URGENT, !!(wmh->flags & XCB_WM_HINT_URGENCY));
         }
         if(wmh->flags & XCB_WM_HINT_INPUT)
         {   setneverfocus(c, !wmh->input);
