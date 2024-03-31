@@ -14,6 +14,7 @@
 #include <xcb/xcb_atom.h>
 #include <xcb/xproto.h>
 #include <xcb/xkb.h>
+#include <xcb/xinerama.h>
 
 #include <X11/X.h> /* error codes */
 
@@ -117,6 +118,72 @@ argcvhandler(int argc, char *argv[])
     }
 }
 
+/* These are mostly user operations type deal */
+void
+applysizechecks(Monitor *m, i32 *x, i32 *y, i32 *width, i32 *height, i32 *border_width)
+{
+    i16 wx = m->wx;     /* Window Area X */
+    i16 wy = m->wy;     /* Window Area Y */
+    u16 ww = m->ww;     /* Window Area W */
+    u16 wh = m->wh;     /* Window Area H */
+
+        /* technically 1 is "too" small for most possible windows (they stay at roughly ~20 or higher) but a window would request this */
+    const u8 MIN_POSSIBLE_WINDOW_SIZE = 1;
+
+    if(width && !BETWEEN(*width, MIN_POSSIBLE_WINDOW_SIZE , ww))
+    {
+        if(*width < MIN_POSSIBLE_WINDOW_SIZE )
+        {   *width = MIN_POSSIBLE_WINDOW_SIZE;
+        }
+        else
+        {   *width = ww;
+        }
+    }
+
+    if(height && !BETWEEN(*height, MIN_POSSIBLE_WINDOW_SIZE , wh))
+    {
+        if(*height < MIN_POSSIBLE_WINDOW_SIZE)
+        {   *height = MIN_POSSIBLE_WINDOW_SIZE;
+        }
+        else
+        {   *height = wh;
+        }
+    }
+
+    if(x && !BETWEEN(*x, wx - ww, wx + ww))
+    {
+        if(*x < (wx - ww))
+        {   *x = (wx - ww);
+        }
+        else
+        {   *x = (wx + ww);
+        }
+        DEBUG0("Specified x is not in bounds, undesired behaviour may occur.");
+    }
+
+    if(y && !BETWEEN(*y, wy - wh, wy + wh))
+    {
+        if(*y < (wy - wh))
+        {   *y = (wy - wh);
+        }
+        else
+        {   *y = (wy + wh);
+        }
+        DEBUG0("Specified y is not in bounds, undesired behaviour may occur.");
+    }
+    const u8 NO_BORDER_WIDTH = 0;
+    if(border_width && !BETWEEN(*border_width, NO_BORDER_WIDTH, ww))
+    {
+        if(*border_width < NO_BORDER_WIDTH)
+        {   *border_width = NO_BORDER_WIDTH;
+        }
+        else
+        {   *border_width = ww - MIN_POSSIBLE_WINDOW_SIZE;
+        }
+        DEBUG0("Border width seems to be too big.");
+    }
+}
+
 void
 applygravity(u32 gravity, i16 *x, i16 *y, const u16 w, const u16 h, const u16 bw)
 {
@@ -175,7 +242,7 @@ applygravity(u32 gravity, i16 *x, i16 *y, const u16 w, const u16 h, const u16 bw
 }
 
 uint8_t
-applysizehints(Client *c, int16_t *x, int16_t *y, uint16_t *width, uint16_t *height, uint8_t interact)
+applysizehints(Client *c, i32 *x, i32 *y, i32 *width, i32 *height, uint8_t interact)
 {
     u8 baseismin;
     Monitor *m = c->mon;
@@ -307,9 +374,7 @@ arrangemons(void)
 void
 arrangedesktop(Desktop *desk)
 {
-    if(layouts[desk->layout].symbol)
-    {   layouts[desk->layout].arrange(desk);
-    }
+    layouts[desk->layout].arrange(desk);
     /* update the bar or something */
 }
 
@@ -838,16 +903,8 @@ exithandler(void)
 void
 floating(Desktop *desk)
 {
-    return;
-    /* this is just a safety check incase we change this later. */
-    if(!desk->clients)
-    {   return;
-    }
-
-    Client *c = NULL;
-    for(c = nextclient(desk->clients); c; c = nextclient(c->next))
-    {   setfloating(c, 1);
-    }
+    /* floating is just default restacking behaviour which is quite convinient for us */
+    (void)desk;
 }
 
 void
@@ -876,7 +933,7 @@ focus(Client *c)
         attachstack(c);
         grabbuttons(c->win, 1);
         
-        if(_wm.lastfocused && _wm.lastfocused != c)
+        if(c->desktop->lastfocused && c->desktop->lastfocused != c)
         {   /* set window border */
         }
         setfocus(c);
@@ -990,10 +1047,8 @@ grid(Desktop *desk)
     if(!desk->clients)
     {   return;
     }
-
-    i32 cx, cy;
-    u32 i, n, cw, ch, aw, ah, cols, rows;
-    u32 tmpcw, tmpch;
+    i32 i, n, cw, ch, aw, ah, cols, rows;
+    i32 nx, ny, nw, nh;
     Client *c;
     for(n = 0, c = nexttiled(desk->clients); c; c = nexttiled(c->next))
     {   ++n;
@@ -1016,26 +1071,27 @@ grid(Desktop *desk)
     cw = desk->clients->mon->ww / (cols + !cols);
     for(i = 0, c = nexttiled(desk->clients); c; c = nexttiled(c->next))
     {
-        cx = desk->clients->mon->wx + (i / rows) * cw;
-        cy = desk->clients->mon->wy + (i % rows) * ch;
+        nx = desk->clients->mon->wx + (i / rows) * cw;
+        ny = desk->clients->mon->wy + (i % rows) * ch;
         /* adjust height/width of last row/column's windows */
         ah = !!((i + 1) % rows) * (desk->clients->mon->wh - ch * rows);
         aw = !!(i >= rows * (cols - 1)) * (desk->clients->mon->ww - cw * cols);
 
         /* _cfg.bgw without fucking everything else */
-        cx += _cfg.bgw;
-        cy += _cfg.bgw;
+        nx += _cfg.bgw;
+        ny += _cfg.bgw;
 
-        tmpcw = cw - (c->bw << 1) + aw;
-        tmpch = ch - (c->bw << 1) + ah;
+        nw = cw - (c->bw << 1) + aw;
+        nh = ch - (c->bw << 1) + ah;
 
-        tmpcw -= _cfg.bgw;
-        tmpch -= _cfg.bgw;
+        nw -= _cfg.bgw;
+        nh -= _cfg.bgw;
 
-        tmpcw -= !!aw * _cfg.bgw;
-        tmpch -= !ah * _cfg.bgw;
+        nw -= !!aw * _cfg.bgw;
+        nh -= !ah * _cfg.bgw;
 
-        resize(c, cx, cy, tmpcw, tmpch, 0);
+        /* sanatize data */
+        resize(c, nx, ny, nw, nh, 1);
         ++i;
     }
 }
@@ -1146,6 +1202,10 @@ manage(XCBWindow win)
     c->x = MAX(c->x, c->mon->wx);
     c->y = MAX(c->y, c->mon->wy);
 
+
+    /* Custom stuff */
+    setborderwidth(c, _cfg.bw);
+
     XCBSetWindowBorderWidth(_wm.dpy, win, c->bw);
     /*  XSetWindowBorder(dpy, w, scheme[SchemeBorder][ColBorder].pixel); */
     configure(c);   /* propagates border_width, if size doesn't change */
@@ -1189,15 +1249,15 @@ monocle(Desktop *desk)
     {   return;
     }
     Client *c;
-    u32 nw, nh;
-    const u32 nx = desk->clients->mon->wx;
-    const u32 ny = desk->clients->mon->wy;
+    i32 nw, nh;
+    i32 nx = desk->clients->mon->wx;
+    i32 ny = desk->clients->mon->wy;
 
     for(c = nexttiled(desk->clients); c; c = nexttiled(c->next))
     {
         nw = desk->clients->mon->ww - (c->bw * 2);
         nh = desk->clients->mon->wh - (c->bw * 2);
-        resize(c, nx, ny, nw, nh, 0); 
+        resize(c, nx, ny, nw, nh, 1); 
         if(docked(c))
         {   setfloating(c, 0);
         }
@@ -1268,8 +1328,11 @@ recttomon(i16 x, i16 y, u16 w, u16 h)
 	return r;
 }
 
+/* why arent these their "correct" format of i16's well if we did do that the digits would be a bit busy being overflown/underflown wouldnt they?
+ * Defeating the entire purpose of bound checking.
+ */
 void
-resize(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height, uint8_t interact)
+resize(Client *c, i32 x, i32 y, i32 width, i32 height, uint8_t interact)
 {
     if(applysizehints(c, &x, &y, &width, &height, interact))
     {   resizeclient(c, x, y, width, height);
@@ -1296,6 +1359,7 @@ void
 restack(Desktop *desk)
 {
     Client *c;
+    Client *startingclient;
     XCBWindowChanges wc;
 
     c = desk->stack;
@@ -1312,51 +1376,63 @@ restack(Desktop *desk)
         wc.sibling = c->win;
         c = nextstack(c);
     }
-    /* configure windows */
-    for(; c; c = nextstack(c))
-    {
-        XCBConfigureWindow(_wm.dpy, c->win, XCB_CONFIG_WINDOW_SIBLING|XCB_CONFIG_WINDOW_STACK_MODE, &wc);
-        wc.sibling = c->win;
-    }
 
-    /* This prevents a redudant re-order on the floating layout */
+    startingclient = c;
+    uint16_t cc = 0;    /* client counter */
+    for(c = desk->stack; c; c = nextstack(c))
+    {   ++cc;
+    }
+    Client *clients[cc];
+    cc = 0;
+    clients[cc++] = startingclient;
+
+    /* TODO use a sorting algorithm maybe */
+
+    /* this enables win10 floating if we pick the floating layout */
     if(layouts[desk->layout].arrange != floating)
     {
         for(c = desk->stack; c; c = nextstack(c))
         {
-            if(ISFLOATING(c) && ISVISIBLE(c))
-            {   XCBRaiseWindow(_wm.dpy, c->win);
+            if(ISFLOATING(c))
+            {   clients[cc++] = c;
             }
         }
     }
-    
+
     for(c = desk->stack; c; c = nextstack(c))
     {
-        if(ISALWAYSONTOP(c) && ISVISIBLE(c))
-        {   XCBRaiseWindow(_wm.dpy, c->win);
+        if(ISALWAYSONTOP(c))
+        {   clients[cc++] = c;
         }
     }
 
     for(c = desk->stack; c; c = nextstack(c))
     {
-        if(ISDIALOG(c) && ISVISIBLE(c))
-        {   XCBRaiseWindow(_wm.dpy, c->win);
+        if(ISDIALOG(c))
+        {   clients[cc++] = c;
         }
     }
 
     for(c = desk->stack; c; c = nextstack(c))
     {
-        if(ISMODAL(c) && ISVISIBLE(c))
-        {   XCBRaiseWindow(_wm.dpy, c->win);
+        if(ISMODAL(c)) 
+        {   clients[cc++] = c;
         }
     }
-    
+
+    /* configure windows */
+    for(c = clients[0]; c; c = nextstack(c))
+    {
+        XCBConfigureWindow(_wm.dpy, c->win, XCB_CONFIG_WINDOW_SIBLING|XCB_CONFIG_WINDOW_STACK_MODE, &wc);
+        wc.sibling = c->win;
+    }
 }
 
 void
 restart(void)
 {
     _wm.restart = 1;
+    quit();
 }
 
 void 
@@ -1364,7 +1440,7 @@ run(void)
 {
     XCBGenericEvent *ev = NULL;
     XCBSync(_wm.dpy);
-    while((_wm.running && !_wm.restart) && (((ev = XCBPollForEvent(_wm.dpy))) || (XCBNextEvent(_wm.dpy, &ev))))
+    while(_wm.running && (((ev = XCBPollForEvent(_wm.dpy))) || (XCBNextEvent(_wm.dpy, &ev))))
     {
         eventhandler(ev);
         free(ev);
@@ -1847,14 +1923,14 @@ startup(void)
     if(!setlocale(LC_CTYPE, ""))
     {   fputs("WARN: NO_LOCALE_SUPPORT\n", stderr);
     }
-    const char *display = ":1";
+    const char *display = NULL;
     _wm.dpy = XCBOpenDisplay(display, &_wm.screen);
     if(!_wm.dpy)
     {   DIECAT("%s", "FATAL: CANNOT_CONNECT_TO_X_SERVER");
     }
     DEBUG("DISPLAY -> %s", display ? display : getenv("DISPLAY"));
     checkotherwm();
-    //XCBSetErrorHandler(xerror);
+    XCBSetErrorHandler(xerror);
     /* This allows for execvp and exec to only spawn process on the specified display rather than the default varaibles */
     if(display)
     {   setenv("DISPLAY", display, 1);
@@ -1865,10 +1941,10 @@ startup(void)
 void
 tile(Desktop *desk)
 {
-    unsigned int h, mw, my, ty;
-    int n, i;
-    int nx, ny;
-    int nw, nh;
+    i32 h = 0, mw = 0, my = 0, ty = 0;
+    i32 n = 0, i = 0;
+    i32 nx = 0, ny = 0;
+    i32 nw = 0, nh = 0;
     Client *c = NULL;
     Monitor *m = NULL;
 
@@ -1876,9 +1952,7 @@ tile(Desktop *desk)
     {   return;
     }
 
-
     m = desk->clients->mon;
-
     for(n = 0, c = nexttiled(desk->clients); c; c = nexttiled(c->next))
     {   ++n;
     }
@@ -1912,7 +1986,7 @@ tile(Desktop *desk)
             ny += _cfg.bgw;
             nw -= _cfg.bgw << 1;
             nh -= _cfg.bgw << 1;
-            resize(c, nx, ny, nw, nh, 0);
+            resize(c, nx, ny, nw, nh, 1);
                                                                         /* spacing for windows below */
             if (my + HEIGHT(c) < (unsigned int)m->wh) my += HEIGHT(c) + _cfg.bgw;
         }
@@ -1928,8 +2002,7 @@ tile(Desktop *desk)
             ny += _cfg.bgw;
             nw -= _cfg.bgw << 1;
             nh -= _cfg.bgw << 1;
-
-            resize(c, nx, ny, nw, nh, 0);
+            resize(c, nx, ny, nw, nh, 1);
                                                                     /* spacing for windows below */ 
             if (ty + HEIGHT(c) < (unsigned int)m->wh) ty += HEIGHT(c) + _cfg.bgw;
         }
@@ -1943,7 +2016,7 @@ unfocus(Client *c, uint8_t setfocus)
     {   return;
     }
     grabbuttons(c->win, 0);
-    _wm.lastfocused = c;
+    c->desktop->lastfocused = c;
     XCBSetWindowBorderWidth(_wm.dpy, c->win, 0);
     if(setfocus)
     {   
@@ -1970,37 +2043,43 @@ updategeom(void)
 	int dirty = 0;
 
 #ifdef XINERAMA
-    int xienabled;
-    int xiactive;
-    const XCBQueryExtension *extrep;
-    XCBXineramaIsActive *xia;
-    int xinerama_screen_number;
-    int xid;
+    int xienabled = 0;
+    int xiactive = 0;
+    XCBQueryExtension *extrep = NULL;
+    XCBXineramaIsActive *xia = NULL;
+    xcb_extension_t data;
 
     /* check if we even have the extension enabled */
-    extrep = xcb_get_extension_data(_wm.dpy, &xid);
-    xienabled = !(!extrep || !ext->present);
+    extrep = (XCBQueryExtension *)xcb_get_extension_data(_wm.dpy, &data);
+    xienabled = (extrep && !extrep->present);
 
     if(xienabled)
     {
-        xia = xcb_xinerama_is_active(_wm.dpy);
+        xcb_xinerama_is_active_cookie_t xcookie = xcb_xinerama_is_active(_wm.dpy);
         /* let event handler handle a Xinerama error */
-        xcb_xinerama_is_active_reply(_wm.dpy, xia, NULL);
+        xia = xcb_xinerama_is_active_reply(_wm.dpy, xcookie, NULL);
         xiactive = xia && xia->state;
     }
     /* assume no error and proceed */
     if(xiactive)
     {
         int i, j, n, nn;
-        Client *c;
-        Monitor *m;
-        XCBXineramaQueryScreensReply *xsq;
-        XCBXineramaScreenInfo *info, *unique = NULL;
+        Client *c = NULL;
+        Monitor *m = NULL;
+        XCBGenericError *err = NULL;
+        XCBXineramaQueryScreens *xsq = NULL;
+        XCBXineramaScreenInfo *info = NULL, *unique = NULL;
 
-        xsq = xcb_xinerama_query_screens_reply(_wm.dpy, xcb_xinerama_query_screens_unchecked(dpy), NULL);
+        xsq = xcb_xinerama_query_screens_reply(_wm.dpy, xcb_xinerama_query_screens_unchecked(_wm.dpy), &err);
+        if(!xsq || err)
+        {
+            /* were fucked */
+            DIECAT("%s", "Xinerama is broken, contact a developer to fix this issue");
+        }
 
-        info = xcb_xinerama_query_screens_screen_info(reply);
-        nn = xcb_xinerama_query_screens_screen_info_length(reply);
+
+        info = xcb_xinerama_query_screens_screen_info(xsq);
+        nn = xcb_xinerama_query_screens_screen_info_length(xsq);
 
 
         for(n = 0, m = _wm.mons; m; m = m->next, ++n);
@@ -2032,29 +2111,28 @@ updategeom(void)
 			|| unique[i].width != m->mw || unique[i].height != m->mh)
 			{
 				dirty = 1;
-				m->num = i;
 				m->mx = m->wx = unique[i].x_org;
 				m->my = m->wy = unique[i].y_org;
 				m->mw = m->ww = unique[i].width;
 				m->mh = m->wh = unique[i].height;
                 /* we should update the bar position if we have one */
-                updatebarpos(m)
+                updatebarpos(m);
 			}
 		/* removed monitors if n > nn */
 		for (i = nn; i < n; ++i)
         {
 			for (m = _wm.mons; m && m->next; m = m->next);
-			while ((c = m->desktop->clients)) 
+			while ((c = m->desktops->clients)) 
             {
 				dirty = 1;
-				m->desktop->clients = c->next;
+				m->desktops->clients = c->next;
 				detachstack(c);
 				c->mon = _wm.mons;
 				attach(c);
 				attachstack(c);
 			}
-			if (m == selmon)
-				selmon = _wm.mons;
+			if (m == _wm.selmon)
+				_wm.selmon = _wm.mons;
 			cleanupmon(m);
 		}
 		free(unique);
@@ -2088,8 +2166,8 @@ unmanage(Client *c, uint8_t destroyed)
     if(!c)
     {   return;
     }
-    if(_wm.lastfocused == c)
-    {   _wm.lastfocused = NULL;
+    if(c->desktop->lastfocused == c)
+    {   c->desktop->lastfocused = NULL;
     }
     if(!destroyed)
     {   
@@ -2155,6 +2233,7 @@ updateclientlist(void)
 
 
 
+/* TODO xcb_key_symbols_get_keycode -> xcb_key_symbols_get_keysym is called a fuck ton and is slow as hell like 20% of manage() slow (callgrind) */
 void
 updatenumlockmask(void)
 {
@@ -2191,8 +2270,8 @@ updatesettings(void)
 {
     _cfg.mfact = 0.55f;
     _cfg.nmaster = 1;
-    _cfg.bw = 0;
-    _cfg.bgw = 15;
+    _cfg.bw = 5;
+    _cfg.bgw = 10;
     _cfg.snap = 10;
     _cfg.rfrate = 120;
     _cfg.bh = 10;
