@@ -71,6 +71,7 @@ endif
 ifeq ($(CFLAGS), $(DEBUG)) 
 	CMACROS += -DENABLE_DEBUG 
 	CMACROS += -DXCB_TRL_ENABLE_DEBUG
+	CMACROS += -DXINERAMA
 endif
 
 # Linker flags

@@ -785,12 +785,17 @@ configurenotify(XCBGenericEvent *event)
     {
         u8 dirty;
         dirty = (_wm.sw != w || _wm.sh != h);
+        
+        if(dirty)
+        {
+        }
+
         _wm.sw = w;
         _wm.sh = h;
 
 
         DEBUG("(w: %d, h: %d)", w, h);
-
+        return;
         if(updategeom() || dirty)
         {
             Monitor *m;
@@ -1199,7 +1204,7 @@ propertynotify(XCBGenericEvent *event)
     if(state == XCB_PROPERTY_DELETE)
     {   return;
     }
-
+    
     if((c = wintoclient(win)))
     {   
         XCBCookie cookie;

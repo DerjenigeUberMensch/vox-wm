@@ -34,16 +34,11 @@ typedef int64_t  i64;
                                     "\n", __FILE__,__LINE__,__func__,__VA_ARGS__); exit(EXIT_FAILURE); } while (0)
 #ifdef ENABLE_DEBUG
 #define DEBUG(fmt, ...) (fprintf(stderr, "[%s:%d] by %s(): " fmt "\n", __FILE__,__LINE__,__func__,__VA_ARGS__))
-#else
-#define DEBUG(fmt, ...) ((void)0)
-#endif
-
-#ifdef ENABLE_DEBUGGING
 #define DEBUG0(X) (fprintf(stderr, "[%s:%d] by %s(): " X "\n", __FILE__, __LINE__, __func__))
 #else
+#define DEBUG(fmt, ...) ((void)0)
 #define DEBUG0(X) ((void)0)
 #endif
-
 
 /* gcc */
 #define ASM(X)                          (__asm__(X))

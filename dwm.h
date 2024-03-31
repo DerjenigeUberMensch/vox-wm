@@ -219,13 +219,15 @@ struct Monitor
     int16_t by;                 /* Bar Y                                    */
     uint16_t bw;                /* Bar Width                                */
     uint16_t bh;                /* Bar Height                               */
+    XCBWindow root;             /* The Root window                          */
     XCBWindow barwin;           /* The managed status bar                   */
 };
 
 struct Layout
 {
-    const char *symbol;
+    char *symbol;
     void (*arrange)(Desktop *);
+    uint8_t pad0[16 + 32];      /* align for x64 */
 };
 
 struct Desktop
@@ -234,6 +236,7 @@ struct Desktop
     uint8_t layout;             /* The Layout Index             */
     uint8_t olayout;            /* The Previous Layout Index    */
 
+    Client *lastfocused;        /* Last focused client          */
     Client *clients;            /* First Client in linked list  */
     Client *clast;              /* Last Client in linked list   */
     Client *stack;              /* Client Stack Order           */
@@ -257,7 +260,6 @@ struct WM
     XCBDisplay *dpy;                /* The current display  */
     Monitor *selmon;                /* Selected Monitor     */
     Monitor *mons;                  /* Monitors             */
-    Client *lastfocused;            /* Last focused client  */
     XCBKeySymbols *syms;            /* keysym alloc         */
 };
 
@@ -269,7 +271,6 @@ struct CFG
     uint16_t nmaster;        /* number of clients in master area                                */
     uint16_t bw;             /* Default Border Width                                            */
     uint16_t bgw;            /* Default Border Gap Width                                        */
-
 
     uint16_t snap;           /* Window Resize/Move Snap to grid size                            */
     uint16_t rfrate;         /* max refresh rate when resizing, moving windows;  0 to disable   */
@@ -283,8 +284,9 @@ struct CFG
 };
 
 void argcvhandler(int argc, char *argv[]);
+void applysizechecks(Monitor *m, int32_t *x, int32_t *y, int32_t *width, int32_t *height, int32_t *border_width);
 void applygravity(uint32_t gravity, int16_t *x, int16_t *y, const uint16_t width, const uint16_t height, const uint16_t border_width);
-uint8_t applysizehints(Client *c, int16_t *x, int16_t *y, uint16_t *width, uint16_t *height, uint8_t interact);
+uint8_t applysizehints(Client *c, int32_t *x, int32_t *y, int32_t *width, int32_t *height, uint8_t interact);
 void arrange(Desktop *desk);
 void arrangemon(Monitor *m);
 void arrangemons(void);
@@ -332,7 +334,7 @@ Client *nextvisible(Client *c);
 Client *lastvisible(Client *c);
 void quit(void);
 Monitor *recttomon(int16_t x, int16_t y, uint16_t width, uint16_t height);
-void resize(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height, uint8_t interact);
+void resize(Client *c, int32_t x, int32_t y, int32_t width, int32_t height, uint8_t interact);
 void resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height);
 void restack(Desktop *desk);
 void restart(void);
