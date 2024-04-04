@@ -293,9 +293,13 @@ AltTab(const Arg *arg)
 void
 ToggleStatusBar(const Arg *arg)
 {
-    setshowbar(_wm.selmon, !SHOWBAR(_wm.selmon));
+    const Monitor *m = _wm.selmon;
+    if(!m || !m->bar)
+    {   return;
+    }
+    setshowbar(m->bar, !SHOWBAR(m->bar));
     updatebarpos(_wm.selmon);
-    XCBMoveResizeWindow(_wm.dpy, _wm.selmon->barwin, _wm.selmon->wx, _wm.selmon->by, _wm.selmon->ww, _wm.selmon->bh);
+    XCBMoveResizeWindow(_wm.dpy, _wm.selmon->bar->win, _wm.selmon->wx, _wm.selmon->bar->y, _wm.selmon->ww, _wm.selmon->bar->h);
     arrange(_wm.selmon->desksel);
 }
 

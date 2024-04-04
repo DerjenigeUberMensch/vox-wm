@@ -71,7 +71,7 @@ argcvhandler(int argc, char *argv[])
             minorversion = __clang_minor__;
             patchversion = __clang_patchlevel__;
             #endif
-            printf( "Compiling Information.\n"
+            printf( "Compiler Information.\n"
                     "  Compiled:        %s %s\n"
                     "  Compiler:        [%s v%d.%d.%d]\n" 
                     "  STDC:            [%d] [%lu]\n"
@@ -80,7 +80,8 @@ argcvhandler(int argc, char *argv[])
                     "Version Information.\n"
                     "  VERSION:         [%s]\n"
                     "  MARK:            [%s]\n"
-                    , 
+                    ,
+                   /* TODO __DATE__ has an extra space for some reason? */ 
                     __DATE__, __TIME__,
                     compiler, majorversion, minorversion, patchversion,
                     __STDC_HOSTED__, __STDC_VERSION__,
@@ -254,6 +255,10 @@ applysizehints(Client *c, i32 *x, i32 *y, i32 *width, i32 *height, uint8_t inter
     /* set minimum possible */
     *width = MAX(1, *width);
     *height = MAX(1, *height);
+    /* set max possible */
+    *width = MIN(m->mw, *width);
+    *height = MIN(m->mh, *height);
+
     if (interact)
     {
         if (*x > _wm.sw) 
@@ -285,13 +290,6 @@ applysizehints(Client *c, i32 *x, i32 *y, i32 *width, i32 *height, uint8_t inter
         }
     }
 
-    const u8 MIN_CLIENT_SIZE = 1;
-    if (*height < MIN_CLIENT_SIZE)
-    {   *height = MIN_CLIENT_SIZE;
-    }
-    if (*width  < MIN_CLIENT_SIZE)
-    {   *width = MIN_CLIENT_SIZE;
-    }
     if (ISFLOATING(c))
     {
         XCBSizeHints hints;
@@ -584,6 +582,8 @@ cfgsethoverfocus(Client *c, uint8_t state)
 u8
 checknewbar(XCBWindow win)
 {
+    /* todo */
+    return 0;
     u8 status = 0;
 
     XCBCookie clshintcookie = XCBGetPropertyCookie(_wm.dpy, win, wmatom[WMClass], 0, 64, 0, XCB_ATOM_ANY);
@@ -755,11 +755,8 @@ createmon(void)
     m->mw = m->mh = 0;
     m->wx = m->wy = 0;
     m->ww = m->wh = 0;
-    m->flags = 0;
     m->next = NULL;
-    m->barwin = 0;
-    m->bx = m->by = 0;
-    m->bw = m->bh = 0;
+    m->bar = NULL;
     u16 i;
     /* TODO */
     for(i = 0; i < 10; ++i)
@@ -1318,7 +1315,7 @@ restack(Desktop *desk)
     }
 
     wc.stack_mode = XCB_STACK_MODE_BELOW;
-    if(c->mon->bar)
+    if(desk->stack->mon->bar)
     {   wc.sibling = c->mon->bar->win;
     }
     else
@@ -1623,9 +1620,9 @@ setneverfocus(Client *c, uint8_t state)
 }
 
 void 
-setshowbar(Monitor *m, uint8_t state)
+setshowbar(Client *c, uint8_t state)
 {
-    SETFLAG(m->flags, _SHOWBAR, !!state);
+    SETFLAG(c->flags, _SHOWBAR, !!state);
 }
 
 void
@@ -1640,9 +1637,9 @@ setsticky(Client *c, u8 state)
 }
 
 void 
-settopbar(Monitor *m, uint8_t state)
+settopbar(Client *c, uint8_t state)
 {
-    SETFLAG(m->flags, _TOPBAR, !!state);
+    SETFLAG(c->flags, _TOPBAR, !!state);
 }
 
 void
@@ -1891,7 +1888,7 @@ startup(void)
     const char *display = NULL;
     _wm.dpy = XCBOpenDisplay(display, &_wm.screen);
     if(!_wm.dpy)
-    {   DIECAT("%s", "FATAL: CANNOT_CONNECT_TO_X_SERVER");
+    {   DIECAT("%s", "FATAL: Cannot Connect to X Server.");
     }
     DEBUG("DISPLAY -> %s", display ? display : getenv("DISPLAY"));
     checkotherwm();
@@ -2155,22 +2152,25 @@ updatebarpos(Monitor *m)
     m->wy = m->my;
     m->wh = m->mh;
 
-    if(SHOWBAR(m))
+    if(!m->bar)
+    {   return;
+    }
+    if(SHOWBAR(m->bar))
     {
-        m->wh -= m->bh;
-        if(TOPBAR(m))
+        m->wh -= m->bar->h;
+        if(TOPBAR(m->bar))
         {
-            m->by = m->wy;
-            m->wy+= m->bh;
+            m->bar->y = m->wy;
+            m->wy += m->bar->h;
         }
         else
         {   
-            m->by = m->wy + m->wh;
+            m->bar->y = m->wy + m->wh;
         }
     }
     else
     {
-        m->by = -m->bh;
+        m->bar->y = -m->bar->h;
     }
 }
 
@@ -2604,7 +2604,7 @@ wintomon(XCBWindow win)
     Monitor *m;
     if(win == _wm.root && getrootptr(&x, &y)) return recttomon(x, y, 1, 1);
     for (m = _wm.mons; m; m = m->next)
-        if (win == m->barwin) return m;
+        if (m->bar && win == m->bar->win) return m;
     if ((c = wintoclient(win))) return c->mon;
     return _wm.selmon;
 }

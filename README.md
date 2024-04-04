@@ -55,16 +55,12 @@ cd xcb-wswm
 git checkout origin/Experimental
 ```
 4. Configure it See **Configuration** (Optional)
-5. `sudo make install` to compile or 'make' to compile but not install on system
+5. `sudo make install` to install or `make` to just compile.
 6. Done.
 
 ## Configuration
 
 ****Currently Configuration is not supported in this version of xcb-wswm****
-
-To **configure** xcb-wswm head on over to `config.h` and change the variables there to fit your needs.
-
-For **keybinds** head on over to `keybinds.h` and change the variables there to fit your needs
 
 For help open an **[issue](https://github.com/DerjenigeUberMensch/xcb-wswm/issues)** about it.
 
@@ -72,5 +68,5 @@ For help open an **[issue](https://github.com/DerjenigeUberMensch/xcb-wswm/issue
 This is an **_experimental_** build and may contain bugs,
 Screen tearing can be mitigated by using a compositor or by enabling it in your driver setting
 
-If you have any **major** **issues** with a **current** commit you can **revert** to a **previous commit** for a generally stabler version.
+If you have any **major** **issues** with the **current** commit you can **revert** to a **previous commit** for a generally stabler version.
 Or you can open an **[issue](https://github.com/DerjenigeUberMensch/xcb-wswm/issues)** about it.
