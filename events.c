@@ -114,7 +114,7 @@ keypress(XCBGenericEvent *event)
         }
     }
     if(sync)
-    {   XCBSync(_wm.dpy);
+    {   XCBFlush(_wm.dpy);
     }
 }
 
@@ -171,7 +171,7 @@ keyrelease(XCBGenericEvent *event)
         }
     }
     if(sync)
-    {   XCBSync(_wm.dpy);
+    {   XCBFlush(_wm.dpy);
     }
 }
 
@@ -251,7 +251,7 @@ buttonpress(XCBGenericEvent *event)
         }
     }
     if(sync)
-    {   XCBSync(_wm.dpy);
+    {   XCBFlush(_wm.dpy);
     }
     DEBUG("ButtonPress: (x: %d, y: %d)", rootx, rooty);
 }
@@ -305,7 +305,7 @@ buttonrelease(XCBGenericEvent *event)
     }
     
     if(sync)
-    {   XCBSync(_wm.dpy);
+    {   XCBFlush(_wm.dpy);
     }
 }
 
@@ -359,7 +359,7 @@ motionnotify(XCBGenericEvent *event)
     mon = m;
 
     if(sync)
-    {   XCBSync(_wm.dpy);
+    {   XCBFlush(_wm.dpy);
     }
 }
 
@@ -424,7 +424,7 @@ enternotify(XCBGenericEvent *event)
     focus(c);
     sync = 1;
     if(sync)
-    {   XCBSync(_wm.dpy);
+    {   XCBFlush(_wm.dpy);
     }
 }
 
@@ -481,7 +481,7 @@ focusin(XCBGenericEvent *event)
     }
 
     if(sync)
-    {   XCBSync(_wm.dpy);
+    {   XCBFlush(_wm.dpy);
     }
 }
 
@@ -688,7 +688,7 @@ configurerequest(XCBGenericEvent *event)
         sync = 1;
     }
     if(sync)
-    {   XCBSync(_wm.dpy);
+    {   XCBFlush(_wm.dpy);
     }
 }
 
@@ -704,13 +704,13 @@ maprequest(XCBGenericEvent *event)
     u8 sync = 0;
 
     if(!wintoclient(win))
-    {   
-        manage(win);
-        sync = 1;
+    {
+        /* only sync if we successfully managed the window */   
+        sync = !!manage(win);
     }
 
     if(sync)
-    {   XCBSync(_wm.dpy);
+    {   XCBFlush(_wm.dpy);
     }
 }
 /* popup windows sometimes need this */
@@ -738,7 +738,7 @@ resizerequest(XCBGenericEvent *event)
     }
 
     if(sync)
-    {   XCBSync(_wm.dpy);
+    {   XCBFlush(_wm.dpy);
     }
 }
 
@@ -821,7 +821,7 @@ configurenotify(XCBGenericEvent *event)
         }
     }
     if(sync)
-    {   XCBSync(_wm.dpy);
+    {   XCBFlush(_wm.dpy);
     }
 }
 
@@ -867,7 +867,7 @@ destroynotify(XCBGenericEvent *event)
         sync = 1;
     }
     if(sync)
-    {   XCBSync(_wm.dpy);
+    {   XCBFlush(_wm.dpy);
     }
 }
 
@@ -911,10 +911,15 @@ mappingnotify(XCBGenericEvent *event)
     (void)first_keycode;
 
     XCBRefreshKeyboardMapping(_wm.syms, ev);
+    /* update the mask */
+    updatenumlockmask();
     if(request == XCB_MAPPING_KEYBOARD)
     {   grabkeys();
     }
-    XCBSync(_wm.dpy);
+    else if(request == XCB_MAPPING_POINTER)
+    {
+    }
+    XCBFlush(_wm.dpy);
 }
 
 void
@@ -937,7 +942,7 @@ unmapnotify(XCBGenericEvent *event)
     }
 
     if(sync)
-    {   XCBSync(_wm.dpy);
+    {   XCBFlush(_wm.dpy);
     }
 }
 
@@ -1240,7 +1245,7 @@ propertynotify(XCBGenericEvent *event)
         }
     }
     if(sync)
-    {   XCBSync(_wm.dpy);
+    {   XCBFlush(_wm.dpy);
     }
 }
 

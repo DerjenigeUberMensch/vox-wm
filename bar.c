@@ -12,6 +12,10 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+
+
+#include "bar.h"
+
 void
 writebar(char *fmt, ...)
 {
