@@ -4,6 +4,7 @@
 #include <xcb/xcb.h>
 #include <xcb/xcb_keysyms.h>
 
+#include "bar.h"
 #include "xcb_trl.h"
 #include "xcb_winutil.h"
 
@@ -69,21 +70,22 @@
 /* This returns non zero on true, but not necessarly 1 */
 #define ISMODAL(C)              (((C)->flags & _MODAL))
 /* This returns 1 when true */
-#define ISVISIBLE(C)            ((((C)->mon->desksel == (C)->desktop || ISSTICKY(c)) & (!ISHIDDEN(c))))
+#define ISVISIBLE(C)            ((((C)->mon->desksel == (C)->desktop || ISSTICKY((C))) & (!ISHIDDEN((C)))))
 
-/* Monitor struct flags */
+/* Bar struct flags */
+
 #define _SHOWBAR            ((1 << 0))
 #define _OSHOWBAR           ((1 << 1))
 #define _TOPBAR             ((1 << 2))
 
-/* Monitor Macros */
+/* Bar Macros */
 
 /* This returns non zero on true, but not necessarly 1 */
-#define SHOWBAR(M)              (((M)->flags & _SHOWBAR))
+#define SHOWBAR(B)              (((B)->flags & _SHOWBAR))
 /* This returns non zero on true, but not necessarly 1 */
-#define OSHOWBAR(M)             (((M)->flags & _OSHOWBAR))
+#define OSHOWBAR(B)             (((B)->flags & _OSHOWBAR))
 /* This returns non zero on true, but not necessarly 1 */
-#define TOPBAR(M)               (((M)->flags & _TOPBAR))
+#define TOPBAR(B)               (((B)->flags & _TOPBAR))
 
 
 /* WM struct flags */
@@ -208,19 +210,14 @@ struct Monitor
     uint16_t ww;                /* Monitor Width (Window Area)              */
     uint16_t wh;                /* Monitor Height (Window Area)             */
 
-    uint16_t flags;             /* Monitor flags                            */
     uint16_t deskcount;         /* Desktop Counter                          */
 
     Desktop *desktops;          /* First Desktop in linked list             */
     Desktop *desksel;           /* Selected Desktop                         */
     Monitor *next;              /* Next Monitor                             */
 
-    int16_t bx;                 /* Bar X                                    */
-    int16_t by;                 /* Bar Y                                    */
-    uint16_t bw;                /* Bar Width                                */
-    uint16_t bh;                /* Bar Height                               */
-    XCBWindow root;             /* The Root window                          */
-    XCBWindow barwin;           /* The managed status bar                   */
+    Client *bar;                /* The Associated Task-Bar                  */
+    uint8_t pad0[8];
 };
 
 struct Layout
@@ -240,7 +237,7 @@ struct Desktop
     Client *clients;            /* First Client in linked list  */
     Client *clast;              /* Last Client in linked list   */
     Client *stack;              /* Client Stack Order           */
-    Client *slast;              /* Last client in stack order   */
+    Client *slast;              /* Last Client in Stack         */
     Client *sel;                /* Selected Client              */
     Desktop *next;              /* Next Client in linked list   */
     Desktop *prev;              /* Previous Client in list      */
@@ -324,6 +321,7 @@ void grabbuttons(XCBWindow window, uint8_t focused);
 void grabkeys(void);
 void grid(Desktop *desk);
 Client *manage(XCBWindow window);
+Client *managebar(Monitor *m, XCBWindow win);
 void monocle(Desktop *desk);
 Client *nextclient(Client *c);
 Desktop *nextdesktop(Desktop *desktop);

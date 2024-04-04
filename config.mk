@@ -26,26 +26,33 @@ DYNAMICLINK= -ldl
 SECTIONCODE= -ffunction-sections -fdata-sections
 DEBUGFLAGS = -ggdb -g -pg ${CCVERSION} ${WARNINGFLAGS} ${INCS} ${CPPFLAGS} ${BINARY} ${SECTIONCODE}
 
-WARNINGFLAGS = -pedantic -Wall -Wno-deprecated-declarations -Wshadow -Wuninitialized
+WARNINGFLAGS = -pedantic -Wall -Wno-deprecated-declarations -Wshadow -Wuninitialized -Werror=format-security
+
 LINKTIMEOPTIMIZATIONS = -flto
-PRELINKERFLAGS = -fprefetch-loop-arrays ${LINKTIMEOPTIMIZATIONS} -fstack-protector-strong -pie -Wl,-z,relro,-z,now,-z,noexecstack,-z,defs
+
+ifeq ($(CC), clang)
+	LINKTIMEOPTIMIZATIONS = 
+endif
+
+PRELINKERFLAGS = -fprefetch-loop-arrays -fstack-protector-strong -fstack-clash-protection -fpie ${LINKTIMEOPTIMIZATIONS} ${SECTIONCODE} 
+
 # can set higher but function overhead is pretty small so meh
 INLINELIMIT = 15
-LINKERFLAGS = ${DYNAMICLINK} -Wl,--gc-sections,--as-needed,--relax,--strip-all -finline-functions -finline-limit=${INLINELIMIT}  ${LINKTIMEOPTIMIZATIONS} -fstack-protector-strong -pie -Wl,-z,relro,-z,now,-z,noexecstack,-z,defs
+LINKERFLAGS = ${DYNAMICLINK} -Wl,--gc-sections,--as-needed,--relax,--strip-all,-z,relro,-z,now,-z,noexecstack,-z,defs,-pie -finline-functions -finline-limit=${INLINELIMIT}  ${LINKTIMEOPTIMIZATIONS}
 
 BINARY = ${X64}
 CPPFLAGS = -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L ${XINERAMAFLAGS}
-CCFLAGS  = ${CCVERSION} ${WARNINGFLAGS} ${INCS} ${CPPFLAGS} ${BINARY} ${PRELINKERFLAGS} ${SECTIONCODE} 
+CCFLAGS  = ${CCVERSION} ${WARNINGFLAGS} ${INCS} ${CPPFLAGS} ${BINARY} ${PRELINKERFLAGS} 
 RELEASEFLAGS = ${CCFLAGS} 
 
-DEBUG 	= ${DEBUGFLAGS} -O0
+DEBUG 	= ${DEBUGFLAGS} -O2
 
-SIZE  	= ${RELEASEFLAGS} -Os
-# This rarely saves a substantial amount of instructions
-SIZEONLY= ${RELEASEFLAGS} -Oz
+SIZE  	= ${RELEASEFLAGS} -Os 
+# This sacrifies some speed for a 10-20% decrease in size
+SIZEONLY= ${RELEASEFLAGS} -Oz -fno-ident -fno-asynchronous-unwind-tables
 
 # Release Stable (-O2)
-RELEASE = ${RELEASEFLAGS} -O2
+RELEASE = ${RELEASEFLAGS} -O2 -ftree-loop-vectorize
 # Release Speed (-O3)
 RELEASES= ${RELEASEFLAGS} -O3 
 

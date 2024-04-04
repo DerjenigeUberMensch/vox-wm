@@ -41,8 +41,20 @@ typedef int64_t  i64;
 #endif
 
 /* gcc */
+#ifdef __GNUC__
 #define ASM(X)                          (__asm__(X))
 #define NOINLINE                        __attribute__ ((noinline))
+
+
+#elif __clang__
+
+#define ASM(X)                          (__asm__(X))
+#define NOINLINE                        __attribute__ ((noinline))
+
+#else
+#define ASM(X)                          ((void)X)
+#define NOINLINE                        (())
+#endif
 
 
 

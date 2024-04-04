@@ -284,11 +284,13 @@ applysizehints(Client *c, i32 *x, i32 *y, i32 *width, i32 *height, uint8_t inter
         {   *y = m->wy;
         }
     }
-    if (*height < m->bh)
-    {   *height = m->bh;
+
+    const u8 MIN_CLIENT_SIZE = 1;
+    if (*height < MIN_CLIENT_SIZE)
+    {   *height = MIN_CLIENT_SIZE;
     }
-    if (*width  < m->bh)
-    {   *width = m->bh;
+    if (*width  < MIN_CLIENT_SIZE)
+    {   *width = MIN_CLIENT_SIZE;
     }
     if (ISFLOATING(c))
     {
@@ -345,9 +347,17 @@ void
 arrange(Desktop *desk)
 {
     Client *c;
-    for(c = desk->stack; c; c = nextstack(c))
-    {   showhide(c);
+    Desktop *workingdesk = NULL;
+
+    if(workingdesk != desk)
+    {
+        for(c = desk->stack; c; c = nextstack(c))
+        {   /* configuring windows is suprisingly expensive */
+            showhide(c);
+        }
+        workingdesk = desk;
     }
+
     arrangedesktop(desk);
     restack(desk);
 }
@@ -392,9 +402,9 @@ attachbar(Monitor *m, XCBWindow barwin)
         DEBUG0("Cant Attach barwin because the monitor is NULL, this shouldnt be possible");
         return;
     }
-    if(m->barwin)
+    if(m->bar && m->bar->win)
     {   
-        if(m->barwin == barwin)
+        if(m->bar && m->bar->win == barwin)
         {   
             DEBUG0("Cant Attach barwin to same barwin");
         }
@@ -406,19 +416,15 @@ attachbar(Monitor *m, XCBWindow barwin)
     else
     {
         DEBUG("Attached barwin: %d", barwin);
-        m->barwin = barwin;
         Client *c = manage(barwin);
         if(!c)
-        {   DEBUG0("Could not attach bar, for some reason...");
+        {   
+            DEBUG0("Could not attach bar, for some reason...");
             return;
         }
-        sethidden(c, 1);
-        setalwaysontop(c, 1);
-        setfullscreen(c, 0);
-        setneverfocus(c, 1);
-        setsticky(c, 1);
-        setmodal(c, 1);
-        setfixed(c, 1);
+        detachcompletely(c);
+        c->flags = 0;
+        m->bar = c;
     }
 }
 
@@ -430,7 +436,8 @@ detachbar(Monitor *m)
     {   DEBUG0("Cant Detach barwin as monitor is NULL");
         return;
     }
-    m->barwin = 0;
+    cleanupclient(m->bar);
+    m->bar = NULL;
 }
 
 void
@@ -579,101 +586,8 @@ checknewbar(XCBWindow win)
 {
     u8 status = 0;
 
-    if(_wm.selmon->barwin)
-    {   return status;
-    }
+    XCBCookie clshintcookie = XCBGetPropertyCookie(_wm.dpy, win, wmatom[WMClass], 0, 64, 0, XCB_ATOM_ANY);
 
-    XCBCookie ckstrut = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMStrut], 0, 4, False, XCB_ATOM_CARDINAL);
-    XCBCookie ckstrutp = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMStrutPartial], 0, 12, False, XCB_ATOM_CARDINAL);
-
-    XCBWindowProperty *strut = XCBGetWindowPropertyReply(_wm.dpy, ckstrut);
-    XCBWindowProperty *strutp = XCBGetWindowPropertyReply(_wm.dpy, ckstrutp);
-
-    if(strut)
-    {
-        /* https://specifications.freedesktop.org/wm-spec/latest/ 
-         * _NET_WM_STRUT */
-        u32 *value = XCBGetWindowPropertyValue(strut);
-        const u32 left = value[0];
-        const u32 right = value[1];
-        const u32 top = value[2];
-        const u32 bottom = value[3];
-        if(left >= _wm.selmon->ww / 2 && right >= _wm.selmon->ww / 2)
-        {   
-            status = 1;
-            if(top && bottom)
-            {   /* This is undefined behaviour so just do nothing */
-            }
-            else if (top)
-            {   settopbar(_wm.selmon, 1);
-                _wm.selmon->bh = top;
-            }
-            else if(bottom)
-            {   settopbar(_wm.selmon, 0);
-                _wm.selmon->bh = bottom;
-            }
-            else
-            {   status = 0;     /* undefined behaviour assume its not a bar */
-            }
-        }
-        free(strut);
-    }
-
-    if(strutp)
-    {
-        if(!status)
-        {
-            /* https://specifications.freedesktop.org/wm-spec/latest/ 
-             * _NET_WM_STRUT_PARTIAL */
-            u32 *value = XCBGetWindowPropertyValue(strut);
-            const u32 left = value[0];
-            const u32 right = value[1];
-            const u32 top = value[2];
-            const u32 bottom = value[3];
-            const u32 left_start_y = value[4];
-            const u32 left_end_y = value[5];
-            const u32 right_start_y = value[6];
-            const u32 right_end_y = value[7];
-            const u32 top_start_x = value[8];
-            const u32 top_end_x = value[9];
-            const u32 bottom_start_x = value[10];
-            const u32 bottom_end_x = value[11];
-
-            (void)left_start_y;
-            (void)left_end_y;
-            (void)right_start_y;
-            (void)right_end_y;
-            (void)top_start_x;
-            (void)top_end_x;
-            (void)bottom_start_x;
-            (void)bottom_end_x;
-
-            /* while _NET_WM_STRUT_PARTIAL is good in theory in practice it's mostly a pain to implement properly and somewhat computationally expensive 
-             * So instead we just use the original _NET_WM_STRUT which worked fine...
-             */
-            if(left >= _wm.selmon->ww / 2 && right >= _wm.selmon->ww / 2)
-            {   
-                status = 1;
-                if(top && bottom)
-                {   /* This is undefined behaviour so just do nothing */
-                }
-                else if (top)
-                {   
-                    settopbar(_wm.selmon, 1);
-                    _wm.selmon->bh = top;
-                }
-                else if(bottom)
-                {   
-                    settopbar(_wm.selmon, 0);
-                    _wm.selmon->bh = bottom;
-                }
-                else
-                {   status = 0;     /* undefined behaviour assume its not a bar */
-                }
-            }
-        }
-        free(strutp);
-    }
     return status;
 }
 
@@ -711,7 +625,7 @@ cleanup(void)
         _wm.syms = NULL;
     }
     cleanupmons();
-    XCBSync(_wm.dpy);
+    XCBFlush(_wm.dpy);
     XCBCloseDisplay(_wm.dpy);
     _wm.dpy = NULL;
 }
@@ -792,7 +706,8 @@ createclient(Monitor *m)
 {
     Client *c = calloc(1, sizeof(Client ));
     if(!c)
-    {   return NULL;
+    {   DEBUG0("Could not allocate memory for client (OutOfMemory).");
+        return NULL;
     }
     c->x = c->y = 0;
     c->w = c->h = 0;
@@ -982,7 +897,6 @@ getrootptr(i16 *x, i16 *y)
 void
 grabbuttons(XCBWindow win, uint8_t focused)
 {
-    updatenumlockmask();
     u16 i, j;
     /* numlock is int */
     int modifiers[4] = { 0, XCB_MOD_MASK_LOCK, _wm.numlockmask, _wm.numlockmask|XCB_MOD_MASK_LOCK};
@@ -1009,7 +923,6 @@ grabbuttons(XCBWindow win, uint8_t focused)
 void
 grabkeys(void)
 {
-    updatenumlockmask();
     u32 i, j, k;
     u32 modifiers[4] = { 0, XCB_MOD_MASK_LOCK, _wm.numlockmask, _wm.numlockmask|XCB_MOD_MASK_LOCK };
     XCBKeyCode *keycodes[LENGTH(keys)];
@@ -1110,6 +1023,16 @@ manage(XCBWindow win)
     {   DEBUG("%s", "Cannot manage() root window.");
         return NULL;
     }
+    else if(_wm.selmon->bar && _wm.selmon->bar->win == win)
+    {
+        DEBUG0("Cannot manage() bar window.");
+        return NULL;
+    }
+    else if(checknewbar(win))
+    {   
+        managebar(_wm.selmon, win);
+        return NULL;
+    }
 
 
     /* get cookies first */
@@ -1155,9 +1078,8 @@ manage(XCBWindow win)
             free(wg);
             return NULL;
         }
-        inputmask |= waattributes->your_event_mask; 
         /* sometimes clients do dumb stuff that messes with out window managing
-         *
+         * inputmask |= waattributes->your_event_mask; 
          * inputmask &= ~waattributes->do_not_propagate_mask;
          */
     }
@@ -1193,6 +1115,7 @@ manage(XCBWindow win)
         /* applyrules() */
     }
 
+    /* constrain window to window area */
     if (c->x + WIDTH(c) > c->mon->wx + c->mon->ww)
     {   c->x = c->mon->wx + c->mon->ww - WIDTH(c);
     }
@@ -1227,8 +1150,11 @@ manage(XCBWindow win)
     if(c->mon == _wm.selmon)
     {   unfocus(_wm.selmon->desksel->sel, 0);
     }
+    /* inherit previous client state */
+    if(_wm.selmon->desksel->sel)
+    {   setfullscreen(c, ISFULLSCREEN(_wm.selmon->desksel->sel) || ISFULLSCREEN(c));
+    }
     _wm.selmon->desksel->sel = c;
-    setfullscreen(c, ISFULLSCREEN(c->mon));
     arrange(c->desktop);
     /* client could be floating so we pass NULL for focus */
     focus(NULL);
@@ -1240,6 +1166,23 @@ manage(XCBWindow win)
     free(wg);
 
     return c;
+}
+
+Client *
+managebar(Monitor *m, XCBWindow win)
+{
+    if(!m->bar)
+    {   m->bar = createclient(NULL);
+    }
+
+    if(!m->bar)
+    {   return NULL;
+    }
+    memset(m->bar, 0, sizeof(Client));
+
+
+
+    return m->bar;
 }
 
 void
@@ -1346,11 +1289,17 @@ resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
     c->oldy = c->y;
     c->oldw = c->w;
     c->oldh = c->h;
+    /* due to the suprisingly expensive nature of configuring clients we can save some cycles here */
+    if(x != c->x || y != c->y)
+    {   XCBMoveWindow(_wm.dpy, c->win, x, y);
+    }
+    if(width != c->w || height != c->h)
+    {   XCBResizeWindow(_wm.dpy, c->win, width, height);
+    }
     c->x = x;
     c->y = y;
     c->w = width;
     c->h = height;
-    XCBMoveResizeWindow(_wm.dpy, c->win, x, y, width, height);
     XCBSetWindowBorderWidth(_wm.dpy, c->win, c->bw);
     configure(c);
 }
@@ -1359,17 +1308,18 @@ void
 restack(Desktop *desk)
 {
     Client *c;
-    Client *startingclient;
     XCBWindowChanges wc;
 
-    c = desk->stack;
-    if(!c)
+    uint16_t cc = 0;    /* client counter */
+    for(c = desk->stack; c; c = nextstack(c), ++cc);
+    /* no clients */
+    if(!cc)
     {   return;
     }
 
     wc.stack_mode = XCB_STACK_MODE_BELOW;
-    if(c->mon->barwin)
-    {   wc.sibling = c->mon->barwin;
+    if(c->mon->bar)
+    {   wc.sibling = c->mon->bar->win;
     }
     else
     {   
@@ -1377,16 +1327,14 @@ restack(Desktop *desk)
         c = nextstack(c);
     }
 
-    startingclient = c;
-    uint16_t cc = 0;    /* client counter */
-    for(c = desk->stack; c; c = nextstack(c))
-    {   ++cc;
+    /* configure windows */
+    for(; c; c = nextstack(c))
+    {
+        XCBConfigureWindow(_wm.dpy, c->win, XCB_CONFIG_WINDOW_SIBLING|XCB_CONFIG_WINDOW_STACK_MODE, &wc);
+        wc.sibling = c->win;
     }
-    Client *clients[cc];
-    cc = 0;
-    clients[cc++] = startingclient;
 
-    /* TODO use a sorting algorithm maybe */
+    /* TODO use a sorting algorithm maybe, and figure out some faster way without possible buffer overruns */
 
     /* this enables win10 floating if we pick the floating layout */
     if(layouts[desk->layout].arrange != floating)
@@ -1394,7 +1342,7 @@ restack(Desktop *desk)
         for(c = desk->stack; c; c = nextstack(c))
         {
             if(ISFLOATING(c))
-            {   clients[cc++] = c;
+            {   XCBRaiseWindow(_wm.dpy, c->win);
             }
         }
     }
@@ -1402,30 +1350,33 @@ restack(Desktop *desk)
     for(c = desk->stack; c; c = nextstack(c))
     {
         if(ISALWAYSONTOP(c))
-        {   clients[cc++] = c;
+        {   
+            if(ISFLOATING(c))
+            {
+                XCBRaiseWindow(_wm.dpy, c->win);
+            }
+            else
+            {   DEBUG0("Client should be floating, but isnt, this shouldnt be possible; CHECK: ALWAYSONTOP ");
+            }
         }
     }
 
     for(c = desk->stack; c; c = nextstack(c))
     {
         if(ISDIALOG(c))
-        {   clients[cc++] = c;
+        {   XCBRaiseWindow(_wm.dpy, c->win);
         }
     }
 
     for(c = desk->stack; c; c = nextstack(c))
     {
         if(ISMODAL(c)) 
-        {   clients[cc++] = c;
+        {   XCBRaiseWindow(_wm.dpy, c->win);
         }
     }
 
-    /* configure windows */
-    for(c = clients[0]; c; c = nextstack(c))
-    {
-        XCBConfigureWindow(_wm.dpy, c->win, XCB_CONFIG_WINDOW_SIBLING|XCB_CONFIG_WINDOW_STACK_MODE, &wc);
-        wc.sibling = c->win;
-    }
+    /* The XServer doesnt receive this request till the next event, so flush them to make sure it does */
+    XCBFlush(_wm.dpy);
 }
 
 void
@@ -1707,6 +1658,10 @@ setup(void)
     _wm.sh = XCBDisplayHeight(_wm.dpy, _wm.screen);
     _wm.root = XCBRootWindow(_wm.dpy, _wm.screen);
 
+    if(!_wm.syms)
+    {   DIECAT("%s", "Could not establish connection with keyboard (OutOfMemory)");
+    }
+
     updatesettings();
 
     updategeom();
@@ -1741,6 +1696,8 @@ setup(void)
                     ;   /* the ; is here just so its out of the way */
     XCBChangeWindowAttributes(_wm.dpy, _wm.root, XCB_CW_EVENT_MASK, &wa);
     XCBSelectInput(_wm.dpy, _wm.root, wa.event_mask);
+    /* init numlock */
+    updatenumlockmask();
     grabkeys();
     focus(NULL);
 }
@@ -1793,9 +1750,17 @@ showhide(const Client *restrict c)
 void
 sigchld(int signo) /* signal */
 {
-    /* wait for childs (zombie proccess) to die */
     (void)signo;
-    while (0 < waitpid(-1, NULL, WNOHANG));
+
+    struct sigaction sa;
+    /* donot transform children into zombies when they terminate */
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_NOCLDSTOP | SA_NOCLDWAIT | SA_RESTART;
+    sa.sa_handler = SIG_IGN;
+    sigaction(SIGCHLD, &sa, NULL);
+
+    /* wait for childs (zombie proccess) to die */
+    while (waitpid(-1, NULL, WNOHANG) > 0);
 }
 
 void
@@ -2047,10 +2012,9 @@ updategeom(void)
     int xiactive = 0;
     XCBQueryExtension *extrep = NULL;
     XCBXineramaIsActive *xia = NULL;
-    xcb_extension_t data;
 
     /* check if we even have the extension enabled */
-    extrep = (XCBQueryExtension *)xcb_get_extension_data(_wm.dpy, &data);
+    extrep = (XCBQueryExtension *)xcb_get_extension_data(_wm.dpy, &xcb_xinerama_id);
     xienabled = (extrep && !extrep->present);
 
     if(xienabled)
@@ -2243,7 +2207,9 @@ updatenumlockmask(void)
 
     reply = xcb_get_modifier_mapping_reply(_wm.dpy, xcb_get_modifier_mapping(_wm.dpy), &err);
     if(err)
-    {   return;
+    {   free(reply);
+        free(err);
+        return;
     }
 
 	xcb_keycode_t *codes = xcb_get_modifier_mapping_keycodes(reply);
@@ -2502,14 +2468,6 @@ updatewindowtype(Client *c, XCBAtom wtype, uint8_t add_remove_toggle)
     }
     else if (wtype == netatom[NetWMWindowTypeDock])
     {
-        /* doesnt work */
-        if(checknewbar(c->win))
-        {
-            attachbar(m, c->win);
-            /* this makes the bar 'popup' */
-            setshowbar(m, 1);
-            updatebarpos(m);
-        }
     }
     else if (wtype == netatom[NetWMWindowTypeToolbar])
     {   /* TODO */

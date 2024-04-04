@@ -31,7 +31,7 @@
  *
  * Main reason to not use xcb
  * 1.) Way harder to use to its asyncrounous nature
- * Really, Xlib's locking of Server is overblown out of porpotion when talking about xcb being better.
+ * Really, Xlib's locking of Server is overblown out of proportion when talking about xcb being better.
  * The main problem though with Xlib is that it could be async (which would make xcb less useful) and most of the functions are.
  * HOWEVER some "vital" or imporant ones arent which is the main problem with Xlib.
  * Secondly Xlib uses quite a bit more resources than xcb which is also why xcb use often times "better" for the most part though Xlib is fine,
@@ -41,6 +41,7 @@
  * XCB if documented would have already take over Xlib and xlib would without question already been banished to the shadow realm.
  * However XCB still has a way to go without its documentation, though it has improved greatly over the years.
  */
+
 
 /*
  * Basic XCB Usage.
@@ -224,6 +225,11 @@
                                                  * Instead it is recommended to disable this to allow for optimizations.
                                                  * It is also further recommended not not use a error handler as this will print out the info already.
                                                  * Secondly this may cause unintended behaviour due to the use of the _checked version of the functions.
+                                                 *
+                                                 * One MASSIVE caveat:
+                                                 * if you dont use this api you cant really use the debug ability.
+                                                 * so if you use xcb_map_window(); you wont ever see it in the api as you should you XCBMapWindow();
+                                                 * thats it.
                                                  */
 
 
@@ -413,15 +419,17 @@ typedef xcb_button_press_event_t XCBButtonPressEvent;
 typedef xcb_button_release_event_t XCBButtonReleaseEvent;
 typedef xcb_motion_notify_event_t XCBMotionNotifyEvent;
 typedef xcb_enter_notify_event_t XCBEnterNotifyEvent;
+
 typedef xcb_leave_notify_event_t XCBLeaveNotifyEvent;
 typedef xcb_focus_in_event_t XCBFocusInEvent;
 typedef xcb_focus_out_event_t XCBFocusOutEvent;
 typedef xcb_keymap_notify_event_t XCBKeymapNotifyEvent;
 typedef xcb_expose_event_t XCBExposeEvent;
+
 typedef xcb_graphics_exposure_event_t XCBGraphicsExposeEvent;
 typedef xcb_graphics_exposure_event_t XCBGraphicsExposureEvent;
-typedef xcb_no_exposure_event_t XCBNoExpose;
-typedef xcb_no_exposure_event_t XCBNoExposure;
+typedef xcb_no_exposure_event_t XCBNoExposeEvent;
+typedef xcb_no_exposure_event_t XCBNoExposureEvent;
 typedef xcb_circulate_notify_event_t XCBCirculateNotifyEvent;
 typedef xcb_circulate_request_event_t XCBCirculateRequestEvent;
 typedef xcb_map_request_event_t XCBMapRequestEvent;
@@ -454,7 +462,7 @@ struct XCBCookie64
 
 
 /* macros */
-enum
+enum XCBWindowState
 {
     XCB_WINDOW_NORMAL_STATE = XCB_ICCCM_WM_STATE_NORMAL,
     XCB_WINDOW_ICONIC_STATE = XCB_ICCCM_WM_STATE_ICONIC,
@@ -585,23 +593,32 @@ XCBProtocolRevision(
 int 
 XCBVendorRelease(
         XCBDisplay *display);
-
+/*
+ */
 int 
 XCBBitmapUnit(
         XCBDisplay *display);
 
+/*
+ */
 int 
 XCBBitmapBitOrder(
         XCBDisplay *display);
 
+/*
+ */
 int 
 XCBBitmapPad(
         XCBDisplay *display);
 
+/*
+ */
 int 
 XCBImageByteOrder(
         XCBDisplay *display);
 
+/*
+ */
 int 
 XCBRootOfScreen(
         XCBDisplay *display);
@@ -656,6 +673,8 @@ uint8_t
 XCBDisplayDepth(
         XCBDisplay *display, 
         int screen);
+/*
+ */
 uint8_t 
 XCBDefaultDepth(
         XCBDisplay *display, 
@@ -744,12 +763,15 @@ XCBChangeWindowAttributes(
         XCBWindow window, 
         uint32_t mask, 
         XCBWindowAttributes *window_attributes);
-
+/*
+ */
 uint32_t 
 XCBBlackPixel(
         XCBDisplay *display, 
         int screen);
 
+/*
+ */
 uint32_t 
 XCBWhitePixel(
         XCBDisplay *display, 
@@ -783,6 +805,8 @@ XCBSyncf(
         XCBDisplay *display
         );
 
+/*
+ */
 XCBCookie
 XCBMoveWindow(
         XCBDisplay *display, 
@@ -790,6 +814,8 @@ XCBMoveWindow(
         int32_t x, 
         int32_t y);
 
+/*
+ */
 XCBCookie
 XCBMoveResizeWindow(
         XCBDisplay *display, 
@@ -799,6 +825,8 @@ XCBMoveResizeWindow(
         uint32_t width, 
         uint32_t height);
 
+/*
+ */
 XCBCookie
 XCBResizeWindow(
         XCBDisplay *display, 
@@ -806,43 +834,59 @@ XCBResizeWindow(
         uint32_t width, 
         uint32_t height);
 
+/*
+ */
 XCBCookie
 XCBRaiseWindow(
         XCBDisplay *display, 
         XCBWindow window);
 
+/*
+ */
 XCBCookie
 XCBMapRaised(
         XCBDisplay *display, 
         XCBWindow window);
 
+/*
+ */
 XCBCookie
 XCBLowerWindow(
         XCBDisplay *display, 
         XCBWindow window);
 
+/*
+ */
 XCBCookie
 XCBRaiseWindowIf(
         XCBDisplay *display, 
         XCBWindow window);
 
+/*
+ */
 XCBCookie
 XCBLowerWindowIf(
         XCBDisplay *display, 
         XCBWindow window);
 
+/*
+ */
 XCBCookie
 XCBSetWindowBorderWidth(
         XCBDisplay *display, 
         XCBWindow window, 
         uint32_t border_width);
 
+/*
+ */
 XCBCookie
 XCBSetSibling(
         XCBDisplay *display, 
         XCBWindow window, 
         XCBWindow sibling);
 
+/*
+ */
 XCBCookie
 XCBInternAtomCookie(
         XCBDisplay *display, 
@@ -862,6 +906,8 @@ XCBInternAtomReply(
         XCBCookie cookie);
 
 
+/*
+ */
 XCBCookie
 XCBGetTransientForHintCookie(
         XCBDisplay *display, 
@@ -920,21 +966,29 @@ XCBGetPropertyReply(
         XCBCookie cookie
         );
 
+/*
+ */
 void *
 XCBGetPropertyValue(
         XCBWindowProperty *reply);
 
 
+/*
+ */
 uint32_t
 XCBGetPropertyValueLength(
         XCBWindowProperty *reply, size_t size
         );
 
+/*
+ */
 uint32_t
 XCBGetPropertyValueSize(
         XCBWindowProperty *reply
         );
 
+/*
+ */
 XCBCookie
 XCBGetWindowPropertyCookie(
         XCBDisplay *display,
@@ -959,20 +1013,28 @@ XCBGetWindowPropertyReply(
         XCBCookie cookie
         );
 
+/*
+ */
 void *
 XCBGetWindowPropertyValue(
         XCBWindowProperty *reply);
 
+/*
+ */
 uint32_t
 XCBGetWindowPropertyValueSize(
         XCBWindowProperty *reply
         );
 
+/*
+ */
 uint32_t
 XCBGetWindowPropertyValueLength(
         XCBWindowProperty *reply, size_t size
         );
 
+/*
+ */
 XCBCookie
 XCBGetWindowAttributesCookie(
         XCBDisplay *display, 
@@ -990,6 +1052,8 @@ XCBGetWindowAttributesReply(
         XCBDisplay *display, 
         XCBCookie cookie);
 
+/*
+ */
 XCBCookie
 XCBGetWindowGeometryCookie(
         XCBDisplay *display, 
@@ -1007,6 +1071,8 @@ XCBGetWindowGeometryReply(
         XCBDisplay *display, 
         XCBCookie cookie);
 
+/*
+ */
 XCBCookie
 XCBGetGeometryCookie(
         XCBDisplay *display,
@@ -1024,6 +1090,8 @@ XCBGetGeometryReply(
         XCBCookie cookie
         );
 
+/*
+ */
 XCBPixmap 
 XCBCreatePixmap(
         XCBDisplay *display, 
@@ -1032,35 +1100,44 @@ XCBCreatePixmap(
         uint16_t height, 
         uint8_t depth);
 
+/*
+ */
 XCBCursor 
 XCBCreateFontCursor(
         XCBDisplay *display, 
         int shape);
 
+/*
+ */
 XCBCookie
 XCBDefineCursor(
         XCBDisplay *display, 
         XCBWindow window, XCBCursor id);
 
+/*
+ */
 XCBCookie
 XCBFreeCursor(
         XCBDisplay *display, 
         XCBCursor cursor);
 
+/*
+ */
 XCBCookie
 XCBOpenFont(
         XCBDisplay *display, 
         XCBFont id, const char *name);
 
+/*
+ */
 XCBCookie
 XCBCloseFont(
         XCBDisplay *display,
         XCBFont id
         );
 
-
-
-
+/*
+ */
 XCBCookie
 XCBQueryTreeCookie(
         XCBDisplay *display,
@@ -1093,6 +1170,8 @@ XCBWindow *
 XCBQueryTreeChildren(
         const XCBQueryTree *tree);
 
+/*
+ */
 XCBCookie
 XCBQueryPointerCookie(
         XCBDisplay *display, 
@@ -1239,10 +1318,14 @@ XCBHasDisplayError(
  * RETURN: {1, 0}.
  */
 int 
-XCBSetErrorHandler(void (*error_handler)(XCBDisplay *, XCBGenericError *));
+XCBSetErrorHandler(
+        void (*error_handler)(XCBDisplay *, XCBGenericError *)
+        );
 
 
-/* not implemented */
+/* 
+ * not implemented 
+ */
 void 
 XCBSetIOErrorHandler(
         XCBDisplay *display, 
@@ -1407,6 +1490,8 @@ XCBAllowEvents(
         uint8_t mode, 
         XCBTimestamp timestamp);
 
+/*
+ */
 XCBCookie
 XCBSendEvent(
         XCBDisplay *display,
@@ -1842,7 +1927,9 @@ XCBDisplayKeycodes(
  * NOTE: RETURN MUST BE RELEASED BY CALLER USING free().
  */
 XCBKeycode *
-XCBGetKeycodes(XCBDisplay *display, XCBKeysym keysym);
+XCBGetKeycodes(
+        XCBDisplay *display, 
+        XCBKeysym keysym);
 /* This gets the keycodes of the specfied display.
  *
  * NOTE: This operation is relativly expensive so it is recommended to not use this function.
@@ -1851,15 +1938,21 @@ XCBGetKeycodes(XCBDisplay *display, XCBKeysym keysym);
  * NOTE: RETURN MUST BE RELEASED BY CALLER USING free().
  */
 XCBKeyCode *
-XCBGetKeyCodes(XCBDisplay *display, XCBKeysym keysym);
+XCBGetKeyCodes(
+        XCBDisplay *display, 
+        XCBKeysym keysym);
 
 
 
+/*
+ */
 XCBKeyCode *
 XCBKeySymbolsGetKeyCode(
         XCBKeySymbols *symbols, 
         XCBKeysym keysym);
 
+/*
+ */
 XCBKeycode *
 XCBKeySymbolsGetKeycode(
         XCBKeySymbols *symbols,
@@ -1957,7 +2050,6 @@ rule that is satisfied from the following list:
   used.
 
 */
-
 XCBKeysym
 XCBKeySymbolsGetKeySym(
         XCBKeySymbols *symbols,
@@ -1965,10 +2057,14 @@ XCBKeySymbolsGetKeySym(
         uint8_t column
         );
 
+/*
+ */
 XCBKeySymbols *
 XCBKeySymbolsAlloc(
         XCBDisplay *display);
 
+/*
+ */
 void
 XCBKeySymbolsFree(
         XCBKeySymbols *keysyms);
@@ -1990,6 +2086,8 @@ XCBRefreshKeyboardMapping(
         XCBKeySymbols *syms, 
         XCBMappingNotifyEvent *event);
 
+/*
+ */
 XCBCookie
 XCBGetKeyboardMappingCookie(
         XCBDisplay *display, 
@@ -2027,13 +2125,17 @@ XCBUnmapWindow(
         XCBWindow window
         );
 
+/*
+ */
 XCBCookie
 XCBDestroyWindow(
         XCBDisplay *display,
         XCBWindow window
         );
 
-/* windows*/
+/* 
+ * window
+ */
 XCBWindow 
 XCBCreateWindow(
         XCBDisplay *display, 
@@ -2048,6 +2150,8 @@ XCBCreateWindow(
         XCBVisual visual, 
         uint32_t valuemask, 
         const uint32_t *value_list);
+/*
+ */
 XCBWindow
 XCBCreateSimpleWindow(
         XCBDisplay *display,
@@ -2063,7 +2167,11 @@ XCBCreateSimpleWindow(
 
 
 /* GC */
-/* RETURN: GC id (identification number) */
+
+
+/* 
+ * RETURN: GC id (identification number) 
+ */
 XCBGC 
 XCBCreateGC(
         XCBDisplay *display, 
@@ -2211,6 +2319,8 @@ XCBChangeGC(
         uint32_t valuemask, 
         const void *valuelist);
 
+/*
+ */
 XCBCookie
 XCBDrawPoint(
         XCBDisplay *display,
@@ -2220,6 +2330,9 @@ XCBDrawPoint(
         uint32_t points_len,
         XCBPoint *points
         );
+
+/*
+ */
 int
 XCBDiscardReply(
         XCBDisplay *display, 
@@ -2260,7 +2373,9 @@ XCBPrefetchMaximumRequestLength(
  * RETURN: XCBCookie64
  */
 XCBCookie64
-XCBWiden(XCBDisplay *display, XCBCookie cookie);
+XCBWiden(
+        XCBDisplay *display, 
+        XCBCookie cookie);
 /* This functions widens a cookies requets to match the 64 version of functions.
  *
  * NOTE: This function is NOT supported and may break at any time.
@@ -2271,7 +2386,9 @@ XCBWiden(XCBDisplay *display, XCBCookie cookie);
  * RETURN: XCBCookie64
  */
 XCBCookie64 
-XCBWidenCookie(XCBDisplay *display, XCBCookie cookie);
+XCBWidenCookie(
+        XCBDisplay *display, 
+        XCBCookie cookie);
 
 
 
@@ -2283,6 +2400,7 @@ XCBWidenCookie(XCBDisplay *display, XCBCookie cookie);
 
 typedef xcb_icccm_get_wm_protocols_reply_t XCBWMProtocols;
 typedef xcb_icccm_wm_hints_t XCBWMHints;
+typedef xcb_icccm_get_wm_class_reply_t XCBWMClass;
 /*
  * min_aspect_num:          The minimum aspect ratios for the width.
  * min_aspect_den:          The minimum aspect ratios for the height.
@@ -2319,6 +2437,8 @@ enum
     XCB_SIZE_HINT_P_WIN_GRAVITY = XCB_ICCCM_SIZE_HINT_P_WIN_GRAVITY,
 };
 
+/*
+ */
 XCBCookie
 XCBGetWMProtocolsCookie(
         XCBDisplay *display, 
@@ -2340,6 +2460,8 @@ XCBGetWMProtocolsReply(
         XCBWMProtocols *protocol_return
         );
 
+/*
+ */
 void
 XCBWipeGetWMProtocolsReply(
         XCBWMProtocols *protocols);
@@ -2375,17 +2497,49 @@ XCBSetWMHintsCookie(
         XCBWMHints *wmhints
         );
 
+/*
+ */
 XCBCookie
 XCBGetWMNormalHintsCookie(
         XCBDisplay *display,
         XCBWindow win
         );
 
+/*
+ */
 uint8_t
 XCBGetWMNormalHintsReply(
         XCBDisplay *display,
         XCBCookie cookie,
         XCBSizeHints *hints_return
+        );
+/*
+ * RETURN: Cookie to Request.
+ */
+XCBCookie
+XCBGetWMClassCookie(
+        XCBDisplay *display, 
+        XCBWindow win
+        );
+/*
+ *
+ * NOTE: Return must be wiped on Success, when done using XCBWipeGetWMClass();
+ *
+ * RETURN: 1 on Success.
+ * RETURN: 0 on Failure.
+ */
+uint8_t
+XCBGetWMClassReply(
+        XCBDisplay *display,
+        XCBCookie cookie,
+        XCBWMClass *class_return
+        );
+
+/* Frees resulting data.
+ */
+void
+XCBWipeGetWMClass(
+        XCBWMClass *_class
         );
 
 
@@ -2403,7 +2557,8 @@ XCBGetWMNormalHintsReply(
 
 
 
-
+void
+XCBDebugShowCallStack(void);
 
 
 
@@ -2648,5 +2803,4 @@ XCBGetWMNormalHintsReply(
  * XCB_WINDOW_NONE = 0,
  *
 */
-
 #endif
