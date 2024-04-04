@@ -20,17 +20,28 @@ typedef int64_t  i64;
 #define BETWEEN(X, A, B)        ((A) <= (X) && (X) <= (B))
 #define MOD(N,M)                ((N)%(M) < 0 ? (N)%(M) + (M) : (N)%(M))
 #define TRUNC(X,A,B)            (MAX((A), MIN((X), (B))))
+#define FREE(F)                 do              \
+                                {               \
+                                    free(F);    \
+                                    F = NULL;   \
+                                } while(0)
+#define CLEARFLAG(FLAGS, FLAG)            (((FLAGS) &= (~FLAG)))
+#define SETFLAG(FLAGS, FLAG, STATE)       do                                        \
+                                          {                                         \
+                                              ((FLAGS) &= (~FLAG));                 \
+                                              ((FLAGS) |= ((FLAG * !!(STATE))));    \
+                                          } while(0)
 
 
 
 #define DIE(fmt, ...)           do { fprintf(stderr, "[%s:%d] by %s(): " fmt "\n", __FILE__,__LINE__,__func__,__VA_ARGS__); exit(EXIT_FAILURE); } while (0)
-#define DIECAT(fmt, ...)        do { fprintf(stderr, "[%s:%d] by %s()\n"  \
-                                    "________________________________\n" \
-                                    "|                    /)        |\n" \
-                                    "|           /\\___/\\ ((         |\n" \
-                                    "|           \\`@_@'/  ))        "  "   " fmt "\n"\
-                                    "|           {_:Y:.}_//         |\n" \
-                                    "|-----------{_}^-'{_}----------|\n" \
+#define DIECAT(fmt, ...)        do { fprintf(stderr, "[%s:%d] by %s()\n"                \
+                                    "________________________________\n"                \
+                                    "|                    /)        |\n"                \
+                                    "|           /\\___/\\ ((         |\n"              \
+                                    "|           \\`@_@'/  ))        "  "   " fmt "\n"  \
+                                    "|           {_:Y:.}_//         |\n"                \
+                                    "|-----------{_}^-'{_}----------|\n"                \
                                     "\n", __FILE__,__LINE__,__func__,__VA_ARGS__); exit(EXIT_FAILURE); } while (0)
 #ifdef ENABLE_DEBUG
 #define DEBUG(fmt, ...) (fprintf(stderr, "[%s:%d] by %s(): " fmt "\n", __FILE__,__LINE__,__func__,__VA_ARGS__))
@@ -57,14 +68,6 @@ typedef int64_t  i64;
 #endif
 
 
-
-#define CLEARFLAG(FLAGS, FLAG)            (((FLAGS) &= (~FLAG)))
-
-#define SETFLAG(FLAGS, FLAG, STATE)       do \
-                                          { \
-                                              ((FLAGS) &= (~FLAG)); \
-                                              ((FLAGS) |= ((FLAG * !!(STATE)))); \
-                                          } while(0)
 
 
 void *ecalloc(size_t nmemb, size_t size);

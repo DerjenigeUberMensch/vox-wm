@@ -214,7 +214,9 @@ _xcb_err_handler(XCBDisplay *display, XCBGenericError *err)
     _xcb_jmpck(display, err);
 #endif
     }
-    free(err);
+    if(err)
+    {   free(err);
+    }
     err = NULL;
 }
 

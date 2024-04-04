@@ -802,8 +802,8 @@ configurenotify(XCBGenericEvent *event)
             /* update the bar */
             for(m = _wm.mons; m; m = nextmonitor(m))
             {
-                if(m->barwin)
-                {   XCBMoveResizeWindow(_wm.dpy, m->barwin, m->wx, m->by, m->ww, m->bh);
+                if(m->bar)
+                {   XCBMoveResizeWindow(_wm.dpy, m->bar->win, m->wx, m->bar->y, m->ww, m->bar->h);
                 }
             }
             focus(NULL);

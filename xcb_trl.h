@@ -1313,7 +1313,7 @@ XCBHasDisplayError(
  * One should note that this function simply sets the function to be called when an error occurs using this API.
  * Meaning that this only handles calls made by this API, this does not handle any errors caused by another thread or raw xcb calls.
  *
- * NOTE: Handler provided should NOT free() the XCBGenericError * provided.
+ * NOTE: Handler provided should NOT free() the XCBGenericError * provided, doing so will result in a "double free()" segfault.
  *
  * RETURN: {1, 0}.
  */
