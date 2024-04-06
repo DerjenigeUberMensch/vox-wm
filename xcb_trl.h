@@ -719,8 +719,8 @@ XCBSelectInput(
  *
  *  
  *
- *  time:               XCB_CURRENT_TIME                    A u32 value to the specified XCB_TIME
- *                      XCB_TIME_CURRENT_TIME               The current XCB time.
+ *  time:               XCBTimestamp                            Time specified for function.
+ *                      XCB_TIME_CURRENT_TIME/XCB_CURRENT_TIME  The current XCB time.
  *
  *
  *  NOTE:   If the specified time is earlier than the current last-focus-change time, the request is ignored .
@@ -1653,8 +1653,8 @@ XCBWaitForReply64(
  *                                              `AllowEvents` request or until the keyboard grab is released.
  *                  XCB_GRAB_MODE_ASYNC         Keyboard event processing continues normally.
  *
- * tim:             XCBTimestamp                Timestamp to avoid race conditions when running X over the network.
- *                  XCB_CURRENT_TIME            Use the current time if avaible.
+ * tim:             XCBTimestamp                                Timestamp to avoid race conditions when running X over the network.
+ *                  XCB_CURRENT_TIME/XCB_TIME_CURRENT_TIME      Use the current time if avaible.
  *
  * RETURN: Cookie to request.
  */
@@ -1863,7 +1863,7 @@ XCBGrabButton(
  *                  XCBCursor                   Specifies the cursor that should be displayed.
  *
  * tim:             XCBTimestamp                Timestamp to avoid race conditions when running X over the network.
- *                  XCB_CURRENT_TIME            Use the current time if avaible.
+ *                  XCB_CURRENT_TIME/XCB_TIME_CURRENT_TIME      Use the current time if avaible.
  *
  *
  *

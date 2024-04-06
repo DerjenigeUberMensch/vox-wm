@@ -346,6 +346,7 @@ motionnotify(XCBGenericEvent *event)
     Monitor *m;
 
     DEBUG("(x: %d, y: %d)", rootx, rooty);
+    DEBUG("(w: %d, h: %d)", XCBDisplayWidth(_wm.dpy, _wm.screen), XCBDisplayHeight(_wm.dpy, _wm.screen));
     if((m = recttomon(rootx, rooty, 1, 1)) != mon && mon)
     {
         Client *c = _wm.selmon->desksel->sel;
@@ -786,16 +787,11 @@ configurenotify(XCBGenericEvent *event)
         u8 dirty;
         dirty = (_wm.sw != w || _wm.sh != h);
         
-        if(dirty)
-        {
-        }
-
         _wm.sw = w;
         _wm.sh = h;
 
 
         DEBUG("(w: %d, h: %d)", w, h);
-        return;
         if(updategeom() || dirty)
         {
             Monitor *m;

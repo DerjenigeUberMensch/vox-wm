@@ -468,7 +468,7 @@ XCBSyncf(XCBDisplay *display)
 XCBCookie
 XCBMoveWindow(XCBDisplay *display, XCBWindow window, i32 x, i32 y)
 {
-    const i32 values[4] = { x, y };
+    const i32 values[2] = { x, y };
     const u16 mask = XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y;
     XCBCookie ret = xcb_configure_window(display, window, mask, values);
 #ifdef DBG
@@ -488,7 +488,7 @@ XCBMoveResizeWindow(XCBDisplay *display, XCBWindow window, i32 x, i32 y, u32 wid
 XCBCookie
 XCBResizeWindow(XCBDisplay *display, XCBWindow window, u32 width, u32 height)
 {
-    const u32 values[4] = { width, height };
+    const u32 values[2] = { width, height };
     const u32 mask = XCB_CONFIG_WINDOW_WIDTH|XCB_CONFIG_WINDOW_HEIGHT;
     XCBCookie ret = xcb_configure_window(display, window, mask, values);
 #ifdef DBG

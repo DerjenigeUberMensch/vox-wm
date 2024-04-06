@@ -316,7 +316,7 @@ void eventhandler(XCBGenericEvent *ev);
 void exithandler(void);
 void floating(Desktop *desk);
 void focus(Client *c);
-int32_t getstate(XCBWindow win);
+int32_t getstate(XCBWindow win, XCBGetWindowAttributes *state);
 void grabbuttons(XCBWindow window, uint8_t focused);
 void grabkeys(void);
 void grid(Desktop *desk);
