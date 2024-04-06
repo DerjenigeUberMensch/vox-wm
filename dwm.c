@@ -815,8 +815,8 @@ exithandler(void)
 void
 floating(Desktop *desk)
 {
-    /* floating is just default restacking behaviour which is quite convinient for us */
-    (void)desk;
+    /* for now just check in restack for it */
+    monocle(desk);
 }
 
 void
@@ -859,7 +859,7 @@ focus(Client *c)
 }
 
 i32
-getstate(XCBWindow win)
+getstate(XCBWindow win, XCBGetWindowAttributes *state_att)
 {
     i32 state = 0;
     const XCBCookie cookie = XCBGetWindowPropertyCookie(_wm.dpy, win, wmatom[WMState], 0L, 2L, False, wmatom[WMState]);
@@ -1413,14 +1413,18 @@ scan(void)
         if(wins)
         {
             XCBCookie wa[num];
+            XCBCookie wastates[num];
             XCBCookie tfh[num];
             for(i = 0; i < num; ++i)
             {   
                 wa[i] = XCBGetWindowAttributesCookie(_wm.dpy, wins[i]);
+                /* this specifically queries for the state which wa[i] might fail to provide */
+                wastates[i] = XCBGetWindowPropertyCookie(_wm.dpy, wins[i], wmatom[WMState], 0L, 2L, False, wmatom[WMState]);
                 tfh[i] = XCBGetTransientForHintCookie(_wm.dpy, wins[i]);
             }
             
             XCBGetWindowAttributes *replies[num];
+            XCBGetWindowAttributes *replystates[num];
             /* filled data no need to free */
             XCBWindow trans[num];
             uint8_t hastrans = 0;
@@ -1428,15 +1432,21 @@ scan(void)
             for(i = 0; i < num; ++i)
             {
                 replies[i] = XCBGetWindowAttributesReply(_wm.dpy, wa[i]);
+                replystates[i] = XCBGetWindowAttributesReply(_wm.dpy, wastates[i]);
                 hastrans = XCBGetTransientForHintReply(_wm.dpy, tfh[i], &trans[i]);
-                trans[i] *= hastrans;
 
+                if(!hastrans)
+                {   trans[i] = 0;
+                }
                 /* override_redirect only needed to be handled for old windows */
                 /* X auto redirects when running wm so no need to do anything else */
-                if(!replies[i] || replies[i]->override_redirect || trans[i]) 
+                if(replies[i]->override_redirect || trans[i]) 
                 {   continue;
                 }
-                if(replies[i]->map_state == XCB_MAP_STATE_VIEWABLE ||getstate(wins[i]) == XCB_WINDOW_ICONIC_STATE)
+                if(replies[i] && replies[i]->map_state == XCB_MAP_STATE_VIEWABLE)
+                {   manage(wins[i]);
+                }
+                else if(replystates[i] && replystates[i]->map_state == XCB_WINDOW_ICONIC_STATE)
                 {   manage(wins[i]);
                 }
             }
@@ -1444,17 +1454,18 @@ scan(void)
             /* now the transients */
             for(i = 0; i <  num; ++i)
             {   
-                if(replies[i])
-                {   
-                    if(trans[i] && replies[i]->map_state == XCB_MAP_STATE_VIEWABLE && getstate(wins[i]) == XCB_WINDOW_ICONIC_STATE)
-                    {   
+                if(trans[i])
+                {
+                    if(replies[i]->map_state == XCB_MAP_STATE_VIEWABLE && replystates[i] && replystates[i]->map_state == XCB_WINDOW_ICONIC_STATE)
+                    {
                         /* technically we shouldnt have to do this but just in case */
                         if(!wintoclient(wins[i]))
                         {   manage(wins[i]);
                         }
                     }
-                    free(replies[i]);
                 }
+                free(replies[i]);
+                free(replystates[i]);
             }
         }
         free(tree);
