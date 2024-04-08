@@ -42,9 +42,11 @@ enum NETWMPROTOCOLS
     NetWMUserTime, NetWMUserTimeWindow,
     NetWMFrameExtents, NetWMOpaqueRegion,
     NetWMStateFullscreen, 
-    NetWMStateAlwaysOnTop, NetWMStateStayOnTop,
+
+    NetWMStateAbove, NetWMStateAlwaysOnTop = NetWMStateAbove,
+
     NetWMStateMaximizedVert, NetWMStateMaximizedHorz, NetWMStateMinimize, 
-    NetWMStateAbove, NetWMStateBelow, NetWMStateDemandAttention,  NetWMStateSticky,
+    NetWMStateBelow, NetWMStateDemandAttention,  NetWMStateSticky,
     NetWMStateShaded, NetWMStateSkipTaskbar, NetWMStateSkipPager,
     NetWMStateModal, NetWMStateHidden, NetWMStateFocused,
     /* action requests */

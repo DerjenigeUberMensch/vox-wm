@@ -47,11 +47,10 @@ XCBInitAtoms(XCBDisplay *display, XCBAtom *wm_atom_return, XCBAtom *net_atom_ret
         netcookies[NetWMStateSkipPager] = XCBInternAtomCookie(display, "_NET_WM_STATE_SKIP_PAGER", False);
         netcookies[NetWMStateHidden] = XCBInternAtomCookie(display, "_NET_WM_STATE_HIDDEN", False);
         netcookies[NetWMStateFullscreen] = XCBInternAtomCookie(display, "_NET_WM_STATE_FULLSCREEN", False);
-        netcookies[NetWMStateAlwaysOnTop] = netcookies[NetWMStateAbove] = XCBInternAtomCookie(display, "_NET_WM_STATE_ABOVE", False);
+        netcookies[NetWMStateAbove] = XCBInternAtomCookie(display, "_NET_WM_STATE_ABOVE", False);
         netcookies[NetWMStateBelow] = XCBInternAtomCookie(display, "_NET_WM_STATE_BELOW", False);
         netcookies[NetWMStateDemandAttention] = XCBInternAtomCookie(display, "_NET_WM_STATE_DEMANDS_ATTENTION", False);
         netcookies[NetWMStateFocused] = XCBInternAtomCookie(display, "_NET_WM_STATE_FOCUSED", False);
-        netcookies[NetWMStateStayOnTop] = XCBInternAtomCookie(display, "_NET_WM_STATE_STAYS_ON_TOP", False); /* either I have dementia or does this not exists? -dusk */
 
         /* actions suppoorted */
         netcookies[NetWMActionMove] = XCBInternAtomCookie(display, "_NET_WM_ACTION_MOVE", False);
@@ -166,12 +165,10 @@ XCBInitAtoms(XCBDisplay *display, XCBAtom *wm_atom_return, XCBAtom *net_atom_ret
         net_atom_return[NetWMStateSkipPager] = XCBInternAtomReply(display, netcookies[NetWMStateSkipPager]);
         net_atom_return[NetWMStateHidden] = XCBInternAtomReply(display, netcookies[NetWMStateHidden]);
         net_atom_return[NetWMStateFullscreen] = XCBInternAtomReply(display, netcookies[NetWMStateFullscreen]);
-        net_atom_return[NetWMStateAlwaysOnTop] = XCBInternAtomReply(display, netcookies[NetWMStateAlwaysOnTop]);
-        net_atom_return[NetWMStateAbove] = net_atom_return[NetWMStateAlwaysOnTop];
+        net_atom_return[NetWMStateAbove] = XCBInternAtomReply(display, netcookies[NetWMStateAbove]);
         net_atom_return[NetWMStateBelow] = XCBInternAtomReply(display, netcookies[NetWMStateBelow]);
         net_atom_return[NetWMStateDemandAttention] = XCBInternAtomReply(display, netcookies[NetWMStateDemandAttention]);
         net_atom_return[NetWMStateFocused] = XCBInternAtomReply(display, netcookies[NetWMStateFocused]);
-        net_atom_return[NetWMStateStayOnTop] = XCBInternAtomReply(display, netcookies[NetWMStateStayOnTop]);
 
         /* actions suppoorted */
         net_atom_return[NetWMActionMove] = XCBInternAtomReply(display, netcookies[NetWMActionMove]);

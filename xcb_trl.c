@@ -35,7 +35,6 @@
 
 
 /* error codes */
-#include <X11/X.h>
 #include <X11/Xproto.h>
 
 #include <stdio.h>
@@ -92,15 +91,15 @@ typedef struct _xcb_caller _xcb_caller;
 
 struct _xcb_caller 
 {
-    XCBCookie id;
+    unsigned int id;
     char *name;
 };
 
 #define MAX_DEBUG_LIMIT     32768   /* the number means nothing its just some random big enough number for most use cases */
                 
 _xcb_caller _xcb_funcs[MAX_DEBUG_LIMIT];
-uint32_t rear = -1;
-uint32_t front = -1;
+long long rear = -1;
+long long front = -1;
 
 
 static void
@@ -130,7 +129,7 @@ static void
 _xcb_push_func(XCBCookie cookie, char *func)
 {
     _xcb_caller item;
-    item.id = cookie;
+    item.id = cookie.sequence;
     item.name = func;
 
     if(rear == MAX_DEBUG_LIMIT - 1)
@@ -156,6 +155,8 @@ _xcb_pop_func(XCBCookie cookie)
     }
     else
     {
+        _xcb_funcs[front].name = NULL;
+        _xcb_funcs[front].id = 0;
         front += 1;
     }
 }
@@ -168,7 +169,7 @@ _xcb_show_call_stack(void)
     }
     else
     {
-        for(int i = front; i <= rear; ++i)
+        for(long long i = front; i <= rear; ++i)
         {   _XCB_MANUAL_DEBUG("%s", _xcb_funcs[i].name);
         }
     }
@@ -178,22 +179,57 @@ void
 XCBBreakPoint(void) 
 {
 }
-
-void
-XCBDebugShowCallStack(void)
-{
-    _xcb_show_call_stack();
-}
-
-#else
-
-void
-XCBDebugShowCallStack(void)
-{
-    _XCB_MANUAL_DEBUG0("Debugging is not enabled in this session.");
-}
-
 #endif
+
+char *
+XCBDebugGetCallStack()
+{
+    char *stack = NULL;
+#ifdef DBG
+    long long size = 0;
+    long long charsize = 0;
+    /* yeah idk */
+    for(long long i = front; i <= rear; ++i, ++size)
+    {   charsize += strlen(_xcb_funcs[i].name);
+    }
+    /* +size cause we need spaces, and +1 cause we need \0 */
+    stack = malloc(charsize * sizeof(char) + --size * sizeof(char) + 1 * sizeof(char));
+    if(stack)
+    {   
+        if(front != -1 && rear != -1 && front != rear)
+        {   strcpy(stack, _xcb_funcs[front].name);
+            strcat(stack, " ");
+        }
+        else
+        {   free(stack);
+            return NULL;
+        }
+        for(long long i = front; i <= rear; ++i)
+        {
+            strcat(stack, _xcb_funcs[i].name);
+            strcat(stack, " ");
+        }
+        strcat(stack, "\0");
+    }
+#endif
+    return stack;
+}
+
+char *
+XCBDebugGetLastCall()
+{
+    const char *lastcall = NULL;
+#ifdef DBG
+    if(front != -1 && rear != -1 && front != rear)
+    {
+        if(_xcb_funcs[rear].name)
+        {   lastcall = _xcb_funcs[rear].name;
+        }
+    }
+#endif
+    return (char *)lastcall;
+}
+
 
 
 
@@ -214,9 +250,7 @@ _xcb_err_handler(XCBDisplay *display, XCBGenericError *err)
     _xcb_jmpck(display, err);
 #endif
     }
-    if(err)
-    {   free(err);
-    }
+    free(err);
     err = NULL;
 }
 
@@ -349,6 +383,7 @@ XCBGetSetup(XCBDisplay *display)
 XCBScreen *
 XCBGetScreen(XCBDisplay *display)
 {
+    /* could alos use xcb_aux_get_screen()*/   
     return xcb_setup_roots_iterator(xcb_get_setup(display)).data;
 }
 
@@ -468,7 +503,7 @@ XCBSyncf(XCBDisplay *display)
 XCBCookie
 XCBMoveWindow(XCBDisplay *display, XCBWindow window, i32 x, i32 y)
 {
-    const i32 values[2] = { x, y };
+    const i32 values[4] = { x, y };
     const u16 mask = XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y;
     XCBCookie ret = xcb_configure_window(display, window, mask, values);
 #ifdef DBG
@@ -488,7 +523,7 @@ XCBMoveResizeWindow(XCBDisplay *display, XCBWindow window, i32 x, i32 y, u32 wid
 XCBCookie
 XCBResizeWindow(XCBDisplay *display, XCBWindow window, u32 width, u32 height)
 {
-    const u32 values[2] = { width, height };
+    const u32 values[4] = { width, height };
     const u32 mask = XCB_CONFIG_WINDOW_WIDTH|XCB_CONFIG_WINDOW_HEIGHT;
     XCBCookie ret = xcb_configure_window(display, window, mask, values);
 #ifdef DBG
@@ -662,7 +697,7 @@ XCBGetGeometryReply(
 
 
 XCBCookie
-XCBInternAtomCookie(XCBDisplay *display, const char *name, int only_if_exists)
+XCBInternAtomCookie(XCBDisplay *display, const char *name, uint8_t only_if_exists)
 {
     const xcb_intern_atom_cookie_t cookie = xcb_intern_atom(display, only_if_exists, strlen(name), name);
     XCBCookie ret = { .sequence = cookie.sequence };
@@ -679,6 +714,14 @@ XCBInternAtomReply(XCBDisplay *display, XCBCookie cookie)
     XCBGenericError *err = NULL;
     const xcb_intern_atom_cookie_t cookie1 = { .sequence = cookie.sequence };
     xcb_intern_atom_reply_t *reply = xcb_intern_atom_reply(display, cookie1, &err);
+
+#ifdef DBG
+    if(reply && reply->length > 1)
+    {
+        _XCB_MANUAL_DEBUG0("There are several possible atoms for the provided cookie, this might be important.");
+        XCBBreakPoint();
+    }
+#endif
     if(err)
     {
         _xcb_err_handler(display, err);
@@ -1129,23 +1172,23 @@ XCBErrorCodeText(
     const char *errs[18] =
     {
         [0] = NULL,
-        [BadRequest] = "BadRequest",
-        [BadValue] = "BadValue",
-        [BadWindow] = "BadWindow",
-        [BadPixmap] = "BadPixmap",
-        [BadAtom] = "BadAtom",
-        [BadCursor] = "BadCursor",
-        [BadFont] = "BadFont",
-        [BadMatch] = "BadMatch",
-        [BadDrawable] = "BadDrawable",
-        [BadAccess] = "BadAccess",
-        [BadAlloc] = "BadAlloc",
-        [BadColor] = "BadColor",
-        [BadGC] = "BadGC",
-        [BadIDChoice] = "BadIDChoice",
-        [BadName] = "BadName",
-        [BadLength] = "BadLength",
-        [BadImplementation] = "BadImplementation",
+        [XCBBadRequest] = "BadRequest",
+        [XCBBadValue] = "BadValue",
+        [XCBBadWindow] = "BadWindow",
+        [XCBBadPixmap] = "BadPixmap",
+        [XCBBadAtom] = "BadAtom",
+        [XCBBadCursor] = "BadCursor",
+        [XCBBadFont] = "BadFont",
+        [XCBBadMatch] = "BadMatch",
+        [XCBBadDrawable] = "BadDrawable",
+        [XCBBadAccess] = "BadAccess",
+        [XCBBadAlloc] = "BadAlloc",
+        [XCBBadColor] = "BadColor",
+        [XCBBadGC] = "BadGC",
+        [XCBBadIDChoice] = "BadIDChoice",
+        [XCBBadName] = "BadName",
+        [XCBBadLength] = "BadLength",
+        [XCBBadImplementation] = "BadImplementation",
     };
     /* bounds check */          /* & over && for better inlining */
     error_code *= (error_code > 0) & (error_code < 18);

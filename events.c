@@ -798,7 +798,7 @@ configurenotify(XCBGenericEvent *event)
             /* update the bar */
             for(m = _wm.mons; m; m = nextmonitor(m))
             {
-                if(m->bar)
+                if(m->bar->win)
                 {   XCBMoveResizeWindow(_wm.dpy, m->bar->win, m->wx, m->bar->y, m->ww, m->bar->h);
                 }
             }
@@ -1198,14 +1198,28 @@ propertynotify(XCBGenericEvent *event)
 
     Client *c = NULL;
     u8 sync = 0;
-    if((win == _wm.root) && atom == XCB_ATOM_WM_NAME)
+    if(win == _wm.root && atom == XCB_ATOM_WM_NAME)
     {   /* updatestatus */
     }
 
     if(state == XCB_PROPERTY_DELETE)
     {   return;
     }
-    
+
+    if(_wm.selmon->bar && _wm.selmon->bar->win == win)
+    {
+        /* probably one of the _NET_WM_STRUT's */
+        if(atom == netatom[NetWMStrutPartial] || atom == netatom[NetWMStrut])
+        {   
+            updatebargeom(_wm.selmon);
+            updatebarpos(_wm.selmon);
+        }
+        else
+        {
+            DEBUG0("Unknown atom prop.");
+        }
+    }
+
     if((c = wintoclient(win)))
     {   
         XCBCookie cookie;

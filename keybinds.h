@@ -7,18 +7,18 @@
 #include <X11/keysym.h>
 
 /* key definitions */
-#define ALT         XCB_MOD_MASK_1
-#define NUMLOCK     XCB_MOD_MASK_2
-#define SUPER       XCB_MOD_MASK_4
-#define CTRL        XCB_MOD_MASK_CONTROL
-#define SHIFT       XCB_MOD_MASK_SHIFT
-#define CAPSLOCK    XCB_MOD_MASK_LOCK
+#define ALT         XCBMod1Mask
+#define NUMLOCK     XCBMod2Mask
+#define SUPER       XCBMod4Mask
+#define CTRL        XCBControlMask
+#define SHIFT       XCBShiftMask
+#define CAPSLOCK    XCBLockMask
 #define TAB         XK_Tab
-#define LMB         XCB_BUTTON_MASK_1
-#define MMB         XCB_BUTTON_MASK_2
-#define RMB         XCB_BUTTON_MASK_3
-#define BUTTON4     XCB_BUTTON_MASK_4
-#define BUTTON5     XCB_BUTTON_MASK_5
+#define LMB         XCBButton1Mask
+#define MMB         XCBButton2Mask
+#define RMB         XCBButton3Mask
+#define BUTTON4     XCBButton4Mask
+#define BUTTON5     XCBButton5Mask
 
 /* helper for spawning shell commands in the pre dwm-5.0 fashion */
 #define SHCMD(cmd) { .v = (const char*[]){ "/bin/sh", "-c", cmd, NULL } }
@@ -42,6 +42,8 @@ static const Key keys[] =
     { XCB_KEY_PRESS,            SUPER,                  XK_x,       SetWindowLayout,    { .ui = Floating }  },
     { XCB_KEY_PRESS,            SUPER,                  XK_c,       SetWindowLayout,    { .ui = Monocle}  },
     { XCB_KEY_PRESS,            SUPER,                  XK_g,       SetWindowLayout,    { .ui = Grid}  },
+
+    { XCB_KEY_PRESS,            SUPER,                  XK_n,       UserStats,          { 0 }  },
 
     { XCB_KEY_PRESS,            CTRL|SUPER,             XK_p,       Restart,            { 0 }  },
     { XCB_KEY_RELEASE,          SHIFT|SUPER,            XK_p,       Quit,               { 0 }  }
