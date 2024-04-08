@@ -33,60 +33,107 @@
 #define MAX_QUEUE_SIZE          1024
 
 /* Client struct flags */
-#define _ALWAYSONTOP        ((1 << 0))
-#define _FULLSCREEN         ((1 << 1))
-#define _WASFLOATING        ((1 << 2))
-#define _FLOATING           ((1 << 3))
-#define _FIXED              ((1 << 4))
-#define _URGENT             ((1 << 5))
-#define _NEVERFOCUS         ((1 << 6))
-#define _HIDDEN             ((1 << 7))
-#define _STICKY             ((1 << 8))
-#define _DIALOG             ((1 << 9))
-#define _MODAL              ((1 << 10))
+
+/* Our custom states */
+
+#define _NEVERFOCUS         ((1 << 6)
+
+/* EWMH window types */
+#define _TYPE_DESKTOP       ((1 << 0))
+#define _TYPE_DOCK          ((1 << 1))
+#define _TYPE_TOOLBAR       ((1 << 2))
+#define _TYPE_MENU          ((1 << 3))
+#define _TYPE_UTILITY       ((1 << 4))
+#define _TYPE_SPLASH        ((1 << 5))
+#define _TYPE_DIALOG        ((1 << 6))
+#define _TYPE_DROPDOWN_MENU ((1 << 7))
+#define _TYPE_POPUP_MENU    ((1 << 8))
+#define _TYPE_TOOLTIP       ((1 << 9))
+#define _TYPE_NOTIFICATION  ((1 << 10))
+#define _TYPE_COMBO         ((1 << 11))
+#define _TYPE_DND           ((1 << 12))
+#define _TYPE_NORMAL        ((1 << 13))
+
+/* unused bits */
+#define _TYPE_Y             ((1 << 14))
+#define _TYPE_Z             ((1 << 15))
+
+/* EWMH Window states */
+#define _STATE_MODAL                ((1 << 0))
+#define _STATE_STICKY               ((1 << 1))
+#define _STATE_MAXIMIZED_VERT       ((1 << 2))  
+#define _STATE_MAXIMIZED_HORZ       ((1 << 3))
+#define _STATE_SHADED               ((1 << 4))
+#define _STATE_SKIP_TASKBAR         ((1 << 5))
+#define _STATE_SKIP_PAGER           ((1 << 6))
+#define _STATE_HIDDEN               ((1 << 7))
+#define _STATE_FULLSCREEN           ((1 << 8))
+#define _STATE_ABOVE                ((1 << 9))
+#define _STATE_BELOW                ((1 << 10))
+#define _STATE_DEMANDS_ATTENTION    ((1 << 11))
+#define _STATE_FOCUSED              ((1 << 12))
+/* not actual state but just lumped in cause assinging its own is stupid. */
+#define _STATE_NEVERFOCUS           ((1 << 13))
+
+/* unused bits */
+#define _STATE_Y                    ((1 << 14))
+#define _STATE_Z                    ((1 << 15))
+
 
 /* Client macros */
 
-/* This returns non zero on true, but not necessarly 1 */
-#define ISALWAYSONTOP(C)        (((C)->flags & _ALWAYSONTOP))
-/* This returns non zero on true, but not necessarly 1 */
-#define ISFULLSCREEN(C)         (((C)->flags & _FULLSCREEN))
-/* This returns non zero on true, but not necessarly 1 */
-#define WASFLOATING(C)          (((C)->flags & _WASFLOATING))
-/* This returns non zero on true, but not necessarly 1 */
-#define ISFLOATING(C)           (((C)->flags & _WASFLOATING))
-/* This returns non zero on true, but not necessarly 1 */
-#define ISFIXED(C)              (((C)->flags & _FIXED))
-/* This returns non zero on true, but not necessarly 1 */
-#define ISURGENT(C)             (((C)->flags & _URGENT))
-/* This returns non zero on true, but not necessarly 1 */
-#define NEVERFOCUS(C)           (((C)->flags & _NEVERFOCUS))
-/* This returns non zero on true, but not necessarly 1 */
-#define ISHIDDEN(C)             (((C)->flags & _HIDDEN))
-/* This returns non zero on true, but not necessarly 1 */
-#define ISSTICKY(C)             (((C)->flags & _STICKY))
-/* This returns non zero on true, but not necessarly 1 */
-#define ISDIALOG(C)             (((C)->flags & _DIALOG))
-/* This returns non zero on true, but not necessarly 1 */
-#define ISMODAL(C)              (((C)->flags & _MODAL))
+/* Our custom states */
+
+
+#define ISALWAYSONTOP(C)        (((C)->wstateflags & _STATE_ABOVE))
+#define WASFLOATING(C)          (( ((C)->mon->wx == (C)->oldx) & ((C)->mon->wy == (C)->oldy) & ((C)->mon->ww == (C)->oldw) & ((C)->mon->wh == (C)->oldh) ))
+#define ISFLOATING(C)           (( ((C)->mon->wx == (C)->x) & ((C)->mon->wy == (C)->y) & ((C)->mon->ww == (C)->w) & ((C)->mon->wh == (C)->h)  ))
+#define ISFIXED(C)              (( ((C)->minw != 0 ) & ((C)->minh != 0) & ((C)->minw == (C)->maxw) & ((C)->minh == (C)->maxh) ))
+#define ISURGENT(C)             (((C)->wstateflags & _STATE_DEMANDS_ATTENTION))
+#define NEVERFOCUS(C)           (((C)->wstateflags & _STATE_NEVERFOCUS))
+#define ISMAXVERT(C)            (((C)->h == (C)->mon->wh))
+#define ISMAXHORZ(C)            (((C)->w == (C)->mon->ww))
+/* EWMH Window types */
+
+#define ISDESKTOP(C)            (((C)->wtypeflags & _TYPE_DESKTOP))
+#define ISDOCK(C)               (((C)->wtypeflags & _TYPE_DOCK))
+#define ISTOOLBAR(C)            (((C)->wtypeflags & _TYPE_TOOLBAR))
+#define ISMENU(C)               (((C)->wtypeflags & _TYPE_MENU))
+#define ISUTILITY(C)            (((C)->wtypeflags & _TYPE_UTILITY))
+#define ISSPLASH(C)             (((C)->wtypeflags & _TYPE_SPLASH))
+#define ISDIALOG(C)             (((C)->wtypeflags & _TYPE_DIALOG))
+#define ISDROPDOWNMENU(C)       (((C)->wtypeflags & _TYPE_DROPDOWN_MENU))
+#define ISPOPUPMENU(C)          (((C)->wtypeflags & _TYPE_POPUP_MENU))
+#define ISTOOLTIP(C)            (((C)->wtypeflags & _TYPE_TOOLTIP))
+#define ISNOTIFICATION(C)       (((C)->wtypeflags & _TYPE_NOTIFICATION))
+#define ISCOMBO(C)              (((C)->wtypeflags & _TYPE_COMBO))
+#define ISDND(C)                (((C)->wtypeflags & _TYPE_DND))
+#define ISNORMAL(C)             (((C)->wtypeflags & _TYPE_NORMAL))
+
+
+/* EWMH Window states */
+
+#define ISMODAL(C)              (((C)->wstateflags & _STATE_MODAL))
+#define ISSTICKY(C)             (((C)->wstateflags & _STATE_STICKY))
+#define ISMAXIMIZEDVERT(C)      (((C)->wstateflags & _STATE_MAXIMIZED_VERT))
+#define ISMAXIMIZEDHORZ(C)      (((C)->wstateflags & _STATE_MAXIMIZED_HORZ))
+#define ISSHADED(C)             (((C)->wstateflags & _STATE_SHADED))
+#define SKIPTASKBAR(C)          (((C)->wstateflags & _STATE_SKIP_TASKBAR))
+#define SKIPAGER(C)             (((C)->wstateflags & _STATE_SKIP_PAGER))
+#define ISHIDDEN(C)             (((C)->wstateflags & _STATE_HIDDEN))
+#define ISFULLSCREEN(C)         (((C)->wstateflags & _STATE_FULLSCREEN))
+#define ISABOVE(C)              (((C)->wstateflags & _STATE_ABOVE))
+#define ISBELOW(C)              (((C)->wstateflags & _STATE_BELOW))
+#define DEMANDSATTENTION(C)     (((C)->wstateflags & _STATE_DEMANDS_ATTENTION))
+#define ISFOCUSED(C)              (((C)->wstateflags & _STATE_FOCUSED))
+
+
 /* This returns 1 when true */
 #define ISVISIBLE(C)            ((((C)->mon->desksel == (C)->desktop || ISSTICKY((C))) & (!ISHIDDEN((C)))))
 
 /* Bar struct flags */
 
-#define _SHOWBAR            ((1 << 0))
-#define _OSHOWBAR           ((1 << 1))
-#define _TOPBAR             ((1 << 2))
-
 /* Bar Macros */
-
-/* This returns non zero on true, but not necessarly 1 */
-#define SHOWBAR(B)              (((B)->flags & _SHOWBAR))
-/* This returns non zero on true, but not necessarly 1 */
-#define OSHOWBAR(B)             (((B)->flags & _OSHOWBAR))
-/* This returns non zero on true, but not necessarly 1 */
-#define TOPBAR(B)               (((B)->flags & _TOPBAR))
-
 
 /* WM struct flags */
 #define _CFG_HOVERFOCUS         ((1 << 0))
@@ -169,7 +216,11 @@ struct Client
     uint16_t oldw;      /* Previous Width           */
     uint16_t oldh;      /* Previous Height          */
 
-    uint16_t flags;     /* Flags for client         */
+    /* Client Flags */
+
+    uint16_t wtypeflags;/* Window type flags        */
+    uint16_t wstateflags;/* Window state flags      */
+
     XCBWindow win;      /* Client Window            */
 
     Client *next;       /* The next client in list  */
@@ -195,8 +246,9 @@ struct Client
 
     pid_t pid;          /* Client Pid               */
     char *name;         /* Client Name              */
+    char *icon;         /* Array of icon values     */
 
-    uint8_t pad0[16];
+    uint8_t pad0[8];
 };
 
 struct Monitor
@@ -216,7 +268,7 @@ struct Monitor
     Desktop *desksel;           /* Selected Desktop                         */
     Monitor *next;              /* Next Monitor                             */
 
-    Client *bar;                /* The Associated Task-Bar                  */
+    Bar *bar;                   /* The Associated Task-Bar                  */
     uint8_t pad0[8];
 };
 
@@ -305,7 +357,7 @@ void cleanupmon(Monitor *m);
 void cleanupmons(void);
 void configure(Client *c);
 Client *createclient(Monitor *m);
-Client *createbar(void);
+Bar *createbar(void);
 Desktop *createdeskop(Monitor *m);
 Monitor *createmon(void);
 Stack *createstack(void);
@@ -320,7 +372,7 @@ void grabbuttons(XCBWindow window, uint8_t focused);
 void grabkeys(void);
 void grid(Desktop *desk);
 Client *manage(XCBWindow window);
-Client *managebar(Monitor *m, XCBWindow win);
+Bar *managebar(Monitor *m, XCBWindow win);
 void monocle(Desktop *desk);
 Client *nextclient(Client *c);
 Desktop *nextdesktop(Desktop *desktop);
@@ -342,15 +394,12 @@ void setborderwidth(Client *c, uint16_t border_width);
 void setclientdesktop(Client *c, Desktop *desktop);
 void setclientstate(Client *c, uint8_t state);
 void setdesktoplayout(Desktop *desk, uint8_t layout);
-void setdialog(Client *c, uint8_t state);
-void setfixed(Client *c, uint8_t state);
-void setfloating(Client *c, uint8_t isfloating);
+void setwtypedialog(Client *c, uint8_t state);
 void setfullscreen(Client *c, uint8_t isfullscreen);
 void setfocus(Client *c);
 void sethidden(Client *c, uint8_t state);
 void setmodal(Client *c, uint8_t state);
 void setneverfocus(Client *c, uint8_t state);
-void setshowbar(Client *c, uint8_t state);
 void setsticky(Client *c, uint8_t state);
 void settopbar(Client *c, uint8_t state);
 void setup(void);
@@ -367,6 +416,9 @@ void unfocus(Client *c, uint8_t setfocus);
 void updatebarpos(Monitor *m);
 void updatebargeom(Monitor *m);
 void updateclientlist(void);
+void updatedesktop(void);
+void updatedesktopnames(void);
+void updatedesktopnum(void);
 int  updategeom(void);
 void updateicon(Client *c);
 void updatenumlockmask(void);
@@ -380,11 +432,13 @@ void updatewindowtype(Client *c, XCBAtom wtype, uint8_t add_remove_toggle);
 void updatewindowtypes(Client *c, XCBAtom wtype[], uint32_t atomslength);
 void updatewmhints(Client *c, XCBWMHints *hints);
 void winsetstate(XCBWindow win, int32_t state);
+void *wintobar(XCBWindow win, uint8_t is_return_mon);
 Client *wintoclient(XCBWindow win);
 Monitor *wintomon(XCBWindow win);
 
 
 void unmanage(Client *c, uint8_t destroyed);
+void unmanagebar(Bar *bar);
 
 void xerror(XCBDisplay *display, XCBGenericError *error);
 

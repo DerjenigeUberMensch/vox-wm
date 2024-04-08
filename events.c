@@ -930,11 +930,16 @@ unmapnotify(XCBGenericEvent *event)
     (void)isconfigure;
 
     Client *c;
+    Bar *bar;
     u8 sync = 0;
     if((c = wintoclient(win)))
     {   
         unmanage(c, 0);
         sync = 1;
+    }
+    else if((bar = wintobar(win, 0)))
+    {
+        unmanagebar(bar);
     }
 
     if(sync)
@@ -1236,8 +1241,7 @@ propertynotify(XCBGenericEvent *event)
                 {
                     if((tmp = wintoclient(trans)))
                     {   
-                        setfloating(tmp, 1);
-                        setdialog(tmp, 1);
+                        setwtypedialog(tmp, 1);
                         sync = 1;
                     }
                 }
