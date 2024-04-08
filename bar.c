@@ -15,6 +15,7 @@
 
 
 #include "bar.h"
+#include "util.h"
 
 void
 writebar(char *fmt, ...)
@@ -33,4 +34,10 @@ writebar(char *fmt, ...)
     vfprintf(stdout, fmt, args);
     fflush(bar);
     va_end(args);
+}
+
+void
+setshowbar(Bar *bar, uint8_t state)
+{
+    SETFLAG(bar->flags, _SHOW_BAR, !!state);
 }
