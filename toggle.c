@@ -20,6 +20,13 @@ extern WM _wm;
 void
 UserStats(const Arg *arg)
 {
+    char *str = XCBDebugGetLastCall();
+    if(str)
+    {   
+        DEBUG("%s", str);
+        DEBUG0("Ill show everthing");
+    }
+    free(str);
 }
 
 void
@@ -254,6 +261,7 @@ SetMonitorFact(const Arg *arg)
 void
 SpawnWindow(const Arg *arg)
 {
+    /* TODO: trying to spawn lemonbar fails for some reason? */
     struct sigaction sa;
     if (fork() == 0)
     {
