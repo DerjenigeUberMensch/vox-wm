@@ -2030,7 +2030,7 @@ XCBGetEventNameFromEvent(
  * RETURN: NULL on Failure.
  */
 char *
-XCBErrorCodeText(
+XCBGetErrorCodeText(
         uint8_t error_code);
 
 /* Returns (The error) using a number provided.
@@ -2044,7 +2044,7 @@ XCBErrorCodeText(
  * RETURN: NULL on Failure.
  */
 char *
-XCBErrorMajorCodeText(
+XCBGetErrorMajorCodeText(
         uint8_t major_code);
 
 /*  
@@ -2059,9 +2059,26 @@ XCBErrorMajorCodeText(
  * RETURN: NULL on Failure.
  */
 char *
-XCBErrorMinorCodeText(
+XCBGetErrorMinorCodeText(
         uint16_t minor_code
         );
+/* Returns (The full error) using a number provided.
+ * The different vs just XCBGetErrorText is you get the server dying mini description.
+ * EX: BadMatch (invalid parameter attributes).
+ *
+ * The number is from the generic structure XCBGenericError.
+ * XCBGenericError *err;
+ * err->major_code;
+ *
+ * NOTE: Usage may result in bigger binary sizes.
+ *
+ * RETURN: Error text on Success.
+ * RETURN: NULL on Failure.
+*/
+char *
+XCBGetFullErrorText(
+        uint8_t error_code
+);
 
 /*
  * Returns one of the following using the number provided.
@@ -2077,7 +2094,7 @@ XCBErrorMinorCodeText(
  * RETURN: NULL on Failure.
  */
 char *
-XCBErrorDisplayText(
+XCBGetErrorDisplayText(
         uint8_t display_error
         );
 
@@ -2176,6 +2193,10 @@ XCBSendEvent(
  * This returns a structure called xcb_generic_event_t.
  * This Function Blocks until a request is received.
  *
+ * NOTE: It is not recommended to use this function as some clients may not be poll() or select() compatible.
+ *       Instead it is recommended to either a have a custom XCBPollForEvent() queue or to wakeup the thread,
+ *       by sending any event to the caller (root, the window...) and flushing the connection.
+ *
  * event_return: XCBGenericEvent * on Success.
  * event_return: XCBGenericError * on Error.
  * event_return: NULL on I/O Error.
@@ -2191,6 +2212,10 @@ XCBNextEvent(
  * Gets and returns the next Event from the XServer.
  * This returns a structure called xcb_generic_event_t.
  * This Function Blocks until a request is received.
+ * 
+ * NOTE: It is not recommended to use this function as some clients may not be poll() or select() compatible.
+ *       Instead it is recommended to either a have a custom XCBPollForEvent() queue or to wakeup the thread,
+ *       by sending any event to the caller (root, the window...) and flushing the connection.
  *
  * RETURN: XCBGenericEvent * on Success.
  * RETURN: XCBGenericError * on Error.
@@ -3114,13 +3139,16 @@ enum
     XCB_SIZE_HINT_P_WIN_GRAVITY = XCB_ICCCM_SIZE_HINT_P_WIN_GRAVITY,
 };
 
-/*
+/* Queries the XServer for the wm_protocols avaible to the specified window.
+ *
+ * WM_PROTOCOLS_ATOM_ID:                The atom in which you may or may not have stored for the "WM_PROTOCOLS" atom.
+ *                                      Ex: XCBGetWMProtocolsCookie(display, window, XInternAtom(display, "WM_PROTOCOLS", False));
  */
 XCBCookie
 XCBGetWMProtocolsCookie(
         XCBDisplay *display, 
         XCBWindow window, 
-        XCBAtom protocol);
+        XCBAtom WM_PROTOCOLS_ATOM_ID);
 /*
  * Grabs the reply and returns a structure to the XCBGetWMProtocol containing the array length (atoms_len) and the array (*atoms).
  *
@@ -3237,7 +3265,8 @@ XCBWipeGetWMClass(
 
 
 
-/* Returns a null terminating string to the call stack seperate by a space to the next called function.
+/* Returns a null terminating string to the call stack seperate by a \0 byte to the next called function.
+ * With the last 2 bytes being \0 bytes.
  *
  * NOTE: XCB_TRL_ENABLE_DEBUG must be defined for this function to return any meaningfull data.
  * NOTE: char * MUST be freed. when done.

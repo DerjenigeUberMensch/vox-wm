@@ -1266,6 +1266,7 @@ propertynotify(XCBGenericEvent *event)
                 wmh = XCBGetWMHintsReply(_wm.dpy, cookie);
                 updatewmhints(c, wmh);
                 sync = 1;
+                free(wmh);
                 break;
             default:
                   break;

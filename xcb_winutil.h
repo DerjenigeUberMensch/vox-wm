@@ -123,17 +123,18 @@ XCBGetTextProp(
         XCBAtom atom, 
         char *text, 
         size_t size);
-/*
- * NOTE: name_len doesnt include \0 character.
+/* Returns a wchar_t * to the name of the window.
  *
+ * NOTE: No check for if win exists.
+ * NOTE: Data must be freed when finished using.
+ *
+ * RETURN: wchar_t *
  */
-int
+wchar_t *
 XCBGetWindowName(
         XCBDisplay *display, 
-        XCBWindow win, 
-        XCBAtom _NET_WM_NAME,
-        char **name, 
-        uint32_t name_len);
+        XCBWindow win
+        );
 
 
 

@@ -24,7 +24,9 @@ XNATIVE = -march=native -mtune=native
 STATICLINK = -static
 DYNAMICLINK= -ldl
 SECTIONCODE= -ffunction-sections -fdata-sections
+MEMORYDEBUG= -lefence 
 DEBUGFLAGS = -ggdb -g -pg ${CCVERSION} ${WARNINGFLAGS} ${INCS} ${CPPFLAGS} ${BINARY} ${SECTIONCODE}
+
 
 WARNINGFLAGS = -pedantic -Wall -Wno-deprecated-declarations -Wshadow -Wuninitialized -Werror=format-security
 
@@ -40,12 +42,13 @@ PRELINKERFLAGS = -fprefetch-loop-arrays -fstack-protector-strong -fstack-clash-p
 INLINELIMIT = 15
 LINKERFLAGS = ${DYNAMICLINK} -Wl,--gc-sections,--as-needed,--relax,--strip-all,-z,relro,-z,now,-z,noexecstack,-z,defs,-pie -finline-functions -finline-limit=${INLINELIMIT}  ${LINKTIMEOPTIMIZATIONS}
 
+
 BINARY = ${X64}
 CPPFLAGS = -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L ${XINERAMAFLAGS}
 CCFLAGS  = ${CCVERSION} ${WARNINGFLAGS} ${INCS} ${CPPFLAGS} ${BINARY} ${PRELINKERFLAGS} 
 RELEASEFLAGS = ${CCFLAGS} 
 
-DEBUG 	= ${DEBUGFLAGS} -O0
+DEBUG 	= ${DEBUGFLAGS} -Og
 
 SIZE  	= ${RELEASEFLAGS} -Os 
 # This sacrifies some speed for a 10-20% decrease in size

@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/time.h>
+#include <string.h>
 
 #include <pthread.h>
 
@@ -22,10 +23,17 @@ extern WM _wm;
 void
 UserStats(const Arg *arg)
 {
-    char *str = XCBDebugGetLastCall();
-    DEBUG("%s", str);
-    str = XCBDebugGetFirstCall();
-    DEBUG("%s", str);
+    char *str = XCBDebugGetCallStack();
+    int i = 0;
+    while(str[i])
+    {
+        fprintf(stderr, "%c", str[i]);
+        if(str[i] == '\0')
+        {   break;
+        }
+        ++i;
+    }
+    free(str);
 }
 
 void
