@@ -523,7 +523,7 @@ confused with event masks above.  They start from 2 because 0 and 1
 are reserved in the protocol for errors and replies. */
 
 #define XCBKeyPress		                    XCB_KEY_PRESS
-#define XCBKeyReldease		                XCB_KEY_RELEASE
+#define XCBKeyRelease                       XCB_KEY_RELEASE
 #define XCBButtonPress		                XCB_BUTTON_PRESS
 #define XCBButtonRelease	                XCB_BUTTON_RELEASE
 #define XCBMotionNotify		                XCB_MOTION_NOTIFY
@@ -594,8 +594,8 @@ are reserved in the protocol for errors and replies. */
 #define XCBButton5Mask		                XCB_BUTTON_MASK_5
 
 /* button names. Used as arguments to GrabButton and as detail in ButtonPress
-   and ButtonRelease events.  Not to be confused with button masks above.
-   Note that 0 is already defined above as "AnyButton".  */
+ * and ButtonRelease events.  Not to be confused with button masks above.
+ * Note that 0 is already defined above as "AnyButton".  */
 
 #define XCBButton1                          XCB_BUTTON_INDEX_1
 #define XCBButton2			                XCB_BUTTON_INDEX_2
@@ -1992,8 +1992,10 @@ XCBSetErrorHandler(
         );
 
 
-/* 
- * not implemented 
+/* NOT IMPLEMENTED FOR THE FOLLOWING REASONS:
+ * 1.) Dont know how to implement without some overhead.
+ * 2.) Mostly useless, cause at this point your server is dead.
+ * 3.) See 1.
  */
 void 
 XCBSetIOErrorHandler(
@@ -3057,9 +3059,15 @@ XCBWiden(
 XCBCookie64 
 XCBWidenCookie(
         XCBDisplay *display, 
-        XCBCookie cookie);
+        XCBCookie cookie
+        );
 
 
+XCBCookie
+XCBKillClient(
+        XCBDisplay *display, 
+        XCBWindow win
+        );
 
 
 
@@ -3116,7 +3124,7 @@ XCBGetWMProtocolsCookie(
 /*
  * Grabs the reply and returns a structure to the XCBGetWMProtocol containing the array length (atoms_len) and the array (*atoms).
  *
- * NOTE: CALLER MUST CALL XCBWipeGetWMProtocolsReply() when done using data.
+ * NOTE: CALLER MUST CALL XCBWipeGetWMProtocols() when done using data.
  *
  * RETURN: 1 On Success;
  *         0 On Failure;
@@ -3134,7 +3142,7 @@ XCBGetWMProtocolsReply(
  *
  */
 void
-XCBWipeGetWMProtocolsReply(
+XCBWipeGetWMProtocols(
         XCBWMProtocols *protocols);
 
 /*
@@ -3232,22 +3240,40 @@ XCBWipeGetWMClass(
 /* Returns a null terminating string to the call stack seperate by a space to the next called function.
  *
  * NOTE: XCB_TRL_ENABLE_DEBUG must be defined for this function to return any meaningfull data.
+ * NOTE: char * MUST be freed. when done.
  *
  * RETURN: char * On Success.
  * RETURN: NULL On Failure.
  */
 char *
-XCBDebugGetCallStack();
+XCBDebugGetCallStack(
+        void
+        );
 
 /* Returns a null terminating string to the last called function.
  *
  * NOTE: XCB_TRL_ENABLE_DEBUG must be defined for this function to return any meaningfull data.
+ * NOTE: char * should NOT be freed.
  *
  * RETURN: char * On Success.
  * RETURN: NULL On Failure.
  */
 char *
-XCBDebugGetLastCall();
+XCBDebugGetLastCall(
+        void
+        );
+/* Returns a null terminating string to the last called function.
+ *
+ * NOTE: XCB_TRL_ENABLE_DEBUG must be defined for this function to return any meaningfull data.
+ * NOTE: char * should NOT be freed.
+ *
+ * RETURN: char * On Success.
+ * RETURN: NULL On Failure.
+ */
+char *
+XCBDebugGetFirstCall(
+        void
+        );
 
 
 

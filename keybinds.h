@@ -5,6 +5,7 @@
 #include "toggle.h"
 #include "dwm.h"
 #include <X11/keysym.h>
+#include <X11/XF86keysym.h> 
 
 /* key definitions */
 #define ALT         XCBMod1Mask
@@ -14,15 +15,26 @@
 #define SHIFT       XCBShiftMask
 #define CAPSLOCK    XCBLockMask
 #define TAB         XK_Tab
-#define LMB         XCBButton1Mask
-#define MMB         XCBButton2Mask
-#define RMB         XCBButton3Mask
-#define BUTTON4     XCBButton4Mask
-#define BUTTON5     XCBButton5Mask
+#define LMB         XCBButton1
+#define MMB         XCBButton2
+#define RMB         XCBButton3
+#define BUTTON4     XCBButton4
+#define BUTTON5     XCBButton5
 
 /* helper for spawning shell commands in the pre dwm-5.0 fashion */
 #define SHCMD(cmd) { .v = (const char*[]){ "/bin/sh", "-c", cmd, NULL } }
 
+/* Multimedia Keys (laptops and function keyboards) */
+static const char *up_vol[]   = { "pactl", "set-sink-volume", "@DEFAULT_SINK@", "+1%",   NULL };
+static const char *down_vol[] = { "pactl", "set-sink-volume", "@DEFAULT_SINK@", "-1%",   NULL };
+static const char *mute_vol[] = { "pactl", "set-sink-mute",   "@DEFAULT_SINK@", "toggle", NULL };
+static const char *pause_vol[]= { "playerctl", "play-pause"};
+static const char *next_vol[] = { "playerctl", "next"};
+static const char *prev_vol[] = { "playerctl", "previous"};
+static const char *brighter[] = { "brightnessctl", "set", "1%+", NULL };
+static const char *dimmer[]   = { "brightnessctl", "set", "1%-", NULL };
+
+/* commands */
 static char dmenumon[2] = "0"; 
 static const char *dmenucmd[] = 
 { 
@@ -33,20 +45,37 @@ static const char *dmenucmd[] =
 }; /* flags -b == bottom bar; -f == getkeyboard input first then handle request; */
 
 static const char *termcmd[]        = { "st", NULL };
+static const char *filemanager[]    = {"thunar", NULL };
 static const Key keys[] =
 {
-    /* KeyType                  modifier                 key        function        argument */
-    { XCB_KEY_PRESS,            SUPER,                  XK_Return,  SpawnWindow,        { .v = termcmd  }  },
-    { XCB_KEY_PRESS,            SUPER,                  XK_d,       SpawnWindow,        { .v = dmenucmd }  },
-    { XCB_KEY_PRESS,            SUPER,                  XK_z,       SetWindowLayout,    { .ui = Tiled}  },
-    { XCB_KEY_PRESS,            SUPER,                  XK_x,       SetWindowLayout,    { .ui = Floating }  },
-    { XCB_KEY_PRESS,            SUPER,                  XK_c,       SetWindowLayout,    { .ui = Monocle}  },
-    { XCB_KEY_PRESS,            SUPER,                  XK_g,       SetWindowLayout,    { .ui = Grid}  },
-
-    { XCB_KEY_PRESS,            SUPER,                  XK_n,       UserStats,          { 0 }  },
-
-    { XCB_KEY_PRESS,            CTRL|SUPER,             XK_p,       Restart,            { 0 }  },
-    { XCB_KEY_RELEASE,          SHIFT|SUPER,            XK_p,       Quit,               { 0 }  }
+    /*Action            modifier                    key         function            argument */
+    { XCBKeyPress,         SUPER,                   XK_n,       UserStats,          {0} },
+    { XCBKeyPress,         SUPER,                   XK_d,       SpawnWindow,        {.v = dmenucmd } },
+    { XCBKeyPress,         SUPER,                   XK_Return,  SpawnWindow,        {.v = termcmd } },
+    { XCBKeyPress,         SUPER,                   XK_e,       SpawnWindow,        {.v = filemanager } },
+    { XCBKeyPress,         SUPER,                   XK_b,       ToggleStatusBar,    {0} },
+    { XCBKeyPress,         SUPER,                   XK_q,	    View,               {0} },
+    { XCBKeyPress,         SUPER|SHIFT,             XK_q,       KillWindow,         {0} },
+    { XCBKeyPress,         CTRL|ALT,                XK_q,	    TerminateWindow,    {0} },
+    { XCBKeyPress,         SUPER,                   XK_w,       MaximizeWindow,     {0} },
+    { XCBKeyRelease,       SUPER|SHIFT,             XK_p,       Quit,               {0} },
+    { XCBKeyPress,         SUPER|CTRL,              XK_p,       Restart,            {0} },  /* UNSAFE sscanf() */
+    { XCBKeyPress,         SUPER,                   XK_z,       SetWindowLayout,    {Tiled} },
+    { XCBKeyPress,         SUPER,                   XK_x,       SetWindowLayout,    {Floating} },
+    { XCBKeyPress,         SUPER,                   XK_c,       SetWindowLayout,    {Monocle} },
+    { XCBKeyPress,         SUPER,                   XK_g,       SetWindowLayout,    {Grid} },
+    { XCBKeyPress,         0,                       XK_F11,     ToggleFullscreen,   {0} },
+    { XCBKeyPress,         ALT,                     TAB,        AltTab,	            {0} },
+    /* multimedia keys */
+    { XCBKeyPress,         0, XF86XK_AudioMute,                    SpawnWindow,        {.v = mute_vol } },
+    { XCBKeyPress,         0, XF86XK_AudioLowerVolume,             SpawnWindow,        {.v = down_vol } },
+    { XCBKeyPress,         0, XF86XK_AudioRaiseVolume,             SpawnWindow,        {.v = up_vol } },
+    { XCBKeyPress,         0, XF86XK_MonBrightnessDown,            SpawnWindow,        {.v = dimmer } },
+    { XCBKeyPress,         0, XF86XK_MonBrightnessUp,              SpawnWindow,        {.v = brighter } },
+    { XCBKeyPress,         0, XF86XK_AudioPlay,                    SpawnWindow,        {.v = pause_vol } },
+    { XCBKeyPress,         0, XF86XK_AudioPause,                   SpawnWindow,        {.v = pause_vol } },
+    { XCBKeyPress,         0, XF86XK_AudioNext,                    SpawnWindow,        {.v = next_vol } },
+    { XCBKeyPress,         0, XF86XK_AudioPrev,                    SpawnWindow,        {.v = prev_vol } },
 };
 /* button definitions */
 /* click can be ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle, ClkClientWin, or ClkRootWin */

@@ -14,6 +14,8 @@
 #include "toggle.h"
 
 
+/* TODO: Make these functions seperate threads */
+extern void (*handler[]) (XCBGenericEvent *);
 
 extern WM _wm;
 
@@ -21,12 +23,9 @@ void
 UserStats(const Arg *arg)
 {
     char *str = XCBDebugGetLastCall();
-    if(str)
-    {   
-        DEBUG("%s", str);
-        DEBUG0("Ill show everthing");
-    }
-    free(str);
+    DEBUG("%s", str);
+    str = XCBDebugGetFirstCall();
+    DEBUG("%s", str);
 }
 
 void
@@ -63,15 +62,21 @@ ChangeMasterWindow(const Arg *arg)
 }
 
 void
-KillWindow(XCBDisplay *display, XCBWindow win)
+KillWindow(const Arg *arg)
 {
-    xcb_kill_client(display, win);
+    if(_wm.selmon->desksel->sel)
+    {
+        killclient(_wm.selmon->desksel->sel->win, Graceful);
+    }
 }
 
 void
-TerminateWindow(XCBDisplay *display, XCBWindow win)
+TerminateWindow(const Arg *arg)
 {
-    xcb_kill_client(display, win);
+    if(_wm.selmon->desksel->sel)
+    {
+        killclient(_wm.selmon->desksel->sel->win, Destroy);
+    }
 }
 
 void
@@ -182,16 +187,19 @@ _ResizeWindow(
     XCBGeometry *gm = XCBGetGeometryReply(display, gmcookie);
 
     if(!qp)
-    {   return;
+    {   DEBUG0("Could not query pointer.");
+        return;
     }
     if(!gb || gb->status != XCB_GRAB_STATUS_SUCCESS)
     {   free(qp);
+        DEBUG0("Could not grab pointer.");
         return;
     }
     if(!gm)
     {   
         free(qp); 
         free(gb);
+        DEBUG0("No Geometry avaible.");
         return;
     }
 
@@ -210,7 +218,7 @@ _ResizeWindow(
 
     XCBMotionNotifyEvent *ev;
     u8 cleanev = 0;
-    u8 detail = 0;
+    XCBKeyCode detail = 0;
     do
     {
         ev = (XCBMotionNotifyEvent *)XCBPollForEvent(display);
@@ -230,7 +238,9 @@ _ResizeWindow(
         detail = ev->detail;
         free(ev);
         ev = NULL;
-    } while(cleanev != 0 && (cleanev != XCB_BUTTON_RELEASE && detail != key_or_button));
+    } while((cleanev != XCB_BUTTON_RELEASE || cleanev != XCB_KEY_PRESS) || detail != key_or_button);
+
+    DEBUG("%s", "ret");
 }
 
 void
@@ -238,8 +248,7 @@ ResizeWindow(const Arg *arg)
 {
     if(_wm.selmon->desksel->sel)
     {
-        XCBButtonPressEvent *ev = arg->v;
-        _ResizeWindow(_wm.dpy, _wm.selmon->desksel->sel->win, ev->detail);
+        _ResizeWindow(_wm.dpy, _wm.selmon->desksel->sel->win, arg->i);
     }
 }
 
@@ -316,4 +325,9 @@ ToggleFullscreen(const Arg *arg)
 {
 }
 
+
+void 
+View(const Arg *arg)
+{
+}
 

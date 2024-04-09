@@ -810,9 +810,15 @@ configurenotify(XCBGenericEvent *event)
     else if(overrideredirect)
     {
         Client *c;
+        Bar *b;
         if((c = wintoclient(win)))
         {
             unmanage(c, 0);
+            sync = 1;
+        }
+        else if((b = wintobar(win, 0)))
+        {   
+            unmanagebar(b);
             sync = 1;
         }
     }
@@ -855,11 +861,17 @@ destroynotify(XCBGenericEvent *event)
     (void)eventwin;
 
     Client *c = NULL;
+    Bar *b = NULL;
     u8 sync = 0;
     /* destroyed windows no longer need to be managed */
     if((c = wintoclient(win)))
     {   
         unmanage(c, 1);
+        sync = 1;
+    }
+    else if((b = wintobar(win, 0)))
+    {
+        unmanagebar(b);
         sync = 1;
     }
     if(sync)
@@ -940,6 +952,7 @@ unmapnotify(XCBGenericEvent *event)
     else if((bar = wintobar(win, 0)))
     {
         unmanagebar(bar);
+        sync = 1;
     }
 
     if(sync)
