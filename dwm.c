@@ -650,6 +650,10 @@ cleanupdesktop(Desktop *desk)
 void
 cleanupclient(Client *c)
 {
+    if(c->win)
+    {   
+        sendevent(c->win, wmatom[WMSaveYourself]);
+    }
     free(c);
     c = NULL;
 }
@@ -666,6 +670,7 @@ cleanupmon(Monitor *m)
         cleanupdesktop(desk);
         desk = desknext;
     }
+    free(m->bar);
     free(m);
     m = NULL;
 }
@@ -688,7 +693,7 @@ cleanupmons(void)
 void
 configure(Client *c)
 {
-    const XCBConfigureNotifyEvent ce =
+    const XCBConfigureNotifyEvent ce = 
     {
         .response_type = XCB_CONFIGURE_NOTIFY,
         .event = c->win,
@@ -699,8 +704,9 @@ configure(Client *c)
         .height = c->h,
         .border_width = c->bw,
         .above_sibling = XCB_NONE,
-        .override_redirect = False
+        .override_redirect = False,
     };
+    /* valgrind says that this generates some stack allocation error in writev(vector[1]) but it seems to be a xcb issue */
     XCBSendEvent(_wm.dpy, c->win, False, XCB_EVENT_MASK_STRUCTURE_NOTIFY, (const char *)&ce);
 }
 
@@ -787,7 +793,7 @@ createmon(void)
     {   createdesktop(m);
     }
     m->desksel = m->desktops;
-    m->bar = calloc(1, sizeof(Client ));
+    m->bar = calloc(1, sizeof(Bar ));
     if(!m->bar)
     {   /* we dont care too much here if we fail to alloc memory */
         DEBUG0("(OutOfMemory) Failed to create bar.");
@@ -1209,10 +1215,10 @@ manage(XCBWindow win)
     i64 values[12];
     memset(values, 0, sizeof(i64) * 12);
     if(strutp)
-    {   memcpy(values, strutp, sizeof(u32) * 12);
+    {   memcpy(values, strutp, XCBGetPropertyValueLength(strutpreply, sizeof(u32)));
     }
     else if(strut)
-    {   memcpy(values, strut, sizeof(u32) * 4);
+    {   memcpy(values, strut, XCBGetPropertyValueLength(strutreply, sizeof(u32)));
     }
 
     if(checkbar)
@@ -1374,6 +1380,7 @@ void
 quit(void)
 {
     _wm.running = 0;
+    wakeupconnection();
 }
 
 Monitor *
@@ -1769,8 +1776,6 @@ setwtypenormal(Client *c, uint8_t state)
     SETFLAG(c->wtypeflags, _TYPE_NORMAL, !!state);
 }
 
-#define _STATE_FOCUSED              ((1 << 12))
-
 void
 setskippager(Client *c, uint8_t state)
 {
@@ -2004,7 +2009,6 @@ updatedesktopnum(void)
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetNumberOfDesktops], XCB_ATOM_CARDINAL, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)data, 1);
 }
 
-
 void
 updateviewport(void)
 {
@@ -2046,6 +2050,8 @@ sigchld(int signo) /* signal */
 void
 sighandler(void)
 {
+    /* sig info: https://faculty.cs.niu.edu/~hutchins/csci480/signals.htm 
+     * */
     if(signal(SIGCHLD, &sigchld) == SIG_ERR)
     {   DIECAT("%s", "FATAL: CANNOT_INSTALL_SIGCHLD_HANDLER");
     }
@@ -2056,6 +2062,7 @@ sighandler(void)
         DIECAT("%s", "FATAL: CANNOT_INSTALL_SIGTERM_HANDLER");
         signal(SIGTERM, SIG_DFL); /* default signal */
     }
+
     if(signal(SIGHUP, &sighup) == SIG_ERR) 
     {   
         DEBUG("%s", "WARNING: CANNOT_INSTALL_SIGHUP_HANDLER");
@@ -2697,9 +2704,13 @@ updatewindowstate(Client *c, XCBAtom state, uint8_t add_remove_toggle)
     }
     else if (state == netatom[NetWMStateMaximizedHorz])
     {
+        /* toggle is already handled here */
+        setmaximizedhorz(c, add_remove_toggle);
     }
     else if (state == netatom[NetWMStateMaximizedVert])
     {
+        /* toggle is already handled here */
+        setmaximizedhorz(c, add_remove_toggle);
     }
     else if (state == netatom[NetWMStateSticky])
     {
@@ -2716,19 +2727,36 @@ updatewindowstate(Client *c, XCBAtom state, uint8_t add_remove_toggle)
     {   
         /* this is a wierd state to even configure so idk */
         if(toggle)
-        {
+        {   
+            setalwaysonbottom(c, !ISALWAYSONBOTTOM(c));
         }
         else
         {
             /* attach last */
-            XCBLowerWindow(_wm.dpy, c->win);
+            setalwaysonbottom(c, add_remove_toggle);
         }
     }
     else if (state == netatom[NetWMStateSkipTaskbar])
     {   
+        if(toggle)
+        {
+            setskiptaskbar(c, !SKIPTASKBAR(c));
+        }
+        else
+        {
+            setskiptaskbar(c, add_remove_toggle);
+        }
     }
     else if (state == netatom[NetWMStateSkipPager])
     {
+        if(toggle)
+        {
+            setskippager(c, !SKIPPAGER(c));
+        }
+        else
+        {
+            setskippager(c, add_remove_toggle);
+        }
     }
     else if (state == netatom[NetWMStateHidden])
     {   
@@ -2743,12 +2771,29 @@ updatewindowstate(Client *c, XCBAtom state, uint8_t add_remove_toggle)
     }
     else if (state == netatom[NetWMStateFocused])
     {
-        if(c->desktop->sel != c)
-        {   /* idk, we dont really care too much */
+        if(toggle)
+        {
+            SETFLAG(c->wstateflags, _STATE_FOCUSED, !ISFOCUSED(c));
+        }
+        else
+        {
+            SETFLAG(c->wstateflags, _STATE_FOCUSED, add_remove_toggle);
         }
     }
     else if (state == netatom[NetWMStateShaded])
     {
+        if(toggle)
+        {
+            setshaded(c, !ISSHADED(c));
+        }
+        else
+        {
+            setshaded(c, add_remove_toggle);
+        }
+    }
+    else
+    {
+        DEBUG0("Could not find state.");
     }
 }
 
@@ -2781,40 +2826,75 @@ updatewindowtype(Client *c, XCBAtom wtype, uint8_t add_remove_toggle)
     if(!c || !wtype)
     {   return;
     }
-    Monitor *m = c->mon;
-    if(!m)
-    {   DEBUG0("This client doesnt have a monitor this shouldnt be possible");
-        return;
-    }
 
     const u8 toggle = add_remove_toggle == 2;
 
     if (wtype == netatom[NetWMWindowTypeDesktop])
     {
-        if(toggle)   
-        {
-            setneverfocus(c, !NEVERFOCUS(c));
+        if(toggle)
+        {   
+            setwtypedesktop(c, !ISDESKTOP(c));
         }
         else
         {
-            setneverfocus(c, add_remove_toggle);
+            setwtypedesktop(c, add_remove_toggle);
         }
         /* TODO */
     }
     else if (wtype == netatom[NetWMWindowTypeDock])
     {
+        if(toggle)
+        {
+            setwtypedock(c, !ISDOCK(c));
+        }
+        else
+        {
+            setwtypedock(c, add_remove_toggle);
+        }
     }
     else if (wtype == netatom[NetWMWindowTypeToolbar])
-    {   /* TODO */
+    {   
+        if(toggle)
+        {
+            setwtypetoolbar(c, !ISTOOLBAR(c));
+        }
+        else
+        {
+            setwtypetoolbar(c, add_remove_toggle);
+        }
     }
     else if (wtype == netatom[NetWMWindowTypeMenu])
-    {   /* TODO */
+    {
+        if(toggle)
+        {
+            setwtypemenu(c, !ISMENU(c));
+        }
+        else
+        {
+            setwtypemenu(c, add_remove_toggle);
+        }
     }
     else if (wtype == netatom[NetWMWindowTypeUtility])
-    {   /* TODO */
+    {
+        if(toggle)
+        {
+            setwtypeutility(c, !ISUTILITY(c));
+        }
+        else
+        {
+            setwtypeutility(c, add_remove_toggle);
+        }
     }
     else if (wtype == netatom[NetWMWindowTypeSplash])
-    {   /* IGNORE */
+    {
+        if(toggle)
+        {   
+            setwtypesplash(c, !ISSPLASH(c));
+        }
+        else
+        {
+            setwtypesplash(c, add_remove_toggle);
+        }
     }
     else if (wtype == netatom[NetWMWindowTypeDialog])
     {   
@@ -2831,30 +2911,82 @@ updatewindowtype(Client *c, XCBAtom wtype, uint8_t add_remove_toggle)
     {   
         if(toggle)
         { 
-            setwtypedialog(c, !ISDIALOG(c));
+            setwtypedropdownmenu(c, !ISDROPDOWNMENU(c));
         }
         else
         {
-            setwtypedialog(c, add_remove_toggle);
+            setwtypedropdownmenu(c, add_remove_toggle);
         }
     }
     else if (wtype == netatom[NetWMWindowTypePopupMenu])
-    {   /* override-redirect IGNORE */
+    {
+        if(toggle)
+        {
+            setwtypepopupmenu(c, !ISPOPUPMENU(c));
+        }
+        else
+        {
+            setwtypepopupmenu(c, add_remove_toggle);
+        }
     }
     else if (wtype == netatom[NetWMWindowTypeTooltip])
-    {   /* override-redirect IGNORE */
+    {
+        if(toggle)
+        {
+            setwtypetooltip(c, !ISTOOLTIP(c));
+        }
+        else
+        {
+            setwtypetooltip(c, add_remove_toggle);
+        }
     }
     else if (wtype == netatom[NetWMWindowTypeNotification])
-    {   /* override-redirect IGNORE */
+    { 
+        if(toggle)
+        {
+            setwtypenotification(c, !ISNOTIFICATION(c));
+        }
+        else
+        {
+            setwtypenotification(c, add_remove_toggle);
+        }
     }
     else if (wtype == netatom[NetWMWindowTypeCombo])
-    {   /* override-redirect IGNORE */
+    {
+        if(toggle)
+        {
+            setwtypecombo(c, !ISCOMBO(c));
+        }
+        else
+        {
+            setwtypecombo(c, add_remove_toggle);
+        }
     }
     else if (wtype == netatom[NetWMWindowTypeDnd])
-    {   /* override-redirect IGNORE */
+    {
+        if(toggle)
+        {
+            setwtypednd(c, !ISDND(c));
+        }
+        else
+        {
+            setwtypednd(c, add_remove_toggle);
+        }
     }
     else if (wtype == netatom[NetWMWindowTypeNormal])
-    {   /* This hint indicates that this window has no special properties IGNORE */
+    {
+        if(toggle)
+        {
+            setwtypenormal(c, !ISNORMAL(c));
+        }
+        else
+        {
+            setwtypenormal(c, add_remove_toggle);   
+        }
+    }
+    else
+    {
+        DEBUG0("Could not find type.");
     }
 }
 
@@ -2899,6 +3031,23 @@ updatewmhints(Client *c, XCBWMHints *wmh)
         {   setneverfocus(c, 0);
         }
     }
+}
+
+void
+wakeupconnection()
+{
+    XCBClientMessageEvent ev;
+    memset(&ev, 0, sizeof(XCBClientMessageEvent));
+    ev.type = wmatom[WMProtocols];
+    ev.response_type = XCB_CLIENT_MESSAGE;
+    ev.window = _wm.root;
+    ev.format = 32;
+    ev.data.data32[0] = wmatom[WMDeleteWindow];
+    ev.data.data32[1] = XCB_CURRENT_TIME;
+                                        /* XCB_EVENT_MASK_NO_EVENT legit does nothing lol */
+    XCBSendEvent(_wm.dpy, _wm.root, False, XCB_EVENT_MASK_STRUCTURE_NOTIFY, (const char *)&ev);
+    /* make sure display gets the event (duh) */
+    XCBFlush(_wm.dpy);
 }
 
 void
@@ -2969,7 +3118,7 @@ xerror(XCBDisplay *display, XCBGenericError *err)
 {
     if(err)
     {   
-        DEBUG("%s %s\n", XCBErrorCodeText(err->error_code), XCBErrorMajorCodeText(err->major_code));
+        DEBUG("%s %s\n", XCBGetErrorCodeText(err->error_code), XCBGetErrorMajorCodeText(err->major_code));
         DEBUG("error_code: [%d], major_code: [%d], minor_code: [%d]\n"
               "sequence: [%d], response_type: [%d], resource_id: [%d]\n"
               "full_sequence: [%d]\n"

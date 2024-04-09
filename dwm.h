@@ -86,6 +86,7 @@
 
 
 #define ISALWAYSONTOP(C)        (((C)->wstateflags & _STATE_ABOVE))
+#define ISALWAYSONBOTTOM(C)     (((C)->wstateflags & _STATE_BELOW))
 #define WASFLOATING(C)          (( ((C)->mon->wx == (C)->oldx) & ((C)->mon->wy == (C)->oldy) & ((C)->mon->ww == (C)->oldw) & ((C)->mon->wh == (C)->oldh) ))
 #define ISFLOATING(C)           (( ((C)->mon->wx == (C)->x) & ((C)->mon->wy == (C)->y) & ((C)->mon->ww == (C)->w) & ((C)->mon->wh == (C)->h)  ))
 #define ISFIXED(C)              (( ((C)->minw != 0 ) & ((C)->minh != 0) & ((C)->minw == (C)->maxw) & ((C)->minh == (C)->maxh) ))
@@ -119,7 +120,7 @@
 #define ISMAXIMIZEDHORZ(C)      (((C)->wstateflags & _STATE_MAXIMIZED_HORZ))
 #define ISSHADED(C)             (((C)->wstateflags & _STATE_SHADED))
 #define SKIPTASKBAR(C)          (((C)->wstateflags & _STATE_SKIP_TASKBAR))
-#define SKIPAGER(C)             (((C)->wstateflags & _STATE_SKIP_PAGER))
+#define SKIPPAGER(C)             (((C)->wstateflags & _STATE_SKIP_PAGER))
 #define ISHIDDEN(C)             (((C)->wstateflags & _STATE_HIDDEN))
 #define ISFULLSCREEN(C)         (((C)->wstateflags & _STATE_FULLSCREEN))
 #define ISABOVE(C)              (((C)->wstateflags & _STATE_ABOVE))
@@ -435,6 +436,7 @@ void updatewindowstates(Client *c, XCBAtom state[], uint32_t atomslength);
 void updatewindowtype(Client *c, XCBAtom wtype, uint8_t add_remove_toggle);
 void updatewindowtypes(Client *c, XCBAtom wtype[], uint32_t atomslength);
 void updatewmhints(Client *c, XCBWMHints *hints);
+void wakeupconnection();
 void winsetstate(XCBWindow win, int32_t state);
 void *wintobar(XCBWindow win, uint8_t is_return_mon);
 Client *wintoclient(XCBWindow win);
