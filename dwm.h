@@ -159,10 +159,12 @@
 
 
 
-enum { CurNormal, CurResize, CurMove, CurLast }; /* cursor */
-enum { SchemeNorm, SchemeSel }; /* color schemes */
-enum { ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle,
+enum CurType { CurNormal, CurResize, CurMove, CurLast }; /* cursor */
+enum SchemeType { SchemeNorm, SchemeSel }; /* color schemes */
+enum ClkType { ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle,
        ClkClientWin, ClkRootWin, ClkLast }; /* clicks */
+enum KillType { Graceful, Safedestroy, Destroy, };  /* kill client type */
+
 
 typedef union  Arg Arg;
 typedef struct Key Key;
@@ -371,6 +373,7 @@ int32_t getstate(XCBWindow win, XCBGetWindowAttributes *state);
 void grabbuttons(XCBWindow window, uint8_t focused);
 void grabkeys(void);
 void grid(Desktop *desk);
+void killclient(XCBWindow win, enum KillType type);
 Client *manage(XCBWindow window);
 Bar *managebar(Monitor *m, XCBWindow win);
 void monocle(Desktop *desk);
@@ -389,6 +392,7 @@ void restack(Desktop *desk);
 void restart(void);
 void run(void);
 void scan(void);
+uint8_t sendevent(XCBWindow win, XCBAtom proto);
 void setalwaysontop(Client *c, uint8_t isalwaysontop);
 void setborderwidth(Client *c, uint16_t border_width);
 void setclientdesktop(Client *c, Desktop *desktop);

@@ -9,9 +9,9 @@ void FocusMonitor(const Arg *arg);
 /* Changes the max number of master windows possible */
 void ChangeMasterWindow(const Arg *arg);
 /* Kills the current window */
-void KillWindow(XCBDisplay *display, XCBWindow win);
+void KillWindow(const Arg *arg);
 /* Attempts to kill the current window directly instead of just sending a signal and waiting for the window to respond */
-void TerminateWindow(XCBDisplay *display, XCBWindow win);
+void TerminateWindow(const Arg *arg);
 /* keybind to move the current window where the mouse cursor is */
 void DragWindow(XCBDisplay *display, XCBWindow win, const XCBKeyCode key_or_button);
 /* restarts dwm */

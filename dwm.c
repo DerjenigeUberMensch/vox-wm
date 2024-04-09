@@ -1035,6 +1035,35 @@ grid(Desktop *desk)
     }
 }
 
+void 
+killclient(XCBWindow win, enum KillType type)
+{
+    /* most system pids are less than 100 */
+    const uint8_t notsyspid = 100;
+    if(!win)
+    {   return;
+    }
+    if(!sendevent(win, wmatom[WMDeleteWindow]))
+    {
+        switch(type)
+        {
+            case Graceful:
+                XCBKillClient(_wm.dpy, win);
+                break;
+            case Safedestroy:
+                /* TODO */
+                XCBKillClient(_wm.dpy, win);
+                break;
+            case Destroy:
+                XCBDestroyWindow(_wm.dpy, win);
+                break;
+            default:
+                XCBKillClient(_wm.dpy, win);
+                break;
+        }
+    }
+}
+
 Client *
 manage(XCBWindow win)
 {
@@ -1568,6 +1597,41 @@ scan(void)
     }
 }
 
+uint8_t
+sendevent(XCBWindow win, XCBAtom proto)
+{
+    XCBWMProtocols protocols = { ._reply = NULL };
+    uint8_t exists = 0;
+
+    XCBCookie wmprotocookie = XCBGetWMProtocolsCookie(_wm.dpy, win, wmatom[WMProtocols]);
+
+    if(XCBGetWMProtocolsReply(_wm.dpy, wmprotocookie, &protocols))
+    {
+        uint32_t i = protocols.atoms_len;
+        while(!exists && i--)
+        {   exists = protocols.atoms[i] == proto;
+        }
+    }
+
+    if(exists)
+    {
+        XCBClientMessageEvent ev;
+        ev.type = wmatom[WMProtocols];
+        ev.response_type = XCB_CLIENT_MESSAGE;
+        ev.window = win;
+        ev.format = 32;
+        ev.data.data32[0] = proto;
+        ev.data.data32[1] = XCB_CURRENT_TIME;
+        XCBSendEvent(_wm.dpy, win, False, XCB_NONE, (const char *)&ev);
+    }
+    else
+    {   DEBUG0("Failed to send event.");
+    }
+
+    XCBWipeGetWMProtocols(&protocols);
+    return exists;
+}
+
 void
 sendmon(Client *c, Monitor *m)
 {
@@ -1754,16 +1818,9 @@ setfocus(Client *c)
     {
         XCBSetInputFocus(_wm.dpy, c->win, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
         XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&(c->win), 1);
-        XCBClientMessageEvent ev;
-        ev.type = wmatom[WMProtocols];
-        ev.response_type = XCB_CLIENT_MESSAGE;
-        ev.window = c->win;
-        ev.format = 32;
-        ev.data.data32[0] = wmatom[WMTakeFocus];
-        ev.data.data32[1] = XCB_CURRENT_TIME;
-        XCBSendEvent(_wm.dpy, c->win, False, XCB_NONE, (const char *)&ev);
         SETFLAG(c->wstateflags, _STATE_FOCUSED, 1);
     }
+    sendevent(c->win, wmatom[WMTakeFocus]);
 }
 
 void 
