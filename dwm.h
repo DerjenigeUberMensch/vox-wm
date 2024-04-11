@@ -159,12 +159,38 @@
 */
 
 
-
-enum CurType { CurNormal, CurResize, CurMove, CurLast }; /* cursor */
-enum SchemeType { SchemeNorm, SchemeSel }; /* color schemes */
-enum ClkType { ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle,
-       ClkClientWin, ClkRootWin, ClkLast }; /* clicks */
-enum KillType { Graceful, Safedestroy, Destroy, };  /* kill client type */
+/* cursor */
+enum CurType 
+{ 
+    CurNormal, 
+    CurResize, 
+    CurMove, 
+    CurLast 
+}; 
+/* color schemes */
+enum SchemeType 
+{ 
+    SchemeNorm, 
+    SchemeSel 
+};
+/* clicks */
+enum ClkType 
+{ 
+    ClkTagBar, 
+    ClkLtSymbol, 
+    ClkStatusText, 
+    ClkWinTitle,
+    ClkClientWin, 
+    ClkRootWin, 
+    ClkLast 
+};
+/* kill client type */
+enum KillType 
+{ 
+    Graceful, 
+    Safedestroy, 
+    Destroy, 
+};
 
 
 typedef union  Arg Arg;
@@ -285,6 +311,7 @@ struct Layout
 struct Desktop
 {
     int16_t num;                /* The Desktop Number           */
+    
     uint8_t layout;             /* The Layout Index             */
     uint8_t olayout;            /* The Previous Layout Index    */
 
@@ -296,6 +323,7 @@ struct Desktop
     Client *sel;                /* Selected Client              */
     Desktop *next;              /* Next Client in linked list   */
     Desktop *prev;              /* Previous Client in list      */
+    uint8_t pad0[56];
 };
 
 struct WM

@@ -60,9 +60,11 @@ typedef int64_t  i64;
 
 static void
 _xcb_handler(XCBDisplay *display, XCBGenericError *err)
-{;
+{
 }
-
+                                                        /* this saves a conditional check which isnt "expensive".
+                                                         * But is basically free no overhead aside from the function call which your gonna do anyway.
+                                                         */
 static void (*_handler)(XCBDisplay *, XCBGenericError *) = _xcb_handler;
 
 
@@ -101,10 +103,11 @@ typedef struct _xcb_caller _xcb_caller;
 struct _xcb_caller 
 {
     unsigned int id;
+    /* TODO: make like a static char *table and just use a uint16_t and save some 6 bytes */
     char *name;
 };
 
-#define MAX_DEBUG_LIMIT     ((32768 << 4))/* the number means nothing its just some random big enough number for most use cases */
+#define MAX_DEBUG_LIMIT     ((32768 << 6))/* the number means nothing its just some random big enough number for most use cases */
                 
 _xcb_caller _xcb_funcs[MAX_DEBUG_LIMIT];
 long long rear = -1;
@@ -145,14 +148,12 @@ _xcb_push_func(XCBCookie cookie, const char *func)
 
     if(_xcb_full_func())
     {
-        _XCB_MANUAL_DEBUG0("overflow?");
+        /* we dont care it will just wrap back but this might be useful in testing */
+        _XCB_MANUAL_DEBUG0("DEBUG Ran Out of Space wrapping data...");
     }
-    else
-    {
-        front *= front != -1;
-        rear = (rear + 1) % MAX_DEBUG_LIMIT;
-        _xcb_funcs[rear] = item;
-    }
+    front *= front != -1;
+    rear = (rear + 1) % MAX_DEBUG_LIMIT;
+    _xcb_funcs[rear] = item;
 }
 static void
 _xcb_pop_func(XCBCookie cookie)
@@ -206,7 +207,7 @@ _xcb_show_call_stack(void)
 
 void  
 XCBBreakPoint(void) 
-{
+{   volatile int e; e = 2; if(e == 2) { return; }
 }
 #endif
 
@@ -270,6 +271,23 @@ XCBDebugGetFirstCall()
     return firstcall;
 }
 
+/* TODO */
+char *
+XCBDebugGetAdjacentCallers(XCBCookie cookie)
+{
+    /* prob could use a hashmap or something */
+#ifdef DBG
+    unsigned int id = cookie.sequence;
+    for(long long i = front; i != rear; i = (i + 1) % MAX_DEBUG_LIMIT)
+    {
+        if(_xcb_funcs[i].id == id)
+        {   
+        }
+    }
+#endif
+    return NULL;
+}
+
 
 
 
@@ -277,7 +295,11 @@ static void
 _xcb_err_handler(XCBDisplay *display, XCBGenericError *err)
 {
     _handler(display, err);
+    /* this just for convinience also less lines of code I guess? */
     free(err);
+#ifdef DBG
+    XCBBreakPoint();
+#endif
 }
 
 XCBDisplay *
@@ -744,7 +766,7 @@ XCBLowerWindowIf(XCBDisplay *display, XCBWindow window)
 XCBCookie
 XCBRaiseLowerWindow(XCBDisplay *display, XCBWindow window)
 {
-    const u32 values[1] = { XCB_STACK_MODE_OPPOSITE };
+    const u32 values = XCB_STACK_MODE_OPPOSITE;
     const u32 mask = XCB_CONFIG_WINDOW_STACK_MODE;
     XCBCookie ret = xcb_configure_window(display, window, mask, &values);
 #ifdef DBG
@@ -754,9 +776,9 @@ XCBRaiseLowerWindow(XCBDisplay *display, XCBWindow window)
 }
 
 XCBCookie
-XCBSetWindowBorderWidth(XCBDisplay *display, XCBWindow window, u32 border_width)
+XCBSetWindowBorderWidth(XCBDisplay *display, XCBWindow window, u16 border_width)
 {
-    const u32 values[1] = { border_width };
+    const u32 values = border_width;
     const u32 mask = XCB_CONFIG_WINDOW_BORDER_WIDTH;
     XCBCookie ret = xcb_configure_window(display, window, mask, &values);
 #ifdef DBG
@@ -768,7 +790,7 @@ XCBSetWindowBorderWidth(XCBDisplay *display, XCBWindow window, u32 border_width)
 XCBCookie
 XCBSetSibling(XCBDisplay *display, XCBWindow window, XCBWindow sibling)
 {
-    const u32 values[1] = { sibling };
+    const u32 values = sibling;
     const u32 mask = XCB_CONFIG_WINDOW_SIBLING;
     XCBCookie ret = xcb_configure_window(display, window, mask, &values);
 #ifdef DBG

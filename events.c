@@ -11,7 +11,7 @@ extern XCBAtom wmatom[WMLast];
 
 extern void xerror(XCBDisplay *display, XCBGenericError *error);
 
-void (*handler[LASTEvent]) (XCBGenericEvent *) = 
+void (*handler[XCBLASTEvent]) (XCBGenericEvent *) = 
 {
     /* Keyboard */
     [XCB_KEY_PRESS] = keypress,

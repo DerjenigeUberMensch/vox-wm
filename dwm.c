@@ -551,10 +551,6 @@ checknewbar(int64_t value[12], XCBAtom wtypes[], uint32_t windowtypeslength, XCB
     strut = left_start_y || left_end_y || right_start_y || right_end_y || top_start_x || top_end_x;
     strut = strut || left || right || top || bottom;
 
-    if(!strut)
-    {   DEBUG0("Selected window is likely not a bar.");
-    }
- 
     u32 i;
     for(i = 0; i < windowtypeslength; ++i)   
     {
@@ -650,10 +646,6 @@ cleanupdesktop(Desktop *desk)
 void
 cleanupclient(Client *c)
 {
-    if(c->win)
-    {   
-        sendevent(c->win, wmatom[WMSaveYourself]);
-    }
     free(c);
     c = NULL;
 }
@@ -786,7 +778,6 @@ createmon(void)
     m->wx = m->wy = 0;
     m->ww = m->wh = 0;
     m->next = NULL;
-    m->bar = NULL;
     u16 i;
     /* TODO */
     for(i = 0; i < 10; ++i)
@@ -995,6 +986,7 @@ grid(Desktop *desk)
     i32 i, n, cw, ch, aw, ah, cols, rows;
     i32 nx, ny, nw, nh;
     Client *c;
+    Monitor *m = desk->clients->mon;
     for(n = 0, c = nexttiled(desk->clients); c; c = nexttiled(c->next))
     {   ++n;
     }
@@ -1036,7 +1028,8 @@ grid(Desktop *desk)
         nh -= !ah * _cfg.bgw;
 
         /* sanatize data */
-        resize(c, nx, ny, nw, nh, 1);
+        applysizechecks(m, &nx, &ny, &nw, &nh, NULL);
+        resize(c, nx, ny, nw, nh, 0);
         ++i;
     }
 }
@@ -1123,12 +1116,8 @@ manage(XCBWindow win)
     XCBWindowProperty *strutpreply = NULL;
     XCBWindowProperty *strutreply = NULL;
 
-    /* we dont do it before, because we are waiting for replies and for more memory. */
+    /* we do it here before, because we are waiting for replies and for more memory. */
     c = createclient(_wm.selmon);
-    if(!c)
-    {   goto CLEANUP;
-    }
-    c->win = win;
 
     /* wait for replies */
     waattributes = XCBGetWindowAttributesReply(_wm.dpy, wacookie);
@@ -1141,6 +1130,11 @@ manage(XCBWindow win)
     XCBGetWMClassReply(_wm.dpy, classcookie, &cls);
     strutpreply = XCBGetWindowPropertyReply(_wm.dpy, strutpcookie);
     strutreply = XCBGetWindowPropertyReply(_wm.dpy, strutcookie);
+
+    if(!c)
+    {   goto CLEANUP;
+    }
+    c->win = win;
 
     /* On Failure clear flag and ignore hints */
     hints.flags *= !!hintstatus;    
@@ -1188,6 +1182,7 @@ manage(XCBWindow win)
         c->w = c->oldw = wg->width;
         c->h = c->oldh = wg->height;
         c->oldbw = wg->border_width;
+        c->bw = wg->border_width;
     }
 
     if(transstatus && trans && (t = wintoclient(trans)))
@@ -1212,22 +1207,37 @@ manage(XCBWindow win)
     c->y = MAX(c->y, c->mon->wy);
 
     /* strut partial length is 12 btw */
-    i64 values[12];
-    memset(values, 0, sizeof(i64) * 12);
+    u32 values[12];
+    memset(values, 0, sizeof(u32) * 12);
     if(strutp)
-    {   memcpy(values, strutp, XCBGetPropertyValueLength(strutpreply, sizeof(u32)));
+    {   
+        u32 size = XCBGetPropertyValueLength(strutpreply, sizeof(u32));
+        if(size == 12)
+        {   memcpy(values, strutp, 12 * sizeof(u32));
+        }
     }
     else if(strut)
-    {   memcpy(values, strut, XCBGetPropertyValueLength(strutreply, sizeof(u32)));
+    {   
+        u32 size = XCBGetPropertyValueLength(strutpreply, sizeof(u32));
+        /* strut No partial is length of 4 */
+        if(size == 4)
+        {   memcpy(values, strut, 4 * sizeof(u32));
+        }
     }
 
+    i64 safevalues[12];
+    u8 i;
+    for(i = 0; i < 12; ++i)
+    {   safevalues[i] = values[i];
+    }
+        
     if(checkbar)
     {
         void *wty = wtypeunused ? XCBGetPropertyValue(wtypeunused) : NULL;
         uint32_t wtylen = wty ? XCBGetPropertyValueLength(wtypeunused, sizeof(XCBAtom)) : 0;
         void *ste = stateunused ? XCBGetPropertyValue(stateunused) : NULL;
         uint32_t stelen = ste ? XCBGetPropertyValueLength(stateunused, sizeof(XCBAtom)) : 0;
-        if(checknewbar(values, wty, wtylen, ste, stelen, 0))
+        if(checknewbar(safevalues, wty, wtylen, ste, stelen, 0))
         {
             Bar *bar = managebar(_wm.selmon, win);
             if(bar)
@@ -1248,12 +1258,14 @@ manage(XCBWindow win)
             c = NULL;
             goto CLEANUP;
         }
+        else
+        {   DEBUG("Not a bar: [%d]", win);
+        }
     }
 
     /* Custom stuff */
     setborderwidth(c, _cfg.bw);
-
-    XCBSetWindowBorderWidth(_wm.dpy, win, c->bw);
+    XCBSetWindowBorderWidth(_wm.dpy, win, _cfg.bw);
     /*  XSetWindowBorder(dpy, w, scheme[SchemeBorder][ColBorder].pixel); */
     configure(c);   /* propagates border_width, if size doesn't change */
     updatetitle(c);
@@ -1299,6 +1311,7 @@ CLEANUP:
 Bar *
 managebar(Monitor *m, XCBWindow win)
 {
+    DEBUG("New bar: [%d]", win);
     if(!m->bar)
     {   
         m->bar = createbar();
@@ -1320,6 +1333,7 @@ monocle(Desktop *desk)
     {   return;
     }
     Client *c;
+    Monitor *m = desk->clients->mon;
     i32 nw, nh;
     i32 nx = desk->clients->mon->wx;
     i32 ny = desk->clients->mon->wy;
@@ -1328,7 +1342,8 @@ monocle(Desktop *desk)
     {
         nw = desk->clients->mon->ww - (c->bw * 2);
         nh = desk->clients->mon->wh - (c->bw * 2);
-        resize(c, nx, ny, nw, nh, 1); 
+        applysizechecks(m, &nx, &ny, &nw, &nh, NULL);
+        resize(c, nx, ny, nw, nh, 0); 
     }
 }
 
@@ -1355,6 +1370,7 @@ nextstack(Client *c)
 {
     return c ? c->snext : c;
 }
+
 Client *
 nexttiled(Client *c)
 {
@@ -1444,13 +1460,11 @@ restack(Desktop *desk)
     }
 
     wc.stack_mode = XCB_STACK_MODE_BELOW;
-    if(desk->stack->mon->bar)
+    if(desk->stack->mon->bar && SHOWBAR(desk->stack->mon->bar))
     {   wc.sibling = desk->stack->mon->bar->win;
     }
     else
-    {   
-        wc.sibling = c->win;
-        c = nextstack(c);
+    {   wc.sibling = _wm.root;
     }
 
     /* configure windows */
@@ -1500,9 +1514,6 @@ restack(Desktop *desk)
         {   XCBRaiseWindow(_wm.dpy, c->win);
         }
     }
-
-    /* The XServer doesnt receive this request till the next event, so flush them to make sure it does */
-    XCBFlush(_wm.dpy);
 }
 
 void
@@ -1842,14 +1853,14 @@ setmaximizedvert(Client *c, uint8_t state)
     {
         if(!ISMAXVERT(c))
         {
-            resize(c, c->x, c->y, c->w, c->mon->wh, 1);
+            resize(c, c->x, c->y, c->w, c->mon->wh, 0);
         }
     }
     else
     {
         if(ISMAXVERT(c))
         {
-            resize(c, c->x, c->y, c->w, c->oldh != c->mon->wh ? c->oldh : c->oldh / 2, 1);
+            resize(c, c->x, c->y, c->w, c->oldh != c->mon->wh ? c->oldh : c->oldh / 2, 0);
         }
     }
 }
@@ -1862,14 +1873,14 @@ setmaximizedhorz(Client *c, uint8_t state)
     {
         if(!ISMAXHORZ(c))
         {
-            resize(c, c->x, c->y, c->mon->ww, c->h, 1);
+            resize(c, c->x, c->y, c->mon->ww, c->h, 0);
         }
     }
     else
     {
         if(ISMAXHORZ(c))
         {
-            resize(c, c->x, c->y, c->oldw != c->mon->ww ? c->oldw : c->oldw / 2, c->h, 1);
+            resize(c, c->x, c->y, c->oldw != c->mon->ww ? c->oldw : c->oldw / 2, c->h, 0);
         }
     }
 }
@@ -2227,8 +2238,8 @@ tile(Desktop *desk)
             h = (m->wh - my) / (MIN(n, _cfg.nmaster) - i);
             nx = m->wx;
             ny = m->wy + my;
-            nw = mw - (c->bw << 1);
-            nh = h - (c->bw << 1);
+            nw = mw - c->bw * 2;
+            nh = h - c->bw * 2;
 
             /* we divide nw also to get even gaps
              * if we didnt the center gap would be twices as big
@@ -2236,9 +2247,10 @@ tile(Desktop *desk)
              */
             nx += _cfg.bgw;
             ny += _cfg.bgw;
-            nw -= _cfg.bgw << 1;
-            nh -= _cfg.bgw << 1;
-            resize(c, nx, ny, nw, nh, 1);
+            nw -= _cfg.bgw * 2;
+            nh -= _cfg.bgw * 2;
+            applysizechecks(m, &nx, &ny, &nw, &nh, NULL);
+            resize(c, nx, ny, nw, nh, 0);
                                                                         /* spacing for windows below */
             if (my + HEIGHT(c) < (unsigned int)m->wh) my += HEIGHT(c) + _cfg.bgw;
         }
@@ -2248,13 +2260,14 @@ tile(Desktop *desk)
             nx = m->wx + mw;
             ny = m->wy + ty;
             nw = m->ww - mw - (c->bw << 1);
-            nh = h - (c->bw << 1);
+            nh = h - c->bw * 2;
 
-            nx += _cfg.bgw >> 1;
+            nx += _cfg.bgw / 2;
             ny += _cfg.bgw;
-            nw -= _cfg.bgw << 1;
-            nh -= _cfg.bgw << 1;
-            resize(c, nx, ny, nw, nh, 1);
+            nw -= _cfg.bgw * 2;
+            nh -= _cfg.bgw * 2;
+            applysizechecks(m, &nx, &ny, &nw, &nh, NULL);
+            resize(c, nx, ny, nw, nh, 0);
                                                                     /* spacing for windows below */ 
             if (ty + HEIGHT(c) < (unsigned int)m->wh) ty += HEIGHT(c) + _cfg.bgw;
         }
@@ -2582,8 +2595,8 @@ updatesettings(void)
 {
     _cfg.mfact = 0.55f;
     _cfg.nmaster = 1;
-    _cfg.bw = 5;
-    _cfg.bgw = 10;
+    _cfg.bw = 1;
+    _cfg.bgw = 0;
     _cfg.snap = 10;
     _cfg.rfrate = 120;
     _cfg.bh = 10;

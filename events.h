@@ -40,9 +40,4 @@ void genericevent(XCBGenericEvent *event);
 
 void errorhandler(XCBGenericEvent *error);
 
-#ifndef LASTEvent
-#define LASTEvent   40      /* XCB has a max event count of roughly ~35 however that is a estimate which is why 50 is used (just in case) .
-                             * The reason it isnt 33 like in xlib is cause xcb skips ~2 before assigning event opcodes.
-                             */
-#endif
 #endif
