@@ -131,59 +131,51 @@ applysizechecks(Monitor *m, i32 *x, i32 *y, i32 *width, i32 *height, i32 *border
 
         /* technically 1 is "too" small for most possible windows (they stay at roughly ~20 or higher) but a window would request this */
     const u8 MIN_POSSIBLE_WINDOW_SIZE = 1;
-
-    if(width && !BETWEEN(*width, MIN_POSSIBLE_WINDOW_SIZE , ww))
-    {
-        if(*width < MIN_POSSIBLE_WINDOW_SIZE )
-        {   *width = MIN_POSSIBLE_WINDOW_SIZE;
-        }
-        else
-        {   *width = ww;
-        }
-    }
-
-    if(height && !BETWEEN(*height, MIN_POSSIBLE_WINDOW_SIZE , wh))
-    {
-        if(*height < MIN_POSSIBLE_WINDOW_SIZE)
-        {   *height = MIN_POSSIBLE_WINDOW_SIZE;
-        }
-        else
-        {   *height = wh;
-        }
-    }
-
-    if(x && !BETWEEN(*x, wx - ww, wx + ww))
-    {
-        if(*x < (wx - ww))
-        {   *x = (wx - ww);
-        }
-        else
-        {   *x = (wx + ww);
-        }
-        DEBUG0("Specified x is not in bounds, undesired behaviour may occur.");
-    }
-
-    if(y && !BETWEEN(*y, wy - wh, wy + wh))
-    {
-        if(*y < (wy - wh))
-        {   *y = (wy - wh);
-        }
-        else
-        {   *y = (wy + wh);
-        }
-        DEBUG0("Specified y is not in bounds, undesired behaviour may occur.");
-    }
     const u8 NO_BORDER_WIDTH = 0;
-    if(border_width && !BETWEEN(*border_width, NO_BORDER_WIDTH, ww))
-    {
-        if(*border_width < NO_BORDER_WIDTH)
-        {   *border_width = NO_BORDER_WIDTH;
-        }
-        else
-        {   *border_width = ww - MIN_POSSIBLE_WINDOW_SIZE;
-        }
-        DEBUG0("Border width seems to be too big.");
-    }
+
+    /* I was bored lol */
+
+    /* if width less than min set to min */
+    *width *= *width > MIN_POSSIBLE_WINDOW_SIZE;
+    *width += !(*width) * MIN_POSSIBLE_WINDOW_SIZE;
+
+    /* if width more than max set to max */
+    *width *= *width < ww;
+    *width += !(*width) * ww;
+
+    /* if height less than min to set to min */
+    *height *= *height > MIN_POSSIBLE_WINDOW_SIZE;
+    *height += !(*height) * MIN_POSSIBLE_WINDOW_SIZE;
+
+    /* if height more than max to set to max */
+    *height *= *height < wh;
+    *height += !(*height) * wh;
+
+
+    /* if border_width more than min to set to min */
+    *border_width *= *border_width > NO_BORDER_WIDTH;
+    *border_width += !(*border_width) * NO_BORDER_WIDTH;
+
+    /* if border_width more than max to set to max */
+    *border_width *= *border_width < (ww - MIN_POSSIBLE_WINDOW_SIZE);
+    *border_width += !(*border_width) * (ww - MIN_POSSIBLE_WINDOW_SIZE);
+
+    /* if x less than min set to min */
+    *x *= *x > (wx - ww);
+    *x += !(*x) * (wx - ww);
+
+    /* if x more than max set to max */
+    *x *= *x < (wx + ww);
+    *x += !(*x) * (wx + ww);
+
+
+    /* if y less than min set to min */
+    *y *= *y > (wy - wh);
+    *y += !(*y) * (wy - wh);
+
+    /* if y more than max set to max */
+    *y *= *y < (wy + wh);
+    *y += !(*y) * (wy + wh);
 }
 
 void
@@ -985,6 +977,7 @@ grid(Desktop *desk)
     }
     i32 i, n, cw, ch, aw, ah, cols, rows;
     i32 nx, ny, nw, nh;
+    i32 unused = 0;
     Client *c;
     Monitor *m = desk->clients->mon;
     for(n = 0, c = nexttiled(desk->clients); c; c = nexttiled(c->next))
@@ -1028,7 +1021,7 @@ grid(Desktop *desk)
         nh -= !ah * _cfg.bgw;
 
         /* sanatize data */
-        applysizechecks(m, &nx, &ny, &nw, &nh, NULL);
+        applysizechecks(m, &nx, &ny, &nw, &nh, &unused);
         resize(c, nx, ny, nw, nh, 0);
         ++i;
     }
@@ -1265,7 +1258,7 @@ manage(XCBWindow win)
 
     /* Custom stuff */
     setborderwidth(c, _cfg.bw);
-    XCBSetWindowBorderWidth(_wm.dpy, win, _cfg.bw);
+    XCBSetWindowBorderWidth(_wm.dpy, win, c->bw);
     /*  XSetWindowBorder(dpy, w, scheme[SchemeBorder][ColBorder].pixel); */
     configure(c);   /* propagates border_width, if size doesn't change */
     updatetitle(c);
@@ -1337,12 +1330,13 @@ monocle(Desktop *desk)
     i32 nw, nh;
     i32 nx = desk->clients->mon->wx;
     i32 ny = desk->clients->mon->wy;
+    i32 unused = 0;
 
     for(c = nexttiled(desk->clients); c; c = nexttiled(c->next))
     {
         nw = desk->clients->mon->ww - (c->bw * 2);
         nh = desk->clients->mon->wh - (c->bw * 2);
-        applysizechecks(m, &nx, &ny, &nw, &nh, NULL);
+        applysizechecks(m, &nx, &ny, &nw, &nh, &unused);
         resize(c, nx, ny, nw, nh, 0); 
     }
 }
@@ -2208,6 +2202,7 @@ tile(Desktop *desk)
     i32 n = 0, i = 0;
     i32 nx = 0, ny = 0;
     i32 nw = 0, nh = 0;
+    i32 unused = 0;
     Client *c = NULL;
     Monitor *m = NULL;
 
@@ -2249,7 +2244,7 @@ tile(Desktop *desk)
             ny += _cfg.bgw;
             nw -= _cfg.bgw * 2;
             nh -= _cfg.bgw * 2;
-            applysizechecks(m, &nx, &ny, &nw, &nh, NULL);
+            applysizechecks(m, &nx, &ny, &nw, &nh, &unused);
             resize(c, nx, ny, nw, nh, 0);
                                                                         /* spacing for windows below */
             if (my + HEIGHT(c) < (unsigned int)m->wh) my += HEIGHT(c) + _cfg.bgw;
@@ -2266,7 +2261,7 @@ tile(Desktop *desk)
             ny += _cfg.bgw;
             nw -= _cfg.bgw * 2;
             nh -= _cfg.bgw * 2;
-            applysizechecks(m, &nx, &ny, &nw, &nh, NULL);
+            applysizechecks(m, &nx, &ny, &nw, &nh, &unused);
             resize(c, nx, ny, nw, nh, 0);
                                                                     /* spacing for windows below */ 
             if (ty + HEIGHT(c) < (unsigned int)m->wh) ty += HEIGHT(c) + _cfg.bgw;
