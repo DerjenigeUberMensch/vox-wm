@@ -1535,7 +1535,7 @@ XCBCookie
 XCBSetWindowBorderWidth(
         XCBDisplay *display, 
         XCBWindow window, 
-        uint32_t border_width);
+        uint16_t border_width);
 
 /* Sets the specified window to be sibling of the specified other window.
  *
@@ -3289,6 +3289,19 @@ XCBDebugGetCallStack(
  */
 char *
 XCBDebugGetLastCall(
+        void
+        );
+
+/* Returns a null terminating string to the previous last called function.
+ *
+ * NOTE: XCB_TRL_ENABLE_DEBUG must be defined for this function to return any meaningfull data.
+ * NOTE: char * should NOT be freed.
+ *
+ * RETURN: char * On Success.
+ * RETURN: NULL On Failure.
+ */
+char *
+XCBDebugGetPreviousCall(
         void
         );
 /* Returns a null terminating string to the last called function.

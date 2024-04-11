@@ -14,11 +14,16 @@
 #include "config.h"
 #include "toggle.h"
 
+/*
+ * For people wanting to make new functions:
+ * XCB buffers requests to the display (for some of them not all (which is dumb btw.)) so you just do a bunch of stuff then when your done just do XCBFlush();
+ */
 
 /* TODO: Make these functions seperate threads */
 extern void (*handler[]) (XCBGenericEvent *);
 
 extern WM _wm;
+extern CFG _cfg;
 
 void
 UserStats(const Arg *arg)
@@ -254,10 +259,29 @@ _ResizeWindow(
 void
 ResizeWindow(const Arg *arg)
 {
+    return;
     if(_wm.selmon->desksel->sel)
     {
         _ResizeWindow(_wm.dpy, _wm.selmon->desksel->sel->win, arg->i);
     }
+}
+
+void
+SetBorderWidth(const Arg *arg)
+{
+    if(_cfg.bw + arg->i < 0)
+    {   return;
+    }
+    _cfg.bw += arg->i;
+    Client *c;
+    for(c = _wm.selmon->desksel->clients; c; c = nextclient(c))
+    {   
+        XCBSetWindowBorderWidth(_wm.dpy, c->win, _cfg.bw);
+        setborderwidth(c, _cfg.bw);
+    }
+    arrangedesktop(_wm.selmon->desksel);
+    XCBFlush(_wm.dpy);
+    DEBUG("Border width: [%d]", _cfg.bw);
 }
 
 void
@@ -326,6 +350,7 @@ ToggleStatusBar(const Arg *arg)
     updatebarpos(_wm.selmon);
     XCBMoveResizeWindow(_wm.dpy, _wm.selmon->bar->win, _wm.selmon->wx, _wm.selmon->bar->y, _wm.selmon->ww, _wm.selmon->bar->h);
     arrange(_wm.selmon->desksel);
+    XCBFlush(_wm.dpy);
 }
 
 void
