@@ -479,7 +479,7 @@ enum XCBWindowState
  * Except for GX for some reason?
  */
 
- #define XCBNone               XCB_NONE;
+ #define XCBNone               XCB_NONE
 
  /***************************************************************** 
  * EVENT DEFINITIONS 

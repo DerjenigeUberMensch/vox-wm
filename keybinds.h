@@ -85,6 +85,7 @@ static const Key keys[] =
 static const Button buttons[] = 
 {
     { XCB_BUTTON_PRESS,     SUPER,      RMB,        ResizeWindow,   {.i = RMB} },
+    { XCB_BUTTON_PRESS,     SUPER,      LMB,        ResizeWindow,   {.i = RMB} },
 };
 
 

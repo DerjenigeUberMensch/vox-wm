@@ -215,6 +215,10 @@ _ResizeWindow(
         DEBUG0("No Geometry avaible.");
         return;
     }
+    XCBSelectInput(_wm.dpy, win, 
+            XCB_EVENT_MASK_POINTER_MOTION|XCB_EVENT_MASK_BUTTON_PRESS|XCB_EVENT_MASK_BUTTON_RELEASE|
+            XCB_EVENT_MASK_KEY_PRESS|XCB_EVENT_MASK_KEY_RELEASE
+            );
 
     horiz = qp->win_x < (gm->width / 2) ? -1 : 1;
     vert = qp->win_y < (gm->height / 2) ? -1 : 1;
@@ -232,6 +236,7 @@ _ResizeWindow(
     XCBMotionNotifyEvent *ev;
     u8 cleanev = 0;
     XCBKeyCode detail = 0;
+    XCBFlush(_wm.dpy);
     do
     {
         ev = (XCBMotionNotifyEvent *)XCBPollForEvent(display);
@@ -239,7 +244,6 @@ _ResizeWindow(
         {   continue;
         }
         cleanev = XCB_EVENT_RESPONSE_TYPE(ev);
-
         if(ev->event == win && cleanev == XCB_MOTION_NOTIFY)
         {
             nw = ow + (horiz    * (ev->root_x - x));
@@ -247,22 +251,24 @@ _ResizeWindow(
             nx = ox + (!~horiz) * (ow - nw);
             ny = oy + (!~vert)  * (oh - nh);
             XCBMoveResizeWindow(display, win, nx, ny, nw, nh);
+            DEBUG("(w: %d, h: %d)", nw, nh);
+        }
+        else
+        {   eventhandler((XCBGenericEvent *)ev);
         }
         detail = ev->detail;
         free(ev);
         ev = NULL;
     } while((cleanev != XCB_BUTTON_RELEASE || cleanev != XCB_KEY_PRESS) || detail != key_or_button);
-
-    DEBUG("%s", "ret");
 }
 
 void
 ResizeWindow(const Arg *arg)
 {
-    return;
     if(_wm.selmon->desksel->sel)
     {
         _ResizeWindow(_wm.dpy, _wm.selmon->desksel->sel->win, arg->i);
+        DEBUG0("Done.");
     }
 }
 
