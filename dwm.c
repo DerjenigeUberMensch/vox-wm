@@ -239,7 +239,7 @@ uint8_t
 applysizehints(Client *c, i32 *x, i32 *y, i32 *width, i32 *height, uint8_t interact)
 {
     u8 baseismin;
-    Monitor *m = c->mon;
+    const Monitor *m = c->desktop->mon;
     XCBCookie sizehintscookie;
     if(ISFLOATING(c))
     {   sizehintscookie = XCBGetWMNormalHintsCookie(_wm.dpy, c->win);
@@ -397,6 +397,7 @@ attach(Client *c)
 void
 attachdesktop(Monitor *m, Desktop *desktop)
 {
+    desktop->mon = m;
     desktop->next = m->desktops;
     m->desktops = desktop;
     if(desktop->next)
@@ -481,6 +482,7 @@ detachdesktop(Monitor *m, Desktop *desktop)
 
     desktop->next = NULL;
     desktop->prev = NULL;
+    desktop->mon = NULL;
 }
 
 void
@@ -695,7 +697,7 @@ configure(Client *c)
 }
 
 Client *
-createclient(Monitor *m)
+createclient(void)
 {
     Client *c = calloc(1, sizeof(Client ));
     if(!c)
@@ -710,13 +712,12 @@ createclient(Monitor *m)
     c->wstateflags = 0;
     c->bw = c->oldbw = 0;
     c->win = 0;
-    c->mon = m;
     c->mina = c->maxa = 0;
     c->basew = c->baseh = 0;
     c->incw = c->inch = 0;
     c->maxw = c->maxh = 0;
     c->pid = 0;
-    c->desktop = m ? m->desksel : NULL;
+    c->desktop = NULL;
     return c;
 }
 
@@ -741,7 +742,7 @@ createbar(void)
 }
 
 Desktop *
-createdesktop(Monitor *m)
+createdesktop(void)
 {
     Desktop *desk = calloc(1, sizeof(Desktop));
     if(!desk)
@@ -753,7 +754,7 @@ createdesktop(Monitor *m)
     desk->olayout= 0;   /* TODO */
     desk->clients= NULL;
     desk->stack = NULL;
-    attachdesktop(m, desk);
+    desk->mon = NULL;
     return desk;
 }
 
@@ -772,8 +773,11 @@ createmon(void)
     m->next = NULL;
     u16 i;
     /* TODO */
+    Desktop *desk;
     for(i = 0; i < 10; ++i)
-    {   createdesktop(m);
+    {   
+        desk = createdesktop();
+        attachdesktop(m, desk);
     }
     m->desksel = m->desktops;
     m->bar = calloc(1, sizeof(Bar ));
@@ -802,13 +806,15 @@ dirtomon(u8 dir)
     return m;
 }
 
+/* unused. */
 uint8_t
 docked(Client *c)
 {
+    const Monitor *m = c->desktop->mon;
     uint8_t dockd = 0;
-    if(c->mon)
+    if(m)
     {   
-        dockd = (c->mon->wx == c->x) & (c->mon->wy == c->y) & (WIDTH(c) == c->mon->ww) & (HEIGHT(c) == c->mon->wh);
+        dockd = (m->wx == c->x) & (m->wy == c->y) & (WIDTH(c) == m->ww) & (HEIGHT(c) == m->wh);
     }
     return dockd;
 }
@@ -850,9 +856,10 @@ focus(Client *c)
     {   unfocus(desk->sel, 0);
     }
     if(c)
-    {   
-        if(c->mon != _wm.selmon)
-        {   _wm.selmon = c->mon;
+    {  
+
+        if(c->desktop->mon != _wm.selmon)
+        {   _wm.selmon = c->desktop->mon;
         }
 
         if(ISURGENT(c))
@@ -874,20 +881,7 @@ focus(Client *c)
         XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow]);
     }
     desk->sel = c;
-}
-
-i32
-getstate(XCBWindow win, XCBGetWindowAttributes *state_att)
-{
-    i32 state = 0;
-    const XCBCookie cookie = XCBGetWindowPropertyCookie(_wm.dpy, win, wmatom[WMState], 0L, 2L, False, wmatom[WMState]);
-    XCBGetWindowAttributes *reply = XCBGetWindowAttributesReply(_wm.dpy, cookie);
-    if(reply)
-    {
-        state = reply->map_state;
-        free(reply);
-    }
-    return state;
+    DEBUG("Focused: [%d]", c ? c->win : 0);
 }
 
 i8
@@ -916,7 +910,6 @@ grabbuttons(XCBWindow win, uint8_t focused)
     /* numlock is int */
     int modifiers[4] = { 0, XCB_MOD_MASK_LOCK, _wm.numlockmask, _wm.numlockmask|XCB_MOD_MASK_LOCK};
     XCBUngrabButton(_wm.dpy, XCB_BUTTON_INDEX_ANY, XCB_BUTTON_MASK_ANY, win);
-    /* makesure to ungrab buttons first */
     if (!focused)
     {
         XCBGrabButton(_wm.dpy, XCB_BUTTON_INDEX_ANY, XCB_MOD_MASK_ANY, win, 0, BUTTONMASK, 
@@ -979,7 +972,7 @@ grid(Desktop *desk)
     i32 nx, ny, nw, nh;
     i32 unused = 0;
     Client *c;
-    Monitor *m = desk->clients->mon;
+    Monitor *m = desk->clients->desktop->mon;
     for(n = 0, c = nexttiled(desk->clients); c; c = nexttiled(c->next))
     {   ++n;
     }
@@ -997,15 +990,15 @@ grid(Desktop *desk)
     }
     cols = rows - !!(rows && (rows - 1) * rows >= n);
     /* window geoms (cell height/width) */
-    ch = desk->clients->mon->wh / (rows + !rows);
-    cw = desk->clients->mon->ww / (cols + !cols);
+    ch = m->wh / (rows + !rows);
+    cw = m->ww / (cols + !cols);
     for(i = 0, c = nexttiled(desk->clients); c; c = nexttiled(c->next))
     {
-        nx = desk->clients->mon->wx + (i / rows) * cw;
-        ny = desk->clients->mon->wy + (i % rows) * ch;
+        nx = m->wx + (i / rows) * cw;
+        ny = m->wy + (i % rows) * ch;
         /* adjust height/width of last row/column's windows */
-        ah = !!((i + 1) % rows) * (desk->clients->mon->wh - ch * rows);
-        aw = !!(i >= rows * (cols - 1)) * (desk->clients->mon->ww - cw * cols);
+        ah = !!((i + 1) % rows) * (m->wh - ch * rows);
+        aw = !!(i >= rows * (cols - 1)) * (m->ww - cw * cols);
 
         /* _cfg.bgw without fucking everything else */
         nx += _cfg.bgw;
@@ -1060,6 +1053,7 @@ Client *
 manage(XCBWindow win)
 {
     Client *c, *t = NULL;
+    Monitor *m = NULL;
     XCBWindow trans = 0;
     u8 transstatus = 0;
     u32 inputmask = XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_FOCUS_CHANGE|XCB_EVENT_MASK_PROPERTY_CHANGE|XCB_EVENT_MASK_STRUCTURE_NOTIFY;
@@ -1085,8 +1079,6 @@ manage(XCBWindow win)
     {   checkbar = 1;
     }
 
-    DEBUG("%d", win);
-
     /* get cookies first */
     XCBCookie wacookie = XCBGetWindowAttributesCookie(_wm.dpy, win);
     XCBCookie wgcookie    = XCBGetWindowGeometryCookie(_wm.dpy, win);
@@ -1110,7 +1102,7 @@ manage(XCBWindow win)
     XCBWindowProperty *strutreply = NULL;
 
     /* we do it here before, because we are waiting for replies and for more memory. */
-    c = createclient(_wm.selmon);
+    c = createclient();
 
     /* wait for replies */
     waattributes = XCBGetWindowAttributesReply(_wm.dpy, wacookie);
@@ -1180,24 +1172,24 @@ manage(XCBWindow win)
 
     if(transstatus && trans && (t = wintoclient(trans)))
     {
-        c->mon = t->mon;
         c->desktop = t->desktop;
     }
     else
     {
-        c->mon = _wm.selmon;
+        /* just set to current desktop */
+        c->desktop = _wm.selmon->desksel;
         /* applyrules() */
     }
-
-    /* constrain window to window area */
-    if (c->x + WIDTH(c) > c->mon->wx + c->mon->ww)
-    {   c->x = c->mon->wx + c->mon->ww - WIDTH(c);
+    m = c->desktop->mon;
+    /* constrain window to monitor window area */
+    if (c->x + WIDTH(c) > m->wx + m->ww)
+    {   c->x = m->wx + m->ww - WIDTH(c);
     }
-    if (c->y + HEIGHT(c) > c->mon->wy + c->mon->wh)
-    {   c->y = c->mon->wy + c->mon->wh - HEIGHT(c);
+    if (c->y + HEIGHT(c) > m->wy + m->wh)
+    {   c->y = m->wy + m->wh - HEIGHT(c);
     }
-    c->x = MAX(c->x, c->mon->wx);
-    c->y = MAX(c->y, c->mon->wy);
+    c->x = MAX(c->x, m->wx);
+    c->y = MAX(c->y, m->wy);
 
     /* strut partial length is 12 btw */
     u32 values[12];
@@ -1267,7 +1259,6 @@ manage(XCBWindow win)
     XCBSelectInput(_wm.dpy, win, inputmask);
     grabbuttons(win, 0);
 
-    c->desktop = _wm.selmon->desksel;
     attach(c);
     attachstack(c);
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientList], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&win, 1);
@@ -1275,14 +1266,14 @@ manage(XCBWindow win)
     /* map the window or we get errors */
     XCBMapWindow(_wm.dpy, win);
 
-    if(c->mon == _wm.selmon)
+    if(c->desktop == _wm.selmon->desksel)
     {   unfocus(_wm.selmon->desksel->sel, 0);
     }
     /* inherit previous client state */
-    if(_wm.selmon->desksel->sel)
-    {   setfullscreen(c, ISFULLSCREEN(_wm.selmon->desksel->sel) || ISFULLSCREEN(c));
+    if(c->desktop && c->desktop->sel)
+    {   setfullscreen(c, ISFULLSCREEN(c->desktop->sel) || ISFULLSCREEN(c));
     }
-    _wm.selmon->desksel->sel = c;
+    c->desktop->sel = c;
     arrange(c->desktop);
     /* client could be floating so we pass NULL for focus */
     focus(NULL);
@@ -1326,16 +1317,16 @@ monocle(Desktop *desk)
     {   return;
     }
     Client *c;
-    Monitor *m = desk->clients->mon;
+    Monitor *m = desk->clients->desktop->mon;
     i32 nw, nh;
-    i32 nx = desk->clients->mon->wx;
-    i32 ny = desk->clients->mon->wy;
+    i32 nx = m->wx;
+    i32 ny = m->wy;
     i32 unused = 0;
 
     for(c = nexttiled(desk->clients); c; c = nexttiled(c->next))
     {
-        nw = desk->clients->mon->ww - (c->bw * 2);
-        nh = desk->clients->mon->wh - (c->bw * 2);
+        nw = m->ww - (c->bw * 2);
+        nh = m->wh - (c->bw * 2);
         applysizechecks(m, &nx, &ny, &nw, &nh, &unused);
         resize(c, nx, ny, nw, nh, 0); 
     }
@@ -1454,8 +1445,8 @@ restack(Desktop *desk)
     }
 
     wc.stack_mode = XCB_STACK_MODE_BELOW;
-    if(desk->stack->mon->bar && SHOWBAR(desk->stack->mon->bar))
-    {   wc.sibling = desk->stack->mon->bar->win;
+    if(desk->stack->desktop->mon->bar && SHOWBAR(desk->stack->desktop->mon->bar))
+    {   wc.sibling = desk->stack->desktop->mon->bar->win;
     }
     else
     {   wc.sibling = _wm.root;
@@ -1623,6 +1614,12 @@ sendevent(XCBWindow win, XCBAtom proto)
         while(!exists && i--)
         {   exists = protocols.atoms[i] == proto;
         }
+        if(!exists)
+        {   DEBUG("Could not find sendevent request for [%d]", win);
+        }
+    }
+    else
+    {   DEBUG("Not WMProtocols for window [%d]", win);
     }
 
     if(exists)
@@ -1636,9 +1633,6 @@ sendevent(XCBWindow win, XCBAtom proto)
         ev.data.data32[1] = XCB_CURRENT_TIME;
         XCBSendEvent(_wm.dpy, win, False, XCB_NONE, (const char *)&ev);
     }
-    else
-    {   DEBUG0("Failed to send event.");
-    }
 
     XCBWipeGetWMProtocols(&protocols);
     return exists;
@@ -1647,12 +1641,16 @@ sendevent(XCBWindow win, XCBAtom proto)
 void
 sendmon(Client *c, Monitor *m)
 {
-    if(c->mon == m)
-    {   return;
+    if(!c->desktop)
+    {   c->desktop = m->desksel;
+    }
+    if(c->desktop->mon == m)
+    {   DEBUG0("Cant send client to itself.");
+        return;
     }
     unfocus(c, 1);
     detachcompletely(c);
-    c->mon = m;
+    c->desktop = m->desksel;
     setclientdesktop(c, m->desksel);
     attach(c);
     attachstack(c);
@@ -1802,13 +1800,14 @@ setalwaysonbottom(Client *c, uint8_t state)
 void
 setfullscreen(Client *c, u8 state)
 {
+    const Monitor *m = c->desktop->mon;
     if(state && !ISFULLSCREEN(c))
     {
         XCBChangeProperty(_wm.dpy, c->win, netatom[NetWMState], XCB_ATOM_ATOM, 32,
         XCB_PROP_MODE_REPLACE, (unsigned char *)&netatom[NetWMStateFullscreen], 1);
         setborderwidth(c, c->bw);
         setborderwidth(c, 0);
-        resizeclient(c, c->mon->mx, c->mon->wy, c->mon->mw, c->mon->mh);
+        resizeclient(c, m->mx, m->wy, m->mw, m->mh);
         XCBRaiseWindow(_wm.dpy, c->win);
     }
     else if(!state && ISFULLSCREEN(c))
@@ -1842,19 +1841,20 @@ sethidden(Client *c, uint8_t state)
 void
 setmaximizedvert(Client *c, uint8_t state)
 {
+    const Monitor *m = c->desktop->mon;
     SETFLAG(c->wstateflags, _STATE_MAXIMIZED_VERT, !!state);
     if(state)
     {
         if(!ISMAXVERT(c))
         {
-            resize(c, c->x, c->y, c->w, c->mon->wh, 0);
+            resize(c, c->x, c->y, c->w, m->wh, 0);
         }
     }
     else
     {
         if(ISMAXVERT(c))
-        {
-            resize(c, c->x, c->y, c->w, c->oldh != c->mon->wh ? c->oldh : c->oldh / 2, 0);
+        {                                                          /* fallback */
+            resize(c, c->x, c->y, c->w, c->oldh != m->wh ? c->oldh : c->oldh / 2, 0);
         }
     }
 }
@@ -1862,19 +1862,20 @@ setmaximizedvert(Client *c, uint8_t state)
 void
 setmaximizedhorz(Client *c, uint8_t state)
 {
+    const Monitor *m = c->desktop->mon;
     SETFLAG(c->wstateflags, _STATE_MAXIMIZED_HORZ, !!state);
     if(state)
     {
         if(!ISMAXHORZ(c))
         {
-            resize(c, c->x, c->y, c->mon->ww, c->h, 0);
+            resize(c, c->x, c->y, m->ww, c->h, 0);
         }
     }
     else
     {
         if(ISMAXHORZ(c))
-        {
-            resize(c, c->x, c->y, c->oldw != c->mon->ww ? c->oldw : c->oldw / 2, c->h, 0);
+        {                                                     /* Fallback. */
+            resize(c, c->x, c->y, c->oldw != m->ww ? c->oldw : c->oldw / 2, c->h, 0);
         }
     }
 }
@@ -2024,14 +2025,15 @@ updateviewport(void)
 
 
 void
-showhide(const Client *restrict c)
+showhide(Client *c)
 {
+    const Monitor *m = c->desktop->mon;
     if(ISVISIBLE(c))
     {   XCBMoveWindow(_wm.dpy, c->win, c->x, c->y);
     }
     else
     {   
-        const i16 x = (c->mon->mx - (WIDTH(c) / 2));
+        const i16 x = (m->mx - (WIDTH(c) / 2));
         XCBMoveWindow(_wm.dpy, c->win, x, c->y);
     }
 }
@@ -2210,7 +2212,7 @@ tile(Desktop *desk)
     {   return;
     }
 
-    m = desk->clients->mon;
+    m = desk->clients->desktop->mon;
     for(n = 0, c = nexttiled(desk->clients); c; c = nexttiled(c->next))
     {   ++n;
     }
@@ -2387,7 +2389,8 @@ updategeom(void)
 				dirty = 1;
 				m->desktops->clients = c->next;
 				detachstack(c);
-				c->mon = _wm.mons;
+                c->desktop = _wm.mons->desktops;
+                /* TODO desktops might break. */
 				attach(c);
 				attachstack(c);
 			}
@@ -3117,7 +3120,7 @@ wintomon(XCBWindow win)
     if(win == _wm.root && getrootptr(&x, &y)) return recttomon(x, y, 1, 1);
     for (m = _wm.mons; m; m = m->next)
         if (m->bar && win == m->bar->win) return m;
-    if ((c = wintoclient(win))) return c->mon;
+    if ((c = wintoclient(win))) return c->desktop->mon;
     return _wm.selmon;
 }
 

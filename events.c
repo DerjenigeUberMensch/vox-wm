@@ -205,9 +205,9 @@ buttonpress(XCBGenericEvent *event)
     const i32 cleanstate = CLEANMASK(state);
 
     u8 sync = 0;
-    Monitor *m;
+    Monitor *m = NULL;
     /* focus monitor if necessary */
-    if ((m = wintomon(eventwin)))
+    if ((m = wintomon(eventroot)))
     {
         if(m != _wm.selmon)
         {
@@ -221,18 +221,12 @@ buttonpress(XCBGenericEvent *event)
     Client *c;
     if((c = wintoclient(eventwin)))
     {   
-        if(m && m->desksel->sel != c)   
-        {   
-            if(c->mon != m)
-            {   c->mon = m;
-            }
-            focus(c);
-            if(ISFLOATING(c) || ISALWAYSONTOP(c))
-            {   XCBRaiseWindow(_wm.dpy, c->win);
-            }
-            XCBAllowEvents(_wm.dpy, XCB_ALLOW_REPLAY_POINTER, XCB_TIME_CURRENT_TIME);
-            sync = 1;
+        focus(c);
+        if(ISFLOATING(c) || ISALWAYSONTOP(c))
+        {   XCBRaiseWindow(_wm.dpy, c->win);
         }
+        XCBAllowEvents(_wm.dpy, XCB_ALLOW_REPLAY_POINTER, XCB_CURRENT_TIME);
+        sync = 1;
     }
     int i;
     for(i = 0; i < LENGTH(buttons); ++i)
@@ -411,7 +405,7 @@ enternotify(XCBGenericEvent *event)
     }
 
     c = wintoclient(eventwin);
-    m = c ? c->mon : wintomon(eventwin);
+    m = c ? c->desktop->mon : wintomon(eventwin);
 
     if(m != _wm.selmon)
     {
@@ -607,14 +601,13 @@ configurerequest(XCBGenericEvent *event)
     (void)parent;
 
     Client *c;
-    Monitor *m;
     u8 sync = 0;
     if((c = wintoclient(win)))
     {
-        m = c->mon;
+        const Monitor *m = c->desktop->mon;
         if(mask & XCB_CONFIG_WINDOW_BORDER_WIDTH)
         {                           /* Border width should NEVER be bigger than the screen */
-            setborderwidth(c, MIN(bw, c->mon->ww));
+            setborderwidth(c, bw);
         }
         if(mask & XCB_CONFIG_WINDOW_X)
         {
@@ -639,7 +632,7 @@ configurerequest(XCBGenericEvent *event)
         if(mask & XCB_CONFIG_WINDOW_SIBLING)
         {
             ASSUME(0);
-            if(sibling != None)
+            if(sibling != XCBNone)
             {   /* Ignore these requests we handle stack order */
             }
         }
@@ -1164,7 +1157,7 @@ clientmessage(XCBGenericEvent *event)
         else if (atom == netatom[NetCurrentDesktop])
         {   
             u32 target = l0;
-            Monitor *m = c->mon;
+            Monitor *m = c->desktop->mon;
             detachcompletely(c);
             if(m)
             {

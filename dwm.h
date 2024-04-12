@@ -87,13 +87,13 @@
 
 #define ISALWAYSONTOP(C)        (((C)->wstateflags & _STATE_ABOVE))
 #define ISALWAYSONBOTTOM(C)     (((C)->wstateflags & _STATE_BELOW))
-#define WASFLOATING(C)          (( ((C)->mon->wx == (C)->oldx) & ((C)->mon->wy == (C)->oldy) & ((C)->mon->ww == (C)->oldw) & ((C)->mon->wh == (C)->oldh) ))
-#define ISFLOATING(C)           (( ((C)->mon->wx == (C)->x) & ((C)->mon->wy == (C)->y) & ((C)->mon->ww == (C)->w) & ((C)->mon->wh == (C)->h)  ))
+#define WASFLOATING(C)          (( ((C)->desktop->mon->wx == (C)->oldx) & ((C)->desktop->mon->wy == (C)->oldy) & ((C)->desktop->mon->ww == (C)->oldw) & ((C)->desktop->mon->wh == (C)->oldh) ))
+#define ISFLOATING(C)           (( ((C)->desktop->mon->wx == (C)->x) & ((C)->desktop->mon->wy == (C)->y) & ((C)->desktop->mon->ww == (C)->w) & ((C)->desktop->mon->wh == (C)->h)  ))
 #define ISFIXED(C)              (( ((C)->minw != 0 ) & ((C)->minh != 0) & ((C)->minw == (C)->maxw) & ((C)->minh == (C)->maxh) ))
 #define ISURGENT(C)             (((C)->wstateflags & _STATE_DEMANDS_ATTENTION))
 #define NEVERFOCUS(C)           (((C)->wstateflags & _STATE_NEVERFOCUS))
-#define ISMAXVERT(C)            (((C)->h == (C)->mon->wh))
-#define ISMAXHORZ(C)            (((C)->w == (C)->mon->ww))
+#define ISMAXVERT(C)            (((C)->h == (C)->desktop->mon->wh))
+#define ISMAXHORZ(C)            (((C)->w == (C)->desktop->mon->ww))
 /* EWMH Window types */
 
 #define ISDESKTOP(C)            (((C)->wtypeflags & _TYPE_DESKTOP))
@@ -130,7 +130,7 @@
 
 
 /* This returns 1 when true */
-#define ISVISIBLE(C)            ((((C)->mon->desksel == (C)->desktop || ISSTICKY((C))) & (!ISHIDDEN((C)))))
+#define ISVISIBLE(C)            ((((C)->desktop->mon->desksel == (C)->desktop || ISSTICKY((C))) & (!ISHIDDEN((C)))))
 
 /* Bar struct flags */
 
@@ -217,7 +217,7 @@ union Arg
 
 struct Key
 {
-    uint8_t type;               /* KeyPress/KeyRelease  */
+    uint16_t type;              /* KeyPress/KeyRelease  */
     uint16_t mod;               /* Modifier             */
     XCBKeysym keysym;           /* Key symbol           */
     void (*func)(const Arg *);  /* Function             */
@@ -227,9 +227,9 @@ struct Key
 
 struct Button
 {
-    uint16_t type;                  /* ButtonPress/ButtonRelease    */
-    uint32_t mask;                  /* Modifier                     */
-    uint32_t button;                /* Button                       */
+    uint8_t type;                  /* ButtonPress/ButtonRelease    */
+    uint8_t button;                /* Button                       */
+    uint16_t mask;                  /* Modifier                     */
     void (*func)(const Arg *arg);   /* Function                     */
     Arg arg;                        /* Argument                     */
 };
@@ -245,19 +245,8 @@ struct Client
     uint16_t oldw;      /* Previous Width           */
     uint16_t oldh;      /* Previous Height          */
 
-    /* Client Flags */
-
     uint16_t wtypeflags;/* Window type flags        */
     uint16_t wstateflags;/* Window state flags      */
-
-    XCBWindow win;      /* Client Window            */
-
-    Client *next;       /* The next client in list  */
-    Client *snext;      /* The next client in stack */
-    Client *prev;       /* The previous client      */
-    Client *sprev;      /* The prev stack order clnt*/
-    Monitor *mon;       /* Client Monitor           */
-    Desktop *desktop;   /* Client Associated Desktop*/
 
     uint16_t bw;        /* Border Width             */
     uint16_t oldbw;     /* Old Border Width         */
@@ -273,39 +262,46 @@ struct Client
     uint16_t minw;      /* Minimum Width            */
     uint16_t minh;      /* Minimum Height           */
 
+    XCBWindow win;      /* Client Window            */
     pid_t pid;          /* Client Pid               */
-    char *name;         /* Client Name              */
+
+    Client *next;       /* The next client in list  */
+    Client *snext;      /* The next client in stack */
+    Client *prev;       /* The previous client      */
+    Client *sprev;      /* The prev stack order clnt*/
+    Desktop *desktop;   /* Client Associated Desktop*/
+
+    wchar_t *name;      /* Client Name              */
     char *icon;         /* Array of icon values     */
 
-    uint8_t pad0[8];
+    uint8_t pad0[16];
 };
 
 struct Monitor
 {
     int16_t mx;                 /* Monitor X (Screen Area)                  */
     int16_t my;                 /* Monitor Y (Screen Area)                  */
-    int16_t mw;                 /* Monitor Width (Screen Area)              */
+    uint16_t mw;                /* Monitor Width (Screen Area)              */
     uint16_t mh;                /* Monitor Height (Screen Area)             */
     int16_t wx;                 /* Monitor X (Window Area)                  */
     int16_t wy;                 /* Monitor Y (Window Area)                  */
     uint16_t ww;                /* Monitor Width (Window Area)              */
     uint16_t wh;                /* Monitor Height (Window Area)             */
 
-    uint16_t deskcount;         /* Desktop Counter                          */
-
     Desktop *desktops;          /* First Desktop in linked list             */
     Desktop *desksel;           /* Selected Desktop                         */
     Monitor *next;              /* Next Monitor                             */
 
     Bar *bar;                   /* The Associated Task-Bar                  */
-    uint8_t pad0[8];
+
+    uint16_t deskcount;         /* Desktop Counter                          */
+    uint8_t pad[2];
 };
 
 struct Layout
 {
     char *symbol;
     void (*arrange)(Desktop *);
-    uint8_t pad0[16 + 32];      /* align for x64 */
 };
 
 struct Desktop
@@ -315,6 +311,7 @@ struct Desktop
     uint8_t layout;             /* The Layout Index             */
     uint8_t olayout;            /* The Previous Layout Index    */
 
+    Monitor *mon;               /* Desktop Monitor              */
     Client *lastfocused;        /* Last focused client          */
     Client *clients;            /* First Client in linked list  */
     Client *clast;              /* Last Client in linked list   */
@@ -323,7 +320,6 @@ struct Desktop
     Client *sel;                /* Selected Client              */
     Desktop *next;              /* Next Client in linked list   */
     Desktop *prev;              /* Previous Client in list      */
-    uint8_t pad0[56];
 };
 
 struct WM
@@ -333,6 +329,7 @@ struct WM
     int running;                    /* Running flag         */
     int restart;                    /* Restart flag         */
     uint8_t has_error;              /* Error flag           */
+    uint8_t pad[1];
     uint16_t sw;                    /* Screen Height u16    */
     uint16_t sh;                    /* Screen Width  u16    */
     XCBWindow root;                 /* The root window      */
@@ -363,48 +360,165 @@ struct CFG
     char *wmname;
 };
 
+/* Handles the main(int argc, char **argv) arguments. */
 void argcvhandler(int argc, char *argv[]);
+/* Applies size restrictions to the specified values.
+ * NOTE: Cannot handle any NULL values.
+*/
 void applysizechecks(Monitor *m, int32_t *x, int32_t *y, int32_t *width, int32_t *height, int32_t *border_width);
+/* Applies the gravity shifts specified by the gravity onto the x and y coordinates.
+*/
 void applygravity(uint32_t gravity, int16_t *x, int16_t *y, const uint16_t width, const uint16_t height, const uint16_t border_width);
+/* Applies size hints to the specified values.
+* interact:             1/true/True         Does not restrict bounds to window area.
+*                       0/false/False       Restricts bounds to window area.
+* RETURN: 1 if the specified x/y/w/h does not match after sizehints applied. (aka need to resize.)
+* RETURN: 0 if the specified x/y/w/h does match after the sizehints applied. (No need to resize.)
+*/
 uint8_t applysizehints(Client *c, int32_t *x, int32_t *y, int32_t *width, int32_t *height, uint8_t interact);
+/* Arranges and restacks the windows in the specified desktop.
+*/
 void arrange(Desktop *desk);
+/* Arranges and restacks all the windows for every deskop in the specified monitor.
+*/
 void arrangemon(Monitor *m);
+/* Arrange and restacks every window on all monitors.
+*/
 void arrangemons(void);
+/* Arranges the windows in the specified desktop.
+ *
+ * NOTE: Does not restack windows.
+ */
 void arrangedesktop(Desktop *desk);
+/* Adds desktop to specified monitor linked list.
+*/
 void attachdesktop(Monitor *m, Desktop *desk);
+/* Removes desktop fromt specified monitor linked list.
+*/
 void detachdesktop(Monitor *m, Desktop *desk);
+/* Adds Client to clients desktop linked list.
+*/
 void attach(Client *c);
+/* Adds Client to rendering stack order in desktop linked list.
+*/
 void attachstack(Client *c);
+/* Removes Client from clients desktop linked list.
+*/
 void detach(Client *c);
+/* Removes all connections from clients desktop linked list
+ * Analagous to detachstack(c) and detach(c);
+*/
 void detachcompletely(Client *c);
+/* Removes Client from desktop rendering stack order.
+*/
 void detachstack(Client *c);
-void cfgsethoverfocus(Client *c, uint8_t state);
+/* Checks given the provided information if a window is eligible to be a new bar.
+ * RETURN: 1 on True.
+ * RETURN: 0 on False
+*/
 uint8_t checknewbar(int64_t strutpartial[12], XCBAtom windowtypes[], uint32_t windowtypeslength, XCBAtom windowstates[], uint32_t wmstateslength, int64_t desktop);
+/* Inital startup check if there is another window manager running.
+*/
 void checkotherwm(void);
+/* Cleanups and frees any data previously allocated.
+*/
 void cleanup(void);
+/* frees client and allocated client properties. 
+*/
 void cleanupclient(Client *c);
+/* frees desktop and allocated desktop properties.
+*/
 void cleanupdesktop(Desktop *desk);
+/* frees Monitor and allocated Monitor properties.
+*/
 void cleanupmon(Monitor *m);
+/* frees all monitors and allocated Monitor properties.
+*/
 void cleanupmons(void);
+/* Updates the XServers knowledge of the clients coordinates.
+ * NOTE: This is a sendevent to the c->win data type.
+ * NOTE: XCBFlush(); must be called to push the XCB internal buffer to send this request.
+ */
 void configure(Client *c);
-Client *createclient(Monitor *m);
+/* Allocates a client and client properties with all data set to 0 or the adress of any newly allocated data.
+ * RETURN: Client * on Success.
+ * RETURN: NULL on Failure.
+*/
+Client *createclient(void);
+/* Allocates a bar and bar properties with all data set to 0 or to the adress of any newly allocated data.
+ * RETURN: Bar * on Success.
+ * RETURN: NULL on Failure.
+*/
 Bar *createbar(void);
-Desktop *createdeskop(Monitor *m);
+/* Allocates a desktop and desktop properties with all data set to 0 or to the adress of any newly allocated data.
+ * RETURN: Desktop * on Success.
+ * RETURN: NULL on Failure.
+ */
+Desktop *createdeskop(void);
+/* Allocates a Monitor and Monitor properties with all data set to 0 or to the adress of any newly allocated data.
+ * RETURN: Monitor * on Success.
+ * RETURN: exit(1) on Failure.
+ */
 Monitor *createmon(void);
-Stack *createstack(void);
+/* Finds the next monitor based on "dir" AKA Direction. 
+ * RETURN: Monitor * on Success.
+ * RETURN: NULL on Failure.
+ */
 Monitor *dirtomon(uint8_t dir);
+/* Deprecated !ISFLOATING(c) now has this behaviour. */
 uint8_t docked(Client *c);
+/* Jumps to the specified function handler for the provided event.
+*/
 void eventhandler(XCBGenericEvent *ev);
+/* 
+*/
 void exithandler(void);
+/* Sets the "floating" layout for the specified desktop.
+ * Floating -> Windows overlap each other AKA default win10 window behaviour.
+ */
 void floating(Desktop *desk);
+/* Sets focus to the specified client.
+ * NOTE: if NULL provided first visible client in stack is choosen as focus specifier.
+ */
 void focus(Client *c);
+/* UNUSED/TODO
+ */
 int32_t getstate(XCBWindow win, XCBGetWindowAttributes *state);
+/* Grabs a windows buttons. 
+ * Basically this just allows us to receive button press/release events from windows.
+ */
 void grabbuttons(XCBWindow window, uint8_t focused);
+/* Grabs a windows keys.
+ * Basically this just allows us to receive/intercept key press/release events.
+ *
+ */
 void grabkeys(void);
+/* Sets the "grid" layout for the specified desktop.
+ * grid -> windows are sorted in a grid like formation, like those ones in hacker movies.
+ */
 void grid(Desktop *desk);
+/* Kills the specified window.
+ * type:            Graceful            Sends a message to the window to kill itself.
+ *                  Safedestroy         Sends a message to the window to kill itself, on failure, forcefully kill the window.
+ *                  Destroy             Destroys a window without sending any message for the window to response (Nuclear option.)
+ */
 void killclient(XCBWindow win, enum KillType type);
+/* Part of main event loop "run()"
+ * Manages AKA adds the window to our current or windows specified desktop.
+ * Applies size checks, bounds, layout, etc...
+ * RETURN: Client * on Success.
+ * RETURN: NULL on Failure.
+ */
 Client *manage(XCBWindow window);
+/* Sets the window to the specified bar, if the bar doesnt exist it creates it.
+ * RETURN: Bar * on Success.
+ * RETURN: NULL on Failure.
+ */
 Bar *managebar(Monitor *m, XCBWindow win);
+/* Sets the "monocle" layout for the specified desktop.
+ * monocle -> Windows are maximized to the screen avaible area, 
+ * while floating windows are always raised above all others.
+ */
 void monocle(Desktop *desk);
 Client *nextclient(Client *c);
 Desktop *nextdesktop(Desktop *desktop);
@@ -437,7 +551,7 @@ void setsticky(Client *c, uint8_t state);
 void settopbar(Client *c, uint8_t state);
 void setup(void);
 void seturgent(Client *c, uint8_t isurgent);
-void showhide(const Client *c);
+void showhide(Client *c);
 void sigchld(int signo);
 void sighandler(void);
 void sighup(int signo);
