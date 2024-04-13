@@ -114,6 +114,7 @@ long long rear = -1;
 long long front = -1;
 
 
+/*
 static void
 _xcb_jmpck(XCBDisplay *d, XCBGenericError *err)
 {
@@ -133,6 +134,7 @@ _xcb_jmpck(XCBDisplay *d, XCBGenericError *err)
            err->full_sequence);
 
 }
+*/
 
 static void _xcb_push_func(XCBCookie cookie, const char *func);
 static void _xcb_pop_func(XCBCookie cookie);
@@ -190,7 +192,7 @@ _xcb_empty_func(void)
 
 
 
-
+/*
 static void
 _xcb_show_call_stack(void)
 {
@@ -204,6 +206,8 @@ _xcb_show_call_stack(void)
         }
     }
 }
+
+*/
 
 void  
 XCBBreakPoint(void) 

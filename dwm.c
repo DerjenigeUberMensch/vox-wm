@@ -610,6 +610,7 @@ cleanup(void)
 {
     XCBCookie cookie = XCBDestroyWindow(_wm.dpy, _wm.wmcheckwin);
     XCBDiscardReply(_wm.dpy, cookie);
+    _wm.wmcheckwin = 0;
     if(_wm.syms)
     {   
         XCBKeySymbolsFree(_wm.syms);
@@ -618,6 +619,8 @@ cleanup(void)
     cleanupmons();
     XCBFlush(_wm.dpy);
     XCBCloseDisplay(_wm.dpy);
+    ToggleExit();
+    ThreadExit(_wm.ct);
     _wm.dpy = NULL;
 }
 
@@ -924,6 +927,7 @@ grabbuttons(XCBWindow win, uint8_t focused)
                     win, 0, BUTTONMASK, 
                     XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, 
                     XCB_NONE, XCB_NONE);
+            DEBUG("Grabbed button: [%d]", buttons[i].button);
         }
     }
 }
@@ -1923,12 +1927,37 @@ setup(void)
     _wm.sw = XCBDisplayWidth(_wm.dpy, _wm.screen);
     _wm.sh = XCBDisplayHeight(_wm.dpy, _wm.screen);
     _wm.root = XCBRootWindow(_wm.dpy, _wm.screen);
+    _wm.ct = ThreadGetSelf();
 
     if(!_wm.syms)
-    {   DIECAT("%s", "Could not establish connection with keyboard (OutOfMemory)");
+    {   
+        cleanup();
+        DIECAT("%s", "Could not establish connection with keyboard (OutOfMemory)");
     }
 
-    updatesettings();
+    if(!_wm.ct)
+    {
+        cleanup();
+        DIECAT("%s", "Could not get the current thread.");
+    }
+
+    /* TODO testing default settings */
+    _cfg.mfact = 0.55f;
+    _cfg.nmaster = 1;
+    _cfg.bw = 1;
+    _cfg.bgw = 0;
+    _cfg.snap = 10;
+    _cfg.rfrate = 120;
+    _cfg.bh = 10;
+    _cfg.maxcc = 256;
+
+    /* Most java apps require this see:
+     * https://wiki.archlinux.org/title/Java#Impersonate_another_window_manager
+     * https://wiki.archlinux.org/title/Java#Gray_window,_applications_not_resizing_with_WM,_menus_immediately_closing
+     * for more information.
+     * "Hard coded" window managers to ignore "Write Once, Debug Everywhere"
+     */
+    _cfg.wmname = "LG3D";
 
     updategeom();
     const XCBCookie utf8cookie = XCBInternAtomCookie(_wm.dpy, "UTF8_STRING", False);
@@ -2154,16 +2183,10 @@ specialconds(int argc, char *argv[])
             err = "The XServer died with an unexpected error.";
             break;
     }
+
     if(err)
     {   DEBUG("%s\nError code: %d", err, _wm.has_error);
     }
-
-    if(_wm.restart)
-    {   execvp(argv[0], argv);
-        /* UNREACHABLE */
-        DEBUG("%s", "Failed to restart " NAME);
-    }
-
 
 
     /* this is the end of the exithandler so we dont really care if we segfault here if at all.
@@ -2173,6 +2196,12 @@ specialconds(int argc, char *argv[])
      */
     if(_wm.dpy)
     {   cleanup();
+    }
+
+    if(_wm.restart)
+    {   execvp(argv[0], argv);
+        /* UNREACHABLE */
+        DEBUG("%s", "Failed to restart " NAME);
     }
 }
 
@@ -2193,6 +2222,9 @@ startup(void)
     /* This allows for execvp and exec to only spawn process on the specified display rather than the default varaibles */
     if(display)
     {   setenv("DISPLAY", display, 1);
+    }
+    if(!ToggleInit())
+    {   DIECAT("%s", "FATAL: Cannot create another thread for toggle function.");
     }
     atexit(exithandler);
 }
@@ -2586,20 +2618,6 @@ updatenumlockmask(void)
 			if(codes[i * reply->keycodes_per_modifier + j] == target)
 				_wm.numlockmask = (1 << i);
     free(reply);
-}
-
-void
-updatesettings(void)
-{
-    _cfg.mfact = 0.55f;
-    _cfg.nmaster = 1;
-    _cfg.bw = 1;
-    _cfg.bgw = 0;
-    _cfg.snap = 10;
-    _cfg.rfrate = 120;
-    _cfg.bh = 10;
-    _cfg.maxcc = 256;
-    _cfg.wmname = "Gamer";
 }
 
 void
@@ -3129,7 +3147,7 @@ xerror(XCBDisplay *display, XCBGenericError *err)
 {
     if(err)
     {   
-        DEBUG("%s %s\n", XCBGetErrorCodeText(err->error_code), XCBGetErrorMajorCodeText(err->major_code));
+        DEBUG("%s %s\n", XCBGetErrorMajorCodeText(err->major_code), XCBGetFullErrorText(err->error_code));
         DEBUG("error_code: [%d], major_code: [%d], minor_code: [%d]\n"
               "sequence: [%d], response_type: [%d], resource_id: [%d]\n"
               "full_sequence: [%d]\n"
