@@ -21,9 +21,82 @@
 
 /* TODO: Make these functions seperate threads */
 extern void (*handler[]) (XCBGenericEvent *);
-
 extern WM _wm;
 extern CFG _cfg;
+
+
+static Thread *ct = NULL;
+
+typedef struct ThreadFunction ThreadFunction;
+typedef struct Generic Generic;
+
+
+struct Generic
+{
+    union
+    {
+        void *datav;
+        void **datavl;
+    } v;
+
+    union
+    {
+        i8 data8[64];
+        i16 data16[32];
+        i32 data32[16];
+        i64 data64[8];
+
+        float dataf[16];
+        double datad[8];
+        long double datadd[4];  /* compiler specified but should be at most 128 bits */
+    } n;
+};
+
+
+struct ThreadFunction
+{
+    void (*caller)(void *);
+    Generic *data;
+};
+
+static ThreadFunction ctcalle;
+static XCBDisplay *dpy = NULL;
+
+static void *
+CurrentFunction(void *unused)
+{
+    while(1)
+    {
+        ThreadCondWait(ct, &(ct->cond));
+        if(ctcalle.caller)
+        {   
+            DEBUG("%s", "ran a function");
+            ctcalle.caller(ctcalle.data);
+            ctcalle.caller = NULL;
+            memset(ctcalle.data, 0, sizeof(Generic));
+        }
+    }
+    return NULL;
+}
+
+
+uint8_t
+ToggleInit(void)
+{
+    ct = ThreadCreate(CurrentFunction, NULL);
+    ctcalle.data = calloc(1, sizeof(Generic));
+    ctcalle.caller = NULL;
+    dpy = XCBOpenDisplay(NULL, NULL);
+    return !!ct && !!ctcalle.data && !!dpy;
+}
+
+void
+ToggleExit(void)
+{
+    ThreadExit(ct);
+    free(ctcalle.data);
+    XCBCloseDisplay(dpy);
+}
 
 void
 UserStats(const Arg *arg)
@@ -98,60 +171,6 @@ DragWindow(
     XCBWindow win,
     const XCBKeyCode key_or_button)
 {
-    i16 ox, oy;     /*    old   */
-    i16 x, y;       /*  current */
-    i16 nx, ny;     /*    new   */
-
-    XCBCookie gbpcookie = 
-        XCBGrabPointerCookie(display, win, False, MOUSEMASK, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE, XCB_NONE, XCB_CURRENT_TIME);
-    XCBCookie qpcookie = XCBQueryPointerCookie(display, win);
-
-
-    XCBGrabPointer *grb = XCBGrabPointerReply(display, gbpcookie);
-    XCBQueryPointer *qp = XCBQueryPointerReply(display, qpcookie);
-
-
-    if(!grb || grb->status != XCB_GRAB_STATUS_SUCCESS)
-    {   
-        if(grb)
-        {   free(grb);
-        }
-        return;
-    }
-    if(!qp)
-    {
-        free(grb);
-        return;
-    }
-
-    x = qp->root_x;
-    y = qp->root_y;
-    ox = qp->win_x;
-    oy = qp->win_y;
-
-    free(grb);
-    free(qp);
-
-    XCBMotionNotifyEvent *ev;
-    u8 cleanev;
-    u8 detail = 0;
-    do
-    {
-        ev = (XCBMotionNotifyEvent *)XCBPollForEvent(display);
-        cleanev = XCB_EVENT_RESPONSE_TYPE(ev);
-
-        if(ev->event == win && cleanev == XCB_MOTION_NOTIFY)
-        {
-            nx = ox + (ev->root_x - x);
-            ny = oy + (ev->root_y - y);
-            XCBMoveWindow(display, win, nx, ny);
-        }
-        if(cleanev == XCB_BUTTON_RELEASE)
-        {   
-            detail = ev->detail;
-        }
-        free(ev);
-    } while(cleanev != 0 && cleanev != XCB_BUTTON_RELEASE && detail != key_or_button);
 }
 
 void
@@ -174,102 +193,8 @@ Quit(const Arg *arg)
 }
 
 void
-_ResizeWindow(
-    XCBDisplay *display, 
-    XCBWindow win,
-    const XCBKeyCode key_or_button
-    ) /* resizemouse */
-{
-    i16 ox, oy;     /*    old   */
-    i16 x, y;       /*  current */
-    i16 nx, ny;     /*    new   */
-
-    u16 ow, oh;     /*    old   */
-    u16 nw, nh;     /*    new   */
-
-    i8 horiz;       /* bounds checks    */
-    i8 vert;        /* bounds checks    */
-
-    const XCBCursor cur = XCB_NONE;
-    XCBCookie qpcookie = XCBQueryPointerCookie(display, win);
-    XCBCookie gpcookie = XCBGrabPointerCookie(display, win, False, MOUSEMASK, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE, cur, XCB_CURRENT_TIME);
-    XCBCookie gmcookie = XCBGetGeometryCookie(display, win);
-
-    XCBQueryPointer *qp = XCBQueryPointerReply(display, qpcookie);
-    XCBGrabPointer *gb = XCBGrabPointerReply(display, gpcookie);
-    XCBGeometry *gm = XCBGetGeometryReply(display, gmcookie);
-
-    if(!qp)
-    {   DEBUG0("Could not query pointer.");
-        return;
-    }
-    if(!gb || gb->status != XCB_GRAB_STATUS_SUCCESS)
-    {   free(qp);
-        DEBUG0("Could not grab pointer.");
-        return;
-    }
-    if(!gm)
-    {   
-        free(qp); 
-        free(gb);
-        DEBUG0("No Geometry avaible.");
-        return;
-    }
-    XCBSelectInput(_wm.dpy, win, 
-            XCB_EVENT_MASK_POINTER_MOTION|XCB_EVENT_MASK_BUTTON_PRESS|XCB_EVENT_MASK_BUTTON_RELEASE|
-            XCB_EVENT_MASK_KEY_PRESS|XCB_EVENT_MASK_KEY_RELEASE
-            );
-
-    horiz = qp->win_x < (gm->width / 2) ? -1 : 1;
-    vert = qp->win_y < (gm->height / 2) ? -1 : 1;
-
-    x = qp->win_x;
-    y = qp->win_y; 
-
-    ox = gm->x;
-    oy = gm->y;
-
-    ow = gm->width;
-    oh = gm->height;
-
-
-    XCBMotionNotifyEvent *ev;
-    u8 cleanev = 0;
-    XCBKeyCode detail = 0;
-    XCBFlush(_wm.dpy);
-    do
-    {
-        ev = (XCBMotionNotifyEvent *)XCBPollForEvent(display);
-        if(!ev)
-        {   continue;
-        }
-        cleanev = XCB_EVENT_RESPONSE_TYPE(ev);
-        if(ev->event == win && cleanev == XCB_MOTION_NOTIFY)
-        {
-            nw = ow + (horiz    * (ev->root_x - x));
-            nh = oh + (vert     * (ev->root_y - y));
-            nx = ox + (!~horiz) * (ow - nw);
-            ny = oy + (!~vert)  * (oh - nh);
-            XCBMoveResizeWindow(display, win, nx, ny, nw, nh);
-            DEBUG("(w: %d, h: %d)", nw, nh);
-        }
-        else
-        {   eventhandler((XCBGenericEvent *)ev);
-        }
-        detail = ev->detail;
-        free(ev);
-        ev = NULL;
-    } while((cleanev != XCB_BUTTON_RELEASE || cleanev != XCB_KEY_PRESS) || detail != key_or_button);
-}
-
-void
 ResizeWindow(const Arg *arg)
 {
-    if(_wm.selmon->desksel->sel)
-    {
-        _ResizeWindow(_wm.dpy, _wm.selmon->desksel->sel->win, arg->i);
-        DEBUG0("Done.");
-    }
 }
 
 void
@@ -294,7 +219,6 @@ void
 SetWindowLayout(const Arg *arg)
 {
     const Monitor *m = _wm.selmon;
-
     if(!m) return;
     setdesktoplayout(m->desksel, arg->i);
     arrange(m->desksel);
@@ -343,6 +267,12 @@ MaximizeWindowHorizontal(const Arg *arg)
 void
 AltTab(const Arg *arg)
 {
+    Desktop *desk = _wm.selmon->desksel;
+    Client *c = desk->stack;
+
+
+    arrange(desk);
+    XCBFlush(_wm.dpy);
 }
 
 void

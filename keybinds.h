@@ -80,12 +80,13 @@ static const Key keys[] =
     { XCBKeyPress,         0, XF86XK_AudioNext,                    SpawnWindow,        {.v = next_vol } },
     { XCBKeyPress,         0, XF86XK_AudioPrev,                    SpawnWindow,        {.v = prev_vol } },
 };
-/* button definitions */
-/* click can be ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle, ClkClientWin, or ClkRootWin */
+
 static const Button buttons[] = 
 {
-    { XCB_BUTTON_PRESS,     SUPER,      RMB,        ResizeWindow,   {.i = RMB} },
-    { XCB_BUTTON_PRESS,     SUPER,      LMB,        ResizeWindow,   {.i = RMB} },
+    /* Type                 Button      Mask        function        arg */
+    { XCB_BUTTON_PRESS,     RMB,        SUPER,      ResizeWindow,   {.i = RMB} },
+    { XCB_BUTTON_PRESS,     LMB,        SUPER,      ResizeWindow,   {.i = LMB} },
+    { XCB_BUTTON_PRESS,     MMB,        SUPER,      ResizeWindow,   {.i = MMB} },
 };
 
 

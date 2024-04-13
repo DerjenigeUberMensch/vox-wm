@@ -7,7 +7,7 @@
 
 
 
-#define _SHOW_BAR       ((1 << 1))
+#define _SHOW_BAR           ((1 << 1))
 
 #define SHOWBAR(B)          (((B)->flags & _SHOW_BAR))
 
@@ -22,6 +22,7 @@ struct Bar
     uint16_t h;
 
     uint8_t flags;
+    uint8_t pad[3];
 
     XCBWindow win;
 };

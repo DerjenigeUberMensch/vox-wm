@@ -2062,6 +2062,7 @@ char *
 XCBGetErrorMinorCodeText(
         uint16_t minor_code
         );
+
 /* Returns (The full error) using a number provided.
  * The different vs just XCBGetErrorText is you get the server dying mini description.
  * EX: BadMatch (invalid parameter attributes).

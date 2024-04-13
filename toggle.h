@@ -2,6 +2,10 @@
 #define TOGGLE_H_
 #include "dwm.h"
 
+
+uint8_t ToggleInit(void);
+
+void ToggleExit(void);
 /* Mostly a testing function */
 void UserStats(const Arg *arg);
 /* Switch to a monitor based on the argument int arg i */

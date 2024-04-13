@@ -5,6 +5,7 @@
 #include <xcb/xcb_keysyms.h>
 
 #include "bar.h"
+#include "thread.h"
 #include "xcb_trl.h"
 #include "xcb_winutil.h"
 
@@ -31,6 +32,7 @@
 #define TAGSLENGTH              (LENGTH(tags))
 #define SESSION_FILE            "/tmp/dwm-session"
 #define MAX_QUEUE_SIZE          1024
+#define BORKED                  "NOT_SET"
 
 /* Client struct flags */
 
@@ -296,6 +298,7 @@ struct Monitor
 
     uint16_t deskcount;         /* Desktop Counter                          */
     uint8_t pad[2];
+    uint8_t pad0[8];
 };
 
 struct Layout
@@ -327,9 +330,9 @@ struct WM
     int screen;                     /* Screen id            */
     int numlockmask;                /* numlockmask          */
     int running;                    /* Running flag         */
-    int restart;                    /* Restart flag         */
+    uint8_t restart;                /* Restart flag         */
     uint8_t has_error;              /* Error flag           */
-    uint8_t pad[1];
+    uint8_t pad[2];                 /* Pad                  */
     uint16_t sw;                    /* Screen Height u16    */
     uint16_t sh;                    /* Screen Width  u16    */
     XCBWindow root;                 /* The root window      */
@@ -338,6 +341,7 @@ struct WM
     Monitor *selmon;                /* Selected Monitor     */
     Monitor *mons;                  /* Monitors             */
     XCBKeySymbols *syms;            /* keysym alloc         */
+    Thread *ct;                     /* Current Thread       */
 };
 
 /* 
@@ -520,23 +524,70 @@ Bar *managebar(Monitor *m, XCBWindow win);
  * while floating windows are always raised above all others.
  */
 void monocle(Desktop *desk);
+/* Returns the next client avaible.
+ * RETURN: Client * on Success.
+ * RETURN: NULL on Failure.
+ */
 Client *nextclient(Client *c);
+/* Returns the next Desktop avaible.
+ * RETURN: Desktop* on Success.
+ * RETURN: NULL on Failure.
+ */
 Desktop *nextdesktop(Desktop *desktop);
+/* Returns the next Monitor avaible.
+ * RETURN: Monitor* on Success.
+ * RETURN: NULL on Failure.
+ */
 Monitor *nextmonitor(Monitor *monitor);
+/* Returns the next client in stack avaible.
+ * RETURN: Client* on Success.
+ * RETURN: NULL on Failure.
+ */
 Client *nextstack(Client *c);
+/* Returns the next tiled client avaible.
+ * RETURN: Client* on Success.
+ * RETURN: NULL on Failure.
+ */
 Client *nexttiled(Client *c);
+/* Returns the next visible client avaible.
+ * RETURN: Client* on Success.
+ * RETURN: NULL on Failure.
+ */
 Client *nextvisible(Client *c);
+/* Returns the previous visible client avaible.
+ * RETURN: Client* on Success.
+ * RETURN: NULL on Failure.
+ */
 Client *lastvisible(Client *c);
+/* Sends a event to the main event loop to stop running.
+ */
 void quit(void);
+/* Searches through every monitor for a possible big enough size to fit rectangle parametors specified */
 Monitor *recttomon(int16_t x, int16_t y, uint16_t width, uint16_t height);
+/* resize a client only if specified x/y/w/h is different 
+ * interact
+ * {1, 0}
+ * 1 -> dont confide resize to monitor dimentions 
+ * 0 -> confide resize within monitor dimentions
+ * */
 void resize(Client *c, int32_t x, int32_t y, int32_t width, int32_t height, uint8_t interact);
+/* resize a client given parametors without sizehints */
 void resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height);
+/* Reorders(restacks) clients in current desk->stack */
 void restack(Desktop *desk);
+/* Flags RESTART and sets running to 0;
+ * results in execvp(self) and "restarts"
+ */
 void restart(void);
+/* Main event loop */
 void run(void);
+/* Scans for new clients on startup */
 void scan(void);
+/* Sends a Protocl Event to specified client */
 uint8_t sendevent(XCBWindow win, XCBAtom proto);
+/* Sets the flag "alwaysontop" to the provided Client */
 void setalwaysontop(Client *c, uint8_t isalwaysontop);
+/* Sets the border width to the provided Client */
 void setborderwidth(Client *c, uint16_t border_width);
 void setclientdesktop(Client *c, Desktop *desktop);
 void setclientstate(Client *c, uint8_t state);
@@ -549,50 +600,102 @@ void setmodal(Client *c, uint8_t state);
 void setneverfocus(Client *c, uint8_t state);
 void setsticky(Client *c, uint8_t state);
 void settopbar(Client *c, uint8_t state);
+/* Sets up Variables, Checks, WM specific data, etc.. */
 void setup(void);
 void seturgent(Client *c, uint8_t isurgent);
+/* Moves Client offscreen if not VISIBLE;
+ * Moves Client onscreen if VISIBLE;
+ */
 void showhide(Client *c);
+/* waits for childs (zombies) to die */
 void sigchld(int signo);
+/* Handles Signals and how we use them */
 void sighandler(void);
+/* Calls restart */
 void sighup(int signo);
+/* Calls quit */
 void sigterm(int signo);
+/* Error checks, and checks for certain conditions to be meet for different behaviour 
+ * NOTE: This is only checked when the program is about to exit.
+ */
 void specialconds(int argc, char *argcv[]);
+/* Setups most vital data for the context. 
+ * Calls exit(1) on Failure.
+ */
 void startup(void);
+/* Sets the "Tiled" layout for the specified desktop.
+ * Tiled -> Windows tile in a grid like patter where there is 1 Big window to the left,
+ *          and "stacking" on top of each other smaller windows on the right.
+ */
 void tile(Desktop *desk);
+/* Unfocuses specified client and sets to focus to root if setfocus is true */
 void unfocus(Client *c, uint8_t setfocus);
+/* updates the Status Bar Position from given monitor */
 void updatebarpos(Monitor *m);
+/* updates the bar geometry from the given monitor */
 void updatebargeom(Monitor *m);
+/* Updates _NET_WM_CLIENT_LIST */
 void updateclientlist(void);
+/* Updates the XServer to the Current destop */
 void updatedesktop(void);
+/* Updates the desktop names if they have changed */
 void updatedesktopnames(void);
+/* Updates the current desktop count AKA how many desktops we got to the XServer */
 void updatedesktopnum(void);
+/* Updates Geometry for external monitors based on if they have different geometry */
 int  updategeom(void);
+/* Updates the Client icon if we find one */
 void updateicon(Client *c);
+/* checks and updates mask if numlock is active */
 void updatenumlockmask(void);
-void updatesettings(void);
+/* Updates a Clients sizehints property using the provided hints pointer "size" */
 void updatesizehints(Client *c, XCBSizeHints *size);
+/* Updates Client tile if we find one;
+ * if none found default to dwm.h BROKEN
+ */
 void updatetitle(Client *c);
+/* updates the viewport property to the XServer */
 void updateviewport(void);
+/* Updates Our own state based on Client state specified */
 void updatewindowstate(Client *c, XCBAtom state, uint8_t add_remove_toggle);
+/* Updates Our own states based on Client state specified */
 void updatewindowstates(Client *c, XCBAtom state[], uint32_t atomslength);
+/* Updates Our own state based on windowtype in Client */
 void updatewindowtype(Client *c, XCBAtom wtype, uint8_t add_remove_toggle);
+/* Updates Our own states based on windowtype in Client */
 void updatewindowtypes(Client *c, XCBAtom wtype[], uint32_t atomslength);
+/* Updates WM_HINTS for specified Client */
 void updatewmhints(Client *c, XCBWMHints *hints);
+/* Wakups the current X connection by sending a event to it */
 void wakeupconnection();
+/* Sets the window _WM_STATE based on state specified */
 void winsetstate(XCBWindow win, int32_t state);
+/* Returns the bar or the monitor depending on if is_return_mon is true.
+ * RETURN: Bar * on Success and is_return_mon is set to False.
+ * RETURN: Monitor * on Success and is_return_mon is set to True.
+ * RETURN: NULL on Failure.
+ */
 void *wintobar(XCBWindow win, uint8_t is_return_mon);
+/* Returns the client if found from the specified window 
+ * RETURN: Client * on Success.
+ * RETURN: NULL on Failure.
+ */
 Client *wintoclient(XCBWindow win);
+/* Returns the Monitor if found from the specified window 
+ * RETURN: Monitor* on Success.
+ * RETURN: NULL on Failure.
+ */
 Monitor *wintomon(XCBWindow win);
-
-
+/* Unmanages Client AKA we dont tell it what todo Nor does it use our resources;
+ * And perform checks based on specified "destroyed";
+ * 1 -> widthdraw window;
+ * 0 -> skip checks (window already destroyed)
+ */
 void unmanage(Client *c, uint8_t destroyed);
+/* memsets the specified bar to all 0's thus unmanaging the bar
+ */
 void unmanagebar(Bar *bar);
-
+/* Error handler */
 void xerror(XCBDisplay *display, XCBGenericError *error);
-
-/* toogle */
-void UserStats(const Arg *arg);
-
-
 
 #endif 
