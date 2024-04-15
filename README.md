@@ -11,11 +11,9 @@ Xcb has proven to be quite the hastle with text, actually displaying text in gen
 ## Early Release
 This build of xcb-wswm is ***not*** fully feature ready.
 
-Currently it is bare bones only meaning, no window moving (aside from grid/monocle/tile).
+Currently no window movement is supported (TODO)
 
-Nor does it support anything in config.h
-
-Aka it is useless. (for now.)
+config.h is not Currently Supported.
 
 ## Requirements
 - **dmenu**

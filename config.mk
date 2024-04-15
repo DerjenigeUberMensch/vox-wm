@@ -14,7 +14,7 @@ INCS = `pkg-config --cflags --libs xcb xcb-util xcb-aux xcb-xinerama xcb-event x
 #-lxcb-util -lxcb-icccm -lxcb-keysyms
 LIBS =  ${INCS}
 
-#X86 isnt explicitly supported and some code might need to be tweaked
+#X86 isnt explicitly supported.
 X86 = -m32
 X32 = -m32
 X64 = -march=x86-64 -mtune=generic
@@ -42,7 +42,6 @@ PRELINKERFLAGS = -fprefetch-loop-arrays -fstack-protector-strong -fstack-clash-p
 INLINELIMIT = 15
 LINKERFLAGS = ${DYNAMICLINK} -Wl,--gc-sections,--as-needed,--relax,--strip-all,-z,relro,-z,now,-z,noexecstack,-z,defs,-pie -finline-functions -finline-limit=${INLINELIMIT}  ${LINKTIMEOPTIMIZATIONS}
 
-
 BINARY = ${X64}
 CPPFLAGS = -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L ${XINERAMAFLAGS}
 CCFLAGS  = ${CCVERSION} ${WARNINGFLAGS} ${INCS} ${CPPFLAGS} ${BINARY} ${PRELINKERFLAGS} 
@@ -63,7 +62,7 @@ RELEASES= ${RELEASEFLAGS} -O3
 BUILDSELF = ${RELEASEFLAGS} ${XNATIVE} -O3
 
 # Set your options or presets (see above) ex: ${PRESETNAME} (Compiler used is on top)
-CFLAGS = ${DEBUG}
+CFLAGS = ${RELEASES}
 
 CMACROS = 
 

@@ -1082,6 +1082,7 @@ clientmessage(XCBGenericEvent *event)
         }
         else if(atom == netatom[NetCloseWindow])
         {   
+            killclient(c, Graceful);
         }
         else if(atom == netatom[NetMoveResizeWindow])
         {
@@ -1128,6 +1129,22 @@ clientmessage(XCBGenericEvent *event)
                     break;
             }
         }
+        else if(atom == netatom[NetMoveResizeWindow])
+        {
+            i32 gravity = l0;
+            i16 x = l1;
+            i16 y = l2;
+            const u16 w = l3;
+            const u16 h = l4;
+            applygravity(gravity, &x, &y, w, h, c->bw);
+            resize(c, x, y, w, h, 0);
+        }
+        else if(atom == netatom[NetRestackWindow])
+        {   /* TODO */
+        }
+        else if(atom == netatom[NetRequestFrameExtents])
+        {   /* TODO */
+        }
         else if (atom == netatom[NetNumberOfDesktops])
         {   /* ignore */
         }
@@ -1141,11 +1158,11 @@ clientmessage(XCBGenericEvent *event)
         {   
             u32 target = l0;
             Monitor *m = c->desktop->mon;
-            detachcompletely(c);
             if(m)
             {
                 Desktop *desk;
                 u32 i = 0;
+                detachcompletely(c);
                 for(desk = m->desktops; desk && i != target; desk = nextdesktop(desk), ++i);
                 if(desk)
                 {   setclientdesktop(c, desk);
@@ -1163,9 +1180,7 @@ clientmessage(XCBGenericEvent *event)
         else if (atom == netatom[NetWMDesktop])
         {
             /* refer: https://specifications.freedesktop.org/wm-spec/latest/ _NET_WM_DESKTOP */
-
-            /* long 64 bit */       /* long 32 bit */
-            if(l0 == 0xFFFFFFFF || l0 == ~0)
+            if(checksticky(l0))
             {   
                 setsticky(c, 1);
                 return;
@@ -1188,7 +1203,6 @@ propertynotify(XCBGenericEvent *event)
     const XCBWindow win         = ev->window;
     const XCBTimestamp timestamp= ev->time;
     const u16 state             = ev->state;
-
 
 
     (void)timestamp;

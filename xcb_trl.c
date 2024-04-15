@@ -2781,7 +2781,6 @@ XCBGetWMHintsReply(
     /* yes this this is xcb_size_hints_t no its not a mistake */
     xcb_size_hints_t safedata;
 
-
     memcpy(&safedata, (xcb_size_hints_t *)data, length);
     memcpy(reply, (xcb_size_hints_t *)&safedata, length);
 

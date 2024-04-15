@@ -151,7 +151,7 @@ KillWindow(const Arg *arg)
 {
     if(_wm.selmon->desksel->sel)
     {
-        killclient(_wm.selmon->desksel->sel->win, Graceful);
+        killclient(_wm.selmon->desksel->sel, Graceful);
     }
 }
 
@@ -160,7 +160,7 @@ TerminateWindow(const Arg *arg)
 {
     if(_wm.selmon->desksel->sel)
     {
-        killclient(_wm.selmon->desksel->sel->win, Destroy);
+        killclient(_wm.selmon->desksel->sel, Destroy);
     }
 }
 

@@ -55,37 +55,33 @@
 #define _TYPE_COMBO         ((1 << 11))
 #define _TYPE_DND           ((1 << 12))
 #define _TYPE_NORMAL        ((1 << 13))
-
-/* unused bits */
-#define _TYPE_Y             ((1 << 14))
-#define _TYPE_Z             ((1 << 15))
+/* not actual state but just lumped in cause assinging its own is stupid. */
+#define _TYPE_NEVERFOCUS    ((1 << 14))
+#define _TYPE_WINDOW_ICONIC ((1 << 15))
 
 /* EWMH Window states */
-#define _STATE_MODAL                ((1 << 0))
-#define _STATE_STICKY               ((1 << 1))
-#define _STATE_MAXIMIZED_VERT       ((1 << 2))  
-#define _STATE_MAXIMIZED_HORZ       ((1 << 3))
-#define _STATE_SHADED               ((1 << 4))
-#define _STATE_SKIP_TASKBAR         ((1 << 5))
-#define _STATE_SKIP_PAGER           ((1 << 6))
-#define _STATE_HIDDEN               ((1 << 7))
-#define _STATE_FULLSCREEN           ((1 << 8))
-#define _STATE_ABOVE                ((1 << 9))
-#define _STATE_BELOW                ((1 << 10))
-#define _STATE_DEMANDS_ATTENTION    ((1 << 11))
-#define _STATE_FOCUSED              ((1 << 12))
-/* not actual state but just lumped in cause assinging its own is stupid. */
-#define _STATE_NEVERFOCUS           ((1 << 13))
+#define _STATE_MODAL                    ((1 << 0))
+#define _STATE_STICKY                   ((1 << 1))
+#define _STATE_MAXIMIZED_VERT           ((1 << 2))  
+#define _STATE_MAXIMIZED_HORZ           ((1 << 3))
+#define _STATE_SHADED                   ((1 << 4))
+#define _STATE_SKIP_TASKBAR             ((1 << 5))
+#define _STATE_SKIP_PAGER               ((1 << 6))
+#define _STATE_HIDDEN                   ((1 << 7))
+#define _STATE_FULLSCREEN               ((1 << 8))
+#define _STATE_ABOVE                    ((1 << 9))
+#define _STATE_BELOW                    ((1 << 10))
+#define _STATE_DEMANDS_ATTENTION        ((1 << 11))
+#define _STATE_FOCUSED                  ((1 << 12))
 
 /* unused bits */
-#define _STATE_Y                    ((1 << 14))
-#define _STATE_Z                    ((1 << 15))
-
+#define _STATE_SUPPORTED_WM_TAKE_FOCUS      ((1 << 13))
+#define _STATE_SUPPORTED_WM_SAVE_YOURSELF   ((1 << 14))
+#define _STATE_SUPPORTED_WM_DELETE_WINDOW   ((1 << 15))
 
 /* Client macros */
 
 /* Our custom states */
-
 
 #define ISALWAYSONTOP(C)        (((C)->wstateflags & _STATE_ABOVE))
 #define ISALWAYSONBOTTOM(C)     (((C)->wstateflags & _STATE_BELOW))
@@ -93,9 +89,10 @@
 #define ISFLOATING(C)           (( ((C)->desktop->mon->wx == (C)->x) & ((C)->desktop->mon->wy == (C)->y) & ((C)->desktop->mon->ww == (C)->w) & ((C)->desktop->mon->wh == (C)->h)  ))
 #define ISFIXED(C)              (( ((C)->minw != 0 ) & ((C)->minh != 0) & ((C)->minw == (C)->maxw) & ((C)->minh == (C)->maxh) ))
 #define ISURGENT(C)             (((C)->wstateflags & _STATE_DEMANDS_ATTENTION))
-#define NEVERFOCUS(C)           (((C)->wstateflags & _STATE_NEVERFOCUS))
+#define NEVERFOCUS(C)           (((C)->wtypeflags & _TYPE_NEVERFOCUS))
 #define ISMAXVERT(C)            (((C)->h == (C)->desktop->mon->wh))
 #define ISMAXHORZ(C)            (((C)->w == (C)->desktop->mon->ww))
+
 /* EWMH Window types */
 
 #define ISDESKTOP(C)            (((C)->wtypeflags & _TYPE_DESKTOP))
@@ -112,6 +109,8 @@
 #define ISCOMBO(C)              (((C)->wtypeflags & _TYPE_COMBO))
 #define ISDND(C)                (((C)->wtypeflags & _TYPE_DND))
 #define ISNORMAL(C)             (((C)->wtypeflags & _TYPE_NORMAL))
+/* #define ISNEVERFOCUS(C)         (((C)->wtypeflags & _TYPE_NEVERFOCUS)) */
+#define ISICONIC(C)             (((C)->wtypeflags & _TYPE_WINDOW_ICONIC))
 
 
 /* EWMH Window states */
@@ -122,13 +121,17 @@
 #define ISMAXIMIZEDHORZ(C)      (((C)->wstateflags & _STATE_MAXIMIZED_HORZ))
 #define ISSHADED(C)             (((C)->wstateflags & _STATE_SHADED))
 #define SKIPTASKBAR(C)          (((C)->wstateflags & _STATE_SKIP_TASKBAR))
-#define SKIPPAGER(C)             (((C)->wstateflags & _STATE_SKIP_PAGER))
+#define SKIPPAGER(C)            (((C)->wstateflags & _STATE_SKIP_PAGER))
 #define ISHIDDEN(C)             (((C)->wstateflags & _STATE_HIDDEN))
 #define ISFULLSCREEN(C)         (((C)->wstateflags & _STATE_FULLSCREEN))
 #define ISABOVE(C)              (((C)->wstateflags & _STATE_ABOVE))
 #define ISBELOW(C)              (((C)->wstateflags & _STATE_BELOW))
 #define DEMANDSATTENTION(C)     (((C)->wstateflags & _STATE_DEMANDS_ATTENTION))
-#define ISFOCUSED(C)              (((C)->wstateflags & _STATE_FOCUSED))
+#define ISFOCUSED(C)            (((C)->wstateflags & _STATE_FOCUSED))
+/* WM Protocol */
+#define HASWMTAKEFOCUS(C)       (((C)->wstateflags & _STATE_SUPPORTED_WM_TAKE_FOCUS))
+#define HASWMSAVEYOURSELF(C)    (((C)->wstateflags & _STATE_SUPPORTED_WM_SAVE_YOURSELF))
+#define HASWMDELETEWINDOW(C)    (((C)->wstateflags & _STATE_SUPPORTED_WM_DELETE_WINDOW))
 
 
 /* This returns 1 when true */
@@ -518,7 +521,7 @@ void grid(Desktop *desk);
  *                  Safedestroy         Sends a message to the window to kill itself, on failure, forcefully kill the window.
  *                  Destroy             Destroys a window without sending any message for the window to response (Nuclear option.)
  */
-void killclient(XCBWindow win, enum KillType type);
+void killclient(Client *c, enum KillType type);
 /* Part of main event loop "run()"
  * Manages AKA adds the window to our current or windows specified desktop.
  * Applies size checks, bounds, layout, etc...
@@ -605,9 +608,10 @@ void run(void);
 /* Scans for new clients on startup */
 void scan(void);
 /* Sends a Protocol Event to specified client */
-uint8_t sendevent(XCBWindow win, XCBAtom proto);
+void sendprotocolevent(Client *c, XCBAtom proto);
 /* Sets the flag "alwaysontop" to the provided Client */
 void setalwaysontop(Client *c, uint8_t isalwaysontop);
+void setalwaysonbottom(Client *c, uint8_t state);
 void setborderalpha(Client *c, uint8_t alpha);
 /* Sets the border color using red green and blue values */
 void setbordercolor(Client *c, uint8_t red, uint8_t green, uint8_t blue);
@@ -618,12 +622,33 @@ void setborderwidth(Client *c, uint16_t border_width);
 void setclientdesktop(Client *c, Desktop *desktop);
 void setclientstate(Client *c, uint8_t state);
 void setdesktoplayout(Desktop *desk, uint8_t layout);
+void setwtypedesktop(Client *c, uint8_t state);
 void setwtypedialog(Client *c, uint8_t state);
+void setwtypedock(Client *c, uint8_t state);
+void setwtypetoolbar(Client *c, uint8_t state);
+void setwtypemenu(Client *c, uint8_t state);
+void setwtypeneverfocus(Client *c, uint8_t state);
+void setwtypeutility(Client *c, uint8_t state);
+void setwtypesplash(Client *c, uint8_t state);
+void setwtypedropdownmenu(Client *c, uint8_t state);
+void setwtypepopupmenu(Client *c, uint8_t state);
+void setwtypetooltip(Client *c, uint8_t state);
+void setwtypenotification(Client *c, uint8_t state);
+void setwtypecombo(Client *c, uint8_t state);
+void setwtypednd(Client *c, uint8_t state);
+void setwtypenormal(Client *c, uint8_t state);
+void setwmtakefocus(Client *c, uint8_t state);
+void setwmsaveyourself(Client *c, uint8_t state);
+void setwmdeletewindow(Client *c, uint8_t state);
+void setskippager(Client *c, uint8_t state);
+void setskiptaskbar(Client *c, uint8_t state);
 void setfullscreen(Client *c, uint8_t isfullscreen);
 void setfocus(Client *c);
 void sethidden(Client *c, uint8_t state);
+void setmaximizedvert(Client *c, uint8_t state);
+void setmaximizedhorz(Client *c, uint8_t state);
+void setshaded(Client *c, uint8_t state);
 void setmodal(Client *c, uint8_t state);
-void setneverfocus(Client *c, uint8_t state);
 void setsticky(Client *c, uint8_t state);
 void settopbar(Client *c, uint8_t state);
 /* Sets up Variables, Checks, WM specific data, etc.. */
@@ -682,6 +707,8 @@ void updatesizehints(Client *c, XCBSizeHints *size);
 void updatetitle(Client *c);
 /* updates the viewport property to the XServer */
 void updateviewport(void);
+/* Updates Our own window protocol status (dont have to query every time) */
+void updatewindowprotocol(Client *c, XCBWMProtocols *protocols);
 /* Updates Our own state based on Client state specified */
 void updatewindowstate(Client *c, XCBAtom state, uint8_t add_remove_toggle);
 /* Updates Our own states based on Client state specified */

@@ -3177,7 +3177,7 @@ XCBGetWMProtocolsCookie(
  * NOTE: CALLER MUST CALL XCBWipeGetWMProtocols() when done using data.
  *
  * RETURN: 1 On Success;
- *         0 On Failure;
+ * RETURNL 0 On Failure;
  */
 int
 XCBGetWMProtocolsReply(
