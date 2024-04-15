@@ -46,7 +46,13 @@ ThreadGetSelf(void)
 }
 
 void
-ThreadExit(Thread *thread)
+ThreadExit(void *retvalue)
+{
+    pthread_exit(retvalue);
+}
+
+void
+ThreadKill(Thread *thread)
 {
     if(thread)
     {   

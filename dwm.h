@@ -253,6 +253,8 @@ struct Client
     uint16_t bw;        /* Border Width             */
     uint16_t oldbw;     /* Old Border Width         */
 
+    uint32_t bcol;      /* Border Colour            */
+
     float mina;         /* Minimum Aspect           */
     float maxa;         /* Maximum Aspect           */
     uint16_t basew;     /* Base Width               */
@@ -276,7 +278,7 @@ struct Client
     wchar_t *name;      /* Client Name              */
     char *icon;         /* Array of icon values     */
 
-    uint8_t pad0[16];
+    uint8_t pad0[8];
 };
 
 struct Monitor
@@ -349,15 +351,20 @@ struct WM
  */
 struct CFG
 {
-    uint16_t nmaster;        /* number of clients in master area                                */
-    uint16_t bw;             /* Default Border Width                                            */
-    uint16_t bgw;            /* Default Border Gap Width                                        */
+    uint8_t  nmaster;           /* number of clients in master area                                 */
+    uint8_t  hoverfocus;        /* 1 on mouse hover focus that window; 0 to disable                 */
+    uint8_t  pad[2];
 
-    uint16_t snap;           /* Window Resize/Move Snap to grid size                            */
-    uint16_t rfrate;         /* max refresh rate when resizing, moving windows;  0 to disable   */
+    uint16_t bw;                /* Border Width                                                     */
+    uint16_t bgw;               /* Border Gap Width                                                 */
 
-    uint16_t bh;             /* Bar Height.                                                     */
-    uint16_t maxcc;          /* Max Client Count                                                */
+    uint32_t bcol;              /* Border Color                                                     */
+
+    uint16_t snap;              /* Window Resize/Move Snap to grid size                             */
+    uint16_t rfrate;            /* max refresh rate when resizing, moving windows;  0 to disable    */
+
+    uint16_t bh;                /* Bar Height.                                                      */
+    uint16_t maxcc;             /* Max Client Count                                                 */
 
 
     float mfact;
@@ -424,6 +431,11 @@ uint8_t checknewbar(int64_t strutpartial[12], XCBAtom windowtypes[], uint32_t wi
 /* Inital startup check if there is another window manager running.
 */
 void checkotherwm(void);
+/* Checks if a given number would be sticky in the wm-spec.
+ * RETURN: NonZero on True.
+ * RETURN: 0 on False.
+ */
+uint8_t checksticky(int64_t x);
 /* Cleanups and frees any data previously allocated.
 */
 void cleanup(void);
@@ -519,6 +531,15 @@ Client *manage(XCBWindow window);
  * RETURN: NULL on Failure.
  */
 Bar *managebar(Monitor *m, XCBWindow win);
+/* Maximizes the speified clients vertical and horizontal axis.
+ */
+void maximize(Client *c);
+/* Maximizes the speified clients horizontal axis.
+ */
+void maximizehorz(Client *c);
+/* Maximizes the specified clients vertical axis.
+ */
+void maximizevert(Client *c);
 /* Sets the "monocle" layout for the specified desktop.
  * monocle -> Windows are maximized to the screen avaible area, 
  * while floating windows are always raised above all others.
@@ -583,10 +604,15 @@ void restart(void);
 void run(void);
 /* Scans for new clients on startup */
 void scan(void);
-/* Sends a Protocl Event to specified client */
+/* Sends a Protocol Event to specified client */
 uint8_t sendevent(XCBWindow win, XCBAtom proto);
 /* Sets the flag "alwaysontop" to the provided Client */
 void setalwaysontop(Client *c, uint8_t isalwaysontop);
+void setborderalpha(Client *c, uint8_t alpha);
+/* Sets the border color using red green and blue values */
+void setbordercolor(Client *c, uint8_t red, uint8_t green, uint8_t blue);
+/* Sets the border color only using the 32bit value */
+void setbordercolor32(Client *c, uint32_t col);
 /* Sets the border width to the provided Client */
 void setborderwidth(Client *c, uint16_t border_width);
 void setclientdesktop(Client *c, Desktop *desktop);

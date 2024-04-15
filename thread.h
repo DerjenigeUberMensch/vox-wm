@@ -35,6 +35,11 @@ ThreadGetSelf(
 
 void 
 ThreadExit(
+        void *retvalue
+        );
+
+void
+ThreadKill(
         Thread *thread
         );
 

@@ -51,12 +51,12 @@ typedef int64_t  i64;
 #define DEBUG0(X) ((void)0)
 #endif
 
+
+
 /* gcc */
 #ifdef __GNUC__
 #define ASM(X)                          (__asm__(X))
 #define NOINLINE                        __attribute__ ((noinline))
-
-
 #elif __clang__
 
 #define ASM(X)                          (__asm__(X))
@@ -64,7 +64,8 @@ typedef int64_t  i64;
 
 #else
 #define ASM(X)                          ((void)X)
-#define NOINLINE                        (())
+#define NOINLINE                        
+
 #endif
 
 

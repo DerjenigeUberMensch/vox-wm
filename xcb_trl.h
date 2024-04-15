@@ -1526,7 +1526,28 @@ XCBCookie
 XCBLowerWindowIf(
         XCBDisplay *display, 
         XCBWindow window);
-
+/* The XCBSetWindowBorder() function sets the border of the window to the pixel value you specify. 
+ * If you attempt to perform this on an InputOnly window, a XCBBadMatch error results. 
+ *
+ * Depending if a window has a 32bit 24bit 16bit 8bit 4bit 2bit or 1bit (1 color border).
+ * You may set the alpha values if the window is 32bit (ARGB).
+ * If not you may set the default RGB values.
+ *
+ * BLUE     (0, 255) (unsigned char)
+ * RED      (0, 255) (unsigned char)
+ * GREEN    (0, 255) (unsigned char)
+ * ALPHA    (0, 255) (unsigned char)
+ *
+ * FORMAT: BLUE + (GREEN << 8) + (RED << 16) + (ALPHA << 24)
+ *
+ * RETURN: Cookie to request.
+ */
+XCBCookie
+XCBSetWindowBorder(
+        XCBDisplay *display,
+        XCBWindow window,
+        uint32_t border_pixel
+        );
 /* Sets the specified window's "Border Width" with the provided border_width. 
  *
  * RETURN: Cookie to request.
