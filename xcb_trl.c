@@ -698,7 +698,7 @@ XCBMoveResizeWindow(XCBDisplay *display, XCBWindow window, i32 x, i32 y, u32 wid
 XCBCookie
 XCBResizeWindow(XCBDisplay *display, XCBWindow window, u32 width, u32 height)
 {
-    const u32 values[4] = { width, height };
+    const u32 values[2] = { width, height };
     const u32 mask = XCB_CONFIG_WINDOW_WIDTH|XCB_CONFIG_WINDOW_HEIGHT;
     XCBCookie ret = xcb_configure_window(display, window, mask, values);
 #ifdef DBG
@@ -711,7 +711,7 @@ XCBResizeWindow(XCBDisplay *display, XCBWindow window, u32 width, u32 height)
 XCBCookie
 XCBRaiseWindow(XCBDisplay *display, XCBWindow window)
 {
-    const u32 values[1] = { XCB_STACK_MODE_ABOVE };
+    const u32 values = XCB_STACK_MODE_ABOVE;
     const u32 mask = XCB_CONFIG_WINDOW_STACK_MODE;
     XCBCookie ret = xcb_configure_window(display, window, mask, &values);
 #ifdef DBG
@@ -734,7 +734,7 @@ XCBMapRaised(XCBDisplay *display, XCBWindow window)
 XCBCookie
 XCBLowerWindow(XCBDisplay *display, XCBWindow window)
 {
-    const u32 values[1] = { XCB_STACK_MODE_BELOW };
+    const u32 values = XCB_STACK_MODE_BELOW;
     const u32 mask = XCB_CONFIG_WINDOW_STACK_MODE;
     XCBCookie ret = xcb_configure_window(display, window, mask, &values);
 #ifdef DBG
@@ -746,7 +746,7 @@ XCBLowerWindow(XCBDisplay *display, XCBWindow window)
 XCBCookie
 XCBRaiseWindowIf(XCBDisplay *display, XCBWindow window)
 {
-    const u32 values[1] = { XCB_STACK_MODE_TOP_IF };
+    const u32 values = XCB_STACK_MODE_TOP_IF;
     const u32 mask = XCB_CONFIG_WINDOW_STACK_MODE;
     XCBCookie ret = xcb_configure_window(display, window, mask, &values);
 #ifdef DBG
@@ -758,7 +758,7 @@ XCBRaiseWindowIf(XCBDisplay *display, XCBWindow window)
 XCBCookie
 XCBLowerWindowIf(XCBDisplay *display, XCBWindow window)
 {
-    const u32 values[1] = { XCB_STACK_MODE_BOTTOM_IF };
+    const u32 values = XCB_STACK_MODE_BOTTOM_IF;
     const u32 mask = XCB_CONFIG_WINDOW_STACK_MODE;
     XCBCookie ret = xcb_configure_window(display, window, mask, &values);
 #ifdef DBG
@@ -780,8 +780,21 @@ XCBRaiseLowerWindow(XCBDisplay *display, XCBWindow window)
 }
 
 XCBCookie
+XCBSetWindowBorder(XCBDisplay *display, XCBWindow window, uint32_t border_pixel)
+{
+    const u32 values = border_pixel;
+    const u32 mask = XCB_CW_BORDER_PIXEL;
+    XCBCookie ret = xcb_change_window_attributes(display, window, mask, &values);
+#ifdef DBG
+    _xcb_push_func(ret, _fn);
+#endif
+    return ret;
+}
+
+XCBCookie
 XCBSetWindowBorderWidth(XCBDisplay *display, XCBWindow window, u16 border_width)
 {
+    /* format must be i32 or u32 so we cant just pass the adress of u16 border_width */
     const u32 values = border_width;
     const u32 mask = XCB_CONFIG_WINDOW_BORDER_WIDTH;
     XCBCookie ret = xcb_configure_window(display, window, mask, &values);

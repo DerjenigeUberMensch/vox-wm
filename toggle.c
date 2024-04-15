@@ -79,7 +79,6 @@ CurrentFunction(void *unused)
     return NULL;
 }
 
-
 uint8_t
 ToggleInit(void)
 {
@@ -93,7 +92,7 @@ ToggleInit(void)
 void
 ToggleExit(void)
 {
-    ThreadExit(ct);
+    /* TODO cant close */
     free(ctcalle.data);
     XCBCloseDisplay(dpy);
 }
@@ -252,27 +251,94 @@ SpawnWindow(const Arg *arg)
 void
 MaximizeWindow(const Arg *arg)
 {
+    const Monitor *m = _wm.selmon;
+    Client *c = m->desksel->sel;
+    if(!c || !m)
+    {   return;
+    }
+
+    /* floating are auto handled to be any window that isnt maxed */
+    if(ISFLOATING(c))
+    {
+        if(ISFIXED(c))
+        {   /* snap to grid instead. */
+            resize(c, m->wx, m->wy, c->w, c->h, 0);
+        }
+        else
+        {   maximize(c);
+        }
+    }
+    else /* else its maximized */
+    {
+        const uint8_t samex = c->x == c->oldx;
+        const uint8_t samey = c->y == c->oldy;
+        const uint8_t samew = c->w == c->oldw;
+        const uint8_t sameh = c->h == c->oldh;
+        const uint8_t sameall = samex & samey & samew & sameh;
+
+        if(sameall)
+        {
+            if(ISFIXED(c))
+            {   /* just snap out of grid */
+                resize(c, c->x + _cfg.snap, c->y + _cfg.snap, c->w, c->h, 0);
+            }
+            else
+            {   /* make half the size */
+                resize(c, c->x + c->w / 2, c->y + c->h / 2, c->w / 2, c->h / 2, 0);
+            }
+        }
+        else
+        {   
+            if(ISFIXED(c))
+            {   /* just use old position */
+                resize(c, c->oldx, c->oldy, c->w, c->h, 0);
+            }
+            else
+            {   /* use old dimentions */
+                resize(c, c->oldx, c->oldy, c->oldw, c->oldh, 0);
+            }
+        }
+    }
 }
 
 void
 MaximizeWindowVertical(const Arg *arg) 
 {
+    /* TODO */
 }
 
 void
 MaximizeWindowHorizontal(const Arg *arg) 
 {
+    /* TODO */
 }
+
 
 void
 AltTab(const Arg *arg)
 {
-    Desktop *desk = _wm.selmon->desksel;
-    Client *c = desk->stack;
+    static Client *next = NULL;
+    if(!_wm.selmon->desksel->clients)
+    {   next = NULL;
+        return;
+    }
 
+    for(Client *c = _wm.selmon->desksel->clients; c; c = nextclient(c))
+    {
+        DEBUG("%p->", (void *)c);
+    }
 
-    arrange(desk);
-    XCBFlush(_wm.dpy);
+    if(nextclient(next))
+    {   next = nextclient(next);
+    }
+    else
+    {   next = _wm.selmon->desksel->clients;
+    }
+
+    Client *tmp = nextclient(next);
+
+    focus(next);
+    next = tmp;
 }
 
 void

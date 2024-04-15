@@ -605,9 +605,27 @@ checkotherwm(void)
     /* The other edge case is if the display just doesnt work, however this is covered at startup() if(!_wm.dpy) { DIE(msg); } */
 }
 
+uint8_t
+checksticky(int64_t x)
+{
+    /* _NET_WM_DESKTOP
+     * https://specifications.freedesktop.org/wm-spec/latest/
+     */
+    return (x & 0xFFFFFFFF) | ((uint32_t)x == UINT32_MAX) | ((unsigned int)x == ~0);
+}
+
 void
 cleanup(void)
 {
+    if(!_wm.dpy)
+    {
+        /* sometimes due to our own lack of competence we can call quit twice and segfault here */
+        if(_wm.selmon)
+        {
+            DEBUG0("Some data has not been freed exiting due to possible segfault.");
+        }
+        return;
+    }
     XCBCookie cookie = XCBDestroyWindow(_wm.dpy, _wm.wmcheckwin);
     XCBDiscardReply(_wm.dpy, cookie);
     _wm.wmcheckwin = 0;
@@ -618,10 +636,13 @@ cleanup(void)
     }
     cleanupmons();
     XCBFlush(_wm.dpy);
-    XCBCloseDisplay(_wm.dpy);
+
+    if(_wm.dpy)
+    {
+        XCBCloseDisplay(_wm.dpy);
+        _wm.dpy = NULL;
+    }
     ToggleExit();
-    ThreadExit(_wm.ct);
-    _wm.dpy = NULL;
 }
 
 void
@@ -714,6 +735,7 @@ createclient(void)
     c->wtypeflags = 0;
     c->wstateflags = 0;
     c->bw = c->oldbw = 0;
+    c->bcol = 0;
     c->win = 0;
     c->mina = c->maxa = 0;
     c->basew = c->baseh = 0;
@@ -872,9 +894,10 @@ focus(Client *c)
         detachstack(c);
         attachstack(c);
         grabbuttons(c->win, 1);
-        
+        /* for some reason changin focus removes border, but doesnt remove the width bugfix TODO */
+        XCBSetWindowBorder(_wm.dpy, c->win, c->bcol);
         if(c->desktop->lastfocused && c->desktop->lastfocused != c)
-        {   /* set window border */
+        {   XCBSetWindowBorder(_wm.dpy, c->desktop->lastfocused->win, c->desktop->lastfocused->bcol);
         }
         setfocus(c);
     }
@@ -1254,8 +1277,9 @@ manage(XCBWindow win)
 
     /* Custom stuff */
     setborderwidth(c, _cfg.bw);
+    setbordercolor32(c, _cfg.bcol);
     XCBSetWindowBorderWidth(_wm.dpy, win, c->bw);
-    /*  XSetWindowBorder(dpy, w, scheme[SchemeBorder][ColBorder].pixel); */
+    XCBSetWindowBorder(_wm.dpy, win, c->bcol);
     configure(c);   /* propagates border_width, if size doesn't change */
     updatetitle(c);
     updatesizehints(c, &hints);
@@ -1313,6 +1337,30 @@ managebar(Monitor *m, XCBWindow win)
     m->bar->win = win;
     return m->bar;
 }
+
+void
+maximize(Client *c)
+{
+    const Monitor *m = c->desktop->mon;
+    resize(c, m->wx, m->wy, m->ww, m->wh, 0);
+}
+
+void
+maximizehorz(Client *c)
+{
+    const Monitor *m = c->desktop->mon;
+    
+    resize(c, m->wx, c->y, m->ww, c->h, 0);
+}
+
+void
+maximizevert(Client *c)
+{
+    const Monitor *m = c->desktop->mon;
+
+    resize(c, c->x, m->wy, c->w, m->wh, 0);
+}
+
 
 void
 monocle(Desktop *desk)
@@ -1669,6 +1717,24 @@ setalwaysontop(Client *c, u8 state)
 }
 
 void
+setborderalpha(Client *c, uint8_t alpha)
+{
+    /* TODO */
+}
+
+void
+setbordercolor(Client *c, uint8_t red, uint8_t green, uint8_t blue)
+{
+    c->bcol = blue + (green << 8) + (red << 16);
+}
+
+void
+setbordercolor32(Client *c, uint32_t col)
+{   
+    c->bcol = col;
+}
+
+void
 setborderwidth(Client *c, uint16_t border_width)
 {
     c->oldbw = c->bw;
@@ -1942,21 +2008,33 @@ setup(void)
     }
 
     /* TODO testing default settings */
-    _cfg.mfact = 0.55f;
     _cfg.nmaster = 1;
+    _cfg.hoverfocus = 0;
+
     _cfg.bw = 1;
     _cfg.bgw = 0;
+
+    _cfg.bcol = 100 + (255 << 8) + (123 << 16) + (65 << 24);
+
     _cfg.snap = 10;
     _cfg.rfrate = 120;
+
     _cfg.bh = 10;
     _cfg.maxcc = 256;
+
+    _cfg.mfact = 0.55f;
+    /* Xorg Default is 256 or 255 dont remember. */
 
     /* Most java apps require this see:
      * https://wiki.archlinux.org/title/Java#Impersonate_another_window_manager
      * https://wiki.archlinux.org/title/Java#Gray_window,_applications_not_resizing_with_WM,_menus_immediately_closing
      * for more information.
      * "Hard coded" window managers to ignore "Write Once, Debug Everywhere"
+     * Not sure why it just doesnt default to that if it cant detect a supported wm.
+     * This fixes java apps just having a blank white screen on some screen instances.
+     * One example is Ghidra, made by the CIA.
      */
+    /* TODO: Maybe just change the name quickly when a app lanches and change it back when done? probably in createnotify event? */
     _cfg.wmname = "LG3D";
 
     updategeom();
@@ -2213,12 +2291,14 @@ startup(void)
     }
     const char *display = NULL;
     _wm.dpy = XCBOpenDisplay(display, &_wm.screen);
+    DEBUG("DISPLAY -> %s", display ? display : getenv("DISPLAY"));
+
     if(!_wm.dpy)
     {   DIECAT("%s", "FATAL: Cannot Connect to X Server.");
     }
-    DEBUG("DISPLAY -> %s", display ? display : getenv("DISPLAY"));
     checkotherwm();
     XCBSetErrorHandler(xerror);
+
     /* This allows for execvp and exec to only spawn process on the specified display rather than the default varaibles */
     if(display)
     {   setenv("DISPLAY", display, 1);
@@ -2311,7 +2391,7 @@ unfocus(Client *c, uint8_t setfocus)
     }
     grabbuttons(c->win, 0);
     c->desktop->lastfocused = c;
-    XCBSetWindowBorderWidth(_wm.dpy, c->win, 0);
+    XCBSetWindowBorder(_wm.dpy, c->win, c->bcol);
     if(setfocus)
     {   
         XCBSetInputFocus(_wm.dpy, _wm.root, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
@@ -3065,6 +3145,10 @@ updatewmhints(Client *c, XCBWMHints *wmh)
 void
 wakeupconnection()
 {
+    if(!_wm.dpy)
+    {   DEBUG0("No connection avaible");
+        return;
+    }
     XCBClientMessageEvent ev;
     memset(&ev, 0, sizeof(XCBClientMessageEvent));
     ev.type = wmatom[WMProtocols];

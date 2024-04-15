@@ -1087,37 +1087,20 @@ clientmessage(XCBGenericEvent *event)
         {
             const u32 gravity = l0;
             /* 64bit to cover bounds checks */
-            i64 x = l1;
-            i64 y = l2;
-            i64 w = l3;
-            i64 h = l4;
+            i32 x = l1;
+            i32 y = l2;
+            i32 w = l3;
+            i32 h = l4;
+            i32 bw = c->bw;
 
-            /* bounds check */
-            if(x > INT16_MAX || x < -INT16_MAX)
-            {   
-                x = c->x;
-                DEBUG0("A Client is using bad data for x axis.");
-            }
-            if(y > INT16_MAX || y < -INT16_MAX)
-            {   
-                y = c->y;
-                DEBUG0("A Client is using bad data for y axis.");
-            }
-            if(w > UINT16_MAX || w < 0)
-            {   
-                w = c->w;
-                DEBUG0("A Client is using bad data for w axis.");
-            }
-            if(h > UINT16_MAX || h < 0)
-            {   
-                h = c->h;
-                DEBUG0("A Client is using bad data for h axis.");
-            }
+            applysizechecks(c->desktop->mon, &x, &y, &w, &h, &(bw));
+    
             i16 cleanx = x;
             i16 cleany = y;
-            const u16 cleanw = w;
-            const u16 cleanh = h;
-            applygravity(gravity, &cleanx, &cleany, c->w, c->h, c->bw);
+            const i16 cleanw = w;
+            const i16 cleanh = h;
+
+            applygravity(gravity, &cleanx, &cleany, cleanw, cleanh, c->bw);
             resize(c, cleanx, cleany, cleanw, cleanh, 0);
         }
         else if(atom == netatom[NetMoveResize])
@@ -1165,10 +1148,13 @@ clientmessage(XCBGenericEvent *event)
                 u32 i = 0;
                 for(desk = m->desktops; desk && i != target; desk = nextdesktop(desk), ++i);
                 if(desk)
-                {  
-                    attachstack(c);
-                    attach(c);
+                {   setclientdesktop(c, desk);
                 }
+                else
+                {   DEBUG0("Desktop was not in range defaulting to no desktop change.");
+                }
+                attachstack(c);
+                attach(c);
             }
         }
         else if (atom == netatom[NetShowingDesktop])
