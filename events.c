@@ -1255,6 +1255,7 @@ propertynotify(XCBGenericEvent *event)
             case XCB_ATOM_WM_NORMAL_HINTS:
                 break;
             case XCB_ATOM_WM_HINTS:
+                /* TODO This can be slow */
                 cookie = XCBGetWMHintsCookie(_wm.dpy, c->win);
                 wmh = XCBGetWMHintsReply(_wm.dpy, cookie);
                 updatewmhints(c, wmh);
