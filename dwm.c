@@ -642,6 +642,8 @@ cleanup(void)
         XCBCloseDisplay(_wm.dpy);
         _wm.dpy = NULL;
     }
+    free(_wm.ct);
+    _wm.ct = NULL;
     ToggleExit();
 }
 
