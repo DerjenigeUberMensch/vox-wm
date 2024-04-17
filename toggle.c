@@ -13,6 +13,7 @@
 #include "xcb_trl.h"
 #include "config.h"
 #include "toggle.h"
+#include "queue.h"
 
 /*
  * For people wanting to make new functions:
@@ -24,43 +25,12 @@ extern void (*handler[]) (XCBGenericEvent *);
 extern WM _wm;
 extern CFG _cfg;
 
-
-static Thread *ct = NULL;
-
-typedef struct ThreadFunction ThreadFunction;
-typedef struct Generic Generic;
-
-
-struct Generic
-{
-    union
-    {
-        void *datav;
-        void **datavl;
-    } v;
-
-    union
-    {
-        i8 data8[64];
-        i16 data16[32];
-        i32 data32[16];
-        i64 data64[8];
-
-        float dataf[16];
-        double datad[8];
-        long double datadd[4];  /* compiler specified but should be at most 128 bits */
-    } n;
-};
-
-
-struct ThreadFunction
-{
-    void (*caller)(void *);
-    Generic *data;
-};
-
-static ThreadFunction ctcalle;
 static XCBDisplay *dpy = NULL;
+static Thread *ct = NULL;
+static Generic gc[256];     /* 256 doesnt really matter just some number */
+static void *funcs[256];    /* 256 doesnt really matter just some number */
+static CQueue *queue = NULL;
+static CQueue *gqueue = NULL;
 
 static void *
 CurrentFunction(void *unused)
@@ -68,12 +38,10 @@ CurrentFunction(void *unused)
     while(1)
     {
         ThreadCondWait(ct, &(ct->cond));
-        if(ctcalle.caller)
-        {   
-            DEBUG("%s", "ran a function");
-            ctcalle.caller(ctcalle.data);
-            ctcalle.caller = NULL;
-            memset(ctcalle.data, 0, sizeof(Generic));
+        while(!CQueueIsEmpty(queue))
+        {
+            CQueuePop(queue);
+            CQueuePop(gqueue);
         }
     }
     return NULL;
@@ -83,17 +51,27 @@ uint8_t
 ToggleInit(void)
 {
     ct = ThreadCreate(CurrentFunction, NULL);
-    ctcalle.data = calloc(1, sizeof(Generic));
-    ctcalle.caller = NULL;
     dpy = XCBOpenDisplay(NULL, NULL);
-    return !!ct && !!ctcalle.data && !!dpy;
+    queue = CQueueCreate(funcs, 256, sizeof(void *));
+    gqueue = CQueueCreate((void *)gc, 256, sizeof(Generic));
+    return !!ct && !!dpy && !!queue && !!gqueue;
 }
+
+void
+Toggle(void *func, void *arg)
+{
+    ThreadLock(ct);
+    CQueueAdd(queue, func);
+    CQueueAdd(gqueue, arg);
+    ThreadUnlock(ct);
+    ThreadSignal(ct);
+}
+
 
 void
 ToggleExit(void)
 {
-    /* TODO cant close */
-    free(ctcalle.data);
+    /* TODO cant close without breaking everything */
     XCBCloseDisplay(dpy);
 }
 
@@ -335,7 +313,7 @@ AltTab(const Arg *arg)
     {   next = _wm.selmon->desksel->clients;
     }
 
-    Client *tmp = nextclient(next);
+    Client *tmp = next;
 
     focus(next);
     next = tmp;

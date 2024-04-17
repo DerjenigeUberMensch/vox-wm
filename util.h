@@ -15,6 +15,33 @@ typedef int16_t  i16;
 typedef int32_t  i32;
 typedef int64_t  i64;
 
+
+typedef struct Generic Generic;
+
+struct Generic
+{
+    union
+    {
+        void *datav;
+        void **datavl;
+    } v;
+
+    union
+    {
+        int8_t data8[64];
+        int16_t data16[32];
+        int32_t data32[16];
+        int64_t data64[8];
+
+        float dataf[16];
+        double datad[8];
+        long double datadd[4];  /* compiler specified but should be at most 128 bits */
+    } n;
+};
+
+
+
+
 #define MAX(A, B)               ((A) > (B) ? (A) : (B))
 #define MIN(A, B)               ((A) < (B) ? (A) : (B))
 #define BETWEEN(X, A, B)        ((A) <= (X) && (X) <= (B))

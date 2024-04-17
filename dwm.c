@@ -2303,6 +2303,10 @@ specialconds(int argc, char *argv[])
 void
 startup(void)
 {
+#ifdef __OpenBSD__
+        if (pledge("stdio rpath proc exec", NULL) == -1)
+            die("pledge");
+#endif /* __OpenBSD__ */
     if(!setlocale(LC_CTYPE, ""))
     {   fputs("WARN: NO_LOCALE_SUPPORT\n", stderr);
     }
@@ -3291,14 +3295,9 @@ main(int argc, char *argv[])
     argcvhandler(argc, argv);
     startup();
     setup();
-#ifdef __OpenBSD__
-        if (pledge("stdio rpath proc exec", NULL) == -1)
-            die("pledge");
-#endif /* __OpenBSD__ */
     scan();
     run();
     cleanup();
-    /* under special conditions do certain things */
     specialconds(argc, argv);
     return EXIT_SUCCESS;
 }
