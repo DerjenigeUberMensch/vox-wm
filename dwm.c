@@ -430,6 +430,24 @@ attachstack(Client *c)
 }
 
 void
+attachfocus(Client *c)
+{
+    Desktop *desk = c->desktop;
+    c->fnext = desk->focus;
+    desk->focus = c;
+    if(c->fnext)
+    {   
+        c->fnext->fprev = c;
+    }
+    else
+    {   
+        desk->flast = c;
+    }
+    /* prevent dangling pointers */
+    c->fprev = NULL;
+}
+
+void
 detach(Client *c)
 {
     Client **tc;
@@ -456,6 +474,7 @@ detachcompletely(Client *c)
 {
     detach(c);
     detachstack(c);
+    detachfocus(c);
 }
 
 void
@@ -488,7 +507,7 @@ void
 detachstack(Client *c)
 {
     Desktop *desk = c->desktop;
-    Client **tc, *t;
+    Client **tc;
 
     for(tc = &desk->stack; *tc && *tc != c; tc = &(*tc)->snext);
     *tc = c->snext;
@@ -505,79 +524,57 @@ detachstack(Client *c)
         desk->slast = c->sprev;
         c->sprev->snext = NULL;
     }
-    if(c == desk->sel)
-    {
-        for(t = desk->stack; t && !ISVISIBLE(t); t = t->snext);
-        desk->sel = t;
-    }
     c->sprev = NULL;
     c->snext = NULL;
 }
 
-u8
-checknewbar(int64_t value[12], XCBAtom wtypes[], uint32_t windowtypeslength, XCBAtom wmstates[], uint32_t wmstateslength, int64_t desktop)
+void
+detachfocus(Client *c)
 {
-    u8 isbar  = 0;
-    u8 sticky = 0;
-    u8 strut  = 0;
-    u8 isdock = 0;
-    u8 skippager = 0;
-    u8 above = 0;
+    Desktop *desk = c->desktop;
+    Client **tc, *t;
 
-    /* yeah idk */
-    sticky = checksticky(desktop);
-
-    const i32 left = value[0];
-    const i32 right = value[1];
-    const i32 top = value[2];
-    const i32 bottom = value[3];
-    const i32 left_start_y = value[4];
-    const i32 left_end_y = value[5];
-    const i32 right_start_y = value[6];
-    const i32 right_end_y = value[7];
-    const i32 top_start_x = value[8];
-    const i32 top_end_x = value[9];
-    const i32 bottom_start_x = value[10];
-    const i32 bottom_end_x = value[11];
-
-    strut = left_start_y || left_end_y || right_start_y || right_end_y || top_start_x || top_end_x || bottom_start_x || bottom_end_x;
-    strut = strut || left || right || top || bottom;
-
-    u32 i;
-    for(i = 0; i < windowtypeslength; ++i)   
+    for(tc = &desk->focus; *tc && *tc != c; tc = &(*tc)->fnext);
+    *tc = c->fnext;
+    if(!(*tc))
     {
-        if(wtypes[i] == netatom[NetWMWindowTypeNormal])
-        {   
-            isdock = 0;
-            break;
-        }
-        isdock = isdock || wtypes[i] == netatom[NetWMWindowTypeDock] || wtypes[i] == netatom[NetWMWindowTypeToolbar];
+        desk->flast = c->fprev;
+    }
+    else if(c->snext)
+    {   
+        c->fnext->fprev = c->fprev;
+    }
+    else if(c->fprev)
+    {   /* this should be UNREACHABLE but if it does this should suffice */
+        desk->flast = c->fprev;
+        c->fprev->fnext = NULL;
     }
 
-    for(i = 0; i < wmstateslength; ++i)
+    /* this just updates desktop->sel */
+    if (c == c->desktop->sel)
     {
-        sticky = sticky || wmstates[i] == netatom[NetWMStateSticky];
-        skippager = skippager || wmstates[i] == netatom[NetWMStateSkipPager];
-        above = above || wmstates[i] == netatom[NetWMStateAlwaysOnTop];
+        for (t = c->desktop->focus; t && !ISVISIBLE(t); t = t->fnext);
+        c->desktop->sel = t;
     }
 
-    if(sticky && strut)
-    {   isbar = 1;
-    }
-    else if(strut && above)
-    {   isbar = 1;
-    }
-    else if(strut && isdock)
-    {   isbar = 1;
-    }
-    else if(isdock && above && sticky)
-    {   isbar = 1;
-    }
-    else if(above && isdock && skippager)
-    {   isbar = 1;
-    }
+    c->fprev = NULL;
+    c->fnext = NULL;
+}
 
-    return isbar;
+u8
+checknewbar(Client *c, const uint8_t strut)
+{
+    const u8 sticky = !!ISSTICKY(c);
+    const u8 isdock = !!(ISDOCK(c) | ISTOOLBAR(c));
+    const u8 skippager = !!SKIPPAGER(c);
+    const u8 above = !!ISABOVE(c);
+
+    return (sticky & strut)
+        |  (strut & above)
+        |  (strut & isdock)
+        |  (isdock & above & sticky)
+        |  (above & isdock & skippager)
+        ;
 }
 
 void
@@ -642,9 +639,6 @@ cleanup(void)
         XCBCloseDisplay(_wm.dpy);
         _wm.dpy = NULL;
     }
-    free(_wm.ct);
-    _wm.ct = NULL;
-    ToggleExit();
 }
 
 void
@@ -876,15 +870,13 @@ focus(Client *c)
     Monitor *selmon = _wm.selmon;
     Desktop *desk  = selmon->desksel;
     if(!c || !ISVISIBLE(c))
-    {   /* selmon should have atleast 1 desktop so no need to check */
-        for(c = desk->stack; c && !ISVISIBLE(c); c = c->snext);
+    {   for(c = desk->focus; c; c = nextfocus(c));
     }
     if(desk->sel && desk->sel != c)
     {   unfocus(desk->sel, 0);
     }
     if(c)
     {  
-
         if(c->desktop->mon != _wm.selmon)
         {   _wm.selmon = c->desktop->mon;
         }
@@ -892,15 +884,13 @@ focus(Client *c)
         if(ISURGENT(c))
         {   seturgent(c, 0);
         }
-        /* make it first on the stack */
-        detachstack(c);
-        attachstack(c);
+
+        detachfocus(c);
+        attachfocus(c);
+
         grabbuttons(c->win, 1);
-        /* for some reason changin focus removes border, but doesnt remove the width bugfix TODO */
         XCBSetWindowBorder(_wm.dpy, c->win, c->bcol);
-        if(c->desktop->lastfocused && c->desktop->lastfocused != c)
-        {   XCBSetWindowBorder(_wm.dpy, c->desktop->lastfocused->win, c->desktop->lastfocused->bcol);
-        }
+
         setfocus(c);
     }
     else
@@ -1034,16 +1024,8 @@ grid(Desktop *desk)
         /* _cfg.bgw without fucking everything else */
         nw = cw - (c->bw * 2) + aw;
         nh = ch - (c->bw * 2) + ah;
-
-        nx += _cfg.bgw;
-        ny += _cfg.bgw;
-
-        nw -= _cfg.bgw;
-        nh -= _cfg.bgw;
-
-        nw -= !!aw * _cfg.bgw;
-        nh -= !!ah * _cfg.bgw;
-
+        nw -= _cfg.bgw * 2;
+        nh -= _cfg.bgw * 2;
 
         /* sanatize data */
         applysizechecks(m, &nx, &ny, &nw, &nh, &unused);
@@ -1086,42 +1068,28 @@ killclient(Client *c, enum KillType type)
 Client *
 manage(XCBWindow win)
 {
-
     /* checks */
     if(win == _wm.root)
     {   DEBUG("%s", "Cannot manage() root window.");
         return NULL;
     }
     /* barwin checks */
-    u8 checkbar = 0;
-    if(_wm.selmon->bar)
-    {
-        if(_wm.selmon->bar->win == win)
-        {
-            DEBUG0("Cannot manage() bar window.");
-            return NULL;
-        }
-        checkbar = !_wm.selmon->bar->win;
-    }
-    else
-    {   checkbar = 1;
-    }
+    u8 checkbar = !_wm.selmon->bar || !_wm.selmon->bar->win;
 
-    Client *c, *t = NULL;
-    Monitor *m = NULL;
+    Client *c = NULL, *t = NULL;
     XCBWindow trans = 0;
     u8 transstatus = 0;
-    u32 inputmask = XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_FOCUS_CHANGE|XCB_EVENT_MASK_PROPERTY_CHANGE|XCB_EVENT_MASK_STRUCTURE_NOTIFY;
+    const u32 inputmask = XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_FOCUS_CHANGE|XCB_EVENT_MASK_PROPERTY_CHANGE|XCB_EVENT_MASK_STRUCTURE_NOTIFY;
     XCBWindowGeometry *wg = NULL;
 
     /* get cookies first */
     XCBCookie wacookie = XCBGetWindowAttributesCookie(_wm.dpy, win);
-    XCBCookie wgcookie    = XCBGetWindowGeometryCookie(_wm.dpy, win);
+    XCBCookie wgcookie = XCBGetWindowGeometryCookie(_wm.dpy, win);
     XCBCookie transcookie = XCBGetTransientForHintCookie(_wm.dpy, win);                        
     XCBCookie wtypecookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMWindowType], 0L, UINT32_MAX, False, XCB_ATOM_ATOM);
     XCBCookie statecookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMState], 0L, UINT32_MAX, False, XCB_ATOM_ATOM);
     XCBCookie sizehcookie = XCBGetWMNormalHintsCookie(_wm.dpy, win);
-    XCBCookie wmhcookie   = XCBGetWMHintsCookie(_wm.dpy, win);
+    XCBCookie wmhcookie = XCBGetWMHintsCookie(_wm.dpy, win);
     XCBCookie classcookie = XCBGetWMClassCookie(_wm.dpy, win);
     XCBCookie wmprotocookie = XCBGetWMProtocolsCookie(_wm.dpy, win, wmatom[WMProtocols]);
     XCBCookie strutpcookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMStrutPartial], 0L, 12, False, XCB_ATOM_CARDINAL);
@@ -1129,7 +1097,9 @@ manage(XCBWindow win)
 
     XCBGetWindowAttributes *waattributes = NULL;
     XCBWindowProperty *wtypeunused = NULL;
+    u32 wtypelen = 0;
     XCBWindowProperty *stateunused = NULL;
+    u32 statelen = 0;
     XCBSizeHints hints;
     u8 hintstatus = 0;
     XCBWMHints *wmh = NULL;
@@ -1149,13 +1119,17 @@ manage(XCBWindow win)
     wg = XCBGetWindowGeometryReply(_wm.dpy, wgcookie);
     transstatus = XCBGetTransientForHintReply(_wm.dpy, transcookie, &trans);
     wtypeunused = XCBGetWindowPropertyReply(_wm.dpy, wtypecookie);
+    wtypelen = wtypeunused ? XCBGetPropertyValueLength(wtypeunused, sizeof(XCBAtom)) : 0;
     stateunused = XCBGetWindowPropertyReply(_wm.dpy, statecookie);
+    statelen = stateunused ? XCBGetPropertyValueLength(stateunused, sizeof(XCBAtom)) : 0;
     hintstatus = XCBGetWMNormalHintsReply(_wm.dpy, sizehcookie, &hints);
     wmh = XCBGetWMHintsReply(_wm.dpy, wmhcookie);
     XCBGetWMClassReply(_wm.dpy, classcookie, &cls);
     wmprotocolsstatus = XCBGetWMProtocolsReply(_wm.dpy, wmprotocookie, &wmprotocols);
     strutpreply = XCBGetWindowPropertyReply(_wm.dpy, strutpcookie);
+    strutp = strutpreply ? XCBGetWindowPropertyValue(strutpreply) : NULL;
     strutreply = XCBGetWindowPropertyReply(_wm.dpy, strutcookie);
+    strut = strutreply ? XCBGetWindowPropertyValue(strutpreply) : NULL;
 
     if(!c)
     {   goto CLEANUP;
@@ -1173,21 +1147,17 @@ manage(XCBWindow win)
             c = NULL;
             goto CLEANUP;
         }
-        /* sometimes clients do dumb stuff that messes with out window managing
-         * inputmask |= waattributes->your_event_mask; 
-         * inputmask &= ~waattributes->do_not_propagate_mask;
-         */
     }
 
     if(wtypeunused)
     {   
         XCBAtom *data = XCBGetPropertyValue(wtypeunused);
-        updatewindowtypes(c, data, XCBGetPropertyValueLength(wtypeunused, sizeof(XCBAtom)));
+        updatewindowtypes(c, data, wtypelen);
     }
     if(stateunused)
     {
         XCBAtom *data = XCBGetPropertyValue(stateunused);
-        updatewindowstates(c, data, XCBGetPropertyValueLength(stateunused, sizeof(XCBAtom)));
+        updatewindowstates(c, data, statelen);
     }
 
     if(wg)
@@ -1212,73 +1182,16 @@ manage(XCBWindow win)
     {   updatewindowprotocol(c, &wmprotocols);
     }
 
-
-    m = c->desktop->mon;
-
     /* constrain window to monitor window area */
-    if (c->x + WIDTH(c) > m->wx + m->ww)
-    {   c->x = m->wx + m->ww - WIDTH(c);
-    }
-    if (c->y + HEIGHT(c) > m->wy + m->wh)
-    {   c->y = m->wy + m->wh - HEIGHT(c);
-    }
-    c->x = MAX(c->x, m->wx);
-    c->y = MAX(c->y, m->wy);
+    applysizechecks(_wm.selmon, (int32_t *)&c->x, (int32_t *)&c->y, (int32_t *)&c->w, (int32_t *)&c->h, (int32_t *)&c->bw);
 
-    if(strutpreply)
-    {   strutp = XCBGetWindowPropertyValue(strutpreply);
-    }
-    if(strutreply)
-    {   strut = XCBGetWindowPropertyValue(strutpreply);
-    }
-
-    /* strut partial length is 12 btw */
-    u32 values[12];
-    memset(values, 0, sizeof(u32) * 12);
-    if(strutp)
-    {   
-        u32 size = XCBGetPropertyValueLength(strutpreply, sizeof(u32));
-        if(size == 12)
-        {   memcpy(values, strutp, 12 * sizeof(u32));
-        }
-    }
-    else if(strut)
-    {   
-        u32 size = XCBGetPropertyValueLength(strutpreply, sizeof(u32));
-        /* strut No partial is length of 4 */
-        if(size == 4)
-        {   memcpy(values, strut, 4 * sizeof(u32));
-        }
-    }
-
-    i64 safevalues[12];
-    u8 i;
-    for(i = 0; i < 12; ++i)
-    {   safevalues[i] = values[i];
-    }
-        
     if(checkbar)
     {
-        void *wty = wtypeunused ? XCBGetPropertyValue(wtypeunused) : NULL;
-        uint32_t wtylen = wty ? XCBGetPropertyValueLength(wtypeunused, sizeof(XCBAtom)) : 0;
-        void *ste = stateunused ? XCBGetPropertyValue(stateunused) : NULL;
-        uint32_t stelen = ste ? XCBGetPropertyValueLength(stateunused, sizeof(XCBAtom)) : 0;
-        if(checknewbar(safevalues, wty, wtylen, ste, stelen, 0))
+        if(checkbar && checknewbar(c, strutp || strut))
         {
             Bar *bar = managebar(_wm.selmon, win);
             if(bar)
-            {
-                bar->x = c->x;
-                bar->y = c->y;
-                bar->w = c->w;
-                bar->h = c->h;
-                setshowbar(bar, 1);
-                updatebargeom(_wm.selmon);
-                updatebarpos(_wm.selmon);
-                XCBSelectInput(_wm.dpy, win, inputmask);
-                XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientList], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&win, 1);
-                /* map the window or we get errors */
-                XCBMapWindow(_wm.dpy, win);
+            {   resizebar(bar, c->x, c->y, c->w, c->h);
             }
             free(c);
             c = NULL;
@@ -1303,22 +1216,20 @@ manage(XCBWindow win)
 
     attach(c);
     attachstack(c);
+    attachfocus(c);
+
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientList], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&win, 1);
     setclientstate(c, XCB_WINDOW_NORMAL_STATE);
     /* map the window or we get errors */
     XCBMapWindow(_wm.dpy, win);
 
-    if(c->desktop == _wm.selmon->desksel)
-    {   unfocus(_wm.selmon->desksel->sel, 0);
-    }
     /* inherit previous client state */
     if(c->desktop && c->desktop->sel)
     {   setfullscreen(c, ISFULLSCREEN(c->desktop->sel) || ISFULLSCREEN(c));
     }
-    c->desktop->sel = c;
     arrange(c->desktop);
     /* client could be floating so we pass NULL for focus */
-    focus(NULL);
+    focus(c);
     goto CLEANUP;
 CLEANUP:
     /* reply cleanup */
@@ -1338,6 +1249,8 @@ CLEANUP:
 Bar *
 managebar(Monitor *m, XCBWindow win)
 {
+    const u32 inputmask = XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_FOCUS_CHANGE|XCB_EVENT_MASK_PROPERTY_CHANGE|XCB_EVENT_MASK_STRUCTURE_NOTIFY;
+    
     DEBUG("New bar: [%d]", win);
     if(!m->bar)
     {   
@@ -1350,6 +1263,13 @@ managebar(Monitor *m, XCBWindow win)
     {   return NULL;
     }
     m->bar->win = win;
+
+    setshowbar(m->bar, 1);
+    updatebargeom(_wm.selmon);
+    updatebarpos(_wm.selmon);
+    XCBSelectInput(_wm.dpy, win, inputmask);
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientList], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&win, 1);
+    XCBMapWindow(_wm.dpy, win);
     return m->bar;
 }
 
@@ -1424,6 +1344,12 @@ nextstack(Client *c)
 }
 
 Client *
+nextfocus(Client *c)
+{
+    return c ? c->fnext : c;
+}
+
+Client *
 nexttiled(Client *c)
 {
     for(; c && (!ISVISIBLE(c) || ISFLOATING(c)); c = nextclient(c));
@@ -1449,6 +1375,16 @@ quit(void)
 {
     _wm.running = 0;
     wakeupconnection();
+}
+
+void
+restoresession(void)
+{
+}
+
+void
+restoremonsession(Monitor *m)
+{
 }
 
 Monitor *
@@ -1528,6 +1464,11 @@ restack(Desktop *desk)
 
     /* TODO use a sorting algorithm maybe, and figure out some faster way without possible buffer overruns */
 
+    for(c = desk->focus; c; c = nextfocus(c))
+    {
+        XCBRaiseWindow(_wm.dpy, c->win);
+    }
+
     /* this enables win10 floating if we pick the floating layout */
     if(layouts[desk->layout].arrange != floating)
     {
@@ -1587,6 +1528,17 @@ run(void)
         ev = NULL;
     }
     _wm.has_error = XCBCheckDisplayError(_wm.dpy);
+}
+
+void
+savesession(void)
+{
+}
+
+void
+savemonsession(Monitor *m) 
+{
+    /* TODO: this will take a while to say the least... */
 }
 
 /* scan for clients initally */
@@ -1696,6 +1648,7 @@ sendmon(Client *c, Monitor *m)
     setclientdesktop(c, m->desksel);
     attach(c);
     attachstack(c);
+    attachfocus(c);
     focus(NULL);
     /* arrangeall() */
 }
@@ -1743,6 +1696,7 @@ setclientdesktop(Client *c, Desktop *desk)
     detachcompletely(c);
     c->desktop = desk;
     attach(c);
+    attachstack(c);
 }
 
 void
@@ -2010,18 +1964,11 @@ setup(void)
     _wm.sw = XCBDisplayWidth(_wm.dpy, _wm.screen);
     _wm.sh = XCBDisplayHeight(_wm.dpy, _wm.screen);
     _wm.root = XCBRootWindow(_wm.dpy, _wm.screen);
-    _wm.ct = ThreadGetSelf();
 
     if(!_wm.syms)
     {   
         cleanup();
         DIECAT("%s", "Could not establish connection with keyboard (OutOfMemory)");
-    }
-
-    if(!_wm.ct)
-    {
-        cleanup();
-        DIECAT("%s", "Could not get the current thread.");
     }
 
     /* TODO testing default settings */
@@ -2324,9 +2271,6 @@ startup(void)
     if(display)
     {   setenv("DISPLAY", display, 1);
     }
-    if(!ToggleInit())
-    {   DIECAT("%s", "FATAL: Cannot create another thread for toggle function.");
-    }
     atexit(exithandler);
 }
 
@@ -2411,7 +2355,6 @@ unfocus(Client *c, uint8_t setfocus)
     {   return;
     }
     grabbuttons(c->win, 0);
-    c->desktop->lastfocused = c;
     XCBSetWindowBorder(_wm.dpy, c->win, c->bcol);
     if(setfocus)
     {   
@@ -2522,10 +2465,12 @@ updategeom(void)
 				dirty = 1;
 				m->desktops->clients = c->next;
 				detachstack(c);
+                detachfocus(c);
                 c->desktop = _wm.mons->desktops;
                 /* TODO desktops might break. */
 				attach(c);
 				attachstack(c);
+                attachfocus(c);
 			}
 			if (m == _wm.selmon)
 				_wm.selmon = _wm.mons;
@@ -2561,9 +2506,6 @@ unmanage(Client *c, uint8_t destroyed)
     Desktop *desk = c->desktop;
     if(!c)
     {   return;
-    }
-    if(c->desktop->lastfocused == c)
-    {   c->desktop->lastfocused = NULL;
     }
     if(!destroyed)
     {   

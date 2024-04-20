@@ -25,56 +25,6 @@ extern void (*handler[]) (XCBGenericEvent *);
 extern WM _wm;
 extern CFG _cfg;
 
-static XCBDisplay *dpy = NULL;
-static Thread *ct = NULL;
-static Generic gc[256];     /* 256 doesnt really matter just some number */
-static void *funcs[256];    /* 256 doesnt really matter just some number */
-static CQueue *queue = NULL;
-static CQueue *gqueue = NULL;
-
-static void *
-CurrentFunction(void *unused)
-{
-    while(1)
-    {
-        ThreadCondWait(ct, &(ct->cond));
-        while(!CQueueIsEmpty(queue))
-        {
-            CQueuePop(queue);
-            CQueuePop(gqueue);
-        }
-    }
-    return NULL;
-}
-
-uint8_t
-ToggleInit(void)
-{
-    ct = ThreadCreate(CurrentFunction, NULL);
-    dpy = XCBOpenDisplay(NULL, NULL);
-    queue = CQueueCreate(funcs, 256, sizeof(void *));
-    gqueue = CQueueCreate((void *)gc, 256, sizeof(Generic));
-    return !!ct && !!dpy && !!queue && !!gqueue;
-}
-
-void
-Toggle(void *func, void *arg)
-{
-    ThreadLock(ct);
-    CQueueAdd(queue, func);
-    CQueueAdd(gqueue, arg);
-    ThreadUnlock(ct);
-    ThreadSignal(ct);
-}
-
-
-void
-ToggleExit(void)
-{
-    /* TODO cant close without breaking everything */
-    XCBCloseDisplay(dpy);
-}
-
 void
 UserStats(const Arg *arg)
 {
@@ -210,9 +160,9 @@ void
 SpawnWindow(const Arg *arg)
 {
     /* TODO: trying to spawn lemonbar fails for some reason? */
-    struct sigaction sa;
-    if (fork() == 0)
+    if(!fork())
     {
+        struct sigaction sa;
         if (_wm.dpy)
             close(XCBConnectionNumber(_wm.dpy));
         setsid();

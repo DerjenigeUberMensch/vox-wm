@@ -36,10 +36,6 @@
 
 /* Client struct flags */
 
-/* Our custom states */
-
-#define _NEVERFOCUS         ((1 << 6)
-
 /* EWMH window types */
 #define _TYPE_DESKTOP       ((1 << 0))
 #define _TYPE_DOCK          ((1 << 1))
@@ -74,7 +70,6 @@
 #define _STATE_DEMANDS_ATTENTION        ((1 << 11))
 #define _STATE_FOCUSED                  ((1 << 12))
 
-/* unused bits */
 #define _STATE_SUPPORTED_WM_TAKE_FOCUS      ((1 << 13))
 #define _STATE_SUPPORTED_WM_SAVE_YOURSELF   ((1 << 14))
 #define _STATE_SUPPORTED_WM_DELETE_WINDOW   ((1 << 15))
@@ -110,8 +105,8 @@
 #define ISDND(C)                (((C)->wtypeflags & _TYPE_DND))
 #define ISNORMAL(C)             (((C)->wtypeflags & _TYPE_NORMAL))
 /* #define ISNEVERFOCUS(C)         (((C)->wtypeflags & _TYPE_NEVERFOCUS)) */
-#define ISICONIC(C)             (((C)->wtypeflags & _TYPE_WINDOW_ICONIC))
-
+#define ISMAPICONIC(C)          (((C)->wtypeflags & _TYPE_WINDOW_ICONIC))
+#define ISMAPNORMAL(C)          (!ISMAPICONIC(C))
 
 /* EWMH Window states */
 
@@ -276,12 +271,12 @@ struct Client
     Client *snext;      /* The next client in stack */
     Client *prev;       /* The previous client      */
     Client *sprev;      /* The prev stack order clnt*/
+    Client *fnext;      /* The next focused client  */
+    Client *fprev;      /* THe previous focused clnt*/
     Desktop *desktop;   /* Client Associated Desktop*/
 
     wchar_t *name;      /* Client Name              */
     char *icon;         /* Array of icon values     */
-
-    uint8_t pad0[8];
 };
 
 struct Monitor
@@ -320,11 +315,12 @@ struct Desktop
     uint8_t olayout;            /* The Previous Layout Index    */
 
     Monitor *mon;               /* Desktop Monitor              */
-    Client *lastfocused;        /* Last focused client          */
     Client *clients;            /* First Client in linked list  */
     Client *clast;              /* Last Client in linked list   */
     Client *stack;              /* Client Stack Order           */
     Client *slast;              /* Last Client in Stack         */
+    Client *focus;              /* Client Focus Order           */
+    Client *flast;              /* Client Last Focus            */
     Client *sel;                /* Selected Client              */
     Desktop *next;              /* Next Client in linked list   */
     Desktop *prev;              /* Previous Client in list      */
@@ -346,7 +342,6 @@ struct WM
     Monitor *selmon;                /* Selected Monitor     */
     Monitor *mons;                  /* Monitors             */
     XCBKeySymbols *syms;            /* keysym alloc         */
-    Thread *ct;                     /* Current Thread       */
 };
 
 /* 
@@ -416,6 +411,9 @@ void attach(Client *c);
 /* Adds Client to rendering stack order in desktop linked list.
 */
 void attachstack(Client *c);
+/* Adds Client to focus stack order in desktop linked list.
+*/
+void attachfocus(Client *c);
 /* Removes Client from clients desktop linked list.
 */
 void detach(Client *c);
@@ -426,11 +424,14 @@ void detachcompletely(Client *c);
 /* Removes Client from desktop rendering stack order.
 */
 void detachstack(Client *c);
+/* Removes Client from desktop focus order.
+*/
+void detachfocus(Client *c);
 /* Checks given the provided information if a window is eligible to be a new bar.
  * RETURN: 1 on True.
  * RETURN: 0 on False
 */
-uint8_t checknewbar(int64_t strutpartial[12], XCBAtom windowtypes[], uint32_t windowtypeslength, XCBAtom windowstates[], uint32_t wmstateslength, int64_t desktop);
+uint8_t checknewbar(Client *c, const uint8_t has_strut_or_strut_partial);
 /* Inital startup check if there is another window manager running.
 */
 void checkotherwm(void);
@@ -568,6 +569,11 @@ Monitor *nextmonitor(Monitor *monitor);
  * RETURN: NULL on Failure.
  */
 Client *nextstack(Client *c);
+/* Returns the next client in focus order avaible.
+ * RETURN: Client* on Success.
+ * RETURN: NULL on Failure.
+ */
+Client *nextfocus(Client *c);
 /* Returns the next tiled client avaible.
  * RETURN: Client* on Success.
  * RETURN: NULL on Failure.
@@ -586,6 +592,10 @@ Client *lastvisible(Client *c);
 /* Sends a event to the main event loop to stop running.
  */
 void quit(void);
+/* Attempts to restore session from SESSION_FILE for all monitors */
+void restoresession(void);
+/* Attempts to restore session from SESSION_FILE for given monitor */
+void restoremonsession(Monitor *m);
 /* Searches through every monitor for a possible big enough size to fit rectangle parametors specified */
 Monitor *recttomon(int16_t x, int16_t y, uint16_t width, uint16_t height);
 /* resize a client only if specified x/y/w/h is different 
@@ -605,6 +615,11 @@ void restack(Desktop *desk);
 void restart(void);
 /* Main event loop */
 void run(void);
+/* Attemps to save session in SESSION_FILE for every monitor */
+void savesession(void);
+/* Attemps to save session from SESSION_FILE for specified Monitor 
+ */
+void savemonsession(Monitor *m);
 /* Scans for new clients on startup */
 void scan(void);
 /* Sends a Protocol Event to specified client */

@@ -4,6 +4,7 @@
 
 
 uint8_t ToggleInit(void);
+void Toggle(void (*func) (void *data), void *data);
 
 void ToggleExit(void);
 /* Mostly a testing function */
