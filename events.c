@@ -222,9 +222,6 @@ buttonpress(XCBGenericEvent *event)
     if((c = wintoclient(eventwin)))
     {   
         focus(c);
-        if(ISFLOATING(c) || ISALWAYSONTOP(c))
-        {   XCBRaiseWindow(_wm.dpy, c->win);
-        }
         XCBAllowEvents(_wm.dpy, XCB_ALLOW_REPLAY_POINTER, XCB_CURRENT_TIME);
         sync = 1;
     }
@@ -1170,6 +1167,7 @@ clientmessage(XCBGenericEvent *event)
                 else
                 {   DEBUG0("Desktop was not in range defaulting to no desktop change.");
                 }
+                attachfocus(c);
                 attachstack(c);
                 attach(c);
             }

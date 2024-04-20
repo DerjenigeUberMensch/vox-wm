@@ -29,5 +29,6 @@ struct Bar
 
 
 void setshowbar(Bar *bar, uint8_t state);
+void resizebar(Bar *bar, int32_t x, int32_t y, int32_t w, int32_t h);
 
 #endif
