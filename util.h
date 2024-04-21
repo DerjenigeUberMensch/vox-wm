@@ -100,6 +100,7 @@ struct Generic
 
 void *ecalloc(size_t nmemb, size_t size);
 char *smprintf(char *fmt, ...);
+void debug(char *fmt, ...);
 unsigned int UIHash(unsigned int x);
 unsigned int UIUnHash(unsigned int x);
 uint64_t UI64Hash(uint64_t x);

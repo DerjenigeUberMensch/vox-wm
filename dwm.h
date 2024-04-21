@@ -3,6 +3,7 @@
 
 #include <xcb/xcb.h>
 #include <xcb/xcb_keysyms.h>
+#include <stdio.h>
 
 #include "bar.h"
 #include "thread.h"
@@ -594,8 +595,12 @@ Client *lastvisible(Client *c);
 void quit(void);
 /* Attempts to restore session from SESSION_FILE for all monitors */
 void restoresession(void);
+/* Attempts to restore session from SESSION_FILE for a client */
+Client *restoreclientsession(Desktop *desk, char *buff, uint16_t len);
+/* Attempts to restore session from SESSION_FILE for a desktop */
+Desktop *restoredesktopsession(Monitor *m, char *buff, uint16_t len);
 /* Attempts to restore session from SESSION_FILE for given monitor */
-void restoremonsession(Monitor *m);
+Monitor *restoremonsession(char *buff, uint16_t len);
 /* Searches through every monitor for a possible big enough size to fit rectangle parametors specified */
 Monitor *recttomon(int16_t x, int16_t y, uint16_t width, uint16_t height);
 /* resize a client only if specified x/y/w/h is different 
@@ -615,11 +620,13 @@ void restack(Desktop *desk);
 void restart(void);
 /* Main event loop */
 void run(void);
-/* Attemps to save session in SESSION_FILE for every monitor */
+/* Attemps to save session in for every monitor */
 void savesession(void);
-/* Attemps to save session from SESSION_FILE for specified Monitor 
+void saveclientsession(FILE *fw, Client *c);
+void savedesktopsession(FILE *fw, Desktop *desktop);
+/* Attemps to save session from file for specified Monitor 
  */
-void savemonsession(Monitor *m);
+void savemonsession(FILE *fw, Monitor *m);
 /* Scans for new clients on startup */
 void scan(void);
 /* Sends a Protocol Event to specified client */
@@ -636,6 +643,7 @@ void setbordercolor32(Client *c, uint32_t col);
 void setborderwidth(Client *c, uint16_t border_width);
 void setclientdesktop(Client *c, Desktop *desktop);
 void setclientstate(Client *c, uint8_t state);
+void setdesktopcount(Monitor *m, uint16_t desktops);
 void setdesktoplayout(Desktop *desk, uint8_t layout);
 void setwtypedesktop(Client *c, uint8_t state);
 void setwtypedialog(Client *c, uint8_t state);
