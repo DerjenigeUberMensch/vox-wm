@@ -6,6 +6,7 @@
 #include "dwm.h"
 
 extern WM _wm;
+extern CFG _cfg;
 extern XCBAtom netatom[NetLast];
 extern XCBAtom wmatom[WMLast];
 
@@ -336,8 +337,8 @@ motionnotify(XCBGenericEvent *event)
     static Monitor *mon = NULL;
     Monitor *m;
 
-    DEBUG("(x: %d, y: %d)", rootx, rooty);
-    DEBUG("(w: %d, h: %d)", XCBDisplayWidth(_wm.dpy, _wm.screen), XCBDisplayHeight(_wm.dpy, _wm.screen));
+    //DEBUG("(x: %d, y: %d)", rootx, rooty);
+    //DEBUG("(w: %d, h: %d)", XCBDisplayWidth(_wm.dpy, _wm.screen), XCBDisplayHeight(_wm.dpy, _wm.screen));
     if((m = recttomon(rootx, rooty, 1, 1)) != mon && mon)
     {
         Client *c = _wm.selmon->desksel->sel;
@@ -387,7 +388,7 @@ enternotify(XCBGenericEvent *event)
     (void)mode;
     (void)samescreenfocus;
 
-    if(!CFG_HOVER_FOCUS) return;
+    if(!_cfg.hoverfocus) return;
 
 
     /* hover focus */
@@ -1159,7 +1160,6 @@ clientmessage(XCBGenericEvent *event)
             {
                 Desktop *desk;
                 u32 i = 0;
-                detachcompletely(c);
                 for(desk = m->desktops; desk && i != target; desk = nextdesktop(desk), ++i);
                 if(desk)
                 {   setclientdesktop(c, desk);
@@ -1167,9 +1167,6 @@ clientmessage(XCBGenericEvent *event)
                 else
                 {   DEBUG0("Desktop was not in range defaulting to no desktop change.");
                 }
-                attachfocus(c);
-                attachstack(c);
-                attach(c);
             }
         }
         else if (atom == netatom[NetShowingDesktop])
