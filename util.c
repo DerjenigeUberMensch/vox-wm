@@ -44,6 +44,19 @@ smprintf(char *fmt, ...)
     return ret;
 }
 
+void
+debug(char *fmt, ...)
+{
+    static char str[1024];
+    memset(str, 0, sizeof(char) * 1024);
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(str, vsnprintf(NULL, 0, fmt, args), fmt, args);
+    va_end(args);
+    perror(str);
+    fprintf(stdout, "%s\n", str);
+}
+
 unsigned int
 UIHash(unsigned int x)
 {
