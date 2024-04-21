@@ -381,6 +381,12 @@ arrangedesktop(Desktop *desk)
 void
 attach(Client *c)
 {
+    if(c->next || c->prev)
+    {   
+        detach(c);
+        DEBUG0("Client already attached, this should be possible.");
+        exit(EXIT_FAILURE);
+    }
     c->next = c->desktop->clients;
     c->desktop->clients = c;
     if(c->next)
@@ -414,6 +420,12 @@ attachdesktop(Monitor *m, Desktop *desktop)
 void
 attachstack(Client *c)
 {
+    if(c->snext || c->sprev)
+    {   
+        detachstack(c);
+        DEBUG0("Client already attached, this should be possible.");
+        exit(EXIT_FAILURE);
+    }
     Desktop *desk = c->desktop;
     c->snext = desk->stack;
     desk->stack = c;
@@ -432,6 +444,11 @@ attachstack(Client *c)
 void
 attachfocus(Client *c)
 {
+    if(c->fnext || c->fprev)
+    {
+        DEBUG0("Client already attached, this should be possible.");
+        exit(EXIT_FAILURE);
+    }
     Desktop *desk = c->desktop;
     c->fnext = desk->focus;
     desk->focus = c;
@@ -540,7 +557,7 @@ detachfocus(Client *c)
     {
         desk->flast = c->fprev;
     }
-    else if(c->snext)
+    else if(c->fnext)
     {   
         c->fnext->fprev = c->fprev;
     }
@@ -845,7 +862,7 @@ eventhandler(XCBGenericEvent *ev)
 {
     /* int for speed */
     int cleanev = XCB_EVENT_RESPONSE_TYPE(ev);
-    DEBUG("%s", XCBGetEventName(cleanev));
+    //DEBUG("%s", XCBGetEventName(cleanev));
     if(handler[cleanev])
     {   handler[cleanev](ev);
     }
@@ -870,7 +887,8 @@ focus(Client *c)
     Monitor *selmon = _wm.selmon;
     Desktop *desk  = selmon->desksel;
     if(!c || !ISVISIBLE(c))
-    {   for(c = desk->focus; c; c = nextfocus(c));
+    {   
+        for(c = desk->focus; c && !ISVISIBLE(c); c = nextfocus(c));
     }
     if(desk->sel && desk->sel != c)
     {   unfocus(desk->sel, 0);
@@ -942,7 +960,7 @@ grabbuttons(XCBWindow win, uint8_t focused)
                     win, 0, BUTTONMASK, 
                     XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, 
                     XCB_NONE, XCB_NONE);
-            DEBUG("Grabbed button: [%d]", buttons[i].button);
+            //DEBUG("Grabbed button: [%d]", buttons[i].button);
         }
     }
 }
@@ -1221,16 +1239,19 @@ manage(XCBWindow win)
 
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientList], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&win, 1);
     setclientstate(c, XCB_WINDOW_NORMAL_STATE);
-    /* map the window or we get errors */
-    XCBMapWindow(_wm.dpy, win);
+
+    if(c->desktop == _wm.selmon->desksel)
+    {   unfocus(_wm.selmon->desksel->sel, 0);
+    }
 
     /* inherit previous client state */
     if(c->desktop && c->desktop->sel)
     {   setfullscreen(c, ISFULLSCREEN(c->desktop->sel) || ISFULLSCREEN(c));
     }
     arrange(c->desktop);
+    XCBMapWindow(_wm.dpy, win);
     /* client could be floating so we pass NULL for focus */
-    focus(c);
+    focus(NULL);
     goto CLEANUP;
 CLEANUP:
     /* reply cleanup */
@@ -2015,12 +2036,7 @@ sendmon(Client *c, Monitor *m)
         return;
     }
     unfocus(c, 1);
-    detachcompletely(c);
-    c->desktop = m->desksel;
     setclientdesktop(c, m->desksel);
-    attach(c);
-    attachstack(c);
-    attachfocus(c);
     focus(NULL);
     /* arrangeall() */
 }
@@ -2069,6 +2085,7 @@ setclientdesktop(Client *c, Desktop *desk)
     c->desktop = desk;
     attach(c);
     attachstack(c);
+    attachfocus(c);
 }
 
 void
@@ -2932,7 +2949,6 @@ unmanage(Client *c, uint8_t destroyed)
     focus(NULL);
     updateclientlist();
     arrange(desk);
-    c = NULL;
 }
 
 void
@@ -3605,7 +3621,7 @@ wintoclient(XCBWindow win)
             for(c = desk->clients; c; c = nextclient(c))
             {
                 if(c->win == win)
-                {   DEBUG("WINDOW: %d", win);
+                {   DEBUG("win: [%d]", win);
                     return c;
                 }
             }
