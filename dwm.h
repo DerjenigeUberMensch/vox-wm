@@ -599,6 +599,8 @@ void restoresession(void);
 Client *restoreclientsession(Desktop *desk, char *buff, uint16_t len);
 /* Attempts to restore session from SESSION_FILE for a desktop */
 Desktop *restoredesktopsession(Monitor *m, char *buff, uint16_t len);
+void restoredesktopsessionstack(Desktop *desk, char *buff, uint16_t len);
+void restoredesktopsessionfocus(Desktop *desk, char *buff, uint16_t len);
 /* Attempts to restore session from SESSION_FILE for given monitor */
 Monitor *restoremonsession(char *buff, uint16_t len);
 /* Searches through every monitor for a possible big enough size to fit rectangle parametors specified */
@@ -672,6 +674,7 @@ void setmaximizedvert(Client *c, uint8_t state);
 void setmaximizedhorz(Client *c, uint8_t state);
 void setshaded(Client *c, uint8_t state);
 void setmodal(Client *c, uint8_t state);
+void setmondesktop(Monitor *m, Desktop *desk);
 void setsticky(Client *c, uint8_t state);
 void settopbar(Client *c, uint8_t state);
 /* Sets up Variables, Checks, WM specific data, etc.. */

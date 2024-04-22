@@ -631,6 +631,7 @@ checksticky(int64_t x)
 void
 cleanup(void)
 {
+    savesession();
     if(!_wm.dpy)
     {
         /* sometimes due to our own lack of competence we can call quit twice and segfault here */
@@ -1438,7 +1439,6 @@ restoresession(void)
 {
     Monitor *m = NULL;
     Desktop *desk = NULL;
-    Client *c = NULL;
 
     FILE *fr = fopen(SESSION_FILE, "r");
     const int MAX_LENGTH = 1024;
@@ -1447,6 +1447,12 @@ restoresession(void)
     u8 ismon = 0;
     u8 isdesk = 0;
     u8 isclient = 0;
+    u8 isstack = 0;
+    u8 isfocus = 0;
+
+    if(!fr)
+    {   return;
+    }
 
     enum Causes
     {
@@ -1464,8 +1470,8 @@ restoresession(void)
             case NoError: break;
             case BuffTooSmall:
             case err:
-            case EndOfFile: continue; break;
-            default: break;
+            case EndOfFile: 
+            default: continue;
         }
 
         if(isclient)
@@ -1476,6 +1482,12 @@ restoresession(void)
             restoreclientsession(desk, str, MAX_LENGTH);
             isclient = 0;
         }
+        if(isstack)
+        {   restoredesktopsessionstack(desk, str, MAX_LENGTH);
+        }
+        if(isfocus)
+        {   restoredesktopsessionfocus(desk, str, MAX_LENGTH);
+        }
         if(isdesk)
         {   
             if(!m)
@@ -1485,23 +1497,26 @@ restoresession(void)
             isdesk = 0;
         }
         if(ismon)
-        {   m = restoremonsession(str, MAX_LENGTH);
+        {   
+            m = restoremonsession(str, MAX_LENGTH);
             ismon = 0;
         }
 
-        ismon += strcmp(str, "Monitor.");
-        isdesk += strcmp(str, "Desktop.");
-        isclient += strcmp(str, "Client.");
+        ismon += !strcmp(str, "Monitor.");
+        isstack += !strcmp(str, "Stack.");
+        isfocus += !strcmp(str, "Focus.");
+        isdesk += !strcmp(str, "Desktop.");
+        isclient += !strcmp(str, "Client.");
     }
+    arrangemons();
 }
 
 Client *
 restoreclientsession(Desktop *desk, char *buff, u16 len)
 {
-    const u8 SCANF_CHECK_SUM = 6;
+    const u8 SCANF_CHECK_SUM = 13;
     u8 check = 0;
 
-    Client c;
     int x, y;
     int ox, oy;
     unsigned int w, h;
@@ -1509,8 +1524,6 @@ restoreclientsession(Desktop *desk, char *buff, u16 len)
     XCBWindow WindowId;
     u32 BorderWidth;
     u32 BorderColor;
-    XCBWindow NextFocusId;
-    XCBWindow NextStackId;
 
     check = sscanf(buff, 
                     "(x: %d, y: %d) (w: %u h: %u)" " "
@@ -1518,21 +1531,68 @@ restoreclientsession(Desktop *desk, char *buff, u16 len)
                     "WindowId: %u" " "
                     "BorderWidth: %u" " "
                     "BorderColor: %u" " "
-                    "NextFocusId: %u" " "
-                    "NextStackId: %u" " "
                     ,
                     &x, &y, &w, &h,
                     &ox, &oy, &ow, &oh,
                     &WindowId,
                     &BorderWidth,
-                    &BorderColor,
-                    &NextFocusId,
-                    &NextStackId
+                    &BorderColor
                     );
+
     if(check == SCANF_CHECK_SUM)
     {
+        Client *c = wintoclient(WindowId);
+        if(c)
+        {
+            resize(c, ox, oy, ow, oh, 1);
+            resize(c, x, y, w, h, 1);
+            setborderwidth(c, BorderWidth);
+            setbordercolor32(c, BorderColor);
+            //setclientdesktop(c, desk);
+            return c;
+        }
     }
     return NULL;
+}
+
+void
+restoredesktopsessionstack(Desktop *desk, char *buff, uint16_t len)
+{
+    const u8 SCANF_CHECK_SUM = 1;
+    u8 check = 0;
+    XCBWindow win = 0;
+
+    check = sscanf(buff, "%u", &win);
+
+    if(check == SCANF_CHECK_SUM)
+    {
+        Client *c = wintoclient(win);
+        if(c)
+        {
+            detachstack(c);
+            attachstack(c);
+        }
+    }
+}
+
+void
+restoredesktopsessionfocus(Desktop *desk, char *buff, uint16_t len)
+{
+    const u8 SCANF_CHECK_SUM = 1;
+    u8 check = 0;
+    XCBWindow win = 0;
+
+    check = sscanf(buff, "%u", &win);
+
+    if(check == SCANF_CHECK_SUM)
+    {
+        Client *c = wintoclient(win);
+        if(c)
+        {
+            detachfocus(c);
+            detachfocus(c);
+        }
+    }
 }
 
 Desktop *
@@ -1548,20 +1608,17 @@ restoredesktopsession(Monitor *m, char *buff, u16 len)
     XCBWindow FirstStack;
     XCBWindow FirstFocus;
     DesktopLayout = DesktopOLayout = DesktopNum = DesktopSel = FirstStack = FirstFocus = 0;
+
     check = sscanf(buff, 
                     "DesktopLayout: %u" " "
                     "DesktopOLayout: %u" " "
                     "DesktopNum: %u" " "
                     "DesktopSel: %u" " "
-                    "FirstStack: %u" " "
-                    "FirstFocus: %u" " "
                     ,
                     &DesktopLayout,
                     &DesktopOLayout,
                     &DesktopNum,
-                    &DesktopSel,
-                    &FirstStack,
-                    &FirstFocus
+                    &DesktopSel
                     );
 
     if(check == SCANF_CHECK_SUM)
@@ -1596,10 +1653,10 @@ restoredesktopsession(Monitor *m, char *buff, u16 len)
                 {   setclientdesktop(stack, desk);
                 }
             }
-            desk->mon = m;
+
             desk->sel = sel;
-            desk->layout = DesktopLayout;
-            desk->olayout = DesktopOLayout;
+            setdesktoplayout(desk, DesktopOLayout);
+            setdesktoplayout(desk, DesktopLayout);
             return desk;
         }
         return NULL;
@@ -1687,6 +1744,14 @@ restoremonsession(char *buff, u16 len)
             managebar(pullm, BarId);
             /* TODO */
             setdesktopcount(pullm, DeskCount);
+            if(DeskSelNum != pullm->desksel->num)
+            {
+                Desktop *desk;
+                for(desk = pullm->desktops; desk && desk->num != DeskSelNum; desk = nextdesktop(desk));
+                if(desk)
+                {   setmondesktop(pullm, desk);
+                }
+            }
             return pullm;
         }
     }
@@ -1839,99 +1904,21 @@ run(void)
 void
 savesession(void)
 {
-    const char *filename = SESSION_FILE;
-    FILE *fw = fopen(filename, "w");
-
-    if(!fw)
-    {   return;
-    }
-
-    Monitor *m;
-    for(m = _wm.mons; m; m = nextmonitor(m))
-    {   savemonsession(fw, m);
-    }
 }
 
 void
 saveclientsession(FILE *fw, Client *c)
 {
-    const char *identifier = "Client.";
-    fprintf(fw,
-            "%s"
-            "\n"
-            "(x: %d, y: %d) (w: %d h: %d)" " "
-            "(ox: %d, oy: %d) (ow: %d oh: %d)" " "
-            "WindowId: %d" " "
-            "BorderWidth: %d" " "
-            "BorderColor: %d" " "
-            "NextFocusId: %d" " "
-            "NextStackId: %d" " "
-            "\n"
-            ,
-            identifier,
-            c->x, c->y, c->w, c->h,
-            c->oldx, c->oldy, c->oldw, c->oldh,
-            c->win, 
-            c->bw,
-            c->bcol,
-            c->fnext ? c->fnext->win : 0,
-            c->snext ? c->snext->win : 0
-            );
 }
 
 void
 savedesktopsession(FILE *fw, Desktop *desk)
 {
-    Client *c;
-    const char *identifier = "Desktop.";
-
-    fprintf(fw,
-            "%s"
-            "\n"
-            "DesktopLayout: %d" " "
-            "DesktopOLayout: %d" " "
-            "DesktopNum: %d" " "
-            "DesktopSel: %d" " "
-            "FirstStack: %d" " "
-            "FirstFocus: %d" " "
-            "\n"
-            ,
-            identifier,
-            desk->layout,
-            desk->olayout,
-            desk->num,
-            desk->sel ? desk->sel->win : 0,
-            desk->stack ? desk->stack->win : 0,
-            desk->focus ? desk->focus->win : 0
-            );
-    for(c = desk->clients; c; c = nextclient(c))
-    {   saveclientsession(fw, c);
-    }
 }
 
 void
 savemonsession(FILE *fw, Monitor *m) 
 {
-    Desktop *desk;
-    /* TODO: this will take a while to say the least... */
-    const char *identifier = "Monitor.";
-    /* monitor */
-    fprintf(fw,
-            "%s" 
-            "\n"
-            "(x: %d, y: %d) (w: %u h: %u)" " "
-            "BarId: %u" " "
-            "DeskCount: %u" " "
-            "\n"
-            ,
-            identifier,
-            m->mx, m->my, m->mw, m->mh,
-            m->bar ? m->bar->win : 0,
-            m->deskcount
-            );
-    for(desk = m->desktops; desk; desk = nextdesktop(desk))
-    {   savedesktopsession(fw, desk);
-    }
 }
 
 /* scan for clients initally */
@@ -2368,6 +2355,12 @@ void
 setmodal(Client *c, uint8_t state)
 {
     SETFLAG(c->wstateflags, _STATE_MODAL, !!state);
+}
+
+void 
+setmondesktop(Monitor *m, Desktop *desk)
+{   
+    m->desksel = desk;
 }
 
 void
@@ -3666,6 +3659,7 @@ main(int argc, char *argv[])
     startup();
     setup();
     scan();
+    restoresession();
     run();
     cleanup();
     specialconds(argc, argv);
