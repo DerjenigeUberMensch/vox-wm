@@ -21,8 +21,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-#ifndef PARSER_H
-#define PARSER_H
+#ifndef SIMPLE_CONFIG_H 
+#define SIMPLE_CONFIG_H
 
 
 #include <stdint.h>
@@ -67,6 +67,8 @@ enum CFGType
     NOTYPE,
     CHAR,
     UCHAR,
+    SHORT,
+    USHORT,
     INT,
     UINT,
     LONG,
@@ -137,4 +139,20 @@ CFGLoad(
         );
 
 
+
+
+
+
+
+
+
+
+
 #endif
+
+
+
+
+
+
+

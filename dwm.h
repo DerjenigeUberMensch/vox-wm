@@ -19,16 +19,15 @@
 #define NAME        "NOT_SET"
 #endif
 
+/* CONSTANTS */
 #define BUTTONMASK              (XCB_EVENT_MASK_BUTTON_PRESS|XCB_EVENT_MASK_BUTTON_RELEASE)
 #define CLEANMASK(mask)         (mask & ~(_wm.numlockmask|XCB_MOD_MASK_LOCK) & \
                                 (XCB_MOD_MASK_SHIFT|XCB_MOD_MASK_CONTROL| \
                                  XCB_MOD_MASK_1|XCB_MOD_MASK_2|XCB_MOD_MASK_3|XCB_MOD_MASK_4|XCB_MOD_MASK_5))
 #define INTERSECT(x,y,w,h,m)    (MAX(0, MIN((x)+(w),(m)->wx+(m)->ww) - MAX((x),(m)->wx)) \
                                 * MAX(0, MIN((y)+(h),(m)->wy+(m)->wh) - MAX((y),(m)->wy)))
-#define MOUSEMASK               (BUTTONMASK | XCB_EVENT_MASK_POINTER_MOTION)
-#define WIDTH(C)                ((C)->w + ((C)->bw << 1))
-#define HEIGHT(C)               ((C)->h + ((C)->bw << 1))
 #define LENGTH(X)               (sizeof X / sizeof X[0])
+#define MOUSEMASK               (BUTTONMASK | XCB_EVENT_MASK_POINTER_MOTION)
 #define TAGMASK                 ((1 << LENGTH(tags)) - 1)
 #define TAGSLENGTH              (LENGTH(tags))
 #define SESSION_FILE            "/tmp/dwm-session"
@@ -76,62 +75,6 @@
 #define _STATE_SUPPORTED_WM_DELETE_WINDOW   ((1 << 15))
 
 /* Client macros */
-
-/* Our custom states */
-
-#define ISALWAYSONTOP(C)        (((C)->wstateflags & _STATE_ABOVE))
-#define ISALWAYSONBOTTOM(C)     (((C)->wstateflags & _STATE_BELOW))
-#define WASFLOATING(C)          (( ((C)->desktop->mon->wx == (C)->oldx) & ((C)->desktop->mon->wy == (C)->oldy) & ((C)->desktop->mon->ww == (C)->oldw) & ((C)->desktop->mon->wh == (C)->oldh) ))
-#define ISFLOATING(C)           (( ((C)->desktop->mon->wx == (C)->x) & ((C)->desktop->mon->wy == (C)->y) & ((C)->desktop->mon->ww == (C)->w) & ((C)->desktop->mon->wh == (C)->h)  ))
-#define ISFIXED(C)              (( ((C)->minw != 0 ) & ((C)->minh != 0) & ((C)->minw == (C)->maxw) & ((C)->minh == (C)->maxh) ))
-#define ISURGENT(C)             (((C)->wstateflags & _STATE_DEMANDS_ATTENTION))
-#define NEVERFOCUS(C)           (((C)->wtypeflags & _TYPE_NEVERFOCUS))
-#define ISMAXVERT(C)            (((C)->h == (C)->desktop->mon->wh))
-#define ISMAXHORZ(C)            (((C)->w == (C)->desktop->mon->ww))
-
-/* EWMH Window types */
-
-#define ISDESKTOP(C)            (((C)->wtypeflags & _TYPE_DESKTOP))
-#define ISDOCK(C)               (((C)->wtypeflags & _TYPE_DOCK))
-#define ISTOOLBAR(C)            (((C)->wtypeflags & _TYPE_TOOLBAR))
-#define ISMENU(C)               (((C)->wtypeflags & _TYPE_MENU))
-#define ISUTILITY(C)            (((C)->wtypeflags & _TYPE_UTILITY))
-#define ISSPLASH(C)             (((C)->wtypeflags & _TYPE_SPLASH))
-#define ISDIALOG(C)             (((C)->wtypeflags & _TYPE_DIALOG))
-#define ISDROPDOWNMENU(C)       (((C)->wtypeflags & _TYPE_DROPDOWN_MENU))
-#define ISPOPUPMENU(C)          (((C)->wtypeflags & _TYPE_POPUP_MENU))
-#define ISTOOLTIP(C)            (((C)->wtypeflags & _TYPE_TOOLTIP))
-#define ISNOTIFICATION(C)       (((C)->wtypeflags & _TYPE_NOTIFICATION))
-#define ISCOMBO(C)              (((C)->wtypeflags & _TYPE_COMBO))
-#define ISDND(C)                (((C)->wtypeflags & _TYPE_DND))
-#define ISNORMAL(C)             (((C)->wtypeflags & _TYPE_NORMAL))
-/* #define ISNEVERFOCUS(C)         (((C)->wtypeflags & _TYPE_NEVERFOCUS)) */
-#define ISMAPICONIC(C)          (((C)->wtypeflags & _TYPE_WINDOW_ICONIC))
-#define ISMAPNORMAL(C)          (!ISMAPICONIC(C))
-
-/* EWMH Window states */
-
-#define ISMODAL(C)              (((C)->wstateflags & _STATE_MODAL))
-#define ISSTICKY(C)             (((C)->wstateflags & _STATE_STICKY))
-#define ISMAXIMIZEDVERT(C)      (((C)->wstateflags & _STATE_MAXIMIZED_VERT))
-#define ISMAXIMIZEDHORZ(C)      (((C)->wstateflags & _STATE_MAXIMIZED_HORZ))
-#define ISSHADED(C)             (((C)->wstateflags & _STATE_SHADED))
-#define SKIPTASKBAR(C)          (((C)->wstateflags & _STATE_SKIP_TASKBAR))
-#define SKIPPAGER(C)            (((C)->wstateflags & _STATE_SKIP_PAGER))
-#define ISHIDDEN(C)             (((C)->wstateflags & _STATE_HIDDEN))
-#define ISFULLSCREEN(C)         (((C)->wstateflags & _STATE_FULLSCREEN))
-#define ISABOVE(C)              (((C)->wstateflags & _STATE_ABOVE))
-#define ISBELOW(C)              (((C)->wstateflags & _STATE_BELOW))
-#define DEMANDSATTENTION(C)     (((C)->wstateflags & _STATE_DEMANDS_ATTENTION))
-#define ISFOCUSED(C)            (((C)->wstateflags & _STATE_FOCUSED))
-/* WM Protocol */
-#define HASWMTAKEFOCUS(C)       (((C)->wstateflags & _STATE_SUPPORTED_WM_TAKE_FOCUS))
-#define HASWMSAVEYOURSELF(C)    (((C)->wstateflags & _STATE_SUPPORTED_WM_SAVE_YOURSELF))
-#define HASWMDELETEWINDOW(C)    (((C)->wstateflags & _STATE_SUPPORTED_WM_DELETE_WINDOW))
-
-
-/* This returns 1 when true */
-#define ISVISIBLE(C)            ((((C)->desktop->mon->desksel == (C)->desktop || ISSTICKY((C))) & (!ISHIDDEN((C)))))
 
 /* cursor */
 enum CurType 
@@ -247,9 +190,9 @@ struct Client
     pid_t pid;          /* Client Pid               */
 
     Client *next;       /* The next client in list  */
-    Client *snext;      /* The next client in stack */
     Client *prev;       /* The previous client      */
     Client *sprev;      /* The prev stack order clnt*/
+    Client *snext;      /* The next client in stack */
     Client *fnext;      /* The next focused client  */
     Client *fprev;      /* THe previous focused clnt*/
     Desktop *desktop;   /* Client Associated Desktop*/
@@ -528,11 +471,6 @@ Client *nextstack(Client *c);
  * RETURN: NULL on Failure.
  */
 Client *nextfocus(Client *c);
-/* Returns the next tiled client avaible.
- * RETURN: Client* on Success.
- * RETURN: NULL on Failure.
- */
-Client *nexttiled(Client *c);
 /* Returns the next visible client avaible.
  * RETURN: Client* on Success.
  * RETURN: NULL on Failure.
@@ -733,6 +671,59 @@ void unmanagebar(Bar *bar);
 /* Error handler */
 void xerror(XCBDisplay *display, XCBGenericError *error);
 
+
+
+/* MACROS */
+
+int ISALWAYSONTOP(Client *c);
+int ISALWAYSONBOTTOM(Client *c);
+int WASFLOATING(Client *c);
+int ISFLOATING(Client *c);
+int DOCKED(Client *c);
+int WASDOCKED(Client *c);
+int ISFIXED(Client *c);
+int ISURGENT(Client *c);
+int NEVERFOCUS(Client *c);
+int ISVISIBLE(Client *c);
+/* EWMH Window types */
+int ISDESKTOP(Client *c);
+int ISDOCK(Client *c);
+int ISTOOLBAR(Client *c);
+int ISMENU(Client *c);
+int ISUTILITY(Client *c);
+int ISSPLASH(Client *c);
+int ISDIALOG(Client *c);
+int ISDROPDOWNMENU(Client *c);
+int ISPOPUPMENU(Client *c);
+int ISTOOLTIP(Client *c);
+int ISNOTIFICATION(Client *c);
+int ISCOMBO(Client *c);
+int ISDND(Client *c);
+int ISNORMAL(Client *c);
+int ISMAPICONIC(Client *c);
+/* EWMH Window states */
+int ISMODAL(Client *c);
+int ISSTICKY(Client *c);
+int ISMAXIMIZEDVERT(Client *c);
+int ISMAXIMIZEDHORZ(Client *c);
+int ISSHADED(Client *c);
+int SKIPTASKBAR(Client *c);
+int SKIPPAGER(Client *c);
+int ISHIDDEN(Client *c);
+int ISFULLSCREEN(Client *c);
+int ISABOVE(Client *c);
+int ISBELOW(Client *c);
+int DEMANDSATTENTION(Client *c);
+int ISFOCUSED(Client *c);
+/* WM Protocol */
+int HASWMTAKEFOCUS(Client *c);
+int HASWMSAVEYOURSELF(Client *c);
+int HASWMDELETEWINDOW(Client *c);
+
+uint16_t OLDWIDTH(Client *c);
+uint16_t OLDHEIGHT(Client *c);
+uint16_t WIDTH(Client *c);
+uint16_t HEIGHT(Client *c);
 
 static const Layout layouts[4] =
 {

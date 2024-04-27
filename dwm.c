@@ -30,6 +30,8 @@
 
 #include "keybinds.h"
 
+
+
 /* for HELP/DEBUGGING see under main() or the bottom */
 
 extern void (*handler[]) (XCBGenericEvent *);
@@ -39,6 +41,80 @@ CFG *_cfg;
 
 XCBAtom netatom[NetLast];
 XCBAtom wmatom[WMLast];
+
+/* Macro definitions */
+u16 OLDWIDTH(Client *c)         { return (c->oldw + (c->bw * 2)); }
+u16 OLDHEIGHT(Client *c)        { return (c->oldw + (c->bw * 2)); }
+u16 WIDTH(Client *c)            { return (c->w + (c->bw * 2)); }
+u16 HEIGHT(Client *c)           { return (c->h + (c->bw * 2)); } 
+/* Our custom states */
+int ISALWAYSONTOP(Client *c)    { return c->wstateflags & _STATE_ABOVE; }
+int ISALWAYSONBOTTOM(Client *c) { return c->wstateflags & _STATE_BELOW; }
+int WASFLOATING(Client *c)      {   
+                                    const i16 wx = c->desktop->mon->wx;
+                                    const i16 wy = c->desktop->mon->wy;
+                                    const u16 ww = c->desktop->mon->ww;
+                                    const u16 wh = c->desktop->mon->wh;
+                                    const i16 x = c->oldx;
+                                    const i16 y = c->oldy;
+                                    const u16 w = c->oldw;
+                                    const u16 h = c->oldh;
+                                    return ((wx == x) & (wy == y) & (ww == w) & (wh == h));
+                                }
+int ISFLOATING(Client *c)       {
+                                    const i16 wx = c->desktop->mon->wx;
+                                    const i16 wy = c->desktop->mon->wy;
+                                    const u16 ww = c->desktop->mon->ww;
+                                    const u16 wh = c->desktop->mon->wh;
+                                    const i16 x = c->x;
+                                    const i16 y = c->y;
+                                    const u16 w = c->w;
+                                    const u16 h = c->h;
+                                    return ((wx == x) & (wy == y) & (ww == w) & (wh == h));
+                                }
+int DOCKED(Client *c)           { return !ISFLOATING(c);  }
+int WASDOCKED(Client *c)        { return !WASFLOATING(c); }
+int ISFIXED(Client *c)          { return (c->minw != 0) & (c->minh != 0) & (c->minw == c->maxw) & (c->minh == c->maxh); }
+int ISURGENT(Client *c)         { return c->wstateflags & _STATE_DEMANDS_ATTENTION; }
+int NEVERFOCUS(Client *c)       { return c->wtypeflags & _TYPE_NEVERFOCUS; }
+int ISMAXHORZ(Client *c)        { return WIDTH(c) == c->desktop->mon->wh; }
+int ISMAXVERT(Client *c)        { return HEIGHT(c) == c->desktop->mon->wh; }
+int ISVISIBLE(Client *c)        { return (!!(c->desktop->mon->desksel == c->desktop) | (!!ISSTICKY(c))) & !ISHIDDEN(c); }
+/* EWMH Window types */
+int ISDESKTOP(Client *c)        { return c->wtypeflags & _TYPE_DESKTOP; }
+int ISDOCK(Client *c)           { return c->wtypeflags & _TYPE_DOCK; }
+int ISTOOLBAR(Client *c)        { return c->wtypeflags & _TYPE_TOOLBAR; }
+int ISMENU(Client *c)           { return c->wtypeflags & _TYPE_MENU; }
+int ISUTILITY(Client *c)        { return c->wtypeflags & _TYPE_UTILITY; }
+int ISSPLASH(Client *c)         { return c->wtypeflags & _TYPE_SPLASH; }
+int ISDIALOG(Client *c)         { return c->wtypeflags & _TYPE_DIALOG; }
+int ISDROPDOWNMENU(Client *c)   { return c->wtypeflags & _TYPE_DROPDOWN_MENU; }
+int ISPOPUPMENU(Client *c)      { return c->wtypeflags & _TYPE_POPUP_MENU; }
+int ISTOOLTIP(Client *c)        { return c->wtypeflags & _TYPE_TOOLTIP; }
+int ISNOTIFICATION(Client *c)   { return c->wtypeflags & _TYPE_NOTIFICATION; }
+int ISCOMBO(Client *c)          { return c->wtypeflags & _TYPE_COMBO; }
+int ISDND(Client *c)            { return c->wtypeflags & _TYPE_DND; }
+int ISNORMAL(Client *c)         { return c->wtypeflags & _TYPE_NORMAL; }
+int ISMAPICONIC(Client *c)      { return c->wtypeflags & _TYPE_WINDOW_ICONIC; }
+int ISMAPNORMAL(Client *c)      { return !ISMAPICONIC(c);}
+/* EWMH Window states */
+int ISMODAL(Client *c)          { return c->wstateflags & _STATE_MODAL; }
+int ISSTICKY(Client *c)         { return c->wstateflags & _STATE_STICKY; }
+int ISMAXIMIZEDVERT(Client *c)  { return c->wstateflags & _STATE_MAXIMIZED_VERT; }
+int ISMAXIMIZEDHORZ(Client *c)  { return c->wstateflags & _STATE_MAXIMIZED_HORZ; }
+int ISSHADED(Client *c)         { return c->wstateflags & _STATE_SHADED; }
+int SKIPTASKBAR(Client *c)      { return c->wstateflags & _STATE_SKIP_TASKBAR; }
+int SKIPPAGER(Client *c)        { return c->wstateflags & _STATE_SKIP_PAGER; }
+int ISHIDDEN(Client *c)         { return c->wstateflags & _STATE_HIDDEN; }
+int ISFULLSCREEN(Client *c)     { return c->wstateflags & _STATE_FULLSCREEN; }
+int ISABOVE(Client *c)          { return c->wstateflags & _STATE_ABOVE; }
+int ISBELOW(Client *c)          { return c->wstateflags & _STATE_BELOW; }
+int DEMANDSATTENTION(Client *c) { return c->wstateflags & _STATE_DEMANDS_ATTENTION; }
+int ISFOCUSED(Client *c)        { return c->wstateflags & _STATE_FOCUSED; }
+/* WM Protocol */
+int HASWMTAKEFOCUS(Client *c)   { return c->wstateflags & _STATE_SUPPORTED_WM_TAKE_FOCUS; }
+int HASWMSAVEYOURSELF(Client *c){ return c->wstateflags & _STATE_SUPPORTED_WM_SAVE_YOURSELF; }
+int HASWMDELETEWINDOW(Client *c){ return c->wstateflags & _STATE_SUPPORTED_WM_DELETE_WINDOW; }
 
 void
 argcvhandler(int argc, char *argv[])
@@ -1010,6 +1086,7 @@ grid(Desktop *desk)
 
     u16 *pbgw = CFGGetVarValue(_cfg, "BorderGapWidth");
     const u16 bgw = pbgw ? *pbgw : 0;
+    DEBUG("BGW: %d", bgw);
 
     i32 i, n, cw, ch, aw, ah, cols, rows;
     i32 nx, ny, nw, nh;
@@ -1017,7 +1094,7 @@ grid(Desktop *desk)
     Client *c;
     Monitor *m = desk->clients->desktop->mon;
 
-    for(n = 0, c = nexttiled(desk->clients); c; c = nexttiled(c->next))
+    for(n = 0, c = desk->focus; c; c = nextfocus(c))
     {   ++n;
     }
 
@@ -1037,7 +1114,7 @@ grid(Desktop *desk)
     /* window geoms (cell height/width) */
     ch = m->wh / (rows + !rows);
     cw = m->ww / (cols + !cols);
-    for(i = 0, c = nexttiled(desk->clients); c; c = nexttiled(c->next))
+    for(i = 0, c = desk->focus; c; c = nextfocus(c))
     {
         nx = m->wx + (i / rows) * cw;
         ny = m->wy + (i % rows) * ch;
@@ -1348,7 +1425,7 @@ monocle(Desktop *desk)
     i32 ny = m->wy;
     i32 unused = 0;
 
-    for(c = nexttiled(desk->clients); c; c = nexttiled(c->next))
+    for(c = desk->focus; c; c = nextfocus(c))
     {
         nw = m->ww - (c->bw * 2);
         nh = m->wh - (c->bw * 2);
@@ -1385,13 +1462,6 @@ Client *
 nextfocus(Client *c)
 {
     return c ? c->fnext : c;
-}
-
-Client *
-nexttiled(Client *c)
-{
-    for(; c && (!ISVISIBLE(c) || ISFLOATING(c)); c = nextclient(c));
-    return c;
 }
 
 Client *
@@ -1452,6 +1522,7 @@ _restore_parser(FILE *file, char *buffer, u16 bufflen)
 void
 restoresession(void)
 {
+    return;
     Monitor *m = NULL;
     Desktop *desk = NULL;
 
@@ -1794,6 +1865,8 @@ recttomon(i16 x, i16 y, u16 w, u16 h)
 void
 resize(Client *c, i32 x, i32 y, i32 width, i32 height, uint8_t interact)
 {
+    DEBUG("(oldx: %d, oldy: %d) -> (x: %d, y: %d)", c->x, c->y, x, y);
+    DEBUG("(oldw: %d, oldh: %d) -> (w: %d, h: %d)", c->w, c->h, width, height);
     if(applysizehints(c, &x, &y, &width, &height, interact))
     {   resizeclient(c, x, y, width, height);
     }
@@ -2452,21 +2525,32 @@ void
 setupcfg(void)
 {
     CFGCreateVar(_cfg, "WindowManagerName", CHAR);
-    CFGCreateVar(_cfg, "NumberOfMasters", INT);
-    CFGCreateVar(_cfg, "HoverFocus", INT);
-    CFGCreateVar(_cfg, "WindowRefreshRate", INT);
-    CFGCreateVar(_cfg, "BorderWidth", INT);
-    CFGCreateVar(_cfg, "BorderGapWidth", INT);
-    CFGCreateVar(_cfg, "BorderColor", INT);
-    CFGCreateVar(_cfg, "WindowSnap", INT);
-    CFGCreateVar(_cfg, "MaxClientCount", INT);
+    CFGCreateVar(_cfg, "NumberOfMasters", USHORT);
+    CFGCreateVar(_cfg, "HoverFocus", UCHAR);
+    CFGCreateVar(_cfg, "WindowRefreshRate", USHORT);
+    CFGCreateVar(_cfg, "BorderWidth", USHORT);
+    CFGCreateVar(_cfg, "BorderGapWidth", USHORT);
+    CFGCreateVar(_cfg, "BorderColor", UINT);
+    CFGCreateVar(_cfg, "WindowSnap", USHORT);
+    CFGCreateVar(_cfg, "MaxClientCount", USHORT);
     CFGCreateVar(_cfg, "MonitorFact", FLOAT);
 
-    if(CFGLoad(_cfg) != ParseSuccess)
-    {   
-        DEBUG0("Failed to load CFG");
-        setupcfgdefaults();
+    void *data;
+    if(CFGLoad(_cfg) != ParseSuccess || !((data = CFGGetVarValue(_cfg, "MaxClientCount"))) || *(u16 *)data == 0)
+    {   setupcfgdefaults();
     }
+
+    DEBUG0("CFG LOADED VALUES. ");
+    DEBUG0("WindowManagerName: ");
+    DEBUG0("NumberOfMasters: ");
+    DEBUG0("HoverFocus: ");
+    DEBUG0("WindowRefreshRate: ");
+    DEBUG0("BorderWidth: ");
+    DEBUG0("BorderGapWidth: ");
+    DEBUG0("BorderColor: ");
+    DEBUG0("WindowSnap: ");
+    DEBUG0("MaxClientCount: ");
+    DEBUG0("MonitorFact: ");
 }
 
 void
@@ -2573,6 +2657,7 @@ showhide(Client *c)
     {   
         const i16 x = (m->mx - (WIDTH(c) / 2));
         XCBMoveWindow(_wm.dpy, c->win, x, c->y);
+        DEBUG("Not Visible: [%d]", c->win);
     }
 }
 
@@ -2749,14 +2834,15 @@ startup(void)
 void
 tile(Desktop *desk)
 {
-    i32 *pnmaster = CFGGetVarValue(_cfg, "NumberOfMasters");
+    u16 *pnmaster = CFGGetVarValue(_cfg, "NumberOfMasters");
     float *pmfact = CFGGetVarValue(_cfg, "MonitorFact");
     u16 *pbgw = CFGGetVarValue(_cfg, "BorderGapWidth");
 
-    const i32 nmaster = pnmaster ? *pnmaster : 0;
+    const u16 nmaster = pnmaster ? *pnmaster : 0;
     const float mfact = pmfact ? *pmfact : 0.0f;
     const u16 bgw = pbgw ? *pbgw : 0;
 
+    DEBUG("NMaster: %d Mfact: %f Bgw: %d", nmaster, mfact, bgw);
 
     i32 h = 0, mw = 0, my = 0, ty = 0;
     i32 n = 0, i = 0;
@@ -2771,7 +2857,7 @@ tile(Desktop *desk)
     }
 
     m = desk->clients->desktop->mon;
-    for(n = 0, c = nexttiled(desk->clients); c; c = nexttiled(c->next))
+    for(n = 0, c = desk->focus; c; c = nextfocus(c))
     {   ++n;
     }
 
@@ -2786,7 +2872,7 @@ tile(Desktop *desk)
     {   mw = m->ww;
     }
 
-    for (i = my = ty = 0, c = nexttiled(desk->clients); c; c = nexttiled(c->next), ++i)
+    for (i = my = ty = 0, c = desk->focus; c; c = nextfocus(c), ++i)
     {
         if (i < nmaster)
         {
