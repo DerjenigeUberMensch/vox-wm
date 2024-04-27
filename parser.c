@@ -21,7 +21,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -96,6 +95,7 @@ __attach(CFG *cfg, CFGItem *item)
     item->prev = NULL;
 }
 
+/*
 static void
 __detach(CFG *cfg, CFGItem *item)
 {
@@ -118,6 +118,7 @@ __detach(CFG *cfg, CFGItem *item)
     item->prev = NULL;
     item->next = NULL;
 }
+*/
 
 
 
@@ -204,7 +205,7 @@ __CFG_GET_FORMAT_SPECIFIER_FROM_TYPE(int CFGType)
 {
      switch(CFGType)
     {
-        case INT:
+        case INT: case SHORT: case USHORT:
             return "%d";
         case UINT:
             return "%u";
@@ -229,8 +230,16 @@ __CFG_GET_TYPE_SIZE(int CFGType)
 {
     switch(CFGType)
     {
+        case CHAR:
+            return sizeof(char);
+        case UCHAR:
+            return sizeof(unsigned char);
+        case SHORT:
+            return sizeof(int16_t);
+        case USHORT:
+            return sizeof(uint16_t);
         case INT:
-            return sizeof(int);
+            return sizeof(int32_t);
         case UINT:
             return sizeof(unsigned int);
         case LONG:
@@ -241,10 +250,6 @@ __CFG_GET_TYPE_SIZE(int CFGType)
             return sizeof(float);
         case DOUBLE:
             return sizeof(double);
-        case CHAR:
-            return sizeof(char);
-        case UCHAR:
-            return sizeof(unsigned char);
     }
     //fprintf(stderr, "Allocating 0 Bytes? are you sure you have a type set.");
     return sizeof(void *);
@@ -367,33 +372,41 @@ CFGSaveVar(
         )
 {
     CFGItem *item;
+    __Generic *gen;
     if((item = __CFG_GET_VAR_FROM_STRING(cfg, VarName)))
     {   
+        gen = item->data;
         switch(item->_type)
         {
-            case INT:
-                ((__Generic *)item->data)->i = *(int32_t *)data;
-                break;
-            case UINT:
-                ((__Generic *)item->data)->ui = *(uint32_t *)data;
-                break;
-            case LONG:
-                ((__Generic *)item->data)->ii = *(int64_t *)data;
-                break;
-            case ULONG:
-                ((__Generic *)item->data)->uii = *(uint64_t *)data;
-                break;
-            case FLOAT:
-                ((__Generic *)item->data)->f = *(float *)data;
-                break;
-            case DOUBLE:
-                ((__Generic *)item->data)->d = *(double *)data;
-                break;
             case CHAR:
-                ((__Generic *)item->data)->c = *(int8_t *)data;
+                gen->c = *(int8_t *)data;
                 break;
             case UCHAR:
-                ((__Generic *)item->data)->uc = *(uint8_t *)data;
+                gen->uc = *(uint8_t *)data;
+                break;
+            case SHORT:
+                gen->s = *(uint16_t *)data;
+                break;
+            case USHORT:
+                gen->us = *(uint16_t *)data;
+                break;
+            case INT:
+                gen->i = *(int32_t *)data;
+                break;
+            case UINT:
+                gen->ui = *(uint32_t *)data;
+                break;
+            case LONG:
+                gen->ii = *(int64_t *)data;
+                break;
+            case ULONG:
+                gen->uii = *(uint64_t *)data;
+                break;
+            case FLOAT:
+                gen->f = *(float *)data;
+                break;
+            case DOUBLE:
+                gen->d = *(double *)data;
                 break;
         }
     }
@@ -421,7 +434,19 @@ CFGWrite(
         fprintf(fw, "%s=", item->name);
         switch(item->_type)
         {
-            case INT:
+            case CHAR:
+                fprintf(fw, format, data->c);
+                break;
+            case UCHAR:
+                fprintf(fw, format, data->uc);
+                break;
+            case SHORT:
+                fprintf(fw, format, data->s);
+                break;
+            case USHORT:
+                fprintf(fw, format, data->us);
+                break;
+            case INT: 
                 fprintf(fw, format, data->i);
                 break;
             case UINT:
@@ -438,12 +463,6 @@ CFGWrite(
                 break;
             case DOUBLE:
                 fprintf(fw, format, data->d);
-                break;
-            case CHAR:
-                fprintf(fw, format, data->c);
-                break;
-            case UCHAR:
-                fprintf(fw, format, data->uc);
                 break;
         }
         fprintf(fw, "\n");
@@ -464,7 +483,6 @@ CFGLoad(
 
     char *name = NULL;
     char *typename = NULL;
-    void *data = NULL;
     if(!fr)
     {   return ParseError;
     }
@@ -511,4 +529,3 @@ CFGLoad(
     fclose(fr);
     return error;
 }
-

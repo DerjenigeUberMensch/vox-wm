@@ -794,7 +794,6 @@ configurenotify(XCBGenericEvent *event)
                 {   XCBMoveResizeWindow(_wm.dpy, m->bar->win, m->wx, m->bar->y, m->ww, m->bar->h);
                 }
             }
-            focus(NULL);
             arrangemons();
             sync = 1;
         }
