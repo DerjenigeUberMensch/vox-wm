@@ -11,9 +11,9 @@
 #include "util.h"
 #include "dwm.h"
 #include "xcb_trl.h"
-#include "config.h"
 #include "toggle.h"
 #include "queue.h"
+#include "parser.h"
 
 /*
  * For people wanting to make new functions:
@@ -23,7 +23,7 @@
 /* TODO: Make these functions seperate threads */
 extern void (*handler[]) (XCBGenericEvent *);
 extern WM _wm;
-extern CFG _cfg;
+extern CFG *_cfg;
 
 void
 UserStats(const Arg *arg)
@@ -127,19 +127,26 @@ ResizeWindow(const Arg *arg)
 void
 SetBorderWidth(const Arg *arg)
 {
-    if(_cfg.bw + arg->i < 0)
+    void *data = CFGGetVarValue(_cfg, "BorderWidth");
+    if(!data)
     {   return;
     }
-    _cfg.bw += arg->i;
+    const u16 bw = *(u16 *)data;
+    if(bw + arg->i < 0)
+    {   return;
+    }
+    const u16 newbw = bw + arg->i;
+    CFGSaveVar(_cfg, "BorderWidth", (void *)&newbw);
     Client *c;
+
     for(c = _wm.selmon->desksel->clients; c; c = nextclient(c))
     {   
-        XCBSetWindowBorderWidth(_wm.dpy, c->win, _cfg.bw);
-        setborderwidth(c, _cfg.bw);
+        XCBSetWindowBorderWidth(_wm.dpy, c->win, newbw);
+        setborderwidth(c, newbw);
     }
     arrangedesktop(_wm.selmon->desksel);
     XCBFlush(_wm.dpy);
-    DEBUG("Border width: [%d]", _cfg.bw);
+    DEBUG("Border width: [%d]", newbw);
 }
 
 void
@@ -149,6 +156,7 @@ SetWindowLayout(const Arg *arg)
     if(!m) return;
     setdesktoplayout(m->desksel, arg->i);
     arrange(m->desksel);
+    XCBFlush(_wm.dpy);
 }
 
 void
@@ -180,10 +188,13 @@ void
 MaximizeWindow(const Arg *arg)
 {
     const Monitor *m = _wm.selmon;
+    void *data = CFGGetVarValue(_cfg, "WindowSnap");
     Client *c = m->desksel->sel;
-    if(!c || !m)
+    if(!c || !m || !data)
     {   return;
     }
+
+    const u16 snap = *(u16 *)data;
 
     /* floating are auto handled to be any window that isnt maxed */
     if(ISFLOATING(c))
@@ -208,7 +219,7 @@ MaximizeWindow(const Arg *arg)
         {
             if(ISFIXED(c))
             {   /* just snap out of grid */
-                resize(c, c->x + _cfg.snap, c->y + _cfg.snap, c->w, c->h, 0);
+                resize(c, c->x + snap, c->y + snap, c->w, c->h, 0);
             }
             else
             {   /* make half the size */

@@ -47,6 +47,7 @@ smprintf(char *fmt, ...)
 void
 debug(char *fmt, ...)
 {
+#ifdef ENABLE_DEBUG
     static char str[1024];
     memset(str, 0, sizeof(char) * 1024);
     va_list args;
@@ -55,6 +56,7 @@ debug(char *fmt, ...)
     va_end(args);
     perror(str);
     fprintf(stdout, "%s\n", str);
+#endif
 }
 
 unsigned int

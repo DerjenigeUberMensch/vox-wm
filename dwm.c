@@ -18,6 +18,7 @@
 
 #include <X11/X.h> /* error codes */
 
+
 /* keycodes */
 #include <X11/keysym.h>
 
@@ -25,16 +26,16 @@
 #include "xcb_winutil.h"
 #include "util.h"
 #include "dwm.h"
+#include "parser.h"
 
-#include "config.h"
 #include "keybinds.h"
 
-
+/* for HELP/DEBUGGING see under main() or the bottom */
 
 extern void (*handler[]) (XCBGenericEvent *);
 
 WM _wm;
-CFG _cfg;
+CFG *_cfg;
 
 XCBAtom netatom[NetLast];
 XCBAtom wmatom[WMLast];
@@ -1006,6 +1007,10 @@ grid(Desktop *desk)
     if(!desk->clients)
     {   return;
     }
+
+    u16 *pbgw = CFGGetVarValue(_cfg, "BorderGapWidth");
+    const u16 bgw = pbgw ? *pbgw : 0;
+
     i32 i, n, cw, ch, aw, ah, cols, rows;
     i32 nx, ny, nw, nh;
     i32 unused = 0;
@@ -1043,8 +1048,8 @@ grid(Desktop *desk)
         /* _cfg.bgw without fucking everything else */
         nw = cw - (c->bw * 2) + aw;
         nh = ch - (c->bw * 2) + ah;
-        nw -= _cfg.bgw * 2;
-        nh -= _cfg.bgw * 2;
+        nw -= bgw * 2;
+        nh -= bgw * 2;
 
         /* sanatize data */
         applysizechecks(m, &nx, &ny, &nw, &nh, &unused);
@@ -1061,10 +1066,12 @@ killclient(Client *c, enum KillType type)
     }
     if(HASWMDELETEWINDOW(c))
     {   sendprotocolevent(c, wmatom[WMDeleteWindow]);
+        unmanage(c, 0);
     }
     else
     {
         XCBWindow win = c->win;
+        unmanage(c, 0);
         switch(type)
         {
             case Graceful:
@@ -1094,6 +1101,14 @@ manage(XCBWindow win)
     }
     /* barwin checks */
     u8 checkbar = !_wm.selmon->bar || !_wm.selmon->bar->win;
+    
+    /* settings */
+    const u16 *pbw = CFGGetVarValue(_cfg, "BorderWidth");
+    const u32 *pbcol = CFGGetVarValue(_cfg, "BorderColor");
+
+    const u16 bw = pbw ? *pbw : 0;
+    const u32 bcol = pbcol ? *pbcol : 0;
+
 
     Client *c = NULL, *t = NULL;
     XCBWindow trans = 0;
@@ -1223,8 +1238,8 @@ manage(XCBWindow win)
     }
 
     /* Custom stuff */
-    setborderwidth(c, _cfg.bw);
-    setbordercolor32(c, _cfg.bcol);
+    setborderwidth(c, bw);
+    setbordercolor32(c, bcol);
     XCBSetWindowBorderWidth(_wm.dpy, win, c->bw);
     XCBSetWindowBorder(_wm.dpy, win, c->bcol);
     configure(c);   /* propagates border_width, if size doesn't change */
@@ -1509,6 +1524,7 @@ restoresession(void)
         isclient += !strcmp(str, "Client.");
     }
     arrangemons();
+    fclose(fr);
 }
 
 Client *
@@ -1836,8 +1852,7 @@ restack(Desktop *desk)
     /* TODO use a sorting algorithm maybe, and figure out some faster way without possible buffer overruns */
 
     for(c = desk->focus; c; c = nextfocus(c))
-    {
-        XCBRaiseWindow(_wm.dpy, c->win);
+    {   XCBRaiseWindow(_wm.dpy, c->win);
     }
 
     /* this enables win10 floating if we pick the floating layout */
@@ -1904,6 +1919,7 @@ run(void)
 void
 savesession(void)
 {
+    CFGWrite(_cfg);
 }
 
 void
@@ -2393,36 +2409,7 @@ setup(void)
         DIECAT("%s", "Could not establish connection with keyboard (OutOfMemory)");
     }
 
-    /* TODO testing default settings */
-    _cfg.nmaster = 1;
-    _cfg.hoverfocus = 0;
-
-    _cfg.bw = 1;
-    _cfg.bgw = 15;
-
-    _cfg.bcol = 100 + (255 << 8) + (123 << 16) + (65 << 24);
-
-    _cfg.snap = 10;
-    _cfg.rfrate = 120;
-
-    _cfg.bh = 10;
-    _cfg.maxcc = 256;
-
-    _cfg.mfact = 0.55f;
-    /* Xorg Default is 256 or 255 dont remember. */
-
-    /* Most java apps require this see:
-     * https://wiki.archlinux.org/title/Java#Impersonate_another_window_manager
-     * https://wiki.archlinux.org/title/Java#Gray_window,_applications_not_resizing_with_WM,_menus_immediately_closing
-     * for more information.
-     * "Hard coded" window managers to ignore "Write Once, Debug Everywhere"
-     * Not sure why it just doesnt default to that if it cant detect a supported wm.
-     * This fixes java apps just having a blank white screen on some screen instances.
-     * One example is Ghidra, made by the CIA.
-     */
-    /* TODO: Maybe just change the name quickly when a app lanches and change it back when done? probably in createnotify event? */
-    _cfg.wmname = "LG3D";
-
+    setupcfg();
     updategeom();
     const XCBCookie utf8cookie = XCBInternAtomCookie(_wm.dpy, "UTF8_STRING", False);
     XCBInitAtoms(_wm.dpy, wmatom, netatom);
@@ -2431,7 +2418,7 @@ setup(void)
     _wm.wmcheckwin = XCBCreateSimpleWindow(_wm.dpy, _wm.root, 0, 0, 1, 1, 0, 0, 0);
     XCBSelectInput(_wm.dpy, _wm.wmcheckwin, XCB_NONE);
     XCBChangeProperty(_wm.dpy, _wm.wmcheckwin, netatom[NetSupportingWMCheck], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&_wm.wmcheckwin, 1);
-    XCBChangeProperty(_wm.dpy, _wm.wmcheckwin, netatom[NetWMName], utf8str, 8, XCB_PROP_MODE_REPLACE, _cfg.wmname, strlen(_cfg.wmname) + 1);
+    XCBChangeProperty(_wm.dpy, _wm.wmcheckwin, netatom[NetWMName], utf8str, 8, XCB_PROP_MODE_REPLACE, "LG3D", strlen("LG3D") + 1);
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupportingWMCheck], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&_wm.wmcheckwin, 1);
     /* EWMH support per view */
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&netatom, NetLast);
@@ -2459,6 +2446,64 @@ setup(void)
     updatenumlockmask();
     grabkeys();
     focus(NULL);
+}
+
+void
+setupcfg(void)
+{
+    CFGCreateVar(_cfg, "WindowManagerName", CHAR);
+    CFGCreateVar(_cfg, "NumberOfMasters", INT);
+    CFGCreateVar(_cfg, "HoverFocus", INT);
+    CFGCreateVar(_cfg, "WindowRefreshRate", INT);
+    CFGCreateVar(_cfg, "BorderWidth", INT);
+    CFGCreateVar(_cfg, "BorderGapWidth", INT);
+    CFGCreateVar(_cfg, "BorderColor", INT);
+    CFGCreateVar(_cfg, "WindowSnap", INT);
+    CFGCreateVar(_cfg, "MaxClientCount", INT);
+    CFGCreateVar(_cfg, "MonitorFact", FLOAT);
+
+    if(CFGLoad(_cfg) != ParseSuccess)
+    {   
+        DEBUG0("Failed to load CFG");
+        setupcfgdefaults();
+    }
+}
+
+void
+setupcfgdefaults(void)
+{
+    /* TODO: Make it work with strings */
+    char wmname = 0;
+    /* Most java apps require this see:
+     * https://wiki.archlinux.org/title/Java#Impersonate_another_window_manager
+     * https://wiki.archlinux.org/title/Java#Gray_window,_applications_not_resizing_with_WM,_menus_immediately_closing
+     * for more information.
+     * "Hard coded" window managers to ignore "Write Once, Debug Everywhere"
+     * Not sure why it just doesnt default to that if it cant detect a supported wm.
+     * This fixes java apps just having a blank white screen on some screen instances.
+     * One example is Ghidra, made by the CIA.
+     */
+    const char *_wmnameifwork = "LG3D";
+    u16 nmaster = 1;
+    u8 hoverfocus = 0;   /* bool */
+    u16 refreshrate = 60;
+    u16 bw = 0;
+    u16 bgw = 15;
+    u32 bcol = 0;
+    u16 winsnap = 10;
+    u16 maxcc = 256;
+    float mfact = 0.55f;
+
+    CFGSaveVar(_cfg, "WindowManagerName", &wmname);
+    CFGSaveVar(_cfg, "NumberOfMasters", &nmaster);
+    CFGSaveVar(_cfg, "HoverFocus", &hoverfocus);
+    CFGSaveVar(_cfg, "WindowRefreshRate", &refreshrate);
+    CFGSaveVar(_cfg, "BorderWidth", &bw);
+    CFGSaveVar(_cfg, "BorderGapWidth", &bgw);
+    CFGSaveVar(_cfg, "BorderColor", &bcol);
+    CFGSaveVar(_cfg, "WindowSnap", &winsnap);
+    CFGSaveVar(_cfg, "MaxClientCount", &maxcc);
+    CFGSaveVar(_cfg, "MonitorFact", &mfact);
 }
 
 void
@@ -2687,18 +2732,32 @@ startup(void)
     {   DIECAT("%s", "FATAL: Cannot Connect to X Server.");
     }
     checkotherwm();
-    XCBSetErrorHandler(xerror);
-
     /* This allows for execvp and exec to only spawn process on the specified display rather than the default varaibles */
     if(display)
     {   setenv("DISPLAY", display, 1);
     }
+
+    _cfg = CFGCreate(CONFIG_FILE);
+    if(!_cfg)
+    {   DIECAT("%s", "FATAL: Could not create config file (OutOfMemory)");
+    }
+
     atexit(exithandler);
+    XCBSetErrorHandler(xerror);
 }
 
 void
 tile(Desktop *desk)
 {
+    i32 *pnmaster = CFGGetVarValue(_cfg, "NumberOfMasters");
+    float *pmfact = CFGGetVarValue(_cfg, "MonitorFact");
+    u16 *pbgw = CFGGetVarValue(_cfg, "BorderGapWidth");
+
+    const i32 nmaster = pnmaster ? *pnmaster : 0;
+    const float mfact = pmfact ? *pmfact : 0.0f;
+    const u16 bgw = pbgw ? *pbgw : 0;
+
+
     i32 h = 0, mw = 0, my = 0, ty = 0;
     i32 n = 0, i = 0;
     i32 nx = 0, ny = 0;
@@ -2720,8 +2779,8 @@ tile(Desktop *desk)
     {   return;
     }
     
-    if(n > _cfg.nmaster)
-    {   mw = _cfg.nmaster ? m->ww * _cfg.mfact: 0;
+    if(n > nmaster)
+    {   mw = nmaster ? m->ww * mfact: 0;
     }
     else
     {   mw = m->ww;
@@ -2729,9 +2788,9 @@ tile(Desktop *desk)
 
     for (i = my = ty = 0, c = nexttiled(desk->clients); c; c = nexttiled(c->next), ++i)
     {
-        if (i < _cfg.nmaster)
+        if (i < nmaster)
         {
-            h = (m->wh - my) / (MIN(n, _cfg.nmaster) - i);
+            h = (m->wh - my) / (MIN(n, nmaster) - i);
             nx = m->wx;
             ny = m->wy + my;
             nw = mw - c->bw * 2;
@@ -2741,14 +2800,14 @@ tile(Desktop *desk)
              * if we didnt the center gap would be twices as big
              * Although this may be desired, one would simply remove the shift ">>" by 1 in nw 
              */
-            nx += _cfg.bgw;
-            ny += _cfg.bgw;
-            nw -= _cfg.bgw * 2;
-            nh -= _cfg.bgw * 2;
+            nx += bgw;
+            ny += bgw;
+            nw -= bgw * 2;
+            nh -= bgw * 2;
             applysizechecks(m, &nx, &ny, &nw, &nh, &unused);
             resize(c, nx, ny, nw, nh, 0);
                                                                         /* spacing for windows below */
-            if (my + HEIGHT(c) < (unsigned int)m->wh) my += HEIGHT(c) + _cfg.bgw;
+            if (my + HEIGHT(c) < (unsigned int)m->wh) my += HEIGHT(c) + bgw;
         }
         else
         {
@@ -2758,14 +2817,14 @@ tile(Desktop *desk)
             nw = m->ww - mw - (c->bw << 1);
             nh = h - c->bw * 2;
 
-            nx += _cfg.bgw / 2;
-            ny += _cfg.bgw;
-            nw -= _cfg.bgw * 2;
-            nh -= _cfg.bgw * 2;
+            nx += bgw / 2;
+            ny += bgw;
+            nw -= bgw * 2;
+            nh -= bgw * 2;
             applysizechecks(m, &nx, &ny, &nw, &nh, &unused);
             resize(c, nx, ny, nw, nh, 0);
                                                                     /* spacing for windows below */ 
-            if (ty + HEIGHT(c) < (unsigned int)m->wh) ty += HEIGHT(c) + _cfg.bgw;
+            if (ty + HEIGHT(c) < (unsigned int)m->wh) ty += HEIGHT(c) + bgw;
         }
     }
 }
@@ -3665,3 +3724,44 @@ main(int argc, char *argv[])
     specialconds(argc, argv);
     return EXIT_SUCCESS;
 }
+
+/* See LICENSE file for copyright and license details.
+ * 4 Tab spaces; No tab characters use spaces for tabs
+ * Basic overview of dwm => https://ratfactor.com/dwm
+ * For more information about xlib (X11)       visit https://x.org/releases/current/doc/libX11/libX11/libX11.html
+ * For a quick peak at commonly used functions visit https://tronche.com/gui/x/xlib/
+ * Cursors : https://tronche.com/gui/x/xlib/appendix/b/
+ * XCursor:  https://man.archlinux.org/man/Xcursor.3
+ * EWMH:     https://specifications.freedesktop.org/wm-spec/wm-spec-latest.html
+ * XEvent:   https://tronche.com/gui/x/xlib/events/structures.html
+ * Document: https://www.x.org/releases/X11R7.5/doc/x11proto/proto.pdf
+ */
+
+
+/* DEBUGGING
+ * Stuff you need gdb xephyr
+ * sudo pacman -S gdb xorg-server-xephyr
+ *
+ *
+ * first make sure its compiled in DEBUG using config.mk
+ *
+ * run this command: Xephyr :1 -ac -resizeable -screen 680x480 &
+ * set the display to the one you did for Xephyr in this case we did 1 so
+ * run this command: export DISPLAY=:1
+ * now you are mostly done
+ * run this command: gdb dwm
+ * you get menu
+ * run this command: lay spl
+ * you get layout and stuff
+ * 
+ * now basic gdb stuff
+ * break or b somefunction # this sets a break point for whatever function AKA stop the code from running till we say so
+ * next or n # this moves to the next line of logic code (logic code is current code line)
+ * step or s # this moves to the next line of code (code being actual code so functions no longer exist instead we just go there)
+ * ctrl-l # this resets the window thing which can break sometimes (not sure why it hasnt been fixed but ok)
+ * skip somefunction # this tries to skip a function if it can but ussualy is worthless (AKA I dont know how to use it)(skip being not show to you but it does run in the code)
+ *
+ * after your done
+ * run this command: exit
+ * 
+ */

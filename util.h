@@ -16,29 +16,48 @@ typedef int32_t  i32;
 typedef int64_t  i64;
 
 
-typedef struct Generic Generic;
+typedef union Generic Generic;
+typedef union ARGB ARGB;
 
-struct Generic
+union Generic
 {
-    union
-    {
-        void *datav;
-        void **datavl;
-    } v;
+    void *datav;
+    void **datavl;
 
-    union
-    {
-        int8_t data8[64];
-        int16_t data16[32];
-        int32_t data32[16];
-        int64_t data64[8];
+    int8_t data8[64];
+    int16_t data16[32];
+    int32_t data32[16];
+    int64_t data64[8];
 
-        float dataf[16];
-        double datad[8];
-        long double datadd[4];  /* compiler specified but should be at most 128 bits */
-    } n;
+    float dataf[16];
+    double datad[8];
+    long double datadd[4];  /* compiler specified but should be at most 128 bits */
 };
 
+/* ORDER.
+ * BLUE + (GREEN << 8) + (RED << 16) + (ALPHA << 24)
+ */
+union ARGB
+{
+#if __BYTE_ORDER == __ORDER_LITTLE_ENDIAN__
+    uint8_t a;  /* Alpha value */
+    uint8_t r;  /* Red Value   */
+    uint8_t g;  /* Green Value */
+    uint8_t b;  /* Blue Value  */
+#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+    uint8_t b;  /* Blue Value  */
+    uint8_t g;  /* Green Value */
+    uint8_t r;  /* Red Value   */
+    uint8_t a;  /* Alpha value */
+#else
+    /* 
+     * NO SUPPORTED ENDIAN TYPE.
+     * If you are using PDP_ENDIAN you might have to manually shift the values yourself.
+     */
+    #error "No supported endian type. If you are using PDP_ENDIAN you might have to manually shift the values yourself."
+#endif
+    uint32_t argb;  /* ARGB 32bit value */
+};
 
 
 

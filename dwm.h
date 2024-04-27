@@ -32,7 +32,7 @@
 #define TAGMASK                 ((1 << LENGTH(tags)) - 1)
 #define TAGSLENGTH              (LENGTH(tags))
 #define SESSION_FILE            "/tmp/dwm-session"
-#define MAX_QUEUE_SIZE          1024
+#define CONFIG_FILE             "/tmp/dwm-config"   /* todo make dir .config/dwm/config or someting like that */
 #define BORKED                  "NOT_SET"
 
 /* Client struct flags */
@@ -133,33 +133,6 @@
 /* This returns 1 when true */
 #define ISVISIBLE(C)            ((((C)->desktop->mon->desksel == (C)->desktop || ISSTICKY((C))) & (!ISHIDDEN((C)))))
 
-/* Bar struct flags */
-
-/* Bar Macros */
-
-/* WM struct flags */
-#define _CFG_HOVERFOCUS         ((1 << 0))
-/*
-#define _CFG_                   ((1 << 1))
-#define _CFG_                   ((1 << 2))
-#define _CFG_                   ((1 << 3))
-#define _CFG_                   ((1 << 4))
-#define _CFG_                   ((1 << 5))
-#define _CFG_                   ((1 << 6))
-#define _CFG_                   ((1 << 7))
-*/
-
-/* WM Macros */
-
-
-#define CFG_ISHOVERFOCUS(G)     ((G)->flags & (_CFG_HOVERFOCUS))
-/*
-#define CFG(G)                  ((G)->flags & ())
-#define CFG(G)                  ((G)->flags & ())
-#define CFG(G)                  ((G)->flags & ())
-*/
-
-
 /* cursor */
 enum CurType 
 { 
@@ -193,6 +166,12 @@ enum KillType
     Destroy, 
 };
 
+/* layout(s) */
+enum LayoutType
+{
+    Tiled, Floating, Monocle, Grid
+};
+
 
 typedef union  Arg Arg;
 typedef struct Key Key;
@@ -203,7 +182,6 @@ typedef struct Stack Stack;
 typedef struct Layout Layout;
 typedef struct Desktop Desktop;
 typedef struct WM WM;
-typedef struct CFG CFG;
 
 union Arg
 {
@@ -343,31 +321,6 @@ struct WM
     Monitor *selmon;                /* Selected Monitor     */
     Monitor *mons;                  /* Monitors             */
     XCBKeySymbols *syms;            /* keysym alloc         */
-};
-
-/* 
- * While flags would be more memory efficient they are a massive hastle
- */
-struct CFG
-{
-    uint8_t  nmaster;           /* number of clients in master area                                 */
-    uint8_t  hoverfocus;        /* 1 on mouse hover focus that window; 0 to disable                 */
-    uint8_t  pad[2];
-
-    uint16_t bw;                /* Border Width                                                     */
-    uint16_t bgw;               /* Border Gap Width                                                 */
-
-    uint32_t bcol;              /* Border Color                                                     */
-
-    uint16_t snap;              /* Window Resize/Move Snap to grid size                             */
-    uint16_t rfrate;            /* max refresh rate when resizing, moving windows;  0 to disable    */
-
-    uint16_t bh;                /* Bar Height.                                                      */
-    uint16_t maxcc;             /* Max Client Count                                                 */
-
-
-    float mfact;
-    char *wmname;
 };
 
 /* Handles the main(int argc, char **argv) arguments. */
@@ -677,8 +630,11 @@ void setmodal(Client *c, uint8_t state);
 void setmondesktop(Monitor *m, Desktop *desk);
 void setsticky(Client *c, uint8_t state);
 void settopbar(Client *c, uint8_t state);
+void startup(void);
 /* Sets up Variables, Checks, WM specific data, etc.. */
 void setup(void);
+void setupcfg(void);
+void setupcfgdefaults(void);
 void seturgent(Client *c, uint8_t isurgent);
 /* Moves Client offscreen if not VISIBLE;
  * Moves Client onscreen if VISIBLE;
@@ -776,5 +732,15 @@ void unmanage(Client *c, uint8_t destroyed);
 void unmanagebar(Bar *bar);
 /* Error handler */
 void xerror(XCBDisplay *display, XCBGenericError *error);
+
+
+static const Layout layouts[4] =
+{
+    /* Name          symbol     arrange function */
+    [Tiled]     = { "[T]",      tile            },
+    [Floating]  = { "[F]",      floating        },
+    [Monocle]   = { "[M]",      monocle         },
+    [Grid]      = { "[G]",      grid            },
+};
 
 #endif 
