@@ -287,7 +287,6 @@ typedef xcb_icccm_get_text_property_reply_t XCBTextProperty;
 typedef xcb_grab_keyboard_reply_t XCBGrabKeyboard;
 typedef xcb_grab_pointer_reply_t XCBGrabPointer;
 typedef xcb_void_cookie_t XCBCookie;
-typedef struct XCBCookie64 XCBCookie64;
 typedef xcb_get_keyboard_mapping_reply_t XCBKeyboardMapping;
 typedef xcb_get_modifier_mapping_reply_t XCBKeyboardModifier;
 typedef xcb_colormap_t XCBColormap;
@@ -455,9 +454,38 @@ typedef xcb_selection_request_event_t XCBSelectionRequestEvent;
 typedef xcb_ge_event_t XCBGeEvent;
 
 
+
+typedef struct XCBCookie64 XCBCookie64;
+typedef union XCBARGB XCBARGB;
+
 /* structs */
 struct XCBCookie64
 {   uint64_t sequence;
+};
+
+/* ORDER.
+ * BLUE + (GREEN << 8) + (RED << 16) + (ALPHA << 24)
+ */
+union XCBARGB
+{
+#if __BYTE_ORDER == __ORDER_LITTLE_ENDIAN__
+    uint8_t a;  /* Alpha value */
+    uint8_t r;  /* Red Value   */
+    uint8_t g;  /* Green Value */
+    uint8_t b;  /* Blue Value  */
+#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+    uint8_t b;  /* Blue Value  */
+    uint8_t g;  /* Green Value */
+    uint8_t r;  /* Red Value   */
+    uint8_t a;  /* Alpha value */
+#else
+    /* 
+     * NO SUPPORTED ENDIAN TYPE.
+     * If you are using PDP_ENDIAN you might have to manually shift the values yourself.
+     */
+    #error "No supported endian type. If you are using PDP_ENDIAN you might have to manually shift the values yourself."
+#endif
+    uint32_t argb;  /* ARGB 32bit value */
 };
 
 
@@ -1538,7 +1566,9 @@ XCBLowerWindowIf(
  * GREEN    (0, 255) (unsigned char)
  * ALPHA    (0, 255) (unsigned char)
  *
- * FORMAT: BLUE + (GREEN << 8) + (RED << 16) + (ALPHA << 24)
+ * FORMAT: BLUE + (GREEN << 8) + (RED << 16) + (ALPHA << 24).
+ *
+ * NOTE: You may use XCBARGB union for this and simply pass XCBARGB x.argb to the border_pixel, though this is not standard.
  *
  * RETURN: Cookie to request.
  */
@@ -3177,7 +3207,7 @@ XCBGetWMProtocolsCookie(
  * NOTE: CALLER MUST CALL XCBWipeGetWMProtocols() when done using data.
  *
  * RETURN: 1 On Success;
- * RETURNL 0 On Failure;
+ * RETURN: 0 On Failure;
  */
 int
 XCBGetWMProtocolsReply(

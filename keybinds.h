@@ -1,7 +1,6 @@
 #ifndef KEYBINDS_H_
 #define KEYBINDS_H_
 
-#include "config.h"
 #include "toggle.h"
 #include "dwm.h"
 #include <X11/keysym.h>
@@ -65,8 +64,16 @@ static const char *prev_vol[] = { "playerctl", "previous"};
 static const char *brighter[] = { "brightnessctl", "set", "1%+", NULL };
 static const char *dimmer[]   = { "brightnessctl", "set", "1%-", NULL };
 
+#define CFG_DMENU_TOP_BAR           0       /* 1 show dmenu bar on top; 0 for bottom bar                        */
+#define CFG_DMENU_FAST_INPUT        0       /* 1 prioritize input over bar render; 0 to disable                 */
+#define CFG_DMENU_CASE_SENSITIVE    1       /* 1 dmenu searches case senstivly; 0 to disable                    */
+#define CFG_DMENU_COL_NORM_BACKGROUND       "#000000" /* dmenu background colour for NON selected items */
+#define CFG_DMENU_COL_NORM_FOREGROUND       "#ffffff" /* dmenu text colour for NON selected items       */
+#define CFG_DMENU_COL_SEL_BACKGROUND        "#000000" /* dmenu background colour for SELECTED items     */ 
+#define CFG_DMENU_COL_SEL_FOREGROUND        "#ffffff" /* dmenu text colour for SELECTED items           */
 /* commands */
 static char dmenumon[2] = "0"; 
+static const char dmenufont[]   =   {"monospace:size=12"};
 static const char *dmenucmd[] = 
 { 
     "dmenu_run", "-m", dmenumon, "-fn", dmenufont, 

@@ -1,12 +1,12 @@
 #include "xcb_trl.h"
 #include "events.h"
 #include "util.h"
-#include "config.h"
 #include "keybinds.h"
 #include "dwm.h"
+#include "parser.h"
 
 extern WM _wm;
-extern CFG _cfg;
+extern CFG *_cfg;
 extern XCBAtom netatom[NetLast];
 extern XCBAtom wmatom[WMLast];
 
@@ -388,7 +388,8 @@ enternotify(XCBGenericEvent *event)
     (void)mode;
     (void)samescreenfocus;
 
-    if(!_cfg.hoverfocus) return;
+    void *data = CFGGetVarValue(_cfg, "HoverFocus");
+    if(!data || *(int *)data) { return; }
 
 
     /* hover focus */
