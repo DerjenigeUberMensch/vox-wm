@@ -7,6 +7,7 @@
 
 #include "bar.h"
 #include "thread.h"
+#include "settings.h"
 #include "xcb_trl.h"
 #include "xcb_winutil.h"
 
@@ -31,8 +32,9 @@
 #define TAGMASK                 ((1 << LENGTH(tags)) - 1)
 #define TAGSLENGTH              (LENGTH(tags))
 #define SESSION_FILE            "/tmp/dwm-session"
-#define CONFIG_FILE             "/tmp/dwm-config"   /* todo make dir .config/dwm/config or someting like that */
+#define CONFIG_FILE             "/var/tmp/dwm-config"   /* todo make dir .config/dwm/config or someting like that */
 #define BORKED                  "NOT_SET"
+#define MANAGE_CLIENT_COOKIE_COUNT 11
 
 /* Client struct flags */
 
@@ -56,25 +58,24 @@
 #define _TYPE_WINDOW_ICONIC ((1 << 15))
 
 /* EWMH Window states */
-#define _STATE_MODAL                    ((1 << 0))
-#define _STATE_STICKY                   ((1 << 1))
-#define _STATE_MAXIMIZED_VERT           ((1 << 2))  
-#define _STATE_MAXIMIZED_HORZ           ((1 << 3))
-#define _STATE_SHADED                   ((1 << 4))
-#define _STATE_SKIP_TASKBAR             ((1 << 5))
-#define _STATE_SKIP_PAGER               ((1 << 6))
-#define _STATE_HIDDEN                   ((1 << 7))
-#define _STATE_FULLSCREEN               ((1 << 8))
-#define _STATE_ABOVE                    ((1 << 9))
-#define _STATE_BELOW                    ((1 << 10))
-#define _STATE_DEMANDS_ATTENTION        ((1 << 11))
-#define _STATE_FOCUSED                  ((1 << 12))
+#define _STATE_MODAL                        ((1 << 0))
+#define _STATE_STICKY                       ((1 << 1))
+#define _STATE_MAXIMIZED_VERT               ((1 << 2))  
+#define _STATE_MAXIMIZED_HORZ               ((1 << 3))
+#define _STATE_SHADED                       ((1 << 4))
+#define _STATE_SKIP_TASKBAR                 ((1 << 5))
+#define _STATE_SKIP_PAGER                   ((1 << 6))
+#define _STATE_HIDDEN                       ((1 << 7))
+#define _STATE_FULLSCREEN                   ((1 << 8))
+#define _STATE_ABOVE                        ((1 << 9))
+#define _STATE_BELOW                        ((1 << 10))
+#define _STATE_DEMANDS_ATTENTION            ((1 << 11))
+#define _STATE_FOCUSED                      ((1 << 12))
 
 #define _STATE_SUPPORTED_WM_TAKE_FOCUS      ((1 << 13))
 #define _STATE_SUPPORTED_WM_SAVE_YOURSELF   ((1 << 14))
 #define _STATE_SUPPORTED_WM_DELETE_WINDOW   ((1 << 15))
 
-/* Client macros */
 
 /* cursor */
 enum CurType 
@@ -246,6 +247,7 @@ struct Desktop
     Client *sel;                /* Selected Client              */
     Desktop *next;              /* Next Client in linked list   */
     Desktop *prev;              /* Previous Client in list      */
+    UserSettings *settings;     /* User settings data           */
 };
 
 struct WM
@@ -264,7 +266,9 @@ struct WM
     Monitor *selmon;                /* Selected Monitor     */
     Monitor *mons;                  /* Monitors             */
     XCBKeySymbols *syms;            /* keysym alloc         */
+    char *wmname;                   /* WM_NAME              */
 };
+
 
 /* Handles the main(int argc, char **argv) arguments. */
 void argcvhandler(int argc, char *argv[]);
@@ -420,13 +424,14 @@ void grid(Desktop *desk);
  *                  Destroy             Destroys a window without sending any message for the window to response (Nuclear option.)
  */
 void killclient(Client *c, enum KillType type);
+void managerequest(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT]);
 /* Part of main event loop "run()"
  * Manages AKA adds the window to our current or windows specified desktop.
  * Applies size checks, bounds, layout, etc...
  * RETURN: Client * on Success.
  * RETURN: NULL on Failure.
  */
-Client *manage(XCBWindow window);
+Client *managereply(XCBWindow window, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT]);
 /* Sets the window to the specified bar, if the bar doesnt exist it creates it.
  * RETURN: Bar * on Success.
  * RETURN: NULL on Failure.

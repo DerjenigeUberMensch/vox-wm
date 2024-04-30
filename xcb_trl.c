@@ -58,15 +58,6 @@ typedef int16_t  i16;
 typedef int32_t  i32;
 typedef int64_t  i64;
 
-static void
-_xcb_handler(XCBDisplay *display, XCBGenericError *err)
-{
-}
-                                                        /* this saves a conditional check which isnt "expensive".
-                                                         * But is basically free no overhead aside from the function call which your gonna do anyway.
-                                                         */
-static void (*_handler)(XCBDisplay *, XCBGenericError *) = _xcb_handler;
-
 
 #ifdef XCB_TRL_ENABLE_DEBUG
 #define DBG             1
@@ -291,6 +282,39 @@ XCBDebugGetAdjacentCallers(XCBCookie cookie)
 #endif
     return NULL;
 }
+
+char *
+XCBDebugGetNameFromId(
+        XCBCookie id
+        )
+{
+#ifdef XCB_TRL_ENABLE_DEBUG
+    for(long long i = front; i != rear; i = (i + 1) % MAX_DEBUG_LIMIT)
+    {   
+        if(_xcb_funcs[i].id == id.sequence)
+        {   return _xcb_funcs[i].name;
+        }
+    }
+#endif
+    return NULL;
+}
+
+static void
+_xcb_handler(XCBDisplay *display, XCBGenericError *err)
+{
+#ifdef XCB_TRL_ENABLE_DEBUG
+    for(long long i = front; i != rear; i = (i + 1) % MAX_DEBUG_LIMIT)
+    {   
+        if(_xcb_funcs[i].id == err->error_code)
+        {   _XCB_MANUAL_DEBUG("%s", _xcb_funcs[i].name);
+        }
+    }
+#endif
+}
+                                                        /* this saves a conditional check which isnt "expensive".
+                                                         * But is basically free no overhead aside from the function call which your gonna do anyway.
+                                                         */
+static void (*_handler)(XCBDisplay *, XCBGenericError *) = _xcb_handler;
 
 
 
@@ -2802,6 +2826,32 @@ XCBSetWMHintsCookie(
     _xcb_push_func(ret, _fn);
 #endif
     return ret;
+}
+
+XCBCookie
+XCBGetWMNameCookie(XCBDisplay *display, XCBWindow win)
+{
+    const xcb_get_property_cookie_t cookie = xcb_icccm_get_wm_name(display, win);
+    XCBCookie ret = { .sequence = cookie.sequence };
+#ifdef DBG
+    _xcb_push_func(ret, _fn);
+#endif
+    return ret;
+}
+
+uint8_t
+XCBGetWMNameReply(XCBDisplay *display, XCBCookie cookie, XCBTextProperty *prop_return)
+{
+    XCBGenericError *err = NULL;
+    const xcb_get_property_cookie_t cookie1 = { cookie.sequence };
+    u8 status = xcb_icccm_get_wm_name_reply(display, cookie1, prop_return, &err);
+
+    if(err)
+    {   
+        _xcb_err_handler(display, err);
+        status = 0;
+    }
+    return status;
 }
 
 XCBCookie

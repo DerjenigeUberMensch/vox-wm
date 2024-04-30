@@ -130,77 +130,11 @@ XCBGetTextProp(
  *
  * RETURN: wchar_t *
  */
-wchar_t *
+char *
 XCBGetWindowName(
         XCBDisplay *display, 
         XCBWindow win
         );
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

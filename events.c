@@ -3,10 +3,8 @@
 #include "util.h"
 #include "keybinds.h"
 #include "dwm.h"
-#include "parser.h"
 
 extern WM _wm;
-extern CFG *_cfg;
 extern XCBAtom netatom[NetLast];
 extern XCBAtom wmatom[WMLast];
 
@@ -388,11 +386,8 @@ enternotify(XCBGenericEvent *event)
     (void)mode;
     (void)samescreenfocus;
 
-    void *data = CFGGetVarValue(_cfg, "HoverFocus");
-    if(!data || *(int *)data) { return; }
-
-
     /* hover focus */
+    return;
 
 
     Client *c;
@@ -695,11 +690,20 @@ maprequest(XCBGenericEvent *event)
     (void)parent;
 
     u8 sync = 0;
+    Client *c;
 
     if(!wintoclient(win))
     {
         /* only sync if we successfully managed the window */   
-        sync = !!manage(win);
+        XCBCookie cookies[MANAGE_CLIENT_COOKIE_COUNT];
+        managerequest(win, cookies);
+        c = managereply(win, cookies);
+        if(c)
+        {
+            focus(c);
+            arrange(c->desktop);
+        }
+        sync = 1;
     }
 
     if(sync)
@@ -1085,7 +1089,7 @@ clientmessage(XCBGenericEvent *event)
         else if(atom == netatom[NetMoveResizeWindow])
         {
             const u32 gravity = l0;
-            /* 64bit to cover bounds checks */
+            /* 32bit to cover bounds checks */
             i32 x = l1;
             i32 y = l2;
             i32 w = l3;
@@ -1176,9 +1180,7 @@ clientmessage(XCBGenericEvent *event)
         {
             /* refer: https://specifications.freedesktop.org/wm-spec/latest/ _NET_WM_DESKTOP */
             if(checksticky(l0))
-            {   
-                setsticky(c, 1);
-                return;
+            {   setsticky(c, 1);
             }
         }
         else if (atom == netatom[WMProtocols])

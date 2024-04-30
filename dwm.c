@@ -26,7 +26,6 @@
 #include "xcb_winutil.h"
 #include "util.h"
 #include "dwm.h"
-#include "parser.h"
 
 #include "keybinds.h"
 
@@ -37,7 +36,7 @@
 extern void (*handler[]) (XCBGenericEvent *);
 
 WM _wm;
-CFG *_cfg;
+UserSettings _cfg;
 
 XCBAtom netatom[NetLast];
 XCBAtom wmatom[WMLast];
@@ -748,6 +747,7 @@ cleanupdesktop(Desktop *desk)
         cleanupclient(c);
         c = next;
     }
+    free(desk->settings);
     free(desk);
     desk = NULL;
 }
@@ -866,11 +866,18 @@ createdesktop(void)
         DEBUG("%s", "WARN: FAILED TO CREATE DESKTOP");
         return NULL;
     }
-    desk->layout = 0;   /* TODO */
-    desk->olayout= 0;   /* TODO */
+    desk->layout = 0;
+    desk->olayout= 0;
     desk->clients= NULL;
     desk->stack = NULL;
     desk->mon = NULL;
+    desk->settings = calloc(1, sizeof(UserSettings));
+    if(!desk->settings)
+    {   
+        DEBUG("%s", "WARN: FAILED TO CREATE SETTINGS.");
+        free(desk);
+        return NULL;
+    }
     return desk;
 }
 
@@ -898,8 +905,10 @@ createmon(void)
     m->desksel = m->desktops;
     m->bar = calloc(1, sizeof(Bar ));
     if(!m->bar)
-    {   /* we dont care too much here if we fail to alloc memory */
+    {   
         DEBUG0("(OutOfMemory) Failed to create bar.");
+        cleanupmon(m);
+        return NULL;
     }
     return m;
 }
@@ -981,6 +990,10 @@ focus(Client *c)
         {   seturgent(c, 0);
         }
 
+
+        /* TODO remove and just use restack algorithm */
+        detachstack(c);
+        attachstack(c);
         detachfocus(c);
         attachfocus(c);
 
@@ -1084,8 +1097,7 @@ grid(Desktop *desk)
     {   return;
     }
 
-    u16 *pbgw = CFGGetVarValue(_cfg, "BorderGapWidth");
-    const u16 bgw = pbgw ? *pbgw : 0;
+    const u16 bgw = 0;
     DEBUG("BGW: %d", bgw);
 
     i32 i, n, cw, ch, aw, ah, cols, rows;
@@ -1123,10 +1135,8 @@ grid(Desktop *desk)
         aw = !!(i >= rows * (cols - 1)) * (m->ww - cw * cols);
 
         /* _cfg.bgw without fucking everything else */
-        nw = cw - (c->bw * 2) + aw;
-        nh = ch - (c->bw * 2) + ah;
-        nw -= bgw * 2;
-        nh -= bgw * 2;
+        nw = cw - (c->bw * 2 + bgw * 2) + aw;
+        nh = ch - (c->bw * 2 + bgw * 2) + ah;
 
         /* sanatize data */
         applysizechecks(m, &nx, &ny, &nw, &nh, &unused);
@@ -1168,32 +1178,9 @@ killclient(Client *c, enum KillType type)
     }
 }
 
-Client *
-manage(XCBWindow win)
+void
+managerequest(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
 {
-    /* checks */
-    if(win == _wm.root)
-    {   DEBUG("%s", "Cannot manage() root window.");
-        return NULL;
-    }
-    /* barwin checks */
-    u8 checkbar = !_wm.selmon->bar || !_wm.selmon->bar->win;
-    
-    /* settings */
-    const u16 *pbw = CFGGetVarValue(_cfg, "BorderWidth");
-    const u32 *pbcol = CFGGetVarValue(_cfg, "BorderColor");
-
-    const u16 bw = pbw ? *pbw : 0;
-    const u32 bcol = pbcol ? *pbcol : 0;
-
-
-    Client *c = NULL, *t = NULL;
-    XCBWindow trans = 0;
-    u8 transstatus = 0;
-    const u32 inputmask = XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_FOCUS_CHANGE|XCB_EVENT_MASK_PROPERTY_CHANGE|XCB_EVENT_MASK_STRUCTURE_NOTIFY;
-    XCBWindowGeometry *wg = NULL;
-
-    /* get cookies first */
     XCBCookie wacookie = XCBGetWindowAttributesCookie(_wm.dpy, win);
     XCBCookie wgcookie = XCBGetWindowGeometryCookie(_wm.dpy, win);
     XCBCookie transcookie = XCBGetTransientForHintCookie(_wm.dpy, win);                        
@@ -1205,6 +1192,40 @@ manage(XCBWindow win)
     XCBCookie wmprotocookie = XCBGetWMProtocolsCookie(_wm.dpy, win, wmatom[WMProtocols]);
     XCBCookie strutpcookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMStrutPartial], 0L, 12, False, XCB_ATOM_CARDINAL);
     XCBCookie strutcookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMStrut], 0, 4, False, XCB_ATOM_CARDINAL);
+
+    requests[0] = wacookie;
+    requests[1] = wgcookie;
+    requests[2] = transcookie;
+    requests[3] = wtypecookie;
+    requests[4] = statecookie;
+    requests[5] = sizehcookie;
+    requests[6] = wmhcookie;
+    requests[7] = classcookie;
+    requests[8] = wmprotocookie;
+    requests[9] = strutpcookie;
+    requests[10] = strutcookie;
+}
+
+Client *
+managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
+{
+    /* checks */
+    if(win == _wm.root)
+    {   DEBUG("%s", "Cannot manage() root window.");
+        return NULL;
+    }
+    /* barwin checks */
+    u8 checkbar = !_wm.selmon->bar->win;
+    
+    const u16 bw = 0;
+    const u32 bcol = 0;
+
+
+    Client *c = NULL, *t = NULL;
+    XCBWindow trans = 0;
+    u8 transstatus = 0;
+    const u32 inputmask = XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_FOCUS_CHANGE|XCB_EVENT_MASK_PROPERTY_CHANGE|XCB_EVENT_MASK_STRUCTURE_NOTIFY;
+    XCBWindowGeometry *wg = NULL;
 
     XCBGetWindowAttributes *waattributes = NULL;
     XCBWindowProperty *wtypeunused = NULL;
@@ -1226,20 +1247,20 @@ manage(XCBWindow win)
     c = createclient();
 
     /* wait for replies */
-    waattributes = XCBGetWindowAttributesReply(_wm.dpy, wacookie);
-    wg = XCBGetWindowGeometryReply(_wm.dpy, wgcookie);
-    transstatus = XCBGetTransientForHintReply(_wm.dpy, transcookie, &trans);
-    wtypeunused = XCBGetWindowPropertyReply(_wm.dpy, wtypecookie);
+    waattributes = XCBGetWindowAttributesReply(_wm.dpy, requests[0]);
+    wg = XCBGetWindowGeometryReply(_wm.dpy, requests[1]);
+    transstatus = XCBGetTransientForHintReply(_wm.dpy, requests[2], &trans);
+    wtypeunused = XCBGetWindowPropertyReply(_wm.dpy, requests[3]);
+    stateunused = XCBGetWindowPropertyReply(_wm.dpy, requests[4]);
+    hintstatus = XCBGetWMNormalHintsReply(_wm.dpy, requests[5], &hints);
+    wmh = XCBGetWMHintsReply(_wm.dpy, requests[6]);
+    XCBGetWMClassReply(_wm.dpy, requests[7], &cls);
+    wmprotocolsstatus = XCBGetWMProtocolsReply(_wm.dpy, requests[8], &wmprotocols);
+    strutpreply = XCBGetWindowPropertyReply(_wm.dpy, requests[9]);
+    strutreply = XCBGetWindowPropertyReply(_wm.dpy, requests[10]);
     wtypelen = wtypeunused ? XCBGetPropertyValueLength(wtypeunused, sizeof(XCBAtom)) : 0;
-    stateunused = XCBGetWindowPropertyReply(_wm.dpy, statecookie);
     statelen = stateunused ? XCBGetPropertyValueLength(stateunused, sizeof(XCBAtom)) : 0;
-    hintstatus = XCBGetWMNormalHintsReply(_wm.dpy, sizehcookie, &hints);
-    wmh = XCBGetWMHintsReply(_wm.dpy, wmhcookie);
-    XCBGetWMClassReply(_wm.dpy, classcookie, &cls);
-    wmprotocolsstatus = XCBGetWMProtocolsReply(_wm.dpy, wmprotocookie, &wmprotocols);
-    strutpreply = XCBGetWindowPropertyReply(_wm.dpy, strutpcookie);
     strutp = strutpreply ? XCBGetWindowPropertyValue(strutpreply) : NULL;
-    strutreply = XCBGetWindowPropertyReply(_wm.dpy, strutcookie);
     strut = strutreply ? XCBGetWindowPropertyValue(strutpreply) : NULL;
 
     if(!c)
@@ -1317,8 +1338,8 @@ manage(XCBWindow win)
     /* Custom stuff */
     setborderwidth(c, bw);
     setbordercolor32(c, bcol);
-    XCBSetWindowBorderWidth(_wm.dpy, win, c->bw);
-    XCBSetWindowBorder(_wm.dpy, win, c->bcol);
+    XCBSetWindowBorderWidth(_wm.dpy, win, bw);
+    XCBSetWindowBorder(_wm.dpy, win, bcol);
     configure(c);   /* propagates border_width, if size doesn't change */
     updatetitle(c);
     updatesizehints(c, &hints);
@@ -1341,10 +1362,7 @@ manage(XCBWindow win)
     if(c->desktop && c->desktop->sel)
     {   setfullscreen(c, ISFULLSCREEN(c->desktop->sel) || ISFULLSCREEN(c));
     }
-    arrange(c->desktop);
     XCBMapWindow(_wm.dpy, win);
-    /* client could be floating so we pass NULL for focus */
-    focus(NULL);
     goto CLEANUP;
 CLEANUP:
     /* reply cleanup */
@@ -1366,19 +1384,12 @@ managebar(Monitor *m, XCBWindow win)
 {
     const u32 inputmask = XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_FOCUS_CHANGE|XCB_EVENT_MASK_PROPERTY_CHANGE|XCB_EVENT_MASK_STRUCTURE_NOTIFY;
     
-    DEBUG("New bar: [%d]", win);
-    if(!m->bar)
-    {   
-        m->bar = createbar();
-        if(!m->bar)
-        {   return NULL;
-        }
-    }
     if(!win)
     {   return NULL;
     }
     m->bar->win = win;
 
+    DEBUG("New bar: [%d]", win);
     setshowbar(m->bar, 1);
     updatebargeom(_wm.selmon);
     updatebarpos(_wm.selmon);
@@ -1522,7 +1533,6 @@ _restore_parser(FILE *file, char *buffer, u16 bufflen)
 void
 restoresession(void)
 {
-    return;
     Monitor *m = NULL;
     Desktop *desk = NULL;
 
@@ -1560,27 +1570,33 @@ restoresession(void)
             default: continue;
         }
 
-        if(isclient)
-        {   
-            if(!desk)
-            {   continue;
-            }
-            restoreclientsession(desk, str, MAX_LENGTH);
-            isclient = 0;
-        }
         if(isstack)
-        {   restoredesktopsessionstack(desk, str, MAX_LENGTH);
+        {   
+            if(desk && strcmp(str, "Stack.") && strcmp(str, "Focus."))
+            {   restoredesktopsessionstack(desk, str, MAX_LENGTH);
+            }
         }
         if(isfocus)
-        {   restoredesktopsessionfocus(desk, str, MAX_LENGTH);
+        {   
+            if(desk && strcmp(str, "Stack.") && strcmp(str, "Focus."))
+            {   restoredesktopsessionfocus(desk, str, MAX_LENGTH);
+            }
+        }
+        if(isclient)
+        {   
+            if(desk)
+            {   
+                restoreclientsession(desk, str, MAX_LENGTH);
+                isclient = 0;
+            }
         }
         if(isdesk)
         {   
-            if(!m)
-            {   continue;
+            if(m)
+            {   
+                desk = restoredesktopsession(m, str, MAX_LENGTH);
+                isdesk = 0;
             }
-            desk = restoredesktopsession(m, str, MAX_LENGTH);
-            isdesk = 0;
         }
         if(ismon)
         {   
@@ -1589,10 +1605,10 @@ restoresession(void)
         }
 
         ismon += !strcmp(str, "Monitor.");
-        isstack += !strcmp(str, "Stack.");
-        isfocus += !strcmp(str, "Focus.");
         isdesk += !strcmp(str, "Desktop.");
         isclient += !strcmp(str, "Client.");
+        isstack += !strcmp(str, "Stack.");
+        isfocus += !strcmp(str, "Focus.");
     }
     arrangemons();
     fclose(fr);
@@ -1635,7 +1651,8 @@ restoreclientsession(Desktop *desk, char *buff, u16 len)
             resize(c, x, y, w, h, 1);
             setborderwidth(c, BorderWidth);
             setbordercolor32(c, BorderColor);
-            //setclientdesktop(c, desk);
+            setclientdesktop(c, desk);
+            DEBUG("Restored Client. [%d]", c->win);
             return c;
         }
     }
@@ -1659,6 +1676,10 @@ restoredesktopsessionstack(Desktop *desk, char *buff, uint16_t len)
             detachstack(c);
             attachstack(c);
         }
+        DEBUG("Restored Stack: [%d]", win);
+    }
+    else
+    {   DEBUG0("Failed to Restored Stack ");
     }
 }
 
@@ -1679,6 +1700,11 @@ restoredesktopsessionfocus(Desktop *desk, char *buff, uint16_t len)
             detachfocus(c);
             detachfocus(c);
         }
+        DEBUG("Restored Focus: [%d]", win);
+    }
+    else
+    {
+        DEBUG0("Failed to Restored Focus");
     }
 }
 
@@ -1701,20 +1727,25 @@ restoredesktopsession(Monitor *m, char *buff, u16 len)
                     "DesktopOLayout: %u" " "
                     "DesktopNum: %u" " "
                     "DesktopSel: %u" " "
+                    "FirstStack: %u" " "
+                    "FirstFocus: %u" " "
                     ,
                     &DesktopLayout,
                     &DesktopOLayout,
                     &DesktopNum,
-                    &DesktopSel
+                    &DesktopSel,
+                    &FirstStack,
+                    &FirstFocus
                     );
 
+    Desktop *desk = NULL;
     if(check == SCANF_CHECK_SUM)
     {
         if(DesktopNum > m->deskcount)
         {   setdesktopcount(m, DesktopNum + 1);
         }
         u16 i;
-        Desktop *desk = m->desktops;
+        desk = m->desktops;
         for(i = 0; i < DesktopNum; ++i)
         {   desk = nextdesktop(desk);
         }
@@ -1744,11 +1775,10 @@ restoredesktopsession(Monitor *m, char *buff, u16 len)
             desk->sel = sel;
             setdesktoplayout(desk, DesktopOLayout);
             setdesktoplayout(desk, DesktopLayout);
-            return desk;
+            DEBUG("Restored Desktop. [%d]", desk->num);
         }
-        return NULL;
     }
-    return NULL;
+    return desk;
 }
 
 Monitor *
@@ -1778,9 +1808,9 @@ restoremonsession(char *buff, u16 len)
                     &DeskCount,
                     &DeskSelNum
                     );
+    Monitor *pullm = NULL;
     if(check == SCANF_CHECK_SUM)
     {
-        Monitor *pullm = NULL;
         Monitor *target = NULL;
         const u8 errorleeway = 5;
         Monitor *possible[errorleeway];
@@ -1799,6 +1829,9 @@ restoremonsession(char *buff, u16 len)
                 {   possible[possibleInterator++] = pullm;
                 }
             }
+            else if(wintobar(BarId, 1))
+            {   possible[possibleInterator++] = wintobar(BarId, 1);
+            }
         }
         for(pullm = _wm.mons; pullm; pullm = nextmonitor(pullm))
         {
@@ -1807,6 +1840,9 @@ restoremonsession(char *buff, u16 len)
                 if(possibleInterator < errorleeway)
                 {   possible[possibleInterator++] = pullm;
                 }
+            }
+            else if(pullm->deskcount == DeskCount && pullm->desksel->num == DeskSelNum)
+            {   possible[possibleInterator++] = pullm;
             }
         }
         pullm = target;
@@ -1839,10 +1875,10 @@ restoremonsession(char *buff, u16 len)
                 {   setmondesktop(pullm, desk);
                 }
             }
-            return pullm;
+            DEBUG("Restored Monitor. (w: %d, h: %d)", pullm->mw, pullm->mh);
         }
     }
-    return NULL;
+    return pullm;
 }
 
 Monitor *
@@ -1900,35 +1936,26 @@ restack(Desktop *desk)
     Client *c;
     XCBWindowChanges wc;
 
-    uint16_t cc = 0;    /* client counter */
-    for(c = desk->stack; c; c = nextstack(c), ++cc);
-    /* no clients */
-    if(!cc)
-    {   return;
-    }
-
     wc.stack_mode = XCB_STACK_MODE_BELOW;
-    if(desk->stack->desktop->mon->bar && SHOWBAR(desk->stack->desktop->mon->bar))
+    if(desk->mon->bar->win && SHOWBAR(desk->mon->bar))
     {   wc.sibling = desk->stack->desktop->mon->bar->win;
     }
     else
-    {   wc.sibling = _wm.root;
+    {
+        wc.sibling = _wm.wmcheckwin;
+        /* This sometimes throws errors for some reason.
+         * wc.sibling = _wm.root;
+         */
     }
-
+    
     /* configure windows */
-    for(; c; c = nextstack(c))
+    for(c = desk->stack; c; c = nextstack(c))
     {
         XCBConfigureWindow(_wm.dpy, c->win, XCB_CONFIG_WINDOW_SIBLING|XCB_CONFIG_WINDOW_STACK_MODE, &wc);
         wc.sibling = c->win;
     }
 
-    /* TODO use a sorting algorithm maybe, and figure out some faster way without possible buffer overruns */
-
-    for(c = desk->focus; c; c = nextfocus(c))
-    {   XCBRaiseWindow(_wm.dpy, c->win);
-    }
-
-    /* this enables win10 floating if we pick the floating layout */
+    /*
     if(layouts[desk->layout].arrange != floating)
     {
         for(c = desk->stack; c; c = nextstack(c))
@@ -1966,6 +1993,7 @@ restack(Desktop *desk)
         {   XCBRaiseWindow(_wm.dpy, c->win);
         }
     }
+    */
 }
 
 void
@@ -1992,26 +2020,126 @@ run(void)
 void
 savesession(void)
 {
-    CFGWrite(_cfg);
+    /* user settings */
+    const char *filename = SESSION_FILE;
+    FILE *fw = fopen(filename, "w");
+
+    if(!fw)
+    {   return;
+    }
+
+    Monitor *m;
+    for(m = _wm.mons; m; m = nextmonitor(m))
+    {   savemonsession(fw, m);
+    }
 }
 
 void
 saveclientsession(FILE *fw, Client *c)
 {
+    const char *identifier = "Client.";
+    fprintf(fw,
+            "%s"
+            "\n"
+            "(x: %d, y: %d) (w: %d h: %d)" " "
+            "(ox: %d, oy: %d) (ow: %d oh: %d)" " "
+            "WindowId: %d" " "
+            "BorderWidth: %d" " "
+            "BorderColor: %d" " "
+            "NextFocusId: %d" " "
+            "NextStackId: %d" " "
+            "\n"
+            ,
+            identifier,
+            c->x, c->y, c->w, c->h,
+            c->oldx, c->oldy, c->oldw, c->oldh,
+            c->win, 
+            c->bw,
+            c->bcol,
+            c->fnext ? c->fnext->win : 0,
+            c->snext ? c->snext->win : 0
+            );
 }
 
 void
 savedesktopsession(FILE *fw, Desktop *desk)
 {
+    Client *c;
+    const char *identifier = "Desktop.";
+    const char *focusidentifier = "Focus.";
+    const char *stackidentifier = "Stack.";
+
+    fprintf(fw,
+            "%s"
+            "\n"
+            "DesktopLayout: %d" " "
+            "DesktopOLayout: %d" " "
+            "DesktopNum: %d" " "
+            "DesktopSel: %u" " "
+            "FirstStack: %u" " "
+            "FirstFocus: %u" " "
+            "\n"
+            ,
+            identifier,
+            desk->layout,
+            desk->olayout,
+            desk->num,
+            desk->sel ? desk->sel->win : 0,
+            desk->stack ? desk->stack->win : 0,
+            desk->focus ? desk->focus->win : 0
+           );
+    for(c = desk->clients; c; c = nextclient(c))
+    {   saveclientsession(fw, c);
+    }
+    fprintf(fw, 
+            "%s"
+            "\n"
+            ,
+            focusidentifier
+            );
+    for(c = desk->focus; c; c = nextfocus(c))
+    {   fprintf(fw, "%u\n", c->win);
+    }
+    fprintf(fw, 
+            "%s"
+            "\n"
+            ,
+            stackidentifier 
+            );
+    for(c = desk->stack; c; c = nextstack(c))
+    {   fprintf(fw, "%u\n", c->win);
+    }
 }
 
 void
 savemonsession(FILE *fw, Monitor *m) 
 {
+    Desktop *desk;
+    /* TODO: this will take a while to say the least... */
+    const char *identifier = "Monitor.";
+    /* monitor */
+    fprintf(fw,
+            "%s" 
+            "\n"
+            "(x: %d, y: %d) (w: %u h: %u)" " "
+            "BarId: %u" " "
+            "DeskCount: %u" " "
+            "DeskSelNum: %u" " "
+            "\n"
+            ,
+            identifier,
+            m->mx, m->my, m->mw, m->mh,
+            m->bar->win,
+            m->deskcount,
+            m->desksel->num
+            );
+    for(desk = m->desktops; desk; desk = nextdesktop(desk))
+    {   savedesktopsession(fw, desk);
+    }
 }
 
 /* scan for clients initally */
-void
+void NOINLINE
 scan(void)
 {
     u16 i, num;
@@ -2025,21 +2153,39 @@ scan(void)
         wins = XCBQueryTreeChildren(tree);
         if(wins)
         {
-            XCBCookie wa[num];
-            XCBCookie wastates[num];
-            XCBCookie tfh[num];
+            const size_t countsz = sizeof(XCBCookie ) * num;
+            const size_t managecookiesz = sizeof(XCBCookie) * MANAGE_CLIENT_COOKIE_COUNT;
+            XCBCookie *wa = malloc(countsz);
+            XCBCookie *wastates = malloc(countsz);
+            XCBCookie *tfh = malloc(countsz);
+            XCBCookie **managecookies = malloc(sizeof(XCBCookie *) * num);
+            XCBGetWindowAttributes **replies = malloc(sizeof(XCBGetWindowAttributes *) * num);
+            XCBGetWindowAttributes **replystates = malloc(sizeof(XCBGetWindowAttributes *) * num);
+            XCBWindow *trans = malloc(sizeof(XCBWindow) * num);
+
+            if(!wa || !wastates || !tfh || !managecookies)
+            {   
+                free(wa);
+                free(wastates);
+                free(tfh);
+                free(managecookies);
+                free(replies);
+                free(replystates);
+                free(trans);
+                return;
+            }
             for(i = 0; i < num; ++i)
             {   
                 wa[i] = XCBGetWindowAttributesCookie(_wm.dpy, wins[i]);
                 /* this specifically queries for the state which wa[i] might fail to provide */
                 wastates[i] = XCBGetWindowPropertyCookie(_wm.dpy, wins[i], wmatom[WMState], 0L, 2L, False, wmatom[WMState]);
                 tfh[i] = XCBGetTransientForHintCookie(_wm.dpy, wins[i]);
+                managecookies[i] = malloc(managecookiesz);
+                if(managecookies[i])
+                {   managerequest(wins[i], managecookies[i]);
+                }
             }
             
-            XCBGetWindowAttributes *replies[num];
-            XCBGetWindowAttributes *replystates[num];
-            /* filled data no need to free */
-            XCBWindow trans[num];
             uint8_t hastrans = 0;
             /* get them replies back */
             for(i = 0; i < num; ++i)
@@ -2056,11 +2202,14 @@ scan(void)
                 if(replies[i]->override_redirect || trans[i]) 
                 {   continue;
                 }
+                if(!managecookies[i])
+                {   continue;
+                }
                 if(replies[i] && replies[i]->map_state == XCB_MAP_STATE_VIEWABLE)
-                {   manage(wins[i]);
+                {   managereply(wins[i], managecookies[i]);
                 }
                 else if(replystates[i] && replystates[i]->map_state == XCB_WINDOW_ICONIC_STATE)
-                {   manage(wins[i]);
+                {   managereply(wins[i], managecookies[i]);
                 }
             }
 
@@ -2073,19 +2222,32 @@ scan(void)
                     {
                         /* technically we shouldnt have to do this but just in case */
                         if(!wintoclient(wins[i]))
-                        {   manage(wins[i]);
+                        {   
+                            if(managecookies[i])
+                            {   managereply(wins[i], managecookies[i]);
+                            }
                         }
                     }
                 }
                 free(replies[i]);
                 free(replystates[i]);
+                free(managecookies[i]);
             }
+            free(wa);
+            free(wastates);
+            free(tfh);
+            free(managecookies);
+            free(replies);
+            free(replystates);
+            free(trans);
         }
         free(tree);
     }
     else
     {   DEBUG("%s", "Failed to scan for clients.");
     }
+    focus(NULL);
+    arrangemons();
 }
 
 void
@@ -2152,6 +2314,7 @@ setborderwidth(Client *c, uint16_t border_width)
 {
     c->oldbw = c->bw;
     c->bw = border_width;
+    DEBUG("Set border width: [%d] %d", c->win, border_width);
 }
 
 void
@@ -2216,8 +2379,9 @@ setdesktopcount(Monitor *m, uint16_t desktops)
 void
 setdesktoplayout(Desktop *desk, uint8_t layout)
 {
-    desk->olayout = layout;
+    desk->olayout = desk->layout;
     desk->layout = layout;
+    DEBUG("Set Layout: %d", layout);
 }
 
 void
@@ -2475,6 +2639,15 @@ setup(void)
     _wm.sw = XCBDisplayWidth(_wm.dpy, _wm.screen);
     _wm.sh = XCBDisplayHeight(_wm.dpy, _wm.screen);
     _wm.root = XCBRootWindow(_wm.dpy, _wm.screen);
+    /* Most java apps require this see:
+     * https://wiki.archlinux.org/title/Java#Impersonate_another_window_manager
+     * https://wiki.archlinux.org/title/Java#Gray_window,_applications_not_resizing_with_WM,_menus_immediately_closing
+     * for more information.
+     * "Hard coded" window managers to ignore "Write Once, Debug Everywhere"
+     * This fixes java apps just having a blank white screen on some screen instances.
+     * One example is Ghidra, made by the CIA.
+     */
+    _wm.wmname = "LG3D";
 
     if(!_wm.syms)
     {   
@@ -2491,7 +2664,7 @@ setup(void)
     _wm.wmcheckwin = XCBCreateSimpleWindow(_wm.dpy, _wm.root, 0, 0, 1, 1, 0, 0, 0);
     XCBSelectInput(_wm.dpy, _wm.wmcheckwin, XCB_NONE);
     XCBChangeProperty(_wm.dpy, _wm.wmcheckwin, netatom[NetSupportingWMCheck], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&_wm.wmcheckwin, 1);
-    XCBChangeProperty(_wm.dpy, _wm.wmcheckwin, netatom[NetWMName], utf8str, 8, XCB_PROP_MODE_REPLACE, "LG3D", strlen("LG3D") + 1);
+    XCBChangeProperty(_wm.dpy, _wm.wmcheckwin, netatom[NetWMName], utf8str, 8, XCB_PROP_MODE_REPLACE, _wm.wmname, strlen(_wm.wmname) + 1);
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupportingWMCheck], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&_wm.wmcheckwin, 1);
     /* EWMH support per view */
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&netatom, NetLast);
@@ -2524,70 +2697,35 @@ setup(void)
 void
 setupcfg(void)
 {
-    CFGCreateVar(_cfg, "WindowManagerName", CHAR);
-    CFGCreateVar(_cfg, "NumberOfMasters", USHORT);
-    CFGCreateVar(_cfg, "HoverFocus", UCHAR);
-    CFGCreateVar(_cfg, "WindowRefreshRate", USHORT);
-    CFGCreateVar(_cfg, "BorderWidth", USHORT);
-    CFGCreateVar(_cfg, "BorderGapWidth", USHORT);
-    CFGCreateVar(_cfg, "BorderColor", UINT);
-    CFGCreateVar(_cfg, "WindowSnap", USHORT);
-    CFGCreateVar(_cfg, "MaxClientCount", USHORT);
-    CFGCreateVar(_cfg, "MonitorFact", FLOAT);
+    /* TODO */
 
-    void *data;
-    if(CFGLoad(_cfg) != ParseSuccess || !((data = CFGGetVarValue(_cfg, "MaxClientCount"))) || *(u16 *)data == 0)
-    {   setupcfgdefaults();
-    }
-
-    DEBUG0("CFG LOADED VALUES. ");
-    DEBUG0("WindowManagerName: ");
-    DEBUG0("NumberOfMasters: ");
-    DEBUG0("HoverFocus: ");
-    DEBUG0("WindowRefreshRate: ");
-    DEBUG0("BorderWidth: ");
-    DEBUG0("BorderGapWidth: ");
-    DEBUG0("BorderColor: ");
-    DEBUG0("WindowSnap: ");
-    DEBUG0("MaxClientCount: ");
-    DEBUG0("MonitorFact: ");
+    setupcfgdefaults();
 }
 
 void
 setupcfgdefaults(void)
 {
-    /* TODO: Make it work with strings */
-    char wmname = 0;
-    /* Most java apps require this see:
-     * https://wiki.archlinux.org/title/Java#Impersonate_another_window_manager
-     * https://wiki.archlinux.org/title/Java#Gray_window,_applications_not_resizing_with_WM,_menus_immediately_closing
-     * for more information.
-     * "Hard coded" window managers to ignore "Write Once, Debug Everywhere"
-     * Not sure why it just doesnt default to that if it cant detect a supported wm.
-     * This fixes java apps just having a blank white screen on some screen instances.
-     * One example is Ghidra, made by the CIA.
-     */
-    const char *_wmnameifwork = "LG3D";
-    u16 nmaster = 1;
-    u8 hoverfocus = 0;   /* bool */
-    u16 refreshrate = 60;
-    u16 bw = 0;
-    u16 bgw = 15;
-    u32 bcol = 0;
-    u16 winsnap = 10;
-    u16 maxcc = 256;
-    float mfact = 0.55f;
+    const u16 nmaster = 1;
+    const u8 hoverfocus = 0;   /* bool */
+    const u8 desktoplayout = Monocle;
+    const u8 odesktoplayout = Tiled;
+    const u8 defaultdesktop = 0;
+    const u16 refreshrate = 60;
+    const u16 bgw = 15;
+    const u16 winsnap = 10;
+    const u16 maxcc = 256;
+    const float mfact = 0.55f;
 
-    CFGSaveVar(_cfg, "WindowManagerName", &wmname);
-    CFGSaveVar(_cfg, "NumberOfMasters", &nmaster);
-    CFGSaveVar(_cfg, "HoverFocus", &hoverfocus);
-    CFGSaveVar(_cfg, "WindowRefreshRate", &refreshrate);
-    CFGSaveVar(_cfg, "BorderWidth", &bw);
-    CFGSaveVar(_cfg, "BorderGapWidth", &bgw);
-    CFGSaveVar(_cfg, "BorderColor", &bcol);
-    CFGSaveVar(_cfg, "WindowSnap", &winsnap);
-    CFGSaveVar(_cfg, "MaxClientCount", &maxcc);
-    CFGSaveVar(_cfg, "MonitorFact", &mfact);
+    USSetMCount(&_cfg, nmaster);
+    USSetLayout(&_cfg, desktoplayout);
+    USSetOLayout(&_cfg, odesktoplayout);
+    USSetDefaultDesk(&_cfg, defaultdesktop);
+    USSetHoverFocus(&_cfg, hoverfocus);
+    USSetRefreshRate(&_cfg, refreshrate);
+    USSetGapWidth(&_cfg, bgw);
+    USSetSnap(&_cfg, winsnap);
+    USSetMaxClientCount(&_cfg, maxcc);
+    USSetMFact(&_cfg, mfact);
 }
 
 void
@@ -2822,27 +2960,18 @@ startup(void)
     {   setenv("DISPLAY", display, 1);
     }
 
-    _cfg = CFGCreate(CONFIG_FILE);
-    if(!_cfg)
-    {   DIECAT("%s", "FATAL: Could not create config file (OutOfMemory)");
-    }
-
     atexit(exithandler);
+#ifndef DEBUG
     XCBSetErrorHandler(xerror);
+#endif
 }
 
 void
 tile(Desktop *desk)
 {
-    u16 *pnmaster = CFGGetVarValue(_cfg, "NumberOfMasters");
-    float *pmfact = CFGGetVarValue(_cfg, "MonitorFact");
-    u16 *pbgw = CFGGetVarValue(_cfg, "BorderGapWidth");
-
-    const u16 nmaster = pnmaster ? *pnmaster : 0;
-    const float mfact = pmfact ? *pmfact : 0.0f;
-    const u16 bgw = pbgw ? *pbgw : 0;
-
-    DEBUG("NMaster: %d Mfact: %f Bgw: %d", nmaster, mfact, bgw);
+    const u16 nmaster = 0;
+    const float mfact = 0.0f;
+    const u16 bgw = 0;
 
     i32 h = 0, mw = 0, my = 0, ty = 0;
     i32 n = 0, i = 0;
@@ -3100,11 +3229,8 @@ unmanagebar(Bar *bar)
 void
 updatebarpos(Monitor *m)
 {
-    if(!m->bar)
-    {   return;
-    }
     Bar *bar = m->bar;
-    if(SHOWBAR(m->bar))
+    if(SHOWBAR(bar))
     {
         /* side bar checks */
         if(bar->w <= m->mw / 2 || bar->h >= m->mh / 2)
@@ -3731,7 +3857,7 @@ wintobar(XCBWindow win, uint8_t getmon)
     Monitor *m = NULL;
     for(m = _wm.mons; m; m = nextmonitor(m))
     {
-        if(m->bar && m->bar->win == win)
+        if(m->bar->win == win)
         {   
             if(getmon)
             {   return m;
@@ -3751,6 +3877,8 @@ wintoclient(XCBWindow win)
     Client *c = NULL;
     Desktop *desk = NULL;
     Monitor *m = NULL;
+
+    /* TODO: Hashmap or something */
 
     for(m = _wm.mons; m; m = nextmonitor(m))
     {
@@ -3776,7 +3904,7 @@ wintomon(XCBWindow win)
     Monitor *m;
     if(win == _wm.root && getrootptr(&x, &y)) return recttomon(x, y, 1, 1);
     for (m = _wm.mons; m; m = m->next)
-        if (m->bar && win == m->bar->win) return m;
+        if (win == m->bar->win) return m;
     if ((c = wintoclient(win))) return c->desktop->mon;
     return _wm.selmon;
 }
@@ -3794,6 +3922,9 @@ xerror(XCBDisplay *display, XCBGenericError *err)
            err->error_code, err->major_code, err->minor_code, 
            err->sequence, err->response_type, err->resource_id, 
            err->full_sequence);
+        XCBCookie id;
+        id.sequence = err->sequence;
+        DEBUG("%s()", XCBDebugGetNameFromId(id));
     }
 }
 

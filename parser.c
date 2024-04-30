@@ -305,7 +305,6 @@ CFGCreateItem(
         item->name = NULL;
         item->next = NULL;
         item->prev = NULL;
-        item->_veclen = 0;
     }
 
     return item;
