@@ -45,7 +45,6 @@ struct CFGItem
 {
     uint8_t _type;
     size_t size;
-    uint32_t _veclen;
     void *data;
     char *name;
 
@@ -101,6 +100,11 @@ CFGCreateVar(
         int CFGType
         );
 
+/*
+ * Interpreted by caller.
+ *
+ * NOTE: Must be SAME TYPE when casting, else undefined behaviour.
+ */
 void *
 CFGGetVarValue(
         CFG *cfg, 
@@ -109,6 +113,8 @@ CFGGetVarValue(
 
 /* Saves data specified by the variable name If it exists. 
  * One must pass in the address of the data wanting to be used, this includes strings interpreted as char *.
+ *
+ * NOTE: Must be same type.
  *
  * EX: int x = 10; 
  *     CFGSaveVar(MyCfg, "MyVar", &x);

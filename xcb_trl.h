@@ -3259,6 +3259,23 @@ XCBSetWMHintsCookie(
 /*
  */
 XCBCookie
+XCBGetWMNameCookie(
+        XCBDisplay *display, 
+        XCBWindow win);
+
+/*
+ * RETURN: 1 on Success.
+ * RETURN: 0 on Failure.
+ */
+uint8_t
+XCBGetWMNameReply(
+        XCBDisplay *display, 
+        XCBCookie cookie, 
+        XCBTextProperty *prop_return
+        );
+/*
+ */
+XCBCookie
 XCBGetWMNormalHintsCookie(
         XCBDisplay *display,
         XCBWindow win
@@ -3367,6 +3384,11 @@ XCBDebugGetPreviousCall(
 char *
 XCBDebugGetFirstCall(
         void
+        );
+
+char *
+XCBDebugGetNameFromId(
+        XCBCookie id
         );
 
 

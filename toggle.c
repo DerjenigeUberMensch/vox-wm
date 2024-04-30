@@ -13,7 +13,6 @@
 #include "xcb_trl.h"
 #include "toggle.h"
 #include "queue.h"
-#include "parser.h"
 
 /*
  * For people wanting to make new functions:
@@ -23,7 +22,6 @@
 /* TODO: Make these functions seperate threads */
 extern void (*handler[]) (XCBGenericEvent *);
 extern WM _wm;
-extern CFG *_cfg;
 
 void
 UserStats(const Arg *arg)
@@ -127,16 +125,11 @@ ResizeWindow(const Arg *arg)
 void
 SetBorderWidth(const Arg *arg)
 {
-    void *data = CFGGetVarValue(_cfg, "BorderWidth");
-    if(!data)
-    {   return;
-    }
-    const u16 bw = *(u16 *)data;
+    const u16 bw = 0;
     if(bw + arg->i < 0)
     {   return;
     }
     const u16 newbw = bw + arg->i;
-    CFGSaveVar(_cfg, "BorderWidth", (void *)&newbw);
     Client *c;
 
     for(c = _wm.selmon->desksel->clients; c; c = nextclient(c))
@@ -188,13 +181,12 @@ void
 MaximizeWindow(const Arg *arg)
 {
     const Monitor *m = _wm.selmon;
-    void *data = CFGGetVarValue(_cfg, "WindowSnap");
     Client *c = m->desksel->sel;
-    if(!c || !m || !data)
+    if(!c || !m)
     {   return;
     }
 
-    const u16 snap = *(u16 *)data;
+    const u16 snap = 0;
 
     /* floating are auto handled to be any window that isnt maxed */
     if(ISFLOATING(c))
