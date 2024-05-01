@@ -125,7 +125,7 @@ ResizeWindow(const Arg *arg)
 void
 SetBorderWidth(const Arg *arg)
 {
-    const u16 bw = 0;
+    const u16 bw = 50;
     if(bw + arg->i < 0)
     {   return;
     }

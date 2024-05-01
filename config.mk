@@ -62,7 +62,7 @@ RELEASES= ${RELEASEFLAGS} -O3
 BUILDSELF = ${RELEASEFLAGS} ${XNATIVE} -O3
 
 # Set your options or presets (see above) ex: ${PRESETNAME} (Compiler used is on top)
-CFLAGS = ${RELEASES}
+CFLAGS = ${DEBUG}
 
 CMACROS = 
 

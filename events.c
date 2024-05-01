@@ -707,7 +707,9 @@ maprequest(XCBGenericEvent *event)
     }
 
     if(sync)
-    {   XCBFlush(_wm.dpy);
+    {   
+        /* we dont flush because we want info about the window after if it responds (AKA we are making the events not reacting to them) */
+        XCBSync(_wm.dpy);
     }
 }
 /* popup windows sometimes need this */
@@ -1206,15 +1208,12 @@ propertynotify(XCBGenericEvent *event)
 
     Client *c = NULL;
     u8 sync = 0;
-    if(win == _wm.root && atom == XCB_ATOM_WM_NAME)
-    {   /* updatestatus */
-    }
 
     if(state == XCB_PROPERTY_DELETE)
     {   return;
     }
 
-    if(_wm.selmon->bar && _wm.selmon->bar->win == win)
+    if(_wm.selmon->bar->win == win)
     {
         /* probably one of the _NET_WM_STRUT's */
         if(atom == netatom[NetWMStrutPartial] || atom == netatom[NetWMStrut])
@@ -1231,6 +1230,9 @@ propertynotify(XCBGenericEvent *event)
     if((c = wintoclient(win)))
     {   
         XCBCookie cookie;
+        XCBCookie cookie2;
+        XCBWindowProperty *prop1;
+        XCBWindowProperty *prop2;
         XCBWMHints *wmh;
         XCBWindow trans;
         uint8_t transstatus = 0;
@@ -1249,18 +1251,39 @@ propertynotify(XCBGenericEvent *event)
                     }
                 }
                 break;
-            case XCB_ATOM_WM_NORMAL_HINTS:
-                break;
             case XCB_ATOM_WM_HINTS:
                 /* TODO This can be slow */
                 cookie = XCBGetWMHintsCookie(_wm.dpy, c->win);
                 wmh = XCBGetWMHintsReply(_wm.dpy, cookie);
                 updatewmhints(c, wmh);
-                sync = 1;
                 free(wmh);
+                sync = 1;
+                break;
+            case XCB_ATOM_WM_NORMAL_HINTS:
+                break;
+            case XCB_ATOM_WM_NAME:
+                cookie = XCBGetWindowPropertyCookie(_wm.dpy, c->win, netatom[NetWMName], 0L, UINT32_MAX, False, netatom[NetUtf8String]);
+                cookie2 = XCBGetWindowPropertyCookie(_wm.dpy, c->win, XCB_ATOM_WM_NAME, 0L, UINT32_MAX, False, XCB_ATOM_STRING);
+                prop1 = XCBGetWindowPropertyReply(_wm.dpy, cookie);
+                prop2 = XCBGetWindowPropertyReply(_wm.dpy, cookie2);
+                char *netwmname = NULL;
+                char *wmname = NULL;
+                getnamefromreply(prop1, &netwmname);
+                getnamefromreply(prop2, &wmname);
+                updatetitle(c, netwmname, wmname);
+
+                free(prop1);
+                free(prop2);
+                sync = 1;
+                break;
+            case XCB_ATOM_WM_ICON_NAME:
+                break;
+            case XCB_ATOM_WM_CLASS:
+                break;
+            case XCB_ATOM_WM_CLIENT_MACHINE:
                 break;
             default:
-                  break;
+                break;
         }
     }
     if(sync)

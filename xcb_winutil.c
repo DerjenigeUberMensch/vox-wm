@@ -134,6 +134,7 @@ XCBInitAtoms(XCBDisplay *display, XCBAtom *wm_atom_return, XCBAtom *net_atom_ret
         /* other */
         netcookies[NetWMFullPlacement] = XCBInternAtomCookie(display, "_NET_WM_FULL_PLACEMENT", False);
         netcookies[NetWMWindowsOpacity] = XCBInternAtomCookie(display, "_NET_WM_WINDOW_OPACITY", False);
+        netcookies[NetUtf8String] = XCBInternAtomCookie(display, "UTF8_STRING", False);
     }
 
     if(wm_atom_return)
@@ -253,6 +254,8 @@ XCBInitAtoms(XCBDisplay *display, XCBAtom *wm_atom_return, XCBAtom *net_atom_ret
         /* other */
         net_atom_return[NetWMFullPlacement] = XCBInternAtomReply(display, netcookies[NetWMFullPlacement]);
         net_atom_return[NetWMWindowsOpacity] = XCBInternAtomReply(display, netcookies[NetWMWindowsOpacity]);
+
+        net_atom_return[NetUtf8String] = XCBInternAtomReply(display, netcookies[NetUtf8String]);
     }
 }
 

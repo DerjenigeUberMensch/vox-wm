@@ -26,6 +26,7 @@
 #include "xcb_winutil.h"
 #include "util.h"
 #include "dwm.h"
+#include "parser.h"
 
 #include "keybinds.h"
 
@@ -450,7 +451,9 @@ arrangemons(void)
 void
 arrangedesktop(Desktop *desk)
 {
-    layouts[desk->layout].arrange(desk);
+    if(layouts[desk->layout].arrange)
+    {   layouts[desk->layout].arrange(desk);
+    }
     /* update the bar or something */
 }
 
@@ -755,6 +758,8 @@ cleanupdesktop(Desktop *desk)
 void
 cleanupclient(Client *c)
 {
+    free(c->wmname);
+    free(c->netwmname);
     free(c);
     c = NULL;
 }
@@ -834,6 +839,8 @@ createclient(void)
     c->maxw = c->maxh = 0;
     c->pid = 0;
     c->desktop = NULL;
+    c->wmname = NULL;
+    c->netwmname = NULL;
     return c;
 }
 
@@ -1011,6 +1018,27 @@ focus(Client *c)
     DEBUG("Focused: [%d]", c ? c->win : 0);
 }
 
+void
+getnamefromreply(XCBWindowProperty *namerep, char **str_return)
+{
+    if(namerep)
+    {
+        if(namerep->type && namerep->length > 0)
+        {
+            const size_t offset = XCBGetPropertyValueSize(namerep);
+            char *str = XCBGetPropertyValue(namerep);
+                                                        /* \0 */
+            char *nstr = malloc(sizeof(char) * offset + sizeof(char));
+            if(nstr)
+            {   
+                memcpy(nstr, str, offset);
+                memcpy(nstr + offset, "\0", sizeof(char));
+            }
+            *str_return = nstr;
+        }
+    }
+}
+
 i8
 getrootptr(i16 *x, i16 *y)
 {
@@ -1140,7 +1168,9 @@ grid(Desktop *desk)
 
         /* sanatize data */
         applysizechecks(m, &nx, &ny, &nw, &nh, &unused);
-        resize(c, nx, ny, nw, nh, 0);
+        if(c->x != nx || c->y != ny || c->w != nw || c->h != nh)
+        {   resize(c, nx, ny, nw, nh, 0);
+        }
         ++i;
     }
 }
@@ -1191,7 +1221,9 @@ managerequest(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     XCBCookie classcookie = XCBGetWMClassCookie(_wm.dpy, win);
     XCBCookie wmprotocookie = XCBGetWMProtocolsCookie(_wm.dpy, win, wmatom[WMProtocols]);
     XCBCookie strutpcookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMStrutPartial], 0L, 12, False, XCB_ATOM_CARDINAL);
-    XCBCookie strutcookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMStrut], 0, 4, False, XCB_ATOM_CARDINAL);
+    XCBCookie strutcookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMStrut], 0L, 4, False, XCB_ATOM_CARDINAL);
+    XCBCookie netwmnamecookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMName], 0L, UINT32_MAX, False, netatom[NetUtf8String]);
+    XCBCookie wmnamecookie = XCBGetWindowPropertyCookie(_wm.dpy, win, XCB_ATOM_WM_NAME, 0L, UINT32_MAX, False, XCB_ATOM_STRING);
 
     requests[0] = wacookie;
     requests[1] = wgcookie;
@@ -1204,6 +1236,8 @@ managerequest(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     requests[8] = wmprotocookie;
     requests[9] = strutpcookie;
     requests[10] = strutcookie;
+    requests[11] = netwmnamecookie;
+    requests[12] = wmnamecookie;
 }
 
 Client *
@@ -1242,6 +1276,10 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     XCBWindowProperty *strutreply = NULL;
     u32 *strutp = NULL; 
     u32 *strut = NULL;
+    XCBWindowProperty *netwmnamereply = NULL;
+    XCBWindowProperty *wmnamereply = NULL;
+    char *netwmname = NULL;
+    char *wmname = NULL;
 
     /* we do it here before, because we are waiting for replies and for more memory. */
     c = createclient();
@@ -1258,6 +1296,8 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     wmprotocolsstatus = XCBGetWMProtocolsReply(_wm.dpy, requests[8], &wmprotocols);
     strutpreply = XCBGetWindowPropertyReply(_wm.dpy, requests[9]);
     strutreply = XCBGetWindowPropertyReply(_wm.dpy, requests[10]);
+    netwmnamereply = XCBGetWindowPropertyReply(_wm.dpy, requests[11]);
+    wmnamereply = XCBGetWindowPropertyReply(_wm.dpy, requests[12]);
     wtypelen = wtypeunused ? XCBGetPropertyValueLength(wtypeunused, sizeof(XCBAtom)) : 0;
     statelen = stateunused ? XCBGetPropertyValueLength(stateunused, sizeof(XCBAtom)) : 0;
     strutp = strutpreply ? XCBGetWindowPropertyValue(strutpreply) : NULL;
@@ -1315,6 +1355,9 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     {   updatewindowprotocol(c, &wmprotocols);
     }
 
+    getnamefromreply(netwmnamereply, &netwmname);
+    getnamefromreply(wmnamereply, &wmname);
+
     /* constrain window to monitor window area */
     applysizechecks(_wm.selmon, (int32_t *)&c->x, (int32_t *)&c->y, (int32_t *)&c->w, (int32_t *)&c->h, (int32_t *)&c->bw);
 
@@ -1338,10 +1381,10 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     /* Custom stuff */
     setborderwidth(c, bw);
     setbordercolor32(c, bcol);
-    XCBSetWindowBorderWidth(_wm.dpy, win, bw);
-    XCBSetWindowBorder(_wm.dpy, win, bcol);
+    XCBSetWindowBorderWidth(_wm.dpy, win, c->bw);
+    XCBSetWindowBorder(_wm.dpy, win, c->bcol);
     configure(c);   /* propagates border_width, if size doesn't change */
-    updatetitle(c);
+    updatetitle(c, netwmname, wmname);
     updatesizehints(c, &hints);
     updatewmhints(c, wmh);
     XCBSelectInput(_wm.dpy, win, inputmask);
@@ -1375,6 +1418,8 @@ CLEANUP:
     XCBWipeGetWMProtocols(&wmprotocols);
     free(strutpreply);
     free(strutreply);
+    free(netwmnamereply);
+    free(wmnamereply);
 
     return c;
 }
@@ -1533,352 +1578,6 @@ _restore_parser(FILE *file, char *buffer, u16 bufflen)
 void
 restoresession(void)
 {
-    Monitor *m = NULL;
-    Desktop *desk = NULL;
-
-    FILE *fr = fopen(SESSION_FILE, "r");
-    const int MAX_LENGTH = 1024;
-    char str[MAX_LENGTH];
-    int output = 0;
-    u8 ismon = 0;
-    u8 isdesk = 0;
-    u8 isclient = 0;
-    u8 isstack = 0;
-    u8 isfocus = 0;
-
-    if(!fr)
-    {   return;
-    }
-
-    enum Causes
-    {
-        NoError = 0,
-        BuffTooSmall = 1,
-        err = 2,
-        EndOfFile = 3
-    };
-    while(output != EndOfFile)
-    {
-        memset(str, 0, MAX_LENGTH);
-        output = _restore_parser(fr, str, MAX_LENGTH);
-        switch(output)
-        {
-            case NoError: break;
-            case BuffTooSmall:
-            case err:
-            case EndOfFile: 
-            default: continue;
-        }
-
-        if(isstack)
-        {   
-            if(desk && strcmp(str, "Stack.") && strcmp(str, "Focus."))
-            {   restoredesktopsessionstack(desk, str, MAX_LENGTH);
-            }
-        }
-        if(isfocus)
-        {   
-            if(desk && strcmp(str, "Stack.") && strcmp(str, "Focus."))
-            {   restoredesktopsessionfocus(desk, str, MAX_LENGTH);
-            }
-        }
-        if(isclient)
-        {   
-            if(desk)
-            {   
-                restoreclientsession(desk, str, MAX_LENGTH);
-                isclient = 0;
-            }
-        }
-        if(isdesk)
-        {   
-            if(m)
-            {   
-                desk = restoredesktopsession(m, str, MAX_LENGTH);
-                isdesk = 0;
-            }
-        }
-        if(ismon)
-        {   
-            m = restoremonsession(str, MAX_LENGTH);
-            ismon = 0;
-        }
-
-        ismon += !strcmp(str, "Monitor.");
-        isdesk += !strcmp(str, "Desktop.");
-        isclient += !strcmp(str, "Client.");
-        isstack += !strcmp(str, "Stack.");
-        isfocus += !strcmp(str, "Focus.");
-    }
-    arrangemons();
-    fclose(fr);
-}
-
-Client *
-restoreclientsession(Desktop *desk, char *buff, u16 len)
-{
-    const u8 SCANF_CHECK_SUM = 13;
-    u8 check = 0;
-
-    int x, y;
-    int ox, oy;
-    unsigned int w, h;
-    unsigned int ow, oh;
-    XCBWindow WindowId;
-    u32 BorderWidth;
-    u32 BorderColor;
-
-    check = sscanf(buff, 
-                    "(x: %d, y: %d) (w: %u h: %u)" " "
-                    "(ox: %d, oy: %d) (ow: %u oh: %u)" " "
-                    "WindowId: %u" " "
-                    "BorderWidth: %u" " "
-                    "BorderColor: %u" " "
-                    ,
-                    &x, &y, &w, &h,
-                    &ox, &oy, &ow, &oh,
-                    &WindowId,
-                    &BorderWidth,
-                    &BorderColor
-                    );
-
-    if(check == SCANF_CHECK_SUM)
-    {
-        Client *c = wintoclient(WindowId);
-        if(c)
-        {
-            resize(c, ox, oy, ow, oh, 1);
-            resize(c, x, y, w, h, 1);
-            setborderwidth(c, BorderWidth);
-            setbordercolor32(c, BorderColor);
-            setclientdesktop(c, desk);
-            DEBUG("Restored Client. [%d]", c->win);
-            return c;
-        }
-    }
-    return NULL;
-}
-
-void
-restoredesktopsessionstack(Desktop *desk, char *buff, uint16_t len)
-{
-    const u8 SCANF_CHECK_SUM = 1;
-    u8 check = 0;
-    XCBWindow win = 0;
-
-    check = sscanf(buff, "%u", &win);
-
-    if(check == SCANF_CHECK_SUM)
-    {
-        Client *c = wintoclient(win);
-        if(c)
-        {
-            detachstack(c);
-            attachstack(c);
-        }
-        DEBUG("Restored Stack: [%d]", win);
-    }
-    else
-    {   DEBUG0("Failed to Restored Stack ");
-    }
-}
-
-void
-restoredesktopsessionfocus(Desktop *desk, char *buff, uint16_t len)
-{
-    const u8 SCANF_CHECK_SUM = 1;
-    u8 check = 0;
-    XCBWindow win = 0;
-
-    check = sscanf(buff, "%u", &win);
-
-    if(check == SCANF_CHECK_SUM)
-    {
-        Client *c = wintoclient(win);
-        if(c)
-        {
-            detachfocus(c);
-            detachfocus(c);
-        }
-        DEBUG("Restored Focus: [%d]", win);
-    }
-    else
-    {
-        DEBUG0("Failed to Restored Focus");
-    }
-}
-
-Desktop *
-restoredesktopsession(Monitor *m, char *buff, u16 len)
-{
-    const u8 SCANF_CHECK_SUM = 6;
-    u8 check = 0;
-
-    unsigned int DesktopLayout;
-    unsigned int DesktopOLayout;
-    unsigned int DesktopNum;
-    XCBWindow DesktopSel;
-    XCBWindow FirstStack;
-    XCBWindow FirstFocus;
-    DesktopLayout = DesktopOLayout = DesktopNum = DesktopSel = FirstStack = FirstFocus = 0;
-
-    check = sscanf(buff, 
-                    "DesktopLayout: %u" " "
-                    "DesktopOLayout: %u" " "
-                    "DesktopNum: %u" " "
-                    "DesktopSel: %u" " "
-                    "FirstStack: %u" " "
-                    "FirstFocus: %u" " "
-                    ,
-                    &DesktopLayout,
-                    &DesktopOLayout,
-                    &DesktopNum,
-                    &DesktopSel,
-                    &FirstStack,
-                    &FirstFocus
-                    );
-
-    Desktop *desk = NULL;
-    if(check == SCANF_CHECK_SUM)
-    {
-        if(DesktopNum > m->deskcount)
-        {   setdesktopcount(m, DesktopNum + 1);
-        }
-        u16 i;
-        desk = m->desktops;
-        for(i = 0; i < DesktopNum; ++i)
-        {   desk = nextdesktop(desk);
-        }
-        if(desk)
-        {
-            Client *sel = wintoclient(DesktopSel);
-            Client *focus = wintoclient(FirstFocus);
-            Client *stack = wintoclient(FirstStack);
-
-            if(sel && sel->desktop != desk)
-            {   setclientdesktop(sel, desk);
-            }
-
-            if(focus)
-            {
-                if(focus->desktop != desk)
-                {   setclientdesktop(focus, desk);
-                }
-            }
-            if(stack)
-            {
-                if(stack->desktop != desk)
-                {   setclientdesktop(stack, desk);
-                }
-            }
-
-            desk->sel = sel;
-            setdesktoplayout(desk, DesktopOLayout);
-            setdesktoplayout(desk, DesktopLayout);
-            DEBUG("Restored Desktop. [%d]", desk->num);
-        }
-    }
-    return desk;
-}
-
-Monitor *
-restoremonsession(char *buff, u16 len)
-{
-    const u8 SCANF_CHECK_SUM = 7;
-    u8 check = 0;
-
-    int x;
-    int y;
-    unsigned int h;
-    unsigned int w;
-    XCBWindow BarId;
-    unsigned int DeskCount;
-    unsigned int DeskSelNum;
-
-    x = y = h = w = BarId = DeskCount = DeskSelNum = 0;
-
-    check = sscanf(buff,
-                    "(x: %d, y: %d) (w: %u h: %u)" " "
-                    "BarId: %u" " "
-                    "DeskCount: %u" " "
-                    "DeskSelNum: %u" " "
-                    ,
-                    &x, &y, &w, &h,
-                    &BarId,
-                    &DeskCount,
-                    &DeskSelNum
-                    );
-    Monitor *pullm = NULL;
-    if(check == SCANF_CHECK_SUM)
-    {
-        Monitor *target = NULL;
-        const u8 errorleeway = 5;
-        Monitor *possible[errorleeway];
-        memset(possible, 0, errorleeway * sizeof(Monitor *));
-        u8 possibleInterator = 0;
-
-        for(pullm = _wm.mons; pullm; pullm = nextmonitor(pullm))
-        {
-            if(pullm->mw == w && pullm->mh == h)
-            {
-                if(pullm->mx == x && pullm->my == y)
-                {   target = pullm;
-                    break;
-                }
-                else if(possibleInterator < errorleeway)
-                {   possible[possibleInterator++] = pullm;
-                }
-            }
-            else if(wintobar(BarId, 1))
-            {   possible[possibleInterator++] = wintobar(BarId, 1);
-            }
-        }
-        for(pullm = _wm.mons; pullm; pullm = nextmonitor(pullm))
-        {
-            if(BETWEEN(w, pullm->mw + errorleeway, pullm->mh - errorleeway) && BETWEEN(h, pullm->mh + errorleeway, pullm->mh - errorleeway))
-            {
-                if(possibleInterator < errorleeway)
-                {   possible[possibleInterator++] = pullm;
-                }
-            }
-            else if(pullm->deskcount == DeskCount && pullm->desksel->num == DeskSelNum)
-            {   possible[possibleInterator++] = pullm;
-            }
-        }
-        pullm = target;
-        if(!pullm) 
-        {
-            u8 i;
-            for(i = 0; i < errorleeway; ++i)
-            {
-                if(possible[i])
-                {
-                    if((pullm = recttomon(possible[i]->mx, possible[i]->my, possible[i]->mw, possible[i]->mh)))
-                    {   break;
-                    }
-                }
-            }
-            if(!pullm)
-            {   pullm = possible[0];
-            }
-        }
-        if(pullm)
-        {
-            managebar(pullm, BarId);
-            /* TODO */
-            setdesktopcount(pullm, DeskCount);
-            if(DeskSelNum != pullm->desksel->num)
-            {
-                Desktop *desk;
-                for(desk = pullm->desktops; desk && desk->num != DeskSelNum; desk = nextdesktop(desk));
-                if(desk)
-                {   setmondesktop(pullm, desk);
-                }
-            }
-            DEBUG("Restored Monitor. (w: %d, h: %d)", pullm->mw, pullm->mh);
-        }
-    }
-    return pullm;
 }
 
 Monitor *
@@ -1901,8 +1600,6 @@ recttomon(i16 x, i16 y, u16 w, u16 h)
 void
 resize(Client *c, i32 x, i32 y, i32 width, i32 height, uint8_t interact)
 {
-    DEBUG("(oldx: %d, oldy: %d) -> (x: %d, y: %d)", c->x, c->y, x, y);
-    DEBUG("(oldw: %d, oldh: %d) -> (w: %d, h: %d)", c->w, c->h, width, height);
     if(applysizehints(c, &x, &y, &width, &height, interact))
     {   resizeclient(c, x, y, width, height);
     }
@@ -2022,124 +1719,37 @@ savesession(void)
 {
     /* user settings */
     const char *filename = SESSION_FILE;
-    FILE *fw = fopen(filename, "w");
-
-    if(!fw)
-    {   return;
-    }
-
+    char append = '0';
     Monitor *m;
-    for(m = _wm.mons; m; m = nextmonitor(m))
-    {   savemonsession(fw, m);
+    FILE *fw = fopen(filename, "w");
+    if(!fw)
+    {   DEBUG0("Failed to alloc FILE(OutOfMemory)");
+        return;
     }
+
+    for(m = _wm.mons; m; m = nextmonitor(m))
+    {   
+    }
+    fclose(fw);
 }
 
 void
 saveclientsession(FILE *fw, Client *c)
 {
-    const char *identifier = "Client.";
-    fprintf(fw,
-            "%s"
-            "\n"
-            "(x: %d, y: %d) (w: %d h: %d)" " "
-            "(ox: %d, oy: %d) (ow: %d oh: %d)" " "
-            "WindowId: %d" " "
-            "BorderWidth: %d" " "
-            "BorderColor: %d" " "
-            "NextFocusId: %d" " "
-            "NextStackId: %d" " "
-            "\n"
-            ,
-            identifier,
-            c->x, c->y, c->w, c->h,
-            c->oldx, c->oldy, c->oldw, c->oldh,
-            c->win, 
-            c->bw,
-            c->bcol,
-            c->fnext ? c->fnext->win : 0,
-            c->snext ? c->snext->win : 0
-            );
 }
 
 void
 savedesktopsession(FILE *fw, Desktop *desk)
 {
-    Client *c;
-    const char *identifier = "Desktop.";
-    const char *focusidentifier = "Focus.";
-    const char *stackidentifier = "Stack.";
-
-    fprintf(fw,
-            "%s"
-            "\n"
-            "DesktopLayout: %d" " "
-            "DesktopOLayout: %d" " "
-            "DesktopNum: %d" " "
-            "DesktopSel: %u" " "
-            "FirstStack: %u" " "
-            "FirstFocus: %u" " "
-            "\n"
-            ,
-            identifier,
-            desk->layout,
-            desk->olayout,
-            desk->num,
-            desk->sel ? desk->sel->win : 0,
-            desk->stack ? desk->stack->win : 0,
-            desk->focus ? desk->focus->win : 0
-           );
-    for(c = desk->clients; c; c = nextclient(c))
-    {   saveclientsession(fw, c);
-    }
-    fprintf(fw, 
-            "%s"
-            "\n"
-            ,
-            focusidentifier
-            );
-    for(c = desk->focus; c; c = nextfocus(c))
-    {   fprintf(fw, "%u\n", c->win);
-    }
-    fprintf(fw, 
-            "%s"
-            "\n"
-            ,
-            stackidentifier 
-            );
-    for(c = desk->stack; c; c = nextstack(c))
-    {   fprintf(fw, "%u\n", c->win);
-    }
 }
 
 void
 savemonsession(FILE *fw, Monitor *m) 
 {
-    Desktop *desk;
-    /* TODO: this will take a while to say the least... */
-    const char *identifier = "Monitor.";
-    /* monitor */
-    fprintf(fw,
-            "%s" 
-            "\n"
-            "(x: %d, y: %d) (w: %u h: %u)" " "
-            "BarId: %u" " "
-            "DeskCount: %u" " "
-            "DeskSelNum: %u" " "
-            "\n"
-            ,
-            identifier,
-            m->mx, m->my, m->mw, m->mh,
-            m->bar->win,
-            m->deskcount,
-            m->desksel->num
-            );
-    for(desk = m->desktops; desk; desk = nextdesktop(desk))
-    {   savedesktopsession(fw, desk);
-    }
 }
 
 /* scan for clients initally */
-void NOINLINE
+void
 scan(void)
 {
     u16 i, num;
@@ -2247,7 +1857,8 @@ scan(void)
     {   DEBUG("%s", "Failed to scan for clients.");
     }
     focus(NULL);
-    arrangemons();
+    /* restore session covers this after */
+    /* arrangemons(); */
 }
 
 void
@@ -2657,14 +2268,12 @@ setup(void)
 
     setupcfg();
     updategeom();
-    const XCBCookie utf8cookie = XCBInternAtomCookie(_wm.dpy, "UTF8_STRING", False);
     XCBInitAtoms(_wm.dpy, wmatom, netatom);
-    const XCBAtom utf8str = XCBInternAtomReply(_wm.dpy, utf8cookie);
     /* supporting window for NetWMCheck */
     _wm.wmcheckwin = XCBCreateSimpleWindow(_wm.dpy, _wm.root, 0, 0, 1, 1, 0, 0, 0);
     XCBSelectInput(_wm.dpy, _wm.wmcheckwin, XCB_NONE);
     XCBChangeProperty(_wm.dpy, _wm.wmcheckwin, netatom[NetSupportingWMCheck], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&_wm.wmcheckwin, 1);
-    XCBChangeProperty(_wm.dpy, _wm.wmcheckwin, netatom[NetWMName], utf8str, 8, XCB_PROP_MODE_REPLACE, _wm.wmname, strlen(_wm.wmname) + 1);
+    XCBChangeProperty(_wm.dpy, _wm.wmcheckwin, netatom[NetWMName], netatom[NetUtf8String], 8, XCB_PROP_MODE_REPLACE, _wm.wmname, strlen(_wm.wmname) + 1);
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupportingWMCheck], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&_wm.wmcheckwin, 1);
     /* EWMH support per view */
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&netatom, NetLast);
@@ -2972,7 +2581,7 @@ tile(Desktop *desk)
     const u16 nmaster = 0;
     const float mfact = 0.0f;
     const u16 bgw = 0;
-
+    
     i32 h = 0, mw = 0, my = 0, ty = 0;
     i32 n = 0, i = 0;
     i32 nx = 0, ny = 0;
@@ -3020,9 +2629,12 @@ tile(Desktop *desk)
             nw -= bgw * 2;
             nh -= bgw * 2;
             applysizechecks(m, &nx, &ny, &nw, &nh, &unused);
-            resize(c, nx, ny, nw, nh, 0);
-                                                                        /* spacing for windows below */
-            if (my + HEIGHT(c) < (unsigned int)m->wh) my += HEIGHT(c) + bgw;
+            if(c->x != nx || c->y != ny || c->w != nw || c->h != nh)
+            {   resize(c, nx, ny, nw, nh, 0);
+            }
+            if (my + HEIGHT(c) < (unsigned int)m->wh) 
+            {   my += HEIGHT(c) + bgw;
+            }
         }
         else
         {
@@ -3037,8 +2649,9 @@ tile(Desktop *desk)
             nw -= bgw * 2;
             nh -= bgw * 2;
             applysizechecks(m, &nx, &ny, &nw, &nh, &unused);
-            resize(c, nx, ny, nw, nh, 0);
-                                                                    /* spacing for windows below */ 
+            if(c->x != nx || c->y != ny || c->w != nw || c->h != nh)
+            {   resize(c, nx, ny, nw, nh, 0);
+            }
             if (ty + HEIGHT(c) < (unsigned int)m->wh) ty += HEIGHT(c) + bgw;
         }
     }
@@ -3212,10 +2825,10 @@ unmanage(Client *c, uint8_t destroyed)
      * (cause we would get the same input focus twice)
      */
     detachcompletely(c);
-    cleanupclient(c);
     focus(NULL);
-    updateclientlist();
+    updateclientlist(c->win, 1);
     arrange(desk);
+    cleanupclient(c);
 }
 
 void
@@ -3299,23 +2912,36 @@ updatebargeom(Monitor *m)
 }
 
 void
-updateclientlist(void)
+updateclientlist(uint8_t type, XCBWindow win)
 {
-    Client *c;
+    const u8 Add = 0;
+    const u8 Remove = 1;
+    const u8 Reload = 2;
+
+    (void)Add;
+    (void)Remove;
+    (void)Reload;
+
     Monitor *m;
     Desktop *desk;
-    
-    XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetClientList]);
-
-
-    for(m = _wm.mons; m; m = nextmonitor(m))
+    Client *c;
+    switch(type)
     {
-        for(desk = m->desktops; desk; desk = nextdesktop(desk))
-        {
-            for(c = desk->clients; c; c = nextclient(c))
-            {   XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientList], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&(c->win), 1);
+        case 0:
+            XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientList], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&(win), 1);
+        case 1: case 2:
+            XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetClientList]);
+            for(m = _wm.mons; m; m = nextmonitor(m))
+            {
+                for(desk = m->desktops; desk; desk = nextdesktop(desk))
+                {
+                    for(c = desk->clients; c; c = nextclient(c))
+                    {   XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientList], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&(c->win), 1);
+                    }
+                }
             }
-        }
+        default:
+            DEBUG0("No type specified.");
     }
 }
 
@@ -3408,8 +3034,15 @@ updatesizehints(Client *c, XCBSizeHints *size)
 }
 
 void
-updatetitle(Client *c)
+updatetitle(Client *c, char *netwmname, char *wmname)
 {
+    free(c->wmname);
+    free(c->netwmname);
+    c->wmname = wmname;
+    c->netwmname = netwmname;
+
+    DEBUG("NET [%d]: %s", c->win, c->netwmname);
+    DEBUG("WM  [%d]: %s", c->win, c->wmname);
 }
 
 void
