@@ -74,6 +74,7 @@ enum NETWMPROTOCOLS
     NetWMFullPlacement ,NetWMBypassCompositor,
     NetWMWindowsOpacity,
 
+    NetUtf8String,
     /* last */
     NetLast,
 };
@@ -95,7 +96,8 @@ enum WMPROTOCOLS {
     WMTakeFocus, WMSaveYourself, WMDeleteWindow, 
 
     WMState, 
-    WMLast };
+    WMLast 
+};
 
 
 

@@ -2,6 +2,8 @@
 #ifndef UTIL_H_
 #define UTIL_H_
 
+#include "uthash.h"
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -121,11 +123,6 @@ union ARGB
 void *ecalloc(size_t nmemb, size_t size);
 char *smprintf(char *fmt, ...);
 void debug(char *fmt, ...);
-unsigned int UIHash(unsigned int x);
-unsigned int UIUnHash(unsigned int x);
-uint64_t UI64Hash(uint64_t x);
-uint64_t UI64UnHash(uint64_t x);
-
 
 double functime(void (*_timefunction)(void));
 

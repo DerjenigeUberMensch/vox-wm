@@ -5,6 +5,7 @@
 #include <xcb/xcb_keysyms.h>
 #include <stdio.h>
 
+#include "util.h"
 #include "bar.h"
 #include "thread.h"
 #include "settings.h"
@@ -34,7 +35,7 @@
 #define SESSION_FILE            "/tmp/dwm-session"
 #define CONFIG_FILE             "/var/tmp/dwm-config"   /* todo make dir .config/dwm/config or someting like that */
 #define BORKED                  "NOT_SET"
-#define MANAGE_CLIENT_COOKIE_COUNT 11
+#define MANAGE_CLIENT_COOKIE_COUNT 13
 
 /* Client struct flags */
 
@@ -198,8 +199,10 @@ struct Client
     Client *fprev;      /* THe previous focused clnt*/
     Desktop *desktop;   /* Client Associated Desktop*/
 
-    wchar_t *name;      /* Client Name              */
+    char *netwmname;    /* Client Name              */
+    char *wmname;       /* Client name backup       */
     char *icon;         /* Array of icon values     */
+    UT_hash_handle __hh; /* hash handle             */
 };
 
 struct Monitor
@@ -405,6 +408,7 @@ void focus(Client *c);
 /* UNUSED/TODO
  */
 int32_t getstate(XCBWindow win, XCBGetWindowAttributes *state);
+void getnamefromreply(XCBWindowProperty *namerep, char **str_return);
 /* Grabs a windows buttons. 
  * Basically this just allows us to receive button press/release events from windows.
  */
@@ -610,8 +614,12 @@ void unfocus(Client *c, uint8_t setfocus);
 void updatebarpos(Monitor *m);
 /* updates the bar geometry from the given monitor */
 void updatebargeom(Monitor *m);
-/* Updates _NET_WM_CLIENT_LIST */
-void updateclientlist(void);
+/* Updates 
+ * type:            0       Adds the client win .
+ *                  1       Removes the specified win.
+ *                  2       Reloads the entire list.
+ * _NET_WM_CLIENT_LIST */
+void updateclientlist(uint8_t type, XCBWindow win);
 /* Updates the XServer to the Current destop */
 void updatedesktop(void);
 /* Updates the desktop names if they have changed */
@@ -629,7 +637,7 @@ void updatesizehints(Client *c, XCBSizeHints *size);
 /* Updates Client tile if we find one;
  * if none found default to dwm.h BROKEN
  */
-void updatetitle(Client *c);
+void updatetitle(Client *c, char *netwmname, char *wmname);
 /* updates the viewport property to the XServer */
 void updateviewport(void);
 /* Updates Our own window protocol status (dont have to query every time) */
