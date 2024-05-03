@@ -1819,7 +1819,28 @@ XCBCreatePixmap(
         uint16_t width, 
         uint16_t height, 
         uint8_t depth);
-
+/*
+ */
+XCBCookie
+XCBCopyArea(
+    XCBDisplay *display, 
+    XCBDrawable source, 
+    XCBDrawable destination, 
+    XCBGC gc, 
+    int16_t SourceStartCopyX, 
+    int16_t SourceStartCopyY,
+    uint16_t CopyWidth,
+    uint16_t CopyHeight,
+    int16_t DestinationStartPasteX,
+    int16_t DestinationStartPasteY
+    );
+/*
+ */
+XCBCookie
+XCBFreePixmap(
+        XCBDisplay *display, 
+        XCBPixmap pixmap
+        );
 /*
  */
 XCBCursor 
@@ -2925,7 +2946,17 @@ XCBCreateGC(
         XCBDisplay *display, 
         XCBDrawable drawable, 
         uint32_t valuemask, 
-        const void *valuelist);
+        const void *valuelist
+        );
+
+/*
+ * Frees GC.
+ */
+XCBCookie
+XCBFreeGC(
+        XCBDisplay *display,
+        XCBGC gc
+        );
 /* 
  * linewidth: measured in pixels and can be greater than or equal to one, a wide line, or the special value zero, a thin line.
  * linestyle: XCB_LINE_STYLE_SOLID          The full path of the line is drawn.

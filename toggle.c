@@ -133,9 +133,7 @@ SetBorderWidth(const Arg *arg)
     Client *c;
 
     for(c = _wm.selmon->desksel->clients; c; c = nextclient(c))
-    {   
-        XCBSetWindowBorderWidth(_wm.dpy, c->win, newbw);
-        setborderwidth(c, newbw);
+    {   setborderwidth(c, newbw);
     }
     arrangedesktop(_wm.selmon->desksel);
     XCBFlush(_wm.dpy);
