@@ -217,6 +217,7 @@ struct Monitor
     uint16_t wh;                /* Monitor Height (Window Area)             */
 
     Desktop *desktops;          /* First Desktop in linked list             */
+    Desktop *desklast;          /* Last Desktop                             */
     Desktop *desksel;           /* Selected Desktop                         */
     Monitor *next;              /* Next Monitor                             */
 
@@ -485,11 +486,27 @@ Client *nextfocus(Client *c);
  * RETURN: NULL on Failure.
  */
 Client *nextvisible(Client *c);
-/* Returns the previous visible client avaible.
+Desktop *prevdesktop(Desktop *desk);
+/* Returns the prev client avaible.
  * RETURN: Client* on Success.
  * RETURN: NULL on Failure.
  */
-Client *lastvisible(Client *c);
+Client *prevclient(Client *c);
+/* Returns the prev focus client avaible.
+ * RETURN: Client* on Success.
+ * RETURN: NULL on Failure.
+ */
+Client *prevfocus(Client *c);
+/* Returns the prev stack client avaible.
+ * RETURN: Client* on Success.
+ * RETURN: NULL on Failure.
+ */
+Client *prevstack(Client *c);
+/* Returns the prev visible client avaible.
+ * RETURN: Client* on Success.
+ * RETURN: NULL on Failure.
+ */
+Client *prevvisible(Client *c);
 /* Sends a event to the main event loop to stop running.
  */
 void quit(void);
@@ -499,8 +516,6 @@ void restoresession(void);
 Client *restoreclientsession(Desktop *desk, char *buff, uint16_t len);
 /* Attempts to restore session from SESSION_FILE for a desktop */
 Desktop *restoredesktopsession(Monitor *m, char *buff, uint16_t len);
-void restoredesktopsessionstack(Desktop *desk, char *buff, uint16_t len);
-void restoredesktopsessionfocus(Desktop *desk, char *buff, uint16_t len);
 /* Attempts to restore session from SESSION_FILE for given monitor */
 Monitor *restoremonsession(char *buff, uint16_t len);
 /* Searches through every monitor for a possible big enough size to fit rectangle parametors specified */
@@ -524,7 +539,7 @@ void restart(void);
 void run(void);
 /* Attemps to save session in for every monitor */
 void savesession(void);
-void saveclientsession(FILE *fw, Client *c);
+void saveclientsession(FILE *fw, Client *c, unsigned int interation);
 void savedesktopsession(FILE *fw, Desktop *desktop);
 /* Attemps to save session from file for specified Monitor 
  */
@@ -619,7 +634,7 @@ void updatebargeom(Monitor *m);
  *                  1       Removes the specified win.
  *                  2       Reloads the entire list.
  * _NET_WM_CLIENT_LIST */
-void updateclientlist(uint8_t type, XCBWindow win);
+void updateclientlist(XCBWindow win, uint8_t type);
 /* Updates the XServer to the Current destop */
 void updatedesktop(void);
 /* Updates the desktop names if they have changed */

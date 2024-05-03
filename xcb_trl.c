@@ -1202,6 +1202,47 @@ XCBCreatePixmap(XCBDisplay *display, XCBWindow root, u16 width, u16 height, u8 d
     return id;
 }
 
+XCBCookie
+XCBCopyArea(
+    XCBDisplay *display, 
+    XCBDrawable source, 
+    XCBDrawable destination, 
+    XCBGC gc, 
+    int16_t SourceStartCopyX, 
+    int16_t SourceStartCopyY,
+    uint16_t CopyWidth,
+    uint16_t CopyHeight,
+    int16_t DestinationStartPasteX,
+    int16_t DestinationStartPasteY
+    )
+{
+    XCBCookie ret = xcb_copy_area(
+        display, 
+        source, 
+        destination, 
+        gc, 
+        SourceStartCopyX, 
+        SourceStartCopyY,
+        DestinationStartPasteX,
+        DestinationStartPasteY,
+        CopyWidth,
+        CopyHeight
+        );
+#ifdef DBG
+    _xcb_push_func(ret, _fn);
+#endif
+    return ret;
+}
+
+XCBCookie
+XCBFreePixmap(XCBDisplay *display, XCBPixmap pixmap)
+{
+    XCBCookie ret = xcb_free_pixmap(display, pixmap);
+#ifdef DBG
+    _xcb_push_func(ret, _fn);
+#endif
+    return ret;
+}
 /* Cursors */
 
 XCBCursor
@@ -2371,11 +2412,10 @@ XCBCreateWindow(
         const u32 *value_list)
 {
     const XCBWindow id = xcb_generate_id(display);
-    const void *used = NULL;
 
     /* not actually used but just for standards */
     XCBCookie ret = xcb_create_window(display, depth, id, parent, x, y, width, height, border_width, 
-    class, visual, valuemask, used);
+    class, visual, valuemask, value_list);
     
 #ifdef DBG
     _xcb_push_func(ret, _fn);
@@ -2431,6 +2471,19 @@ u32 valuemask, const void *valuelist)
     return id;
 }
 
+XCBCookie
+XCBFreeGC(
+        XCBDisplay *display,
+        XCBGC gc
+        )
+{
+    XCBCookie ret = xcb_free_gc(display, gc);
+
+#ifdef DBG
+    _xcb_push_func(ret, _fn);
+#endif
+    return ret;
+}
 int
 XCBSetLineAttributes(XCBDisplay *display, XCBGC gc, u32 linewidth, u32 linestyle, u32 capstyle, u32 joinstyle)
 {

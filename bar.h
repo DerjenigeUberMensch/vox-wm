@@ -25,6 +25,13 @@ struct Bar
     uint8_t pad[3];
 
     XCBWindow win;
+    XCBPixmap pix;
+    XCBGC gc;
+    XCBDisplay *dpy;
+    unsigned int screen;
+
+    size_t buffsize;
+    char *writebuff;
 };
 
 
