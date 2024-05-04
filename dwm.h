@@ -35,7 +35,7 @@
 #define SESSION_FILE            "/tmp/dwm-session"
 #define CONFIG_FILE             "/var/tmp/dwm-config"   /* todo make dir .config/dwm/config or someting like that */
 #define BORKED                  "NOT_SET"
-#define MANAGE_CLIENT_COOKIE_COUNT 13
+#define MANAGE_CLIENT_COOKIE_COUNT 16 + 1
 
 /* Client struct flags */
 
@@ -56,6 +56,13 @@
 #define _TYPE_NORMAL        ((1 << 13))
 /* not actual state but just lumped in cause assinging its own is stupid. */
 #define _TYPE_NEVERFOCUS    ((1 << 14))
+/* We only need a bit for ICONIC because a window can only have 3 states.
+ * Those 3 states are as follows:
+ * WithdrawnState,        (We dont handle WithdrawnState (unmapped) windows)
+ * So we only have 2.
+ * Iconic,
+ * Normal
+ */
 #define _TYPE_WINDOW_ICONIC ((1 << 15))
 
 /* EWMH Window states */
@@ -117,6 +124,10 @@ enum LayoutType
     Tiled, Floating, Monocle, Grid
 };
 
+enum ClientListModes
+{
+    ClientListAdd, ClientListRemove, ClientListReload,
+};
 
 typedef union  Arg Arg;
 typedef struct Key Key;
@@ -146,7 +157,7 @@ struct Key
     XCBKeysym keysym;           /* Key symbol           */
     void (*func)(const Arg *);  /* Function             */
     Arg arg;                    /* Argument             */
-    uint8_t pad0[8];
+    UT_hash_handle hh;          /* Hash                 */
 };
 
 struct Button
@@ -202,7 +213,7 @@ struct Client
     char *netwmname;    /* Client Name              */
     char *wmname;       /* Client name backup       */
     char *icon;         /* Array of icon values     */
-    UT_hash_handle __hh; /* hash handle             */
+    UT_hash_handle hh; /* hash handle             */
 };
 
 struct Monitor
@@ -252,6 +263,7 @@ struct Desktop
     Desktop *next;              /* Next Client in linked list   */
     Desktop *prev;              /* Previous Client in list      */
     UserSettings *settings;     /* User settings data           */
+    Client *__hash;             /* Hashed clients               */
 };
 
 struct WM
@@ -360,6 +372,12 @@ void cleanupmon(Monitor *m);
 /* frees all monitors and allocated Monitor properties.
 */
 void cleanupmons(void);
+void clientinitgeom(Client *c, XCBWindowGeometry *geometry);
+/* TODO rename this to prob something like set client wtype */
+void clientinitwtype(Client *c, XCBWindowProperty *windowtypereply);
+/* TODO rename this to prob something like set client wstate */
+void clientinitwstate(Client *c, XCBWindowProperty *windowstatereply);
+void clientinittrans(Client *c, XCBWindow trans);
 /* Updates the XServers knowledge of the clients coordinates.
  * NOTE: This is a sendevent to the c->win data type.
  * NOTE: XCBFlush(); must be called to push the XCB internal buffer to send this request.
@@ -395,7 +413,7 @@ uint8_t docked(Client *c);
 /* Jumps to the specified function handler for the provided event.
 */
 void eventhandler(XCBGenericEvent *ev);
-/* 
+/* handles atexit.
 */
 void exithandler(void);
 /* Sets the "floating" layout for the specified desktop.
@@ -410,6 +428,7 @@ void focus(Client *c);
  */
 int32_t getstate(XCBWindow win, XCBGetWindowAttributes *state);
 void getnamefromreply(XCBWindowProperty *namerep, char **str_return);
+char *geticonreply(XCBCookie cookie);
 /* Grabs a windows buttons. 
  * Basically this just allows us to receive button press/release events from windows.
  */
@@ -562,6 +581,7 @@ void setclientdesktop(Client *c, Desktop *desktop);
 void setclientstate(Client *c, uint8_t state);
 void setdesktopcount(Monitor *m, uint16_t desktops);
 void setdesktoplayout(Desktop *desk, uint8_t layout);
+void setclientpid(Client *c, pid_t pid);
 void setwtypedesktop(Client *c, uint8_t state);
 void setwtypedialog(Client *c, uint8_t state);
 void setwtypedock(Client *c, uint8_t state);
@@ -713,6 +733,9 @@ int ISFIXED(Client *c);
 int ISURGENT(Client *c);
 int NEVERFOCUS(Client *c);
 int ISVISIBLE(Client *c);
+/* checks if a client could be a bar */
+int COULDBEBAR(Client *c, uint8_t strut);
+
 /* EWMH Window types */
 int ISDESKTOP(Client *c);
 int ISDOCK(Client *c);

@@ -36,6 +36,7 @@
 
 extern void (*handler[]) (XCBGenericEvent *);
 
+
 WM _wm;
 UserSettings _cfg;
 
@@ -80,6 +81,19 @@ int NEVERFOCUS(Client *c)       { return c->wtypeflags & _TYPE_NEVERFOCUS; }
 int ISMAXHORZ(Client *c)        { return WIDTH(c) == c->desktop->mon->wh; }
 int ISMAXVERT(Client *c)        { return HEIGHT(c) == c->desktop->mon->wh; }
 int ISVISIBLE(Client *c)        { return (!!(c->desktop->mon->desksel == c->desktop) | (!!ISSTICKY(c))) & !ISHIDDEN(c); }
+int COULDBEBAR(Client *c, uint8_t strut) 
+                                {
+                                    const u8 sticky = !!ISSTICKY(c);
+                                    const u8 isdock = !!(ISDOCK(c) | ISTOOLBAR(c));
+                                    const u8 skippager = !!SKIPPAGER(c);
+                                    const u8 above = !!ISABOVE(c); 
+                                    return     (sticky & strut)
+                                            |  (strut & above)
+                                            |  (strut & isdock)
+                                            |  (isdock & above & sticky)
+                                            |  (above & isdock & skippager)
+                                            ;
+                                }
 /* EWMH Window types */
 int ISDESKTOP(Client *c)        { return c->wtypeflags & _TYPE_DESKTOP; }
 int ISDOCK(Client *c)           { return c->wtypeflags & _TYPE_DOCK; }
@@ -243,7 +257,6 @@ applysizechecks(Monitor *m, i32 *x, i32 *y, i32 *width, i32 *height, i32 *border
     /* if x more than max set to max */
     *x *= *x < (wx + ww);
     *x += !(*x) * (wx + ww);
-
 
     /* if y less than min set to min */
     *y *= *y > (wy - wh);
@@ -450,10 +463,8 @@ arrangemons(void)
 
 void
 arrangedesktop(Desktop *desk)
-{
-    if(layouts[desk->layout].arrange)
-    {   layouts[desk->layout].arrange(desk);
-    }
+{   
+    layouts[desk->layout].arrange(desk);
     /* update the bar or something */
 }
 
@@ -675,22 +686,6 @@ detachfocus(Client *c)
     c->fnext = NULL;
 }
 
-u8
-checknewbar(Client *c, const uint8_t strut)
-{
-    const u8 sticky = !!ISSTICKY(c);
-    const u8 isdock = !!(ISDOCK(c) | ISTOOLBAR(c));
-    const u8 skippager = !!SKIPPAGER(c);
-    const u8 above = !!ISABOVE(c);
-
-    return (sticky & strut)
-        |  (strut & above)
-        |  (strut & isdock)
-        |  (isdock & above & sticky)
-        |  (above & isdock & skippager)
-        ;
-}
-
 void
 checkotherwm(void)
 {
@@ -762,6 +757,7 @@ cleanupdesktop(Desktop *desk)
     Client *c = NULL;
     Client *next = NULL;
     c = desk->clients;
+    HASH_CLEAR(hh, desk->__hash);
     while(c)
     {   
         next = c->next;
@@ -814,6 +810,67 @@ cleanupmons(void)
     }
 }
 
+void 
+clientinitgeom(Client *c, XCBWindowGeometry *wg)
+{
+    /* Give initial values. */
+    c->x = c->oldx = 0;
+    c->y = c->oldy = 0;
+    c->w = c->oldw = _wm.selmon->ww;
+    c->h = c->oldh = _wm.selmon->wh;
+    c->bw = 0; /* TODO */
+
+    /* If we got attributes apply them. */
+    if(wg)
+    {   
+        /* init geometry */
+        c->x = c->oldx = wg->x;
+        c->y = c->oldy = wg->y;
+        c->w = c->oldw = wg->width;
+        c->h = c->oldh = wg->height;
+        c->oldbw = wg->border_width;
+        /* if no specified border width default to our own. */
+        if(wg->border_width)
+        {   c->bw = wg->border_width;
+        }
+    }
+}
+void 
+clientinitwtype(Client *c, XCBWindowProperty *windowtypereply)
+{
+    if(windowtypereply)
+    {
+        XCBAtom *data = XCBGetPropertyValue(windowtypereply);
+        const uint32_t ATOM_LENGTH = XCBGetPropertyValueLength(windowtypereply, sizeof(XCBAtom));
+        updatewindowtypes(c, data, ATOM_LENGTH);
+    }
+}
+
+void 
+clientinitwstate(Client *c, XCBWindowProperty *windowstatereply)
+{
+    if(windowstatereply)
+    {
+        const uint32_t ATOM_LENGTH = XCBGetPropertyValueLength(windowstatereply, sizeof(XCBAtom));
+        XCBAtom *data = XCBGetPropertyValue(windowstatereply);
+        updatewindowstates(c, data, ATOM_LENGTH);
+    }
+}
+
+void 
+clientinittrans(Client *c, XCBWindow trans)
+{
+    Client *t;
+    if(trans && (t = wintoclient(trans)))
+    {   c->desktop = t->desktop;
+    }
+    else
+    {   c->desktop = _wm.selmon->desksel;
+        /* applyrules() */
+    }
+}
+
+
 void
 configure(Client *c)
 {
@@ -837,6 +894,7 @@ configure(Client *c)
 Client *
 createclient(void)
 {
+    /* This uses calloc as we are currently testing stuff, but we will juse malloc and zero it out later in production*/
     Client *c = calloc(1, sizeof(Client ));
     if(!c)
     {   DEBUG0("Could not allocate memory for client (OutOfMemory).");
@@ -897,6 +955,7 @@ createdesktop(void)
     desk->stack = NULL;
     desk->mon = NULL;
     desk->settings = calloc(1, sizeof(UserSettings));
+    desk->__hash = NULL;
     if(!desk->settings)
     {   
         DEBUG("%s", "WARN: FAILED TO CREATE SETTINGS.");
@@ -1195,14 +1254,15 @@ killclient(Client *c, enum KillType type)
     if(!c)
     {   return;
     }
+    if(HASWMSAVEYOURSELF(c))
+    {   sendprotocolevent(c, wmatom[WMSaveYourself]);
+    }
     if(HASWMDELETEWINDOW(c))
     {   sendprotocolevent(c, wmatom[WMDeleteWindow]);
-        unmanage(c, 0);
     }
     else
     {
         XCBWindow win = c->win;
-        unmanage(c, 0);
         switch(type)
         {
             case Graceful:
@@ -1220,38 +1280,48 @@ killclient(Client *c, enum KillType type)
                 break;
         }
     }
+    unmanage(c, 0);
 }
 
 void
 managerequest(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
 {
+    const uint32_t REQUEST_MAX_NEEDED_ITEMS = UINT32_MAX;
+    const uint8_t STRUT_P_LENGTH = 12;
+    const uint8_t STRUT_LENGTH = 4;
+    const uint8_t NO_BYTE_OFFSET = 0;
     XCBCookie wacookie = XCBGetWindowAttributesCookie(_wm.dpy, win);
     XCBCookie wgcookie = XCBGetWindowGeometryCookie(_wm.dpy, win);
     XCBCookie transcookie = XCBGetTransientForHintCookie(_wm.dpy, win);                        
-    XCBCookie wtypecookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMWindowType], 0L, UINT32_MAX, False, XCB_ATOM_ATOM);
-    XCBCookie statecookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMState], 0L, UINT32_MAX, False, XCB_ATOM_ATOM);
+    XCBCookie wtypecookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMWindowType], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_ATOM);
+    XCBCookie statecookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMState], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_ATOM);
     XCBCookie sizehcookie = XCBGetWMNormalHintsCookie(_wm.dpy, win);
     XCBCookie wmhcookie = XCBGetWMHintsCookie(_wm.dpy, win);
     XCBCookie classcookie = XCBGetWMClassCookie(_wm.dpy, win);
     XCBCookie wmprotocookie = XCBGetWMProtocolsCookie(_wm.dpy, win, wmatom[WMProtocols]);
-    XCBCookie strutpcookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMStrutPartial], 0L, 12, False, XCB_ATOM_CARDINAL);
-    XCBCookie strutcookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMStrut], 0L, 4, False, XCB_ATOM_CARDINAL);
-    XCBCookie netwmnamecookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMName], 0L, UINT32_MAX, False, netatom[NetUtf8String]);
-    XCBCookie wmnamecookie = XCBGetWindowPropertyCookie(_wm.dpy, win, XCB_ATOM_WM_NAME, 0L, UINT32_MAX, False, XCB_ATOM_STRING);
+    XCBCookie strutpcookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMStrutPartial], NO_BYTE_OFFSET, STRUT_P_LENGTH, False, XCB_ATOM_CARDINAL);
+    XCBCookie strutcookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMStrut], NO_BYTE_OFFSET, STRUT_LENGTH, False, XCB_ATOM_CARDINAL);
+    XCBCookie netwmnamecookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMName], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, netatom[NetUtf8String]);
+    XCBCookie wmnamecookie = XCBGetWindowPropertyCookie(_wm.dpy, win, XCB_ATOM_WM_NAME, NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_STRING);
+    XCBCookie pidcookie = XCBGetPidCookie(_wm.dpy, win, netatom[NetWMPid]);
 
-    requests[0] = wacookie;
-    requests[1] = wgcookie;
-    requests[2] = transcookie;
-    requests[3] = wtypecookie;
-    requests[4] = statecookie;
-    requests[5] = sizehcookie;
-    requests[6] = wmhcookie;
-    requests[7] = classcookie;
-    requests[8] = wmprotocookie;
-    requests[9] = strutpcookie;
-    requests[10] = strutcookie;
-    requests[11] = netwmnamecookie;
-    requests[12] = wmnamecookie;
+    /* Mostly to prevent needing to rewrite the numbers over and over again if we mess up */
+    int i = 0;
+    requests[i++] = wacookie;
+    requests[i++] = wgcookie;
+    requests[i++] = transcookie;
+    requests[i++] = wtypecookie;
+    requests[i++] = statecookie;
+    requests[i++] = sizehcookie;
+    requests[i++] = wmhcookie;
+    requests[i++] = classcookie;
+    requests[i++] = wmprotocookie;
+    requests[i++] = strutpcookie;
+    requests[i++] = strutcookie;
+    requests[i++] = netwmnamecookie;
+    requests[i++] = wmnamecookie;
+    requests[i++] = pidcookie;
+    /* 16 elements in thing */
 }
 
 Client *
@@ -1262,14 +1332,17 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     {   DEBUG("%s", "Cannot manage() root window.");
         return NULL;
     }
+    else if(wintoclient(win))
+    {   DEBUG("Window already managed????: [%u]", win);
+        return NULL;
+    } 
     /* barwin checks */
     u8 checkbar = !_wm.selmon->bar->win;
     
     const u16 bw = 0;
     const u32 bcol = 0;
 
-
-    Client *c = NULL, *t = NULL;
+    Client *c = NULL;
     XCBWindow trans = 0;
     u8 transstatus = 0;
     const u32 inputmask = XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_FOCUS_CHANGE|XCB_EVENT_MASK_PROPERTY_CHANGE|XCB_EVENT_MASK_STRUCTURE_NOTIFY;
@@ -1277,14 +1350,12 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
 
     XCBGetWindowAttributes *waattributes = NULL;
     XCBWindowProperty *wtypeunused = NULL;
-    u32 wtypelen = 0;
     XCBWindowProperty *stateunused = NULL;
-    u32 statelen = 0;
     XCBSizeHints hints;
     u8 hintstatus = 0;
     XCBWMHints *wmh = NULL;
     XCBWMClass cls = { ._reply = NULL };    /* no safeguards for failure */
-    XCBWMProtocols wmprotocols = { ._reply = NULL };
+    XCBWMProtocols wmprotocols = { ._reply = NULL, .atoms_len = 0 };
     u8 wmprotocolsstatus = 0;
     XCBWindowProperty *strutpreply = NULL;
     XCBWindowProperty *strutreply = NULL;
@@ -1294,6 +1365,9 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     XCBWindowProperty *wmnamereply = NULL;
     char *netwmname = NULL;
     char *wmname = NULL;
+    XCBWindowProperty *iconreply = NULL;
+    char *icon = NULL;
+    pid_t pid = 0;
 
     /* we do it here before, because we are waiting for replies and for more memory. */
     c = createclient();
@@ -1301,7 +1375,7 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     /* wait for replies */
     waattributes = XCBGetWindowAttributesReply(_wm.dpy, requests[0]);
     wg = XCBGetWindowGeometryReply(_wm.dpy, requests[1]);
-    transstatus = XCBGetTransientForHintReply(_wm.dpy, requests[2], &trans);
+    transstatus = XCBGetTransientForHintReply(_wm.dpy, requests[2], &trans); trans *= !!transstatus;
     wtypeunused = XCBGetWindowPropertyReply(_wm.dpy, requests[3]);
     stateunused = XCBGetWindowPropertyReply(_wm.dpy, requests[4]);
     hintstatus = XCBGetWMNormalHintsReply(_wm.dpy, requests[5], &hints);
@@ -1312,8 +1386,8 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     strutreply = XCBGetWindowPropertyReply(_wm.dpy, requests[10]);
     netwmnamereply = XCBGetWindowPropertyReply(_wm.dpy, requests[11]);
     wmnamereply = XCBGetWindowPropertyReply(_wm.dpy, requests[12]);
-    wtypelen = wtypeunused ? XCBGetPropertyValueLength(wtypeunused, sizeof(XCBAtom)) : 0;
-    statelen = stateunused ? XCBGetPropertyValueLength(stateunused, sizeof(XCBAtom)) : 0;
+    iconreply = XCBGetWindowPropertyReply(_wm.dpy, requests[12]);
+    pid = XCBGetPidReply(_wm.dpy, requests[14]);
     strutp = strutpreply ? XCBGetWindowPropertyValue(strutpreply) : NULL;
     strut = strutreply ? XCBGetWindowPropertyValue(strutpreply) : NULL;
 
@@ -1325,77 +1399,34 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     /* On Failure clear flag and ignore hints */
     hints.flags *= !!hintstatus;    
 
-    if(waattributes)
-    {   
-        if(waattributes->override_redirect)
-        {   
-            free(c);
-            c = NULL;
-            goto FAILURE;
-        }
-    }
-
-    if(wintoclient(c->win))
-    {   DEBUG("Window already managed????: [%u]", c->win);
+    if(waattributes && waattributes->override_redirect)
+    {   DEBUG("Override Redirect: [%d]", win);
         goto FAILURE;
     }
 
-    if(wtypeunused)
-    {   
-        XCBAtom *data = XCBGetPropertyValue(wtypeunused);
-        updatewindowtypes(c, data, wtypelen);
-    }
-    if(stateunused)
-    {
-        XCBAtom *data = XCBGetPropertyValue(stateunused);
-        updatewindowstates(c, data, statelen);
-    }
-
-    if(wg)
-    {   
-        /* init geometry */
-        c->x = c->oldx = wg->x;
-        c->y = c->oldy = wg->y;
-        c->w = c->oldw = wg->width;
-        c->h = c->oldh = wg->height;
-        c->oldbw = wg->border_width;
-        c->bw = wg->border_width;
-    }
-
-    if(transstatus && trans && (t = wintoclient(trans)))
-    {   c->desktop = t->desktop;
-    }
-    else
-    {   c->desktop = _wm.selmon->desksel;
-        /* applyrules() */
-    }
-
-    if(wmprotocolsstatus)
-    {   updatewindowprotocol(c, &wmprotocols);
-    }
-
+    clientinitgeom(c, wg);
+    clientinitwtype(c, wtypeunused);
+    clientinitwstate(c, stateunused);
+    clientinittrans(c, trans);
+    updatewindowprotocol(c, wmprotocolsstatus ? &wmprotocols : NULL);
     getnamefromreply(netwmnamereply, &netwmname);
     getnamefromreply(wmnamereply, &wmname);
 
     /* constrain window to monitor window area */
     applysizechecks(_wm.selmon, (int32_t *)&c->x, (int32_t *)&c->y, (int32_t *)&c->w, (int32_t *)&c->h, (int32_t *)&c->bw);
 
-    if(checkbar)
+    if(checkbar && COULDBEBAR(c, strutp || strut))
     {
-        if(checkbar && checknewbar(c, strutp || strut))
-        {
-            Bar *bar = managebar(_wm.selmon, win);
-            if(bar)
-            {   resizebar(bar, c->x, c->y, c->w, c->h);
-            }
-            free(c);
-            c = NULL;
-            DEBUG("Found a bar: [%d]", win);
-            goto CLEANUP;
-        }
+        Bar *bar = managebar(_wm.selmon, win);
+        resizebar(bar, c->x, c->y, c->w, c->h);
+        free(c);
+        c = NULL;
+        DEBUG("Found a bar: [%d]", win);
+        goto CLEANUP;
     }
 
     /* Custom stuff */
+    setclientpid(c, pid);
     setborderwidth(c, bw);
     setbordercolor32(c, bcol);
     configure(c);   /* propagates border_width, if size doesn't change */
@@ -1409,7 +1440,7 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     attachstack(c);
     attachfocus(c);
 
-    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientList], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&win, 1);
+    updateclientlist(win, ClientListAdd);
     setclientstate(c, XCB_WINDOW_NORMAL_STATE);
 
     if(c->desktop == _wm.selmon->desksel)
@@ -1421,6 +1452,10 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     {   setfullscreen(c, ISFULLSCREEN(c->desktop->sel) || ISFULLSCREEN(c));
     }
     XCBMapWindow(_wm.dpy, win);
+
+    if(c->desktop)
+    {   HASH_ADD_INT(c->desktop->__hash, win, c);
+    }
     goto CLEANUP;
 FAILURE:
     free(c);
@@ -1439,7 +1474,8 @@ CLEANUP:
     free(strutreply);
     free(netwmnamereply);
     free(wmnamereply);
-
+    /* maybe no or just memcpy the first icon into a buffer and keep the thing just there. */
+    free(iconreply);
     return c;
 }
 
@@ -1739,7 +1775,7 @@ restoreclientsession(Desktop *desk, char *buff, u16 len)
     u32 BorderWidth;
     u32 BorderColor;
 
-    x = y = ox = oy = w = h= ow = oh = WindowId = WindowIdFocus = WindowIdStack = BorderWidth = BorderColor = 0;
+    x = y = ox = oy = w = h = ow = oh = WindowId = WindowIdFocus = WindowIdStack = BorderWidth = BorderColor = 0;
 
     check = sscanf(buff, 
                     "(x: %d, y: %d) (w: %u h: %u)" " "
@@ -2459,6 +2495,12 @@ setdesktoplayout(Desktop *desk, uint8_t layout)
 }
 
 void
+setclientpid(Client *c, pid_t pid)
+{
+    c->pid = pid;
+}
+
+void
 setwtypedesktop(Client *c, uint8_t state)
 {
     SETFLAG(c->wtypeflags, _TYPE_DESKTOP, !!state);
@@ -3031,7 +3073,7 @@ startup(void)
     if(display)
     {   setenv("DISPLAY", display, 1);
     }
-
+    /* keybinds hash */
     atexit(exithandler);
 #ifndef DEBUG
     XCBSetErrorHandler(xerror);
@@ -3194,7 +3236,10 @@ updategeom(void)
 
         for(n = 0, m = _wm.mons; m; m = m->next, ++n);
 		/* only consider unique geometries as separate screens */
-        unique = ecalloc(nn, sizeof(xcb_xinerama_query_screens_reply_t));
+        unique = calloc(nn, sizeof(xcb_xinerama_query_screens_reply_t));
+        if(!unique)
+        {   return dirty;
+        }
         for(i = 0, j = 0; i < nn; ++i)
         {   if(isuniquegeom(unique, j, &info[i]))
             {   memcpy(&unique[j++], &info[i], sizeof(xcb_xinerama_screen_info_t));
@@ -3287,9 +3332,10 @@ unmanage(Client *c, uint8_t destroyed)
      * Memory leak if a client is unmaped and maped again
      * (cause we would get the same input focus twice)
      */
+    HASH_DEL(desk->__hash, c);
     detachcompletely(c);
     focus(NULL);
-    updateclientlist(c->win, 1);
+    updateclientlist(c->win, ClientListRemove);
     arrange(desk);
     cleanupclient(c);
 }
@@ -3390,9 +3436,9 @@ updateclientlist(XCBWindow win, uint8_t type)
     Client *c;
     switch(type)
     {
-        case 0:
+        case ClientListAdd:
             XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientList], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&(win), 1);
-        case 1: case 2:
+        case ClientListRemove: case ClientListReload:
             XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetClientList]);
             for(m = _wm.mons; m; m = nextmonitor(m))
             {
@@ -3499,8 +3545,12 @@ updatesizehints(Client *c, XCBSizeHints *size)
 void
 updatetitle(Client *c, char *netwmname, char *wmname)
 {
-    free(c->wmname);
-    free(c->netwmname);
+    if(c->wmname != wmname)
+    {   free(c->wmname);
+    }
+    if(c->netwmname != netwmname)
+    {   free(c->netwmname);
+    }
     c->wmname = wmname;
     c->netwmname = netwmname;
 }
@@ -3508,7 +3558,7 @@ updatetitle(Client *c, char *netwmname, char *wmname)
 void
 updatewindowprotocol(Client *c, XCBWMProtocols *protocols)
 {
-    if(protocols)
+    if(protocols && protocols->atoms_len)
     {
         uint32_t i;
         XCBAtom atom;
@@ -3516,16 +3566,13 @@ updatewindowprotocol(Client *c, XCBWMProtocols *protocols)
         {
             atom = protocols->atoms[i];
             if(atom == wmatom[WMTakeFocus])
-            {
-                setwmtakefocus(c, 1);
+            {   setwmtakefocus(c, 1);
             }
             else if(atom == wmatom[WMDeleteWindow])
-            {
-                setwmdeletewindow(c, 1);
+            {   setwmdeletewindow(c, 1);
             }
             else if(atom == wmatom[WMSaveYourself])
-            {
-                setwmsaveyourself(c, 1);
+            {   setwmsaveyourself(c, 1);
             }
         }
     }
@@ -3913,6 +3960,24 @@ updatewmhints(Client *c, XCBWMHints *wmh)
         else
         {   setwtypeneverfocus(c, 0);
         }
+        if(wmh->flags & XCB_WM_HINT_STATE)
+        {
+            switch(wmh->initial_state)
+            {   
+                case XCB_WINDOW_ICONIC_STATE:
+                    sethidden(c, 1);
+                    break;
+                case XCB_WINDOW_WITHDRAWN_STATE: case XCB_WINDOW_NORMAL_STATE:
+                default:
+                    break;
+            }
+        }
+        if(wmh->flags & XCB_WM_HINT_ICON_PIXMAP)
+        {   /* update icon or something */
+        }
+        if(wmh->flags & XCB_WM_HINT_ICON_MASK)
+        {   /* use flagged bits to asign icon shape */
+        }
     }
 }
 
@@ -3971,17 +4036,25 @@ wintoclient(XCBWindow win)
     Desktop *desk = NULL;
     Monitor *m = NULL;
 
-    /* TODO: Hashmap or something */
-
+    /* check sel first */
+    for(desk = _wm.selmon->desktops; desk; desk = nextdesktop(desk))
+    {
+        HASH_FIND_INT(desk->__hash, &win, c);
+        if(c)
+        {   return c;
+        }
+    }
+    
     for(m = _wm.mons; m; m = nextmonitor(m))
     {
+        if(m == _wm.selmon)
+        {   continue;
+        }
         for(desk = m->desktops; desk; desk = nextdesktop(desk))
-        {
-            for(c = desk->clients; c; c = nextclient(c))
-            {
-                if(c->win == win)
-                {   return c;
-                }
+        {   
+            HASH_FIND_INT(desk->__hash, &win, c);
+            if(c)
+            {   return c;
             }
         }
     }
