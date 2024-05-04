@@ -708,8 +708,7 @@ maprequest(XCBGenericEvent *event)
 
     if(sync)
     {   
-        /* we dont flush because we want info about the window after if it responds (AKA we are making the events not reacting to them) */
-        XCBSync(_wm.dpy);
+        XCBFlush(_wm.dpy);
     }
 }
 /* popup windows sometimes need this */
