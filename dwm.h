@@ -213,7 +213,7 @@ struct Client
     char *netwmname;    /* Client Name              */
     char *wmname;       /* Client name backup       */
     char *icon;         /* Array of icon values     */
-    UT_hash_handle hh; /* hash handle             */
+    UT_hash_handle hh;  /* hash handle             */
 };
 
 struct Monitor
@@ -302,6 +302,8 @@ void applygravity(uint32_t gravity, int16_t *x, int16_t *y, const uint16_t width
 * RETURN: 0 if the specified x/y/w/h does match after the sizehints applied. (No need to resize.)
 */
 uint8_t applysizehints(Client *c, int32_t *x, int32_t *y, int32_t *width, int32_t *height, uint8_t interact);
+/* quickly calculate arrange stuff */
+void arrangeq(Desktop *desk);
 /* Arranges and restacks the windows in the specified desktop.
 */
 void arrange(Desktop *desk);
@@ -328,8 +330,8 @@ void attach(Client *c);
 /* Adds Client to rendering stack order in desktop linked list.
 */
 void attachstack(Client *c);
-/* Adds Client to focus stack order in desktop linked list.
-*/
+/* Adds Client to rendering stack order previous 
+ */
 void attachfocus(Client *c);
 /* Removes Client from clients desktop linked list.
 */

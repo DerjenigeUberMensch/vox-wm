@@ -2119,6 +2119,15 @@ XCBGrabPointerReply(
 
 }
 
+XCBCookie
+XCBUngrabPointer(XCBDisplay *display, XCBTimestamp tim)
+{
+    const XCBCookie ret = xcb_ungrab_pointer(display, tim);
+#ifdef DBG
+    _xcb_push_func(ret, _fn);
+#endif
+    return ret;
+}
 
 int
 XCBDisplayKeyCodes(XCBDisplay *display, int *min_keycode_return, int *max_keycode_return)
