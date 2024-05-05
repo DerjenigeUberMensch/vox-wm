@@ -2664,6 +2664,15 @@ XCBGrabPointerReply(
         XCBCookie cookie
         );
 
+/* Ungrabs the pointer from the specfied display
+ *
+ * RETURN: Cookie to request.
+ */
+XCBCookie
+XCBUngrabPointer(
+        XCBDisplay *display,
+        XCBTimestamp tim
+        );
 
 /* Returns min-keycodes and max-keycodes supported by the specified display.
  * The minimum number of KeyCodes returned is never less than 8, and the maximum number of KeyCodes returned is never greater than 255. 

@@ -240,6 +240,7 @@ ThreadExit(Thread *thread)
     {
         pthread_exit(NULL);
     }
+    DEBUG0("Exited Thread.");
 }
 
 void

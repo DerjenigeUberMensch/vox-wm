@@ -623,24 +623,53 @@ configurerequest(XCBGenericEvent *event)
             c->oldh = c->h;
             c->h = h;
         }
-        if(mask & XCB_CONFIG_WINDOW_SIBLING)
-        {
-            ASSUME(0);
-            if(sibling != XCBNone)
-            {   /* Ignore these requests we handle stack order */
-            }
-        }
         if(mask & XCB_CONFIG_WINDOW_STACK_MODE)
         {
-            /* Ignore these requests we handle stack order */
-            ASSUME(0);
-            switch(stack)
+            XCBWindowChanges wc;
+            const uint32_t modemask = XCB_CONFIG_WINDOW_STACK_MODE | (mask & XCB_CONFIG_WINDOW_SIBLING);
+            wc.stack_mode = ev->stack_mode;
+            XCBConfigureWindow(_wm.dpy, c->win, modemask, &wc);
+            if(mask & XCB_CONFIG_WINDOW_SIBLING)
             {
-                case XCB_STACK_MODE_ABOVE: /* XRaiseAboveSibling(ev->above) */ break;
-                case XCB_STACK_MODE_BELOW: /* XLowerBelowSibling(ev->above) */ break;
-                case XCB_STACK_MODE_TOP_IF: /* XRaiseWindow(dpy, ev->window) */ break;
-                case XCB_STACK_MODE_BOTTOM_IF:/* XLowerToBottomWindow(dpy, e->window)*/ break;
-                case XCB_STACK_MODE_OPPOSITE: /* XFlipStackOrder(ev->above, ev->window)*/ break;
+                switch(stack)
+                {
+                    case XCB_STACK_MODE_ABOVE:
+                        DEBUG("Raised Client: [%u] above [%u]", c->win, ev->sibling);
+                        break;
+                    case XCB_STACK_MODE_BELOW:
+                        DEBUG("Lowered Client: [%u] below [%u]", c->win, ev->sibling);
+                        break;
+                    case XCB_STACK_MODE_TOP_IF:     
+                        DEBUG("Raised Client: [%u] above stack from [%u]", c->win, ev->sibling);
+                        break;
+                    case XCB_STACK_MODE_BOTTOM_IF:  
+                        DEBUG("Lowerd Client: [%u] below stack from [%u]", c->win, ev->sibling);
+                        break;
+                    case XCB_STACK_MODE_OPPOSITE:   
+                        DEBUG("Flipped Client: [%u] flipped one to bottom [%u]", c->win, ev->sibling);
+                        break;
+                }
+            }
+            else
+            {
+                switch(stack)
+                {
+                    case XCB_STACK_MODE_ABOVE:      
+                        DEBUG("Raised Client: [%u] above stack", c->win); 
+                        break;
+                    case XCB_STACK_MODE_BELOW:      
+                        DEBUG("Lowered Client: [%u] below stack", c->win); 
+                        break;
+                    case XCB_STACK_MODE_TOP_IF:     
+                        DEBUG("Raised Client: [%u] above stack if occluded", c->win);
+                        break;
+                    case XCB_STACK_MODE_BOTTOM_IF:  
+                        DEBUG("Lowerd Client: [%u] below stack if occluded", c->win);
+                        break;
+                    case XCB_STACK_MODE_OPPOSITE:   
+                        DEBUG("Flipped Client: [%u] XORed stack if occluded (Above if so, Below if not)", c->win);
+                        break;
+                }
             }
         }
         if((c->x + c->w) > m->mx + m->mw && ISFLOATING(c))
@@ -671,7 +700,6 @@ configurerequest(XCBGenericEvent *event)
         wc.border_width = bw;
         wc.sibling = sibling;
         wc.stack_mode = stack;
-        /* some windows need to be mapped before configuring */
         XCBConfigureWindow(_wm.dpy, win, mask, &wc);
         sync = 1;
     }

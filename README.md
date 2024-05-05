@@ -4,6 +4,7 @@
 Initially I decided to delve into window managers and built upon a questionable window manager using Xlib, however the main point was for me to learn C and well I somewhat did.
 After that however I decided to start a relative port of my window manager (based on dwm) and tried some different design choices instead.
 Ultimately I choose this route as although dwm is "suckless" the software it uses, Xlib kinda isnt which sort of defeats the purpose.
+I would like to rephrase that, dwm is suckless in its software (which is why it exists and is good) but suckless doesnt mean fast/efficient.
 So thats why I decided to just port my version to xcb, the only thing that will be unlikely to be ported, atleast soon, is the text feature.
 Xcb has proven to be quite the hastle with text, actually displaying text in general is quite the hastle so I decided not to continue that.
 
@@ -13,7 +14,19 @@ This build of xcb-wswm is ***not*** fully feature ready.
 
 Currently no window movement is supported (TODO)
 
-config.h is not Currently Supported.
+## Why Use this.
+- **Low Memory Usage (~4-7 MiB)**
+- **Low CPU usage (~.1-2%) idle**
+- **Low CPU usage when doing expensive stuff (mapping windows) (~4-10%)**
+
+## Why Not Use this.
+- **Cant move Windows like WSWM**
+- **Currently in Beta till I figure out threading**
+- **Code base is, ok**
+- **Few Features**
+- **Bugs**
+- **Doesnt use C++**
+- **XCB**
 
 ## Requirements
 - **dmenu**

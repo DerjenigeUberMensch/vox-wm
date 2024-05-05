@@ -424,11 +424,12 @@ applysizehints(Client *c, i32 *x, i32 *y, i32 *width, i32 *height, uint8_t inter
 }
 
 void
-arrange(Desktop *desk)
+arrangeq(Desktop *desk)
 {
     Client *c;
     static Desktop *workingdesk = NULL;
 
+    /* skip sending configure request if we are in the same desktop */
     if(workingdesk != desk)
     {
         for(c = desk->stack; c; c = nextstack(c))
@@ -437,8 +438,13 @@ arrange(Desktop *desk)
         }
         workingdesk = desk;
     }
-
     arrangedesktop(desk);
+}
+
+void
+arrange(Desktop *desk)
+{
+    arrangeq(desk);
     restack(desk);
 }
 
@@ -866,7 +872,6 @@ clientinittrans(Client *c, XCBWindow trans)
     }
     else
     {   c->desktop = _wm.selmon->desksel;
-        /* applyrules() */
     }
 }
 
@@ -952,7 +957,9 @@ createdesktop(void)
     desk->layout = 0;
     desk->olayout= 0;
     desk->clients= NULL;
+    desk->clast = NULL;
     desk->stack = NULL;
+    desk->slast = NULL;
     desk->mon = NULL;
     desk->settings = calloc(1, sizeof(UserSettings));
     desk->__hash = NULL;
@@ -1054,8 +1061,7 @@ focus(Client *c)
     Monitor *selmon = _wm.selmon;
     Desktop *desk  = selmon->desksel;
     if(!c || !ISVISIBLE(c))
-    {   
-        for(c = desk->focus; c && !ISVISIBLE(c); c = nextfocus(c));
+    {   for(c = desk->focus; c && !ISVISIBLE(c); c = nextfocus(c));
     }
     if(desk->sel && desk->sel != c)
     {   unfocus(desk->sel, 0);
@@ -1070,10 +1076,6 @@ focus(Client *c)
         {   seturgent(c, 0);
         }
 
-
-        /* TODO remove and just use restack algorithm */
-        detachstack(c);
-        attachstack(c);
         detachfocus(c);
         attachfocus(c);
 
@@ -1241,6 +1243,7 @@ grid(Desktop *desk)
 
         /* sanatize data */
         applysizechecks(m, &nx, &ny, &nw, &nh, &unused);
+        /* Skip resize calls (they are expensive) */
         if(c->x != nx || c->y != ny || c->w != nw || c->h != nh)
         {   resize(c, nx, ny, nw, nh, 0);
         }
@@ -1452,7 +1455,6 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     {   setfullscreen(c, ISFULLSCREEN(c->desktop->sel) || ISFULLSCREEN(c));
     }
     XCBMapWindow(_wm.dpy, win);
-
     if(c->desktop)
     {   HASH_ADD_INT(c->desktop->__hash, win, c);
     }
@@ -1494,7 +1496,7 @@ managebar(Monitor *m, XCBWindow win)
     updatebargeom(_wm.selmon);
     updatebarpos(_wm.selmon);
     XCBSelectInput(_wm.dpy, win, inputmask);
-    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientList], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&win, 1);
+    updateclientlist(win, ClientListAdd);
     XCBMapWindow(_wm.dpy, win);
     return m->bar;
 }
@@ -1541,7 +1543,10 @@ monocle(Desktop *desk)
         nw = m->ww - (c->bw * 2);
         nh = m->wh - (c->bw * 2);
         applysizechecks(m, &nx, &ny, &nw, &nh, &unused);
-        resize(c, nx, ny, nw, nh, 0); 
+        /* Skip resize calls (they are expensive) */
+        if(c->x != nx || c->y != ny || c->w != nw || c->h != nh)
+        {   resize(c, nx, ny, nw, nh, 0); 
+        }
     }
 }
 
@@ -2032,7 +2037,7 @@ restack(Desktop *desk)
 
     wc.stack_mode = XCB_STACK_MODE_BELOW;
     if(desk->mon->bar->win && SHOWBAR(desk->mon->bar))
-    {   wc.sibling = desk->stack->desktop->mon->bar->win;
+    {   wc.sibling = desk->mon->bar->win;
     }
     else
     {
@@ -2041,7 +2046,7 @@ restack(Desktop *desk)
          * wc.sibling = _wm.root;
          */
     }
-    
+
     /* configure windows */
     for(c = desk->stack; c; c = nextstack(c))
     {
@@ -3061,12 +3066,12 @@ startup(void)
     if(!setlocale(LC_CTYPE, ""))
     {   fputs("WARN: NO_LOCALE_SUPPORT\n", stderr);
     }
-    const char *display = NULL;
+    char *display = NULL;
     _wm.dpy = XCBOpenDisplay(display, &_wm.screen);
-    DEBUG("DISPLAY -> %s", display ? display : getenv("DISPLAY"));
-
+    display = display ? display : getenv("DISPLAY");
+    DEBUG("DISPLAY -> %s", display);
     if(!_wm.dpy)
-    {   DIECAT("%s", "FATAL: Cannot Connect to X Server.");
+    {   DIECAT("FATAL: Cannot Connect to X Server. [%s]", display);
     }
     checkotherwm();
     /* This allows for execvp and exec to only spawn process on the specified display rather than the default varaibles */
@@ -3134,6 +3139,7 @@ tile(Desktop *desk)
             nw -= bgw * 2;
             nh -= bgw * 2;
             applysizechecks(m, &nx, &ny, &nw, &nh, &unused);
+            /* Skip resize calls (they are expensive) */
             if(c->x != nx || c->y != ny || c->w != nw || c->h != nh)
             {   resize(c, nx, ny, nw, nh, 0);
             }
@@ -3154,6 +3160,7 @@ tile(Desktop *desk)
             nw -= bgw * 2;
             nh -= bgw * 2;
             applysizechecks(m, &nx, &ny, &nw, &nh, &unused);
+            /* Skip resize calls (they are expensive) */
             if(c->x != nx || c->y != ny || c->w != nw || c->h != nh)
             {   resize(c, nx, ny, nw, nh, 0);
             }
@@ -3336,7 +3343,8 @@ unmanage(Client *c, uint8_t destroyed)
     detachcompletely(c);
     focus(NULL);
     updateclientlist(c->win, ClientListRemove);
-    arrange(desk);
+    /* no need to arrange fully cause client is not mapped anymore */
+    arrangeq(desk);
     cleanupclient(c);
 }
 
@@ -3423,14 +3431,6 @@ updatebargeom(Monitor *m)
 void
 updateclientlist(XCBWindow win, uint8_t type)
 {
-    const u8 Add = 0;
-    const u8 Remove = 1;
-    const u8 Reload = 2;
-
-    (void)Add;
-    (void)Remove;
-    (void)Reload;
-
     Monitor *m;
     Desktop *desk;
     Client *c;
@@ -3438,6 +3438,7 @@ updateclientlist(XCBWindow win, uint8_t type)
     {
         case ClientListAdd:
             XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientList], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&(win), 1);
+            break;
         case ClientListRemove: case ClientListReload:
             XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetClientList]);
             for(m = _wm.mons; m; m = nextmonitor(m))
@@ -3449,8 +3450,10 @@ updateclientlist(XCBWindow win, uint8_t type)
                     }
                 }
             }
+            break;
         default:
             DEBUG0("No type specified.");
+            break;
     }
 }
 
