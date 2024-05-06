@@ -1035,7 +1035,7 @@ void
 eventhandler(XCBGenericEvent *ev)
 {
     /* int for speed */
-    int cleanev = XCB_EVENT_RESPONSE_TYPE(ev);
+    const int cleanev = XCB_EVENT_RESPONSE_TYPE(ev);
     //DEBUG("%s", XCBGetEventName(cleanev));
     if(handler[cleanev])
     {   handler[cleanev](ev);
@@ -1142,7 +1142,7 @@ grabbuttons(XCBWindow win, uint8_t focused)
     XCBUngrabButton(_wm.dpy, XCB_BUTTON_INDEX_ANY, XCB_BUTTON_MASK_ANY, win);
     if (!focused)
     {
-        XCBGrabButton(_wm.dpy, XCB_BUTTON_INDEX_ANY, XCB_MOD_MASK_ANY, win, 0, BUTTONMASK, 
+        XCBGrabButton(_wm.dpy, XCB_BUTTON_INDEX_ANY, XCB_MOD_MASK_ANY, win, True, BUTTONMASK, 
                 XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE, XCB_NONE);
     }
     for (i = 0; i < LENGTH(buttons); i++)
@@ -1151,7 +1151,7 @@ grabbuttons(XCBWindow win, uint8_t focused)
         {
             XCBGrabButton(_wm.dpy, buttons[i].button, 
                     buttons[i].mask | modifiers[j], 
-                    win, 0, BUTTONMASK, 
+                    win, True, BUTTONMASK, 
                     XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, 
                     XCB_NONE, XCB_NONE);
             //DEBUG("Grabbed button: [%d]", buttons[i].button);
@@ -2107,7 +2107,7 @@ run(void)
 {
     XCBGenericEvent *ev = NULL;
     XCBSync(_wm.dpy);
-    while(_wm.running && XCBNextEvent(_wm.dpy, &ev))
+    while(_wm.running && !XCBNextEvent(_wm.dpy, &ev))
     {
         eventhandler(ev);
         free(ev);
@@ -2800,7 +2800,7 @@ setup(void)
     wa.event_mask = 
                     XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT|XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY
                     |XCB_EVENT_MASK_BUTTON_PRESS|XCB_EVENT_MASK_BUTTON_RELEASE
-                    |XCB_EVENT_MASK_POINTER_MOTION
+                    |XCB_EVENT_MASK_POINTER_MOTION|XCB_EVENT_MASK_BUTTON_MOTION
                     |XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_LEAVE_WINDOW
                     |XCB_EVENT_MASK_STRUCTURE_NOTIFY
                     |XCB_EVENT_MASK_PROPERTY_CHANGE

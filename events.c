@@ -328,8 +328,9 @@ motionnotify(XCBGenericEvent *event)
 
     /* due to the mouse being able to move a ton we want to limit the cycles burnt for non root events */
     if(eventwin != _wm.root)
-    {   return;
+    {   
     }
+    DEBUG0("X");
 
     u8 sync = 0;
     static Monitor *mon = NULL;

@@ -720,6 +720,8 @@ void unmanage(Client *c, uint8_t destroyed);
 void unmanagebar(Bar *bar);
 /* Error handler */
 void xerror(XCBDisplay *display, XCBGenericError *error);
+void WMAddListener(void *func(XCBGenericEvent *ev), u8 Event);
+void WMRemoveListener(void *func(XCBGenericEvent *ev), u8 Event);
 
 
 

@@ -125,56 +125,34 @@ MoveWindow(const Arg *arg)
 {
 }
 
-static void
-__ResizeWindow(void *wintoresize)
+void
+ResizeWindow(const Arg *arg)
 {
-    static XCBDisplay *display = NULL;
-    static int screen = 0;
+    if(!_wm.selmon->desksel->sel)
+    {   return;
+    }
+    Client *c = _wm.selmon->desksel->sel;
+
+    XCBDisplay *display = _wm.dpy;
+    XCBWindow win = c->win;
+    const int MIN_SIZE = 1;
 
     i16 curx, cury;
-    u16 oldw, oldh;
+    i32 oldw, oldh;
     i16 nx, ny;
-    u16 nw, nh;
+    i32 nw, nh;
     i16 oldx, oldy;
-    u8 horz, vert;
+    i8 horz, vert;
     u16 basew, baseh;
 
     /* init data */
     curx = cury = oldw = oldh = nx = ny = nw = nh = oldx = oldy = horz = vert = basew = baseh = 0;
 
-    const u16 framerate = 1000 / (120);
-
-    if(!display)
-    {   display = XCBOpenDisplay(NULL, &screen);
-        if(!display)
-        {   ThreadExit(NULL);
-        }
-        XCBSelectInput(display, XCBDefaultRootWindow(display, screen), XCB_EVENT_MASK_POINTER_MOTION|XCB_EVENT_MASK_BUTTON_RELEASE);
-    }
-
-    if(!wintoresize)
-    {   ThreadExit(NULL);
-        return;
-    }
-
-    const XCBWindow win = *(XCBWindow *)wintoresize;
-    free(wintoresize);
-
-    XCBCursor cur = 0;
-    XCBTime lasttime = 0;
-    u32 pointerstatus = XCB_GRAB_STATUS_FROZEN;
-    u8 sizehintstatus = 0;
+    basew = c->minw;
+    baseh = c->minh;
 
     XCBCookie QueryPointerCookie = XCBQueryPointerCookie(display, win);
-    XCBCookie WindowGeomCookie = XCBGetWindowGeometryCookie(display, win);
-    XCBCookie GrabPointerCookie = XCBGrabPointerCookie(display, XCBRootWindow(display, screen), False, MOUSEMASK, 
-                            XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCBNone, cur, XCB_CURRENT_TIME);
-    XCBCookie SizeHintsCookie = XCBGetWMNormalHintsCookie(display, win);
-    
     XCBQueryPointer *pointer = XCBQueryPointerReply(display, QueryPointerCookie);
-    XCBGeometry *wingeom = XCBGetWindowGeometryReply(display, WindowGeomCookie);
-    XCBGrabPointer *grabpointer = XCBGrabPointerReply(display, GrabPointerCookie);
-    XCBSizeHints sizehints; sizehintstatus = XCBGetWMNormalHintsReply(display, SizeHintsCookie, &sizehints);
 
     if(pointer)
     {
@@ -182,103 +160,51 @@ __ResizeWindow(void *wintoresize)
         cury = pointer->root_y;
         nx = pointer->win_x;
         ny = pointer->win_y;
-    }
-
-    if(wingeom)
-    {
-        horz = nx < (wingeom->width / 2)  ? -1 : 1;
-        vert = ny < (wingeom->height / 2) ? -1 : 1;
-        oldx = wingeom->x;
-        oldy = wingeom->y;
-        oldw = wingeom->width;
-        oldh = wingeom->height;
-    }
-
-    if(grabpointer)
-    {   pointerstatus = grabpointer->status;
-    }
-
-    if(sizehintstatus)
-    {
-        if(sizehints.flags & XCB_SIZE_HINT_P_MIN_SIZE)
-        {   
-            basew = sizehints.min_width;
-            baseh = sizehints.min_height;
-        }
-        else if(sizehints.flags & XCB_SIZE_HINT_P_BASE_SIZE)
-        {   
-            basew = sizehints.base_width;
-            baseh = sizehints.base_height;
-        }
-    }
-
-    if(!pointer || !wingeom || !grabpointer || !sizehintstatus || pointerstatus != XCB_GRAB_STATUS_SUCCESS)
-    {   
         free(pointer);
-        free(wingeom);
-        if(grabpointer && grabpointer == XCB_GRAB_STATUS_SUCCESS)
-        {   XCBUngrabPointer(display, XCB_CURRENT_TIME);
-        }
-        free(grabpointer);
-        ThreadExit(NULL);
-        return;
     }
 
-    XCBGenericEvent *ev;
-    XCBMotionNotifyEvent *mv;
-    do
+    if(!pointer)
+    {   return;
+    }
+
+    horz = nx < c->w / 2 ? -1 : 1;
+    vert = ny < c->h / 2 ? -1 : 1;
+
+
+    oldw = c->w;
+    oldh = c->h;
+    oldx = c->x;
+    oldy = c->y;
+
+    XCBGenericEvent *ev = NULL;
+    while(_wm.running && !XCBNextEvent(_wm.dpy, &ev))
     {
-        if(!XCBNextEvent(display, &ev) || !ev)
-        {   break;
-        }
+        eventhandler(ev);
         if(XCB_EVENT_RESPONSE_TYPE(ev) == XCB_MOTION_NOTIFY)
-        {   
-            mv = (XCBMotionNotifyEvent *)ev;
-            if(mv->time - lasttime <= framerate)
-            {   /* NOP */
-            }
-            else
-            {   
-                nw = oldw + horz * (mv->event_x - curx);
-                nh = oldh + vert * (mv->event_x - cury);
-                /* clamp */
-                nw = MAX(nw, basew);
-                nh = MAX(nh, baseh);
-                /* flip sign if -1 else default to 0 */
-                nx = oldx + !~horz * (oldw - nw);
-                ny = oldy + !~vert * (oldh - nh);
-                XCBMoveResizeWindow(display, win, nx, ny, nw, nh);
-            }
-            lasttime = mv->time;
-        }
-    } while(XCB_EVENT_RESPONSE_TYPE(ev) != XCB_BUTTON_RELEASE);
-    XCBUngrabPointer(display, XCB_CURRENT_TIME);
-    /* cleanup */
-    free(pointer);
-    free(wingeom);
-    free(grabpointer);
-    ThreadExit(NULL);
-}
+        {
+            nw = oldw + horz * ((XCBMotionNotifyEvent *)ev)->event_x - curx;
+            nh = oldh + vert * ((XCBMotionNotifyEvent *)ev)->event_y - cury;
 
-void
-ResizeWindow(const Arg *arg)
-{
-    static Thread *t = NULL;
-    XCBButtonPressEvent *ev = (XCBButtonPressEvent *)arg->v;
-    XCBWindow win = ev->event;
-    if(t)
-    {   ThreadExit(t);
-        t = NULL;
-    }
-    if(!t)
-    {   
-        XCBWindow *winarg = malloc(sizeof(XCBWindow));
-        if(winarg)
-        {   
-            *winarg = win;
-            t = ThreadCreate(__ResizeWindow, (void *)winarg);
+            nw = MAX(nw, basew);
+            nh = MAX(nh, baseh);
+
+            nx = oldx + !~horz * (oldw - nw);
+            ny = oldy + !~vert * (oldh - nh);
+            resize(c, nx, ny, nw, nh, 0);
+            DEBUG0("SEARCHED");
+            /* XCBMoveResizeWindow(display, win, nx, ny, nw, nh); */
         }
+        else if(XCB_EVENT_RESPONSE_TYPE(ev) == XCB_BUTTON_RELEASE)
+        {   
+            DEBUG0("RELEASED");
+            free(ev);
+            break;
+        }
+        free(ev);
+        ev = NULL;
     }
+    
+    DEBUG0("");
 }
 
 void
