@@ -81,6 +81,11 @@ int NEVERFOCUS(Client *c)       { return c->wtypeflags & _TYPE_NEVERFOCUS; }
 int ISMAXHORZ(Client *c)        { return WIDTH(c) == c->desktop->mon->wh; }
 int ISMAXVERT(Client *c)        { return HEIGHT(c) == c->desktop->mon->wh; }
 int ISVISIBLE(Client *c)        { return (!!(c->desktop->mon->desksel == c->desktop) | (!!ISSTICKY(c))) & !ISHIDDEN(c); }
+int ISNORMALSTACK(Client *c)    { return    !(
+                                                ISFLOATING(c) | ISALWAYSONTOP(c) |
+                                                ISDIALOG(c) | ISMODAL(c)
+                                            ); 
+                                }
 int COULDBEBAR(Client *c, uint8_t strut) 
                                 {
                                     const u8 sticky = !!ISSTICKY(c);
@@ -329,11 +334,6 @@ applysizehints(Client *c, i32 *x, i32 *y, i32 *width, i32 *height, uint8_t inter
 {
     u8 baseismin;
     const Monitor *m = c->desktop->mon;
-    XCBCookie sizehintscookie;
-    if(ISFLOATING(c))
-    {   sizehintscookie = XCBGetWMNormalHintsCookie(_wm.dpy, c->win);
-    }
-
     /* set minimum possible */
     *width = MAX(1, *width);
     *height = MAX(1, *height);
@@ -374,11 +374,6 @@ applysizehints(Client *c, i32 *x, i32 *y, i32 *width, i32 *height, uint8_t inter
 
     if (ISFLOATING(c))
     {
-        XCBSizeHints hints;
-        u8 status = XCBGetWMNormalHintsReply(_wm.dpy, sizehintscookie, &hints);
-        /* On Failure clear flag and ignore hints */
-        hints.flags *= !!status;
-        updatesizehints(c, &hints);
         /* see last two sentences in ICCCM 4.1.2.3 */
         baseismin = c->basew == c->minw && c->baseh == c->minh;
         /* temporarily remove base dimensions */
@@ -445,7 +440,16 @@ void
 arrange(Desktop *desk)
 {
     arrangeq(desk);
-    restack(desk);
+    reorder(desk);
+    switch(desk->layout)
+    {
+        case Monocle: case Floating: default:
+            restack(desk);
+            break;
+        case Tiled: case Grid:
+            restackq(desk);
+            break;
+    }
 }
 
 void
@@ -470,29 +474,52 @@ arrangemons(void)
 void
 arrangedesktop(Desktop *desk)
 {   
-    layouts[desk->layout].arrange(desk);
+    if(layouts[desk->layout].arrange)
+    {   layouts[desk->layout].arrange(desk);
+    }
     /* update the bar or something */
 }
 
+/* Macro helper */
+#define __attach_helper(STRUCT, HEAD, NEXT, PREV, LAST)     do                                      \
+                                                            {   STRUCT->NEXT = STRUCT->HEAD;        \
+                                                                STRUCT->HEAD = STRUCT;              \
+                                                                if(STRUCT->NEXT)                    \
+                                                                {   STRUCT->NEXT->PREV = STRUCT;    \
+                                                                }                                   \
+                                                                else                                \
+                                                                {   STRUCT->LAST = STRUCT;          \
+                                                                }                                   \
+                                                                /* prevent circular linked list */  \
+                                                                STRUCT->PREV = NULL;                \
+                                                            } while(0)
+
+/* Too hard to implement */
+/*
+#define __detach_helper(TYPE, STRUCT, HEAD, NEXT, PREV, LAST)   do                                                              \
+                                                                {                                                               \
+                                                                    TYPE **tc;                                                  \
+                                                                    for(tc = &STRUCT->HEAD; *tc && *tc != STRUCT; tc = &(*tc)->NEXT);   \
+                                                                    *tc = STRUCT->NEXT;                                         \
+                                                                    if(!(*tc))                                                  \
+                                                                    {   STRUCT->LAST = STRUCT->PREV;                            \
+                                                                    }                                                           \
+                                                                    else if(STRUCT->NEXT)                                       \
+                                                                    {   STRUCT->NEXT->PREV = STRUCT->PREV;                      \
+                                                                    }                                                           \
+                                                                    else if(STRUCT->PREV)                                       \
+                                                                    {                                                           \
+                                                                        STRUCT->LAST = STRUCT->PREV;                            \
+                                                                        STRUCT->PREV->NEXT = NULL;                              \
+                                                                    }                                                           \
+                                                                    STRUCT->NEXT = NULL;                                        \
+                                                                    STRUCT->PREV = NULL;                                        \
+                                                                } while(0)
+*/
 void
 attach(Client *c)
 {
-    if(c->next || c->prev)
-    {   
-        detach(c);
-        DEBUG0("Client already attached, this should be possible.");
-        exit(EXIT_FAILURE);
-    }
-    c->next = c->desktop->clients;
-    c->desktop->clients = c;
-    if(c->next)
-    {   c->next->prev = c;
-    }
-    else
-    {   c->desktop->clast = c;
-    }
-    /* prevent circular linked list */
-    c->prev = NULL;
+    __attach_helper(c, desktop->clients, next, prev, desktop->clast);
 }
 
 /* NOT RECOMMENDED AS REQUIRES MANUAL SETTING OF DESKTOP->NUM */
@@ -500,18 +527,8 @@ void
 attachdesktop(Monitor *m, Desktop *desktop)
 {
     desktop->mon = m;
-    desktop->next = m->desktops;
-    m->desktops = desktop;
-    if(desktop->next)
-    {   desktop->next->prev = desktop;
-    }
-    else
-    {
-        m->desklast = desktop;
-    }
-    /* prevent circular linked list */
-    desktop->prev = NULL;
     desktop->num = 0;
+    __attach_helper(desktop, mon->desktops, next, prev, mon->desklast);
 }
 
 void
@@ -534,48 +551,19 @@ attachdesktoplast(Monitor *m, Desktop *desk)
 void
 attachstack(Client *c)
 {
-    if(c->snext || c->sprev)
-    {   
-        detachstack(c);
-        DEBUG0("Client already attached, this should be possible.");
-        exit(EXIT_FAILURE);
-    }
-    Desktop *desk = c->desktop;
-    c->snext = desk->stack;
-    desk->stack = c;
-    if(c->snext)
-    {   
-        c->snext->sprev = c;
-    }
-    else
-    {   
-        desk->slast = c;
-    }
-    /* prevent dangling pointers */
-    c->sprev = NULL;
+    __attach_helper(c, desktop->stack, snext, sprev, desktop->slast);
+}
+
+void
+attachrestack(Client *c)
+{
+    __attach_helper(c, desktop->rstack, rnext, rprev, desktop->rlast);
 }
 
 void
 attachfocus(Client *c)
 {
-    if(c->fnext || c->fprev)
-    {
-        DEBUG0("Client already attached, this should be possible.");
-        exit(EXIT_FAILURE);
-    }
-    Desktop *desk = c->desktop;
-    c->fnext = desk->focus;
-    desk->focus = c;
-    if(c->fnext)
-    {   
-        c->fnext->fprev = c;
-    }
-    else
-    {   
-        desk->flast = c;
-    }
-    /* prevent dangling pointers */
-    c->fprev = NULL;
+    __attach_helper(c, desktop->focus, fnext, fprev, desktop->flast);
 }
 
 void
@@ -606,6 +594,7 @@ detachcompletely(Client *c)
     detach(c);
     detachstack(c);
     detachfocus(c);
+    detachrestack(c);
 }
 
 void
@@ -657,6 +646,32 @@ detachstack(Client *c)
     }
     c->sprev = NULL;
     c->snext = NULL;
+}
+
+void
+detachrestack(Client *c)
+{
+    Desktop *desk = c->desktop;
+    Client **tc;
+
+    for(tc = &desk->rstack; *tc && *tc != c; tc = &(*tc)->rnext);
+    *tc = c->rnext;
+    if(!(*tc))
+    {
+        desk->rlast = c->rprev;
+    }
+    else if(c->rnext)
+    {   
+        c->rnext->rprev = c->rprev;
+    }
+    else if(c->rprev)
+    {   /* this should be UNREACHABLE but if it does this should suffice */
+        desk->rlast = c->rprev;
+        c->rprev->rnext = NULL;
+    }
+
+    c->rprev = NULL;
+    c->rnext = NULL;
 }
 
 void
@@ -1102,7 +1117,6 @@ getnamefromreply(XCBWindowProperty *namerep, char **str_return)
         {
             const size_t offset = XCBGetPropertyValueSize(namerep);
             char *str = XCBGetPropertyValue(namerep);
-                                                        /* \0 */
             char *nstr = malloc(sizeof(char) * offset + sizeof(char));
             if(nstr)
             {   
@@ -1110,6 +1124,7 @@ getnamefromreply(XCBWindowProperty *namerep, char **str_return)
                 memcpy(nstr + offset, "\0", sizeof(char));
             }
             *str_return = nstr;
+            DEBUG("%s", *str_return);
         }
     }
 }
@@ -1196,18 +1211,13 @@ grabkeys(void)
 void
 grid(Desktop *desk)
 {
-    if(!desk->clients)
-    {   return;
-    }
-
     const u16 bgw = 0;
-    DEBUG("BGW: %d", bgw);
 
     i32 i, n, cw, ch, aw, ah, cols, rows;
     i32 nx, ny, nw, nh;
     i32 unused = 0;
     Client *c;
-    Monitor *m = desk->clients->desktop->mon;
+    Monitor *m = desk->mon;
 
     for(n = 0, c = desk->focus; c; c = nextfocus(c))
     {   ++n;
@@ -1439,6 +1449,10 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     XCBSelectInput(_wm.dpy, win, inputmask);
     grabbuttons(win, 0);
 
+    if(!c->desktop)
+    {   c->desktop = _wm.selmon->desksel;
+    }
+
     attach(c);
     attachstack(c);
     attachfocus(c);
@@ -1474,8 +1488,10 @@ CLEANUP:
     XCBWipeGetWMProtocols(&wmprotocols);
     free(strutpreply);
     free(strutreply);
-    free(netwmnamereply);
-    free(wmnamereply);
+    /* Dont free we reused mem allocated previously
+     * free(netwmnamereply);
+     * free(wmnamereply);
+     */
     /* maybe no or just memcpy the first icon into a buffer and keep the thing just there. */
     free(iconreply);
     return c;
@@ -1528,11 +1544,8 @@ maximizevert(Client *c)
 void
 monocle(Desktop *desk)
 {
-    if(!desk->clients)
-    {   return;
-    }
     Client *c;
-    Monitor *m = desk->clients->desktop->mon;
+    Monitor *m = desk->mon;
     i32 nw, nh;
     i32 nx = m->wx;
     i32 ny = m->wy;
@@ -2014,18 +2027,24 @@ resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
     c->oldy = c->y;
     c->oldw = c->w;
     c->oldh = c->h;
-    /* due to the suprisingly expensive nature of configuring clients we can save some cycles here */
-    if(x != c->x || y != c->y)
-    {   XCBMoveWindow(_wm.dpy, c->win, x, y);
-    }
-    if(width != c->w || height != c->h)
-    {   XCBResizeWindow(_wm.dpy, c->win, width, height);
-    }
     c->x = x;
     c->y = y;
     c->w = width;
     c->h = height;
-    XCBSetWindowBorderWidth(_wm.dpy, c->win, c->bw);
+    XCBWindowChanges changes =
+    {   
+        .x = x,
+        .y = y,
+        .width = width,
+        .height = height,
+        .border_width = c->bw
+    };
+    XCBConfigureWindow(_wm.dpy, c->win, 
+            XCB_CONFIG_WINDOW_X|XCB_CONFIG_WINDOW_Y
+            |XCB_CONFIG_WINDOW_WIDTH|XCB_CONFIG_WINDOW_HEIGHT
+            |XCB_CONFIG_WINDOW_BORDER_WIDTH, 
+            &changes
+            );
     configure(c);
 }
 
@@ -2040,11 +2059,8 @@ restack(Desktop *desk)
     {   wc.sibling = desk->mon->bar->win;
     }
     else
-    {
+    {   /* TODO: Maybe use wc.sibling = _wm.root? That causes error to be generated though. */
         wc.sibling = _wm.wmcheckwin;
-        /* This sometimes throws errors for some reason.
-         * wc.sibling = _wm.root;
-         */
     }
 
     /* configure windows */
@@ -2052,47 +2068,38 @@ restack(Desktop *desk)
     {
         XCBConfigureWindow(_wm.dpy, c->win, XCB_CONFIG_WINDOW_SIBLING|XCB_CONFIG_WINDOW_STACK_MODE, &wc);
         wc.sibling = c->win;
+    }   
+}
+
+void
+restackq(Desktop *desk)
+{
+    XCBWindowChanges wc;
+
+    wc.stack_mode = XCB_STACK_MODE_BELOW;
+    if(desk->mon->bar->win && SHOWBAR(desk->mon->bar))
+    {   wc.sibling = desk->mon->bar->win;
+    }
+    else
+    {   /* TODO: Maybe use wc.sibling = _wm.root? That causes error to be generated though. */
+        wc.sibling = _wm.wmcheckwin;
     }
 
-    /*
-    if(layouts[desk->layout].arrange != floating)
-    {
-        for(c = desk->stack; c; c = nextstack(c))
-        {
-            if(ISFLOATING(c))
-            {   XCBRaiseWindow(_wm.dpy, c->win);
-            }
-        }
-    }
-
+    Client *c;
     for(c = desk->stack; c; c = nextstack(c))
-    {
-        if(ISALWAYSONTOP(c))
-        {   
-            if(ISFLOATING(c))
-            {
-                XCBRaiseWindow(_wm.dpy, c->win);
-            }
-            else
-            {   DEBUG0("Client should be floating, but isnt, this shouldnt be possible; CHECK: ALWAYSONTOP ");
-            }
+    {   
+        if(!ISNORMALSTACK(c))
+        {   XCBConfigureWindow(_wm.dpy, c->win, XCB_CONFIG_WINDOW_SIBLING|XCB_CONFIG_WINDOW_STACK_MODE, &wc);
+            wc.sibling = c->win;
         }
     }
+}
 
-    for(c = desk->stack; c; c = nextstack(c))
-    {
-        if(ISDIALOG(c))
-        {   XCBRaiseWindow(_wm.dpy, c->win);
-        }
-    }
-
-    for(c = desk->stack; c; c = nextstack(c))
-    {
-        if(ISMODAL(c)) 
-        {   XCBRaiseWindow(_wm.dpy, c->win);
-        }
-    }
-    */
+void
+reorder(Desktop *desk)
+{
+    Client *c;
+    Client *tmp;
 }
 
 void
@@ -2398,14 +2405,21 @@ setalwaysonbottom(Client *c, uint8_t state)
 void
 setborderalpha(Client *c, uint8_t alpha)
 {
+    /* remove previous alpha */
+    const u32 ccol = c->bcol & ~(UINT8_MAX << 24);
+    const u32 col = ccol + (alpha << 24);
     /* TODO */
+    setbordercolor32(c, col);
 }
 
 void
 setbordercolor(Client *c, uint8_t red, uint8_t green, uint8_t blue)
 {
-    c->bcol = blue + (green << 8) + (red << 16);
-    XCBSetWindowBorder(_wm.dpy, c->win, c->bcol);
+    /* get alpha */
+    const u32 alpha = c->bcol & (UINT8_MAX << 24);
+
+    const u32 col = blue + (green << 8) + (red << 16) + alpha;
+    setbordercolor32(c, col);
 }
 
 void
@@ -2443,12 +2457,14 @@ setclientstate(Client *c, u8 state)
 void 
 setdesktopcount(Monitor *m, uint16_t desktops)
 {
-    if(desktops <= 1)
+    const int MIN_DESKTOPS = 1;
+    if(desktops <= MIN_DESKTOPS)
     {   DEBUG0("Cannot make desktop count less than possible.");
         return;
     }
     if(m->deskcount == desktops)
-    {   DEBUG("Desktops are already at specified capacity: [%u]", desktops);
+    {
+        DEBUG("Desktops are already at specified capacity: [%u]", desktops);
         return;
     }
     u16 i;
@@ -2683,15 +2699,13 @@ setmaximizedvert(Client *c, uint8_t state)
     if(state)
     {
         if(!ISMAXVERT(c))
-        {
-            resize(c, c->x, c->y, c->w, m->wh, 0);
+        {   resize(c, c->x, c->y, c->w, m->wh, 0);
         }
     }
     else
     {
         if(ISMAXVERT(c))
-        {                                                          /* fallback */
-            resize(c, c->x, c->y, c->w, c->oldh != m->wh ? c->oldh : c->oldh / 2, 0);
+        {   resize(c, c->x, c->y, c->w, c->oldh != m->wh ? c->oldh : c->oldh / 2, 0);
         }
     }
 }
@@ -2704,15 +2718,13 @@ setmaximizedhorz(Client *c, uint8_t state)
     if(state)
     {
         if(!ISMAXHORZ(c))
-        {
-            resize(c, c->x, c->y, m->ww, c->h, 0);
+        {   resize(c, c->x, c->y, m->ww, c->h, 0);
         }
     }
     else
     {
         if(ISMAXHORZ(c))
-        {                                                     /* Fallback. */
-            resize(c, c->x, c->y, c->oldw != m->ww ? c->oldw : c->oldw / 2, c->h, 0);
+        {   resize(c, c->x, c->y, c->oldw != m->ww ? c->oldw : c->oldw / 2, c->h, 0);
         }
     }
 }
@@ -2817,7 +2829,6 @@ void
 setupcfg(void)
 {
     /* TODO */
-
     setupcfgdefaults();
 }
 
@@ -3100,11 +3111,7 @@ tile(Desktop *desk)
     Client *c = NULL;
     Monitor *m = NULL;
 
-    if(!desk->clients)
-    {   return;
-    }
-
-    m = desk->clients->desktop->mon;
+    m = desk->mon;
     for(n = 0, c = desk->focus; c; c = nextfocus(c))
     {   ++n;
     }
@@ -3344,7 +3351,7 @@ unmanage(Client *c, uint8_t destroyed)
     focus(NULL);
     updateclientlist(c->win, ClientListRemove);
     /* no need to arrange fully cause client is not mapped anymore */
-    arrangeq(desk);
+    arrange(desk);
     cleanupclient(c);
 }
 
@@ -3550,9 +3557,11 @@ updatetitle(Client *c, char *netwmname, char *wmname)
 {
     if(c->wmname != wmname)
     {   free(c->wmname);
+        c->netwmname = NULL;
     }
     if(c->netwmname != netwmname)
     {   free(c->netwmname);
+        c->netwmname = NULL;
     }
     c->wmname = wmname;
     c->netwmname = netwmname;

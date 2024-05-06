@@ -1280,7 +1280,7 @@ propertynotify(XCBGenericEvent *event)
                 }
                 break;
             case XCB_ATOM_WM_HINTS:
-                /* TODO This can be slow */
+                /* TODO This IS SLOW */
                 cookie = XCBGetWMHintsCookie(_wm.dpy, c->win);
                 wmh = XCBGetWMHintsReply(_wm.dpy, cookie);
                 updatewmhints(c, wmh);
@@ -1299,7 +1299,6 @@ propertynotify(XCBGenericEvent *event)
                 getnamefromreply(prop1, &netwmname);
                 getnamefromreply(prop2, &wmname);
                 updatetitle(c, netwmname, wmname);
-
                 free(prop1);
                 free(prop2);
                 sync = 1;
