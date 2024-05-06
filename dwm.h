@@ -206,6 +206,8 @@ struct Client
     Client *prev;       /* The previous client      */
     Client *sprev;      /* The prev stack order clnt*/
     Client *snext;      /* The next client in stack */
+    Client *rnext;      /* Restack Next             */
+    Client *rprev;      /* Restack Prev             */
     Client *fnext;      /* The next focused client  */
     Client *fprev;      /* THe previous focused clnt*/
     Desktop *desktop;   /* Client Associated Desktop*/
@@ -257,6 +259,8 @@ struct Desktop
     Client *clast;              /* Last Client in linked list   */
     Client *stack;              /* Client Stack Order           */
     Client *slast;              /* Last Client in Stack         */
+    Client *rstack;             /* restack Client order         */
+    Client *rlast;              /* Last restack Client          */
     Client *focus;              /* Client Focus Order           */
     Client *flast;              /* Client Last Focus            */
     Client *sel;                /* Selected Client              */
@@ -330,6 +334,7 @@ void attach(Client *c);
 /* Adds Client to rendering stack order in desktop linked list.
 */
 void attachstack(Client *c);
+void attachrestack(Client *c);
 /* Adds Client to rendering stack order previous 
  */
 void attachfocus(Client *c);
@@ -343,6 +348,7 @@ void detachcompletely(Client *c);
 /* Removes Client from desktop rendering stack order.
 */
 void detachstack(Client *c);
+void detachrestack(Client *c);
 /* Removes Client from desktop focus order.
 */
 void detachfocus(Client *c);
@@ -552,6 +558,10 @@ void resize(Client *c, int32_t x, int32_t y, int32_t width, int32_t height, uint
 void resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height);
 /* Reorders(restacks) clients in current desk->stack */
 void restack(Desktop *desk);
+/* Only calculates needed stuff for non monocle/floating layouts */
+void restackq(Desktop *desk);
+/* "Restacks" clients on from linked list no effect unless restack called*/
+void reorder(Desktop *desk);
 /* Flags RESTART and sets running to 0;
  * results in execvp(self) and "restarts"
  */
@@ -737,6 +747,8 @@ int ISFIXED(Client *c);
 int ISURGENT(Client *c);
 int NEVERFOCUS(Client *c);
 int ISVISIBLE(Client *c);
+/* if the window doesnt have any stacking priority. */
+int ISNORMALSTACK(Client *c);
 /* checks if a client could be a bar */
 int COULDBEBAR(Client *c, uint8_t strut);
 
