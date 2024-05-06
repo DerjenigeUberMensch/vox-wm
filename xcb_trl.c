@@ -1843,7 +1843,7 @@ int
 XCBNextEvent(XCBDisplay *display, XCBGenericEvent **event_return) 
 {
     /* waits till next event happens before returning */
-    return !!((*event_return = xcb_wait_for_event(display)));
+    return !((*event_return = xcb_wait_for_event(display)));
 }
 
 XCBGenericEvent *

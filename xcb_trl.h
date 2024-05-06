@@ -1339,27 +1339,11 @@ uint8_t
 XCBDefaultDepth(
         XCBDisplay *display, 
         int screen);
-/* <From https://tronche.com/gui/x/xlib/event-handling/XSelectInput.html>
- * 
- * The XCBSelectInput() function requests that the X server report the events associated with the specified event mask. Initially, X will not report any of these events. Events are reported relative to a window. 
- * If a window is not interested in a device event, 
- * it usually propagates to the closest ancestor that is interested, unless the do_not_propagate mask prohibits it.
+/* See Xlib's documentation of XSelectInput()
  *
- * Setting the event-mask attribute of a window overrides any previous call for the same window but not for other clients. 
- * Multiple clients can select for the same events on the same window with the following restrictions:
- *      - Multiple clients can select events on the same window because their event masks are disjoint. 
- *        When the X server generates an event, it reports it to all interested client.
- *
- *      - Only one client at a time can select XCB_CIRCULATE_REQUEST, XCB_CONFIGURE_REQUEST, or XCB_MAP_REQUEST events, 
- *        Which are associated with the event mask XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT.
- *      - Only one client at a time can select a XCB_RESIZE_REQUEST event, which is associated with the event mask XCB_EVENT_MASK_RESIZE_REDIRECT.
- *      - Only one client at a time can select a XCB_BUTTON_PRESS event, which is associated with the event mask XCB_EVENT_MASK_BUTTON_PRESS.
- *
- * The server reports the event to all interested clients.
- *
- * XSelectInput() can generate a BadWindow error.
- *
- *
+ * NOTE: This function IS buffered and must be Flushed before receiving any thing back. (IE your events you want to listen to.)
+ *       XCBFlush(MyDisplay); 
+ *       XCBSync(); Has different behaviour, prefer XCBFlush()
  *
  * RETURN: Cookie to request.
 */
@@ -2274,8 +2258,8 @@ XCBSendEvent(
  * event_return: XCBGenericError * on Error.
  * event_return: NULL on I/O Error.
  *
- * RETURN: 1 On Success.
- * RETURN: 0 On Failure.
+ * RETURN: 1 On Failure.
+ * RETURN: 0 On Success.
  */
 int
 XCBNextEvent(
