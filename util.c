@@ -69,3 +69,6 @@ functime(void (*_timefunction)(void))
 
     return ((double)(end - start)) / CLOCKS_PER_SEC;
 }
+
+
+

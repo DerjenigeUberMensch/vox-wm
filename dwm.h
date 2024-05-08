@@ -84,6 +84,8 @@
 #define _STATE_SUPPORTED_WM_SAVE_YOURSELF   ((1 << 14))
 #define _STATE_SUPPORTED_WM_DELETE_WINDOW   ((1 << 15))
 
+/* Decoration states */
+#define _DECOR_VISIBLE      ((1 << 0))
 
 /* cursor */
 enum CurType 
@@ -129,11 +131,33 @@ enum ClientListModes
     ClientListAdd, ClientListRemove, ClientListReload,
 };
 
+/* Restacking stuff */
+/* Priotity:
+ * StackHidden      Low Priority,
+ * ...
+ * StackDock        High Priority.
+ */
+enum StackPriority
+{
+    StackHidden,
+    StackBelow,
+    StackNormal,
+    StackSel,
+    StackFloating,
+    StackUtil,
+    StackDialogue,
+    StackNotify,
+    StackModal,
+    StackAlwaysOnTop,
+    StackDock,
+};
+
 typedef union  Arg Arg;
 typedef struct Key Key;
 typedef struct Button Button;
 typedef struct Monitor Monitor;
 typedef struct Client Client;
+typedef struct Decoration Decoration;
 typedef struct Stack Stack;
 typedef struct Layout Layout;
 typedef struct Desktop Desktop;
@@ -211,11 +235,22 @@ struct Client
     Client *fnext;      /* The next focused client  */
     Client *fprev;      /* THe previous focused clnt*/
     Desktop *desktop;   /* Client Associated Desktop*/
+    Decoration *decor;  /* Decoration AKA title bar.*/
 
     char *netwmname;    /* Client Name              */
     char *wmname;       /* Client name backup       */
     char *icon;         /* Array of icon values     */
-    UT_hash_handle hh;  /* hash handle             */
+    UT_hash_handle hh;  /* hash handle              */
+};
+
+struct Decoration
+{
+    /* TODO */
+    uint16_t w;
+    uint16_t h;
+    uint8_t flags;
+    uint8_t pad[3];
+    XCBWindow win;
 };
 
 struct Monitor
@@ -411,6 +446,11 @@ Desktop *createdeskop(void);
  * RETURN: exit(1) on Failure.
  */
 Monitor *createmon(void);
+/* Allocates a decoration with all properties set to 0 or NULL. 
+ * RETURN: Decoration * on Success.
+ * RETURN: NULL on Failure.
+ */
+Decoration *createdecoration(void);
 /* Finds the next monitor based on "dir" AKA Direction. 
  * RETURN: Monitor * on Success.
  * RETURN: NULL on Failure.
@@ -591,6 +631,7 @@ void setbordercolor32(Client *c, uint32_t col);
 void setborderwidth(Client *c, uint16_t border_width);
 void setclientdesktop(Client *c, Desktop *desktop);
 void setclientstate(Client *c, uint8_t state);
+void setdecorvisible(Client *c, uint8_t state);
 void setdesktopcount(Monitor *m, uint16_t desktops);
 void setdesktoplayout(Desktop *desk, uint8_t layout);
 void setclientpid(Client *c, pid_t pid);
@@ -730,9 +771,6 @@ void unmanage(Client *c, uint8_t destroyed);
 void unmanagebar(Bar *bar);
 /* Error handler */
 void xerror(XCBDisplay *display, XCBGenericError *error);
-void WMAddListener(void *func(XCBGenericEvent *ev), u8 Event);
-void WMRemoveListener(void *func(XCBGenericEvent *ev), u8 Event);
-
 
 
 /* MACROS */
@@ -747,6 +785,7 @@ int ISFIXED(Client *c);
 int ISURGENT(Client *c);
 int NEVERFOCUS(Client *c);
 int ISVISIBLE(Client *c);
+int ISSELECTED(Client *c);
 /* if the window doesnt have any stacking priority. */
 int ISNORMALSTACK(Client *c);
 /* checks if a client could be a bar */
