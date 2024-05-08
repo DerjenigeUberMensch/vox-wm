@@ -190,6 +190,7 @@ BarWriteBuff(
     memcpy(buffoffset, datatowrite, size);
 }
 
+/* TOD */
 XCBCookie
 BarDrawBuff(
     Bar *bar,
@@ -200,7 +201,9 @@ BarDrawBuff(
         )
 {
     char *buff = (char *)bar->writebuff;
-    XCBCookie x;
+    XCBCookie x = { .sequence = 0 };
+    (void)x;
+    (void)buff;
     return x;
 }
 

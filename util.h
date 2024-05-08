@@ -150,8 +150,157 @@ double functime(void (*_timefunction)(void));
 
 #define ASSUME(cond) do { if (!(cond)) __builtin_unreachable(); } while (0)
 
-
-
+/* Original implementation: Simon Tatham 
+ * https://www.chiark.greenend.org.uk/~sgtatham/algorithms/listsort.html 
+ */
+/*
+ * This function is copyright 2001 Simon Tatham.
+ * 
+ * Permission is hereby granted, free of charge, to any person
+ * obtaining a copy of this software and associated documentation
+ * files (the "Software"), to deal in the Software without
+ * restriction, including without limitation the rights to use,
+ * copy, modify, merge, publish, distribute, sublicense, and/or
+ * sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following
+ * conditions:
+ * 
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL SIMON TATHAM BE LIABLE FOR
+ * ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+ * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+/* Doesnt work */
+#define MERGE_SORT_LINKED_LIST(TYPE, CMP_FUNC, HEAD, NEXT, PREV, IS_DOUBLE, IS_CIRCULAR, HEAD_RETURN)\
+                        do                                                              \
+                        {                                                               \
+                            TYPE *p, *q, *e, *tail, *oldhead;                           \
+                            TYPE *list;                                                 \
+                            int32_t insize, nmerges, psize, qsize, i;                   \
+                            insize = 1;                                                 \
+                            list = HEAD;                                                \
+                            while(1)                                                    \
+                            {   p = list;                                               \
+                                if(IS_CIRCULAR)                                         \
+                                {   oldhead = list;                                     \
+                                }                                                       \
+                                list = NULL;                                            \
+                                tail = NULL;                                            \
+                                /* count number of merges we do in this pass */         \
+                                nmerges = 0;                                            \
+                                while(p)                                                \
+                                {   /* there exists a merge to be done */               \
+                                    ++nmerges;                                          \
+                                    /* step `insize' places along from p */             \
+                                    q = p;                                              \
+                                    psize = 0;                                          \
+                                    for(i = 0; i < insize; ++i)                         \
+                                    {                                                   \
+                                        ++psize;                                        \
+                                        if(IS_CIRCULAR)                                 \
+                                        {   q = (q->NEXT == oldhead ? NULL : q->NEXT);  \
+                                        }                                               \
+                                        else                                            \
+                                        {   q = q->NEXT;                                \
+                                        }                                               \
+                                        if(!q)                                          \
+                                        {   break;                                      \
+                                        }                                               \
+                                    }                                                   \
+                                    /* if q hasn't fallen off end,                      \
+                                     * we have two lists to merge                       \
+                                     */                                                 \
+                                    qsize = insize;                                     \
+                                                                                        \
+                                    /* now we have two lists; merge them */             \
+                                    while(psize > 0 || (qsize > 0 && q))                \
+                                    {                                                   \
+                                        /* decide where the next element                \
+                                         * of merge comes from p or q                   \
+                                         */                                             \
+                                        if(psize == 0)                                  \
+                                        {                                               \
+                                            /* p is empty; e must come from q. */       \
+                                            e = q; q = q->NEXT; --qsize;                \
+                                            if(IS_CIRCULAR && q == oldhead)             \
+                                            {   q = NULL;                               \
+                                            }                                           \
+                                        }                                               \
+                                        else if(qsize == 0 || !q)                       \
+                                        {                                               \
+                                            /* q is empty; e must come from p. */       \
+                                            e = p; p = p->NEXT; --psize;                \
+                                            if(IS_CIRCULAR && p == oldhead)             \
+                                            {   p = NULL;                               \
+                                            }                                           \
+                                        }                                               \
+                                        else if(CMP_FUNC(p, q) <= 0)                    \
+                                        {                                               \
+                                            /* First element of p is lower (or same);   \
+                                             * e must come from p.                      \
+                                             */                                         \
+                                            e = p; p = p->NEXT; --psize;                \
+                                            if(IS_CIRCULAR && p == oldhead)             \
+                                            {   p = NULL;                               \
+                                            }                                           \
+                                        }                                               \
+                                        else                                            \
+                                        {                                               \
+                                            /* First element of q is lower;             \
+                                             * e must come from q.                      \
+                                             */                                         \
+                                            e = q; q = q->NEXT; --qsize;                \
+                                            if(IS_CIRCULAR && q == oldhead)             \
+                                            {   q = NULL;                               \
+                                            }                                           \
+                                        }                                               \
+                                        /* add the next element to the merged list */   \
+                                        if(tail)                                        \
+                                        {   tail->NEXT = e;                             \
+                                        }                                               \
+                                        else                                            \
+                                        {   list = e;                                   \
+                                        }                                               \
+                                        if(IS_DOUBLE)                                   \
+                                        {                                               \
+                                            /* Maintain reverse pointers                \
+                                             * in a doubly linked list.                 \
+                                             */                                         \
+                                            e->PREV = tail;                             \
+                                        }                                               \
+                                        tail = e;                                       \
+                                    }                                                   \
+                                    /* now p has stepped `insize' places along,         \
+                                     * and q has too                                    \
+                                     */                                                 \
+                                    p = q;                                              \
+                                }                                                       \
+                                if(IS_CIRCULAR)                                         \
+                                {   if(tail) { tail->NEXT = HEAD; }                     \
+                                    if(IS_DOUBLE)                                       \
+                                    {   HEAD->PREV = tail;                              \
+                                    }                                                   \
+                                }                                                       \
+                                else                                                    \
+                                {   if(tail)                                            \
+                                    {   tail->NEXT = NULL;                              \
+                                    }                                                   \
+                                }                                                       \
+                                /* If we have done only one merge, we're finished.*/    \
+                                if(nmerges <= 1)                                        \
+                                {   *HEAD_RETURN = list; break;                         \
+                                }                                                       \
+                                /* Otherwise repeat, merging lists twice the size */    \
+                                insize *= 2;                                            \
+                            }                                                           \
+                        } while(0)
 
 
 #endif

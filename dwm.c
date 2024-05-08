@@ -81,6 +81,7 @@ int NEVERFOCUS(Client *c)       { return c->wtypeflags & _TYPE_NEVERFOCUS; }
 int ISMAXHORZ(Client *c)        { return WIDTH(c) == c->desktop->mon->wh; }
 int ISMAXVERT(Client *c)        { return HEIGHT(c) == c->desktop->mon->wh; }
 int ISVISIBLE(Client *c)        { return (!!(c->desktop->mon->desksel == c->desktop) | (!!ISSTICKY(c))) & !ISHIDDEN(c); }
+int ISSELECTED(Client *c)       { return c->desktop->sel == c; }
 int ISNORMALSTACK(Client *c)    { return    !(
                                                 ISFLOATING(c) | ISALWAYSONTOP(c) |
                                                 ISDIALOG(c) | ISMODAL(c)
@@ -795,6 +796,7 @@ cleanupclient(Client *c)
 {
     free(c->wmname);
     free(c->netwmname);
+    free(c->decor);
     free(c);
     c = NULL;
 }
@@ -916,8 +918,13 @@ createclient(void)
 {
     /* This uses calloc as we are currently testing stuff, but we will juse malloc and zero it out later in production*/
     Client *c = calloc(1, sizeof(Client ));
+    Decoration *decor = createdecoration();
     if(!c)
     {   DEBUG0("Could not allocate memory for client (OutOfMemory).");
+        return NULL;
+    }
+    if(!decor)
+    {   DEBUG0("Could not allocated memory for decoration (OutOfMemory).");
         return NULL;
     }
     c->x = c->y = 0;
@@ -1013,6 +1020,21 @@ createmon(void)
         return NULL;
     }
     return m;
+}
+
+Decoration *
+createdecoration(void)
+{                       /* replace with malloc later... */
+    Decoration *decor = calloc(1, sizeof(Decoration));
+    /* TODO */
+    if(decor)
+    {
+        decor->w = 0;
+        decor->h = 0;
+        decor->win = 0;
+        decor->flags = 0;
+    }
+    return decor;
 }
 
 Monitor *
@@ -2095,11 +2117,170 @@ restackq(Desktop *desk)
     }
 }
 
+
+static int
+__cmp(Client *c1, Client *c2)
+{
+    /* how to return.
+     * RETURN 1 on higher priority
+     * RETURN -1 on lesser priority
+     * RETURN 0 on lesser priority. 
+     */
+    /* XOR basically just skips if they both have it and only success if one of them has it AKA compare */
+    if(ISDOCK(c1) ^ ISDOCK(c2))
+    {   
+    }
+    else if(ISALWAYSONTOP(c1) ^ ISALWAYSONTOP(c2))
+    {
+    }
+    else if(ISMODAL(c1) ^ ISMODAL(c2))
+    {
+    }
+    else if(ISNOTIFICATION(c1) ^ ISNOTIFICATION(c2))
+    {
+    }
+    else if(ISDIALOG(c1) ^ ISDIALOG(c2))
+    {
+    }
+    else if(ISUTILITY(c1) ^ ISUTILITY(c2))
+    {
+    }
+    else if(ISFLOATING(c1) ^ ISFLOATING(c2))
+    {
+    }
+    else if(ISSELECTED(c1) ^ ISSELECTED(c2))
+    {
+    }
+    else if(ISNORMALSTACK(c1) ^ ISNORMALSTACK(c2))
+    {
+    }
+    else if(ISBELOW(c1) ^ ISBELOW(c2))
+    {
+    }
+    else if(ISHIDDEN(c1) ^ ISHIDDEN(c2))
+    {
+    }
+    else
+    {   return 0;
+    }
+    /* implement focus stuff **/
+    /*
+    if (c1->i < c2->i)
+        return -1;
+    if (c1->i > c2->i)
+        return +1;
+    return 0;
+    */
+    /* Place holder */
+    if(c1->win < c2->win)
+    {   return -1;
+    }
+    if(c1->win > c2->win)
+    {   return +1;
+    }
+    return 0;
+}
+
+/*
+ * This function is copyright 2001 Simon Tatham.
+ * 
+ * Permission is hereby granted, free of charge, to any person
+ * obtaining a copy of this software and associated documentation
+ * files (the "Software"), to deal in the Software without
+ * restriction, including without limitation the rights to use,
+ * copy, modify, merge, publish, distribute, sublicense, and/or
+ * sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following
+ * conditions:
+ * 
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT.  IN NO EVENT SHALL SIMON TATHAM BE LIABLE FOR
+ * ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+ * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 void
 reorder(Desktop *desk)
 {
-    Client *c;
-    Client *tmp;
+    Client *list = desk->stack;
+
+    Client *p, *q, *e, *tail;
+    uint32_t insize, nmerges, psize, qsize, i;
+
+    insize = 1;
+    while(1)
+    {
+        p = list;
+        list = NULL;
+        tail = NULL;
+        nmerges = 0;
+        while(p)
+        {
+            ++nmerges;
+            /* step `insize' places along from p */
+            q = p;
+            psize = 0;
+            for(i = 0; i < insize; ++i)
+            {
+                ++psize;
+                q = q->snext;
+                if(!q)
+                {   break;
+                }
+            }
+            qsize = insize;
+            while(psize > 0 || (qsize > 0 && q))
+            {
+                if(!psize)
+                {
+                    e = q; 
+                    q = q->snext;
+                    --qsize;
+                }
+                else if(!qsize || !q)
+                {   
+                    e = p;
+                    p = p->snext;
+                    --psize;
+                }
+                else if(__cmp(p, q) <= 0)
+                {
+                    e = p;
+                    p = p->snext;
+                    --psize;
+                }
+                else
+                {   
+                    e = q;
+                    q = q->snext;
+                    --qsize;
+                }
+                if(tail)
+                {   tail->snext = e;
+                }
+                else 
+                {   list = e;
+                }
+                e->sprev = tail;
+                tail = e;
+            }
+            p = q;
+        }
+        if(tail)
+        {   tail->snext = NULL;
+        }
+        if(nmerges <= 1)
+        {   break;
+        }
+        insize *= 2;
+    }
+    desk->stack = list;
 }
 
 void
@@ -2452,6 +2633,24 @@ setclientstate(Client *c, u8 state)
 {
     const i32 data[2] = { state, XCB_NONE };
     XCBChangeProperty(_wm.dpy, c->win, wmatom[WMState], wmatom[WMState], 32, XCB_PROP_MODE_REPLACE, (unsigned char *)data, 2);
+}
+
+void
+setdecorvisible(Client *c, uint8_t state)
+{
+    if(state)
+    {   
+        if(c->decor->win)
+        {   XCBMapWindow(_wm.dpy, c->decor->win);   
+        }
+    }
+    else
+    {
+        if(c->decor->win)
+        {   XCBUnmapWindow(_wm.dpy, c->decor->win);
+        }
+    }
+    SETFLAG(c->decor->flags, _DECOR_VISIBLE, !!state);
 }
 
 void 
