@@ -71,6 +71,10 @@ int ISFLOATING(Client *c)       {
                                     const i16 y = c->y;
                                     const u16 w = c->w;
                                     const u16 h = c->h;
+                                    i32 nx;
+                                    i32 ny;
+                                    i32 nw;
+                                    i32 nh;
                                     return ((wx == x) & (wy == y) & (ww == w) & (wh == h));
                                 }
 int DOCKED(Client *c)           { return !ISFLOATING(c);  }
@@ -91,14 +95,8 @@ int COULDBEBAR(Client *c, uint8_t strut)
                                 {
                                     const u8 sticky = !!ISSTICKY(c);
                                     const u8 isdock = !!(ISDOCK(c) | ISTOOLBAR(c));
-                                    const u8 skippager = !!SKIPPAGER(c);
                                     const u8 above = !!ISABOVE(c); 
-                                    return     (sticky & strut)
-                                            |  (strut & above)
-                                            |  (strut & isdock)
-                                            |  (isdock & above & sticky)
-                                            |  (above & isdock & skippager)
-                                            ;
+                                    return  (sticky && strut && (above || isdock));
                                 }
 /* EWMH Window types */
 int ISDESKTOP(Client *c)        { return c->wtypeflags & _TYPE_DESKTOP; }
@@ -757,6 +755,8 @@ cleanup(void)
     }
     XCBCookie cookie = XCBDestroyWindow(_wm.dpy, _wm.wmcheckwin);
     XCBDiscardReply(_wm.dpy, cookie);
+    XCBSetInputFocus(_wm.dpy, _wm.root, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
+    XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow]);
     _wm.wmcheckwin = 0;
     if(_wm.syms)
     {   
@@ -765,7 +765,6 @@ cleanup(void)
     }
     cleanupmons();
     XCBFlush(_wm.dpy);
-
     if(_wm.dpy)
     {
         XCBCloseDisplay(_wm.dpy);
@@ -1384,6 +1383,7 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     XCBWindowGeometry *wg = NULL;
 
     XCBGetWindowAttributes *waattributes = NULL;
+    u8 override_redirect = 0;
     XCBWindowProperty *wtypeunused = NULL;
     XCBWindowProperty *stateunused = NULL;
     XCBSizeHints hints;
@@ -1427,7 +1427,7 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     strut = strutreply ? XCBGetWindowPropertyValue(strutpreply) : NULL;
 
     if(!c)
-    {   goto CLEANUP;
+    {   goto FAILURE;
     }
     c->win = win;
 
@@ -1436,6 +1436,8 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
 
     if(waattributes && waattributes->override_redirect)
     {   DEBUG("Override Redirect: [%d]", win);
+        override_redirect = 1;
+        /* theoredically we could manage these but they are a hastle to deal with */
         goto FAILURE;
     }
 
@@ -2085,12 +2087,17 @@ restack(Desktop *desk)
         wc.sibling = _wm.wmcheckwin;
     }
 
-    /* configure windows */
-    for(c = desk->stack; c; c = nextstack(c))
+    /* FIXME restacking doesnt really work with the "stack" */
+    for(c = desk->slast; c; c = prevstack(c))
     {
         XCBConfigureWindow(_wm.dpy, c->win, XCB_CONFIG_WINDOW_SIBLING|XCB_CONFIG_WINDOW_STACK_MODE, &wc);
         wc.sibling = c->win;
-    }   
+    }
+    for(c = desk->focus; c; c = nextfocus(c))
+    {
+        XCBConfigureWindow(_wm.dpy, c->win, XCB_CONFIG_WINDOW_SIBLING|XCB_CONFIG_WINDOW_STACK_MODE, &wc);
+        wc.sibling = c->win;
+    }
 }
 
 void
@@ -2117,6 +2124,14 @@ restackq(Desktop *desk)
     }
 }
 
+static i32
+__cmp_helper(int32_t x1, int32_t x2)
+{
+    const u16 bigger = x1 > x2;
+    const u16 smaller = !bigger;
+    const i32 ret = bigger + (-smaller);
+    return ret;
+}
 
 static int
 __cmp(Client *c1, Client *c2)
@@ -2127,58 +2142,43 @@ __cmp(Client *c1, Client *c2)
      * RETURN 0 on lesser priority. 
      */
     /* XOR basically just skips if they both have it and only success if one of them has it AKA compare */
-    if(ISDOCK(c1) ^ ISDOCK(c2))
-    {   
+    if(ISDOCK(c1) != ISDOCK(c2))
+    {   return __cmp_helper(ISDOCK(c1), ISDOCK(c2));
     }
-    else if(ISALWAYSONTOP(c1) ^ ISALWAYSONTOP(c2))
-    {
+    else if(ISALWAYSONTOP(c1) != ISALWAYSONTOP(c2))
+    {   return __cmp_helper(ISALWAYSONTOP(c1), ISALWAYSONTOP(c2));
     }
-    else if(ISMODAL(c1) ^ ISMODAL(c2))
-    {
+    else if(ISMODAL(c1) != ISMODAL(c2))
+    {   return __cmp_helper(ISMODAL(c1), ISMODAL(c2));
     }
-    else if(ISNOTIFICATION(c1) ^ ISNOTIFICATION(c2))
-    {
+    else if(ISNOTIFICATION(c1) != ISNOTIFICATION(c2))
+    {   return __cmp_helper(ISNOTIFICATION(c1), ISNOTIFICATION(c2));
     }
-    else if(ISDIALOG(c1) ^ ISDIALOG(c2))
-    {
+    else if(ISDIALOG(c1) != ISDIALOG(c2))
+    {   return __cmp_helper(ISDIALOG(c1), ISDIALOG(c2));
     }
-    else if(ISUTILITY(c1) ^ ISUTILITY(c2))
-    {
+    else if(ISUTILITY(c1) != ISUTILITY(c2))
+    {   return __cmp_helper(ISUTILITY(c1), ISUTILITY(c2));
     }
-    else if(ISFLOATING(c1) ^ ISFLOATING(c2))
-    {
+    else if(ISFLOATING(c1) != ISFLOATING(c2))
+    {   return __cmp_helper(ISFLOATING(c1), ISFLOATING(c2));
     }
-    else if(ISSELECTED(c1) ^ ISSELECTED(c2))
-    {
+    else if(ISSELECTED(c1) != ISSELECTED(c2))
+    {   return __cmp_helper(ISSELECTED(c1), ISSELECTED(c2));
     }
-    else if(ISNORMALSTACK(c1) ^ ISNORMALSTACK(c2))
-    {
+    else if(ISNORMALSTACK(c1) != ISNORMALSTACK(c2))
+    {   return __cmp_helper(ISNORMALSTACK(c1), ISNORMALSTACK(c2));
     }
-    else if(ISBELOW(c1) ^ ISBELOW(c2))
-    {
+    else if(ISBELOW(c1) != ISBELOW(c2))
+    {   return __cmp_helper(ISBELOW(c1), ISBELOW(c2));
     }
-    else if(ISHIDDEN(c1) ^ ISHIDDEN(c2))
-    {
+    else if(ISHIDDEN(c1) != ISHIDDEN(c2))
+    {   return __cmp_helper(ISHIDDEN(c1), ISHIDDEN(c2));
     }
     else
-    {   return 0;
+    {   /* UNRECHEABLE (hopefully) */
+        return 0;
     }
-    /* implement focus stuff **/
-    /*
-    if (c1->i < c2->i)
-        return -1;
-    if (c1->i > c2->i)
-        return +1;
-    return 0;
-    */
-    /* Place holder */
-    if(c1->win < c2->win)
-    {   return -1;
-    }
-    if(c1->win > c2->win)
-    {   return +1;
-    }
-    return 0;
 }
 
 /*
@@ -2208,6 +2208,8 @@ __cmp(Client *c1, Client *c2)
 void
 reorder(Desktop *desk)
 {
+
+    /* TODO Doesnt work quite well */
     Client *list = desk->stack;
 
     Client *p, *q, *e, *tail;
@@ -2281,6 +2283,18 @@ reorder(Desktop *desk)
         insize *= 2;
     }
     desk->stack = list;
+    if(!tail)
+    {   
+        Client *c = desk->stack;
+        /* check if there is a stack */
+        if(c)
+        {
+            /* find last client */
+            while(c->snext && (c = nextstack(c)));
+            tail = c;
+        }
+    }
+    desk->slast = tail;
 }
 
 void
@@ -2844,7 +2858,7 @@ setskiptaskbar(Client *c, uint8_t state)
 void
 setfullscreen(Client *c, u8 state)
 {
-    const Monitor *m = c->desktop->mon;
+    Monitor *m = c->desktop->mon;
     if(state && !ISFULLSCREEN(c))
     {
         XCBChangeProperty(_wm.dpy, c->win, netatom[NetWMState], XCB_ATOM_ATOM, 32,
@@ -3373,6 +3387,12 @@ tile(Desktop *desk)
             if (ty + HEIGHT(c) < (unsigned int)m->wh) ty += HEIGHT(c) + bgw;
         }
     }
+}
+
+void 
+tilecalc(Desktop *desk, Client *optional_start, uint16_t count, int32_t startx, int32_t starty, int32_t *x_ret, int32_t *y_ret, int32_t *width_ret, int32_t *height_ret)
+{
+    /* TODO */
 }
 
 void
