@@ -696,6 +696,7 @@ void startup(void);
  *          and "stacking" on top of each other smaller windows on the right.
  */
 void tile(Desktop *desk);
+void tilecalc(Desktop *desk, Client *optional_start, uint16_t count,int32_t startx, int32_t starty, int32_t *x_ret, int32_t *y_ret, int32_t *width_ret, int32_t *height_ret);
 /* Unfocuses specified client and sets to focus to root if setfocus is true */
 void unfocus(Client *c, uint8_t setfocus);
 /* updates the Status Bar Position from given monitor */

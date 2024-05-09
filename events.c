@@ -328,9 +328,8 @@ motionnotify(XCBGenericEvent *event)
 
     /* due to the mouse being able to move a ton we want to limit the cycles burnt for non root events */
     if(eventwin != _wm.root)
-    {   
+    {   return;
     }
-    DEBUG0("X");
 
     u8 sync = 0;
     static Monitor *mon = NULL;
@@ -464,9 +463,11 @@ focusin(XCBGenericEvent *event)
 
     u8 sync = 0;
 
-    if(_wm.selmon->desksel->sel && eventwin != _wm.selmon->desksel->sel->win)
+    Client *sel = _wm.selmon->desksel->sel;
+    if(sel && eventwin != sel->win)
     {   
-        setfocus(_wm.selmon->desksel->sel);
+        unfocus(sel, 1);
+        focus(NULL);
         sync = 1;
     }
 
@@ -833,19 +834,7 @@ configurenotify(XCBGenericEvent *event)
         }
     }
     else if(overrideredirect)
-    {
-        Client *c;
-        Bar *b;
-        if((c = wintoclient(win)))
-        {
-            unmanage(c, 0);
-            sync = 1;
-        }
-        else if((b = wintobar(win, 0)))
-        {   
-            unmanagebar(b);
-            sync = 1;
-        }
+    {   /* Who Cares? */
     }
     if(sync)
     {   XCBFlush(_wm.dpy);
