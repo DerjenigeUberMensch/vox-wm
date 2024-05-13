@@ -1,4 +1,3 @@
-#include "xcb_trl.h"
 #include "events.h"
 #include "util.h"
 #include "keybinds.h"
@@ -331,6 +330,7 @@ motionnotify(XCBGenericEvent *event)
     {   return;
     }
 
+
     u8 sync = 0;
     static Monitor *mon = NULL;
     Monitor *m;
@@ -466,8 +466,7 @@ focusin(XCBGenericEvent *event)
     Client *sel = _wm.selmon->desksel->sel;
     if(sel && eventwin != sel->win)
     {   
-        unfocus(sel, 1);
-        focus(NULL);
+        setfocus(sel);
         sync = 1;
     }
 
@@ -684,6 +683,11 @@ configurerequest(XCBGenericEvent *event)
             c->oldy = c->y;
             c->y = m->my + ((m->mh >> 1) - (HEIGHT(c) >> 1)); /* center in y direction */
         }
+        /* these checks are so we maintain wasfloating correctly without messing everything up */
+        if(!ISFLOATING(c) && !DOCKED(c))
+        {   setfloating(c, 1);
+        }
+
         if(mask & (XCB_CONFIG_WINDOW_X|XCB_CONFIG_WINDOW_Y) && !(mask & (XCB_CONFIG_WINDOW_WIDTH|XCB_CONFIG_WINDOW_HEIGHT)))
         {    configure(c);
         }
@@ -730,6 +734,9 @@ maprequest(XCBGenericEvent *event)
         c = managereply(win, cookies);
         if(c)
         {
+            updatedecor(c, NULL);
+            /* map window before input focus is set cause we just get errors other wise. */
+            XCBMapWindow(_wm.dpy, c->win);
             focus(c);
             arrange(c->desktop);
         }
@@ -750,13 +757,16 @@ resizerequest(XCBGenericEvent *event)
     const u16 w         = ev->width;
     const u16 h         = ev->height;
 
-    Client *c;
     
     u8 sync = 0;
 
-    if((c = wintoclient(win)))
+    Client *c = wintoclient(win);
+    if(c)
     {   
         resize(c, c->x, c->y, w, h, 0);
+        if(!DOCKED(c))
+        {   setfloating(c, 1);
+        }
         sync = 1;
     }
     else

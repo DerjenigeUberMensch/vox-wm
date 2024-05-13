@@ -1,7 +1,7 @@
 #ifndef EVENTS_H_
 #define EVENTS_H_
 
-#include "xcb_trl.h"
+#include "XCB-TRL/xcb_trl.h"
 
 void keypress(XCBGenericEvent *event);
 void keyrelease(XCBGenericEvent *event);

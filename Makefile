@@ -2,11 +2,14 @@
 
 include config.mk
 
+SRCDIR = XCB-TRL
+
 BIN = binary
 SRC = $(wildcard *.c)
-SRCH= $(wildcard *.h)
+SRC += $(foreach dir, $(SRCDIR), $(wildcard $(dir)/*.c))
+SRCH= $(foreach dir, $(SRCDIR), $(wildcard $(dir)/*.h))
 OBJ = $(patsubst %.c,${BIN}/%.o,$(SRC))
-VERSION = 1.0.0
+VERSION = 2.0.0
 EXE = dwm
 EXEPATH = ${BIN}/${EXE}
 CMACROS += -DVERSION=\"${VERSION}\" -DNAME=\"${EXE}\" 

@@ -209,24 +209,6 @@ BarDrawBuff(
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /*
  * id1 id2 id3 * 256
  * I think the only real solution is to have the client print from back to frot.

@@ -5,12 +5,11 @@
 #include <xcb/xcb_keysyms.h>
 #include <stdio.h>
 
-#include "util.h"
+#include "uthash.h"
 #include "bar.h"
-#include "thread.h"
 #include "settings.h"
-#include "xcb_trl.h"
-#include "xcb_winutil.h"
+#include "XCB-TRL/xcb_trl.h"
+#include "XCB-TRL/xcb_winutil.h"
 
 
 #ifndef VERSION
@@ -38,6 +37,9 @@
 #define MANAGE_CLIENT_COOKIE_COUNT 16 + 1
 
 /* Client struct flags */
+#define _FSTATE_FLOATING        ((1 << 0))
+#define _FSTATE_WASFLOATING     ((1 << 1))
+#define _FSTATE_SHOW_DECOR      ((1 << 2))
 
 /* EWMH window types */
 #define _TYPE_DESKTOP       ((1 << 0))
@@ -54,16 +56,11 @@
 #define _TYPE_COMBO         ((1 << 11))
 #define _TYPE_DND           ((1 << 12))
 #define _TYPE_NORMAL        ((1 << 13))
-/* not actual state but just lumped in cause assinging its own is stupid. */
+
+/* custom types (using spare bits )*/
 #define _TYPE_NEVERFOCUS    ((1 << 14))
-/* We only need a bit for ICONIC because a window can only have 3 states.
- * Those 3 states are as follows:
- * WithdrawnState,        (We dont handle WithdrawnState (unmapped) windows)
- * So we only have 2.
- * Iconic,
- * Normal
- */
-#define _TYPE_WINDOW_ICONIC ((1 << 15))
+/* Window map states, Widthdrawn, Iconic, Normal. */
+#define _TYPE_MAP_ICONIC        ((1 << 15))
 
 /* EWMH Window states */
 #define _STATE_MODAL                        ((1 << 0))
@@ -80,18 +77,17 @@
 #define _STATE_DEMANDS_ATTENTION            ((1 << 11))
 #define _STATE_FOCUSED                      ((1 << 12))
 
+/* extra states (using spare bits) */
 #define _STATE_SUPPORTED_WM_TAKE_FOCUS      ((1 << 13))
 #define _STATE_SUPPORTED_WM_SAVE_YOURSELF   ((1 << 14))
 #define _STATE_SUPPORTED_WM_DELETE_WINDOW   ((1 << 15))
-
-/* Decoration states */
-#define _DECOR_VISIBLE      ((1 << 0))
 
 /* cursor */
 enum CurType 
 { 
     CurNormal, 
-    CurResize, 
+    CurResizeTopL, 
+    CurResizeTopR, 
     CurMove, 
     CurLast 
 }; 
@@ -206,6 +202,7 @@ struct Client
 
     uint16_t wtypeflags;/* Window type flags        */
     uint16_t wstateflags;/* Window state flags      */
+    uint32_t flags;     /* Misc States              */
 
     uint16_t bw;        /* Border Width             */
     uint16_t oldbw;     /* Old Border Width         */
@@ -238,8 +235,10 @@ struct Client
     Decoration *decor;  /* Decoration AKA title bar.*/
 
     char *netwmname;    /* Client Name              */
-    char *wmname;       /* Client name backup       */
-    char *icon;         /* Array of icon values     */
+    char *wmname;       /* Client Name backup       */
+    char *classname;    /* Class Name               */
+    char *instancename; /* Instance Name            */
+    uint32_t *icon;     /* Array of icon values     */
     UT_hash_handle hh;  /* hash handle              */
 };
 
@@ -248,8 +247,6 @@ struct Decoration
     /* TODO */
     uint16_t w;
     uint16_t h;
-    uint8_t flags;
-    uint8_t pad[3];
     XCBWindow win;
 };
 
@@ -333,7 +330,7 @@ void argcvhandler(int argc, char *argv[]);
 void applysizechecks(Monitor *m, int32_t *x, int32_t *y, int32_t *width, int32_t *height, int32_t *border_width);
 /* Applies the gravity shifts specified by the gravity onto the x and y coordinates.
 */
-void applygravity(uint32_t gravity, int16_t *x, int16_t *y, const uint16_t width, const uint16_t height, const uint16_t border_width);
+void applygravity(const uint32_t gravity, int16_t *x, int16_t *y, const uint16_t width, const uint16_t height, const uint16_t border_width);
 /* Applies size hints to the specified values.
 * interact:             1/true/True         Does not restrict bounds to window area.
 *                       0/false/False       Restricts bounds to window area.
@@ -406,6 +403,7 @@ void cleanup(void);
 /* frees client and allocated client properties. 
 */
 void cleanupclient(Client *c);
+void cleanupcursors(void);
 /* frees desktop and allocated desktop properties.
 */
 void cleanupdesktop(Desktop *desk);
@@ -476,7 +474,7 @@ void focus(Client *c);
  */
 int32_t getstate(XCBWindow win, XCBGetWindowAttributes *state);
 void getnamefromreply(XCBWindowProperty *namerep, char **str_return);
-char *geticonreply(XCBCookie cookie);
+uint32_t *geticonprop(XCBWindowProperty *iconreply);
 /* Grabs a windows buttons. 
  * Basically this just allows us to receive button press/release events from windows.
  */
@@ -543,6 +541,7 @@ Monitor *nextmonitor(Monitor *monitor);
  * RETURN: NULL on Failure.
  */
 Client *nextstack(Client *c);
+Client *nextrstacK(Client *c);
 /* Returns the next client in focus order avaible.
  * RETURN: Client* on Success.
  * RETURN: NULL on Failure.
@@ -569,6 +568,7 @@ Client *prevfocus(Client *c);
  * RETURN: NULL on Failure.
  */
 Client *prevstack(Client *c);
+Client *prevrstack(Client *c);
 /* Returns the prev visible client avaible.
  * RETURN: Client* on Success.
  * RETURN: NULL on Failure.
@@ -650,12 +650,16 @@ void setwtypenotification(Client *c, uint8_t state);
 void setwtypecombo(Client *c, uint8_t state);
 void setwtypednd(Client *c, uint8_t state);
 void setwtypenormal(Client *c, uint8_t state);
+void setwtypemapiconic(Client *c, uint8_t state);
+void setwtypemapnormal(Client *c, uint8_t state);
 void setwmtakefocus(Client *c, uint8_t state);
 void setwmsaveyourself(Client *c, uint8_t state);
 void setwmdeletewindow(Client *c, uint8_t state);
 void setskippager(Client *c, uint8_t state);
 void setskiptaskbar(Client *c, uint8_t state);
+void setshowdecor(Client *c, uint8_t state);
 void setfullscreen(Client *c, uint8_t isfullscreen);
+void setfloating(Client *c, uint8_t state);
 void setfocus(Client *c);
 void sethidden(Client *c, uint8_t state);
 void setmaximizedvert(Client *c, uint8_t state);
@@ -668,6 +672,7 @@ void settopbar(Client *c, uint8_t state);
 void startup(void);
 /* Sets up Variables, Checks, WM specific data, etc.. */
 void setup(void);
+void setupcursors(void);
 void setupcfg(void);
 void setupcfgdefaults(void);
 void seturgent(Client *c, uint8_t isurgent);
@@ -703,12 +708,14 @@ void unfocus(Client *c, uint8_t setfocus);
 void updatebarpos(Monitor *m);
 /* updates the bar geometry from the given monitor */
 void updatebargeom(Monitor *m);
+void updateclass(Client *c, XCBWMClass *_class);
 /* Updates 
  * type:            0       Adds the client win .
  *                  1       Removes the specified win.
  *                  2       Reloads the entire list.
  * _NET_WM_CLIENT_LIST */
 void updateclientlist(XCBWindow win, uint8_t type);
+void updatedecor(Client *c, XCBGetWindowAttributes *wa);
 /* Updates the XServer to the Current destop */
 void updatedesktop(void);
 /* Updates the desktop names if they have changed */
@@ -718,7 +725,9 @@ void updatedesktopnum(void);
 /* Updates Geometry for external monitors based on if they have different geometry */
 int  updategeom(void);
 /* Updates the Client icon if we find one */
-void updateicon(Client *c);
+void updateicon(Client *c, XCBWindowProperty *iconprop);
+/* TODO */
+void updatemotifhints(void);
 /* checks and updates mask if numlock is active */
 void updatenumlockmask(void);
 /* Updates a Clients sizehints property using the provided hints pointer "size" */
@@ -786,6 +795,7 @@ int ISFIXED(Client *c);
 int ISURGENT(Client *c);
 int NEVERFOCUS(Client *c);
 int ISVISIBLE(Client *c);
+int SHOWDECOR(Client *c);
 int ISSELECTED(Client *c);
 /* if the window doesnt have any stacking priority. */
 int ISNORMALSTACK(Client *c);
@@ -808,6 +818,7 @@ int ISCOMBO(Client *c);
 int ISDND(Client *c);
 int ISNORMAL(Client *c);
 int ISMAPICONIC(Client *c);
+int ISMAPNORMAL(Client *c);
 /* EWMH Window states */
 int ISMODAL(Client *c);
 int ISSTICKY(Client *c);
