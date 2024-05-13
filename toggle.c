@@ -28,12 +28,25 @@ UserStats(const Arg *arg)
     Client *c = _wm.selmon->desksel->sel;
 
     if(c)
-    {   DEBUG("(x: %d, y: %d, w: %u, h: %u)", c->x, c->y, c->w, c->h);
+    {   
+        XCBARGB argb;
+        argb.argb = c->bcol;
+        DEBUG("(x: %d, y: %d, w: %u, h: %u)", c->x, c->y, c->w, c->h);
         DEBUG("(ox: %d, oy: %d, ow: %u, oh: %u)", c->oldx, c->oldy, c->oldw, c->oldh);
         DEBUG("NETNAME:     %s", c->netwmname);
         DEBUG("WMNAME:      %s", c->wmname);
         DEBUG("CLASSNAME:   %s", c->classname);
         DEBUG("INSTANCENAME:%s", c->instancename);
+        DEBUG("WindowID:    %u", c->win);
+        DEBUG("PID:         %u", c->pid);
+        DEBUG("RBGA:        (%u, %u, %u, %u)", argb.r, argb.g, argb.b, argb.a);
+        DEBUG("BorderWidth: %u", c->bw);
+        DEBUG("MINW:        %u", c->minw);
+        DEBUG("MINH:        %u", c->minh);
+        DEBUG("MAXW:        %u", c->maxw);
+        DEBUG("MAXH:        %u", c->maxh);
+        DEBUG("INCW:        %d", c->incw);
+        DEBUG("INCH:        %d", c->inch);
     }
     else
     {   DEBUG0("NULL");
@@ -160,6 +173,14 @@ DragWindow(
                     break;
                 }
             }
+            else if(XCB_EVENT_RESPONSE_TYPE(ev) == XCB_DESTROY_NOTIFY)
+            {   XCBDestroyNotifyEvent *dev = (XCBDestroyNotifyEvent *)ev;
+                if(dev->window == win)
+                {   free(ev);
+                    win = 0;
+                    break;
+                }
+            }
             free(ev);
         }
     } while(_wm.running && !XCBNextEvent(_wm.dpy, &ev) && XCB_EVENT_RESPONSE_TYPE(ev) != XCB_BUTTON_RELEASE);
@@ -204,7 +225,6 @@ ResizeWindow(const Arg *arg)
 
     XCBDisplay *display = _wm.dpy;
     XCBWindow win = c->win;
-    const int MIN_SIZE = 1;
 
     i16 curx, cury;
     i32 oldw, oldh;
@@ -297,6 +317,14 @@ ResizeWindow(const Arg *arg)
             else if(XCB_EVENT_RESPONSE_TYPE(ev) == XCB_UNMAP_NOTIFY)
             {   XCBUnMapNotifyEvent *uev = (XCBUnMapNotifyEvent *)ev;
                 if(uev->window == win)
+                {   free(ev);
+                    win = 0;
+                    break;
+                }
+            }
+            else if(XCB_EVENT_RESPONSE_TYPE(ev) == XCB_DESTROY_NOTIFY)
+            {   XCBDestroyNotifyEvent *dev = (XCBDestroyNotifyEvent *)ev;
+                if(dev->window == win)
                 {   free(ev);
                     win = 0;
                     break;
