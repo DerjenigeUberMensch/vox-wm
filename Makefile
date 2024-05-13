@@ -35,7 +35,7 @@ default: ${OBJ}
 	@echo "Done."
 
 
-__CLEANARGS = ${RM} ${BIN}/*.o ${EXEPATH}
+__CLEANARGS = ${RM} ${BIN}/*.o ${BIN}/XCB-TRL/*.o ${EXEPATH}
 
 clean:
 	${__CLEANARGS}
