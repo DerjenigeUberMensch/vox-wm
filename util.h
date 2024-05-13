@@ -18,7 +18,6 @@ typedef int16_t  i16;
 typedef int32_t  i32;
 typedef int64_t  i64;
 
-
 typedef union Generic Generic;
 typedef union ARGB ARGB;
 
@@ -100,8 +99,6 @@ union ARGB
 #define DEBUG0(X) ((void)0)
 #endif
 
-
-
 /* gcc */
 #ifdef __GNUC__
 #define ASM(X)                          (__asm__(X))
@@ -146,7 +143,6 @@ double functime(void (*_timefunction)(void));
 #ifndef Nill
 #define Nill ((void *)0)
 #endif
-
 
 #define ASSUME(cond) do { if (!(cond)) __builtin_unreachable(); } while (0)
 

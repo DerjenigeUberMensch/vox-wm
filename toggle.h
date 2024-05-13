@@ -1,5 +1,6 @@
 #ifndef TOGGLE_H_
 #define TOGGLE_H_
+
 #include "dwm.h"
 
 
@@ -18,7 +19,7 @@ void KillWindow(const Arg *arg);
 /* Attempts to kill the current window directly instead of just sending a signal and waiting for the window to respond */
 void TerminateWindow(const Arg *arg);
 /* keybind to move the current window where the mouse cursor is */
-void DragWindow(XCBDisplay *display, XCBWindow win, const XCBKeyCode key_or_button);
+void DragWindow(const Arg *arg);
 /* restarts dwm */
 void Restart(const Arg *arg);
 /* quits dwm */

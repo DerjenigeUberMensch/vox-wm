@@ -16,14 +16,14 @@
 #include <xcb/xkb.h>
 #include <xcb/xinerama.h>
 
+#include <X11/cursorfont.h>     /* cursors */
+
 #include <X11/X.h> /* error codes */
 
 
 /* keycodes */
 #include <X11/keysym.h>
 
-#include "xcb_trl.h"
-#include "xcb_winutil.h"
 #include "util.h"
 #include "dwm.h"
 #include "parser.h"
@@ -42,6 +42,8 @@ UserSettings _cfg;
 
 XCBAtom netatom[NetLast];
 XCBAtom wmatom[WMLast];
+XCBAtom motifatom;
+XCBCursor cursors[CurLast];
 
 /* Macro definitions */
 u16 OLDWIDTH(Client *c)         { return (c->oldw + (c->bw * 2)); }
@@ -51,52 +53,50 @@ u16 HEIGHT(Client *c)           { return (c->h + (c->bw * 2)); }
 /* Our custom states */
 int ISALWAYSONTOP(Client *c)    { return c->wstateflags & _STATE_ABOVE; }
 int ISALWAYSONBOTTOM(Client *c) { return c->wstateflags & _STATE_BELOW; }
-int WASFLOATING(Client *c)      {   
+int WASFLOATING(Client *c)      { return c->flags & _FSTATE_WASFLOATING; }
+int ISFLOATING(Client *c)       { return c->flags & _FSTATE_FLOATING; }
+int WASDOCKED(Client *c)   {   
                                     const i16 wx = c->desktop->mon->wx;
                                     const i16 wy = c->desktop->mon->wy;
                                     const u16 ww = c->desktop->mon->ww;
                                     const u16 wh = c->desktop->mon->wh;
                                     const i16 x = c->oldx;
                                     const i16 y = c->oldy;
-                                    const u16 w = c->oldw;
-                                    const u16 h = c->oldh;
-                                    return ((wx == x) & (wy == y) & (ww == w) & (wh == h));
+                                    const u16 w = OLDWIDTH(c);
+                                    const u16 h = OLDHEIGHT(c);
+                                    return !((wx != x) + (wy != y) + (ww != w) + (wh != h));
                                 }
-int ISFLOATING(Client *c)       {
+int DOCKED(Client *c)       {
                                     const i16 wx = c->desktop->mon->wx;
                                     const i16 wy = c->desktop->mon->wy;
                                     const u16 ww = c->desktop->mon->ww;
                                     const u16 wh = c->desktop->mon->wh;
                                     const i16 x = c->x;
                                     const i16 y = c->y;
-                                    const u16 w = c->w;
-                                    const u16 h = c->h;
-                                    i32 nx;
-                                    i32 ny;
-                                    i32 nw;
-                                    i32 nh;
-                                    return ((wx == x) & (wy == y) & (ww == w) & (wh == h));
+                                    const u16 w = WIDTH(c);
+                                    const u16 h = HEIGHT(c);
+                                    return !((wx != x) + (wy != y) + (ww != w) + (wh != h));
                                 }
-int DOCKED(Client *c)           { return !ISFLOATING(c);  }
-int WASDOCKED(Client *c)        { return !WASFLOATING(c); }
-int ISFIXED(Client *c)          { return (c->minw != 0) & (c->minh != 0) & (c->minw == c->maxw) & (c->minh == c->maxh); }
+int ISFIXED(Client *c)          { return (c->minw != 0) && (c->minh != 0) && (c->minw == c->maxw) && (c->minh == c->maxh); }
 int ISURGENT(Client *c)         { return c->wstateflags & _STATE_DEMANDS_ATTENTION; }
 int NEVERFOCUS(Client *c)       { return c->wtypeflags & _TYPE_NEVERFOCUS; }
 int ISMAXHORZ(Client *c)        { return WIDTH(c) == c->desktop->mon->wh; }
 int ISMAXVERT(Client *c)        { return HEIGHT(c) == c->desktop->mon->wh; }
-int ISVISIBLE(Client *c)        { return (!!(c->desktop->mon->desksel == c->desktop) | (!!ISSTICKY(c))) & !ISHIDDEN(c); }
+int ISVISIBLE(Client *c)        { return (!!(c->desktop->mon->desksel == c->desktop) || (!!ISSTICKY(c))) && !ISHIDDEN(c); }
+int SHOWDECOR(Client *c)        { return c->flags & _FSTATE_SHOW_DECOR; }
 int ISSELECTED(Client *c)       { return c->desktop->sel == c; }
-int ISNORMALSTACK(Client *c)    { return    !(
+int ISNORMALSTACK(Client *c)    { return   !(
                                                 ISFLOATING(c) | ISALWAYSONTOP(c) |
                                                 ISDIALOG(c) | ISMODAL(c)
                                             ); 
                                 }
+        
 int COULDBEBAR(Client *c, uint8_t strut) 
                                 {
                                     const u8 sticky = !!ISSTICKY(c);
                                     const u8 isdock = !!(ISDOCK(c) | ISTOOLBAR(c));
                                     const u8 above = !!ISABOVE(c); 
-                                    return  (sticky && strut && (above || isdock));
+                                    return (sticky && strut && (above || isdock));
                                 }
 /* EWMH Window types */
 int ISDESKTOP(Client *c)        { return c->wtypeflags & _TYPE_DESKTOP; }
@@ -113,8 +113,8 @@ int ISNOTIFICATION(Client *c)   { return c->wtypeflags & _TYPE_NOTIFICATION; }
 int ISCOMBO(Client *c)          { return c->wtypeflags & _TYPE_COMBO; }
 int ISDND(Client *c)            { return c->wtypeflags & _TYPE_DND; }
 int ISNORMAL(Client *c)         { return c->wtypeflags & _TYPE_NORMAL; }
-int ISMAPICONIC(Client *c)      { return c->wtypeflags & _TYPE_WINDOW_ICONIC; }
-int ISMAPNORMAL(Client *c)      { return !ISMAPICONIC(c);}
+int ISMAPICONIC(Client *c)      { return c->wtypeflags & _TYPE_MAP_ICONIC; }
+int ISMAPNORMAL(Client *c)                { return !ISMAPICONIC(c); }
 /* EWMH Window states */
 int ISMODAL(Client *c)          { return c->wstateflags & _STATE_MODAL; }
 int ISSTICKY(Client *c)         { return c->wstateflags & _STATE_STICKY; }
@@ -272,7 +272,7 @@ applysizechecks(Monitor *m, i32 *x, i32 *y, i32 *width, i32 *height, i32 *border
 }
 
 void
-applygravity(u32 gravity, i16 *x, i16 *y, const u16 w, const u16 h, const u16 bw)
+applygravity(const u32 gravity, i16 *x, i16 *y, const u16 w, const u16 h, const u16 bw)
 {
     if(!gravity || !x || !y)
     {   return;
@@ -432,6 +432,7 @@ arrangeq(Desktop *desk)
         }
         workingdesk = desk;
     }
+    reorder(desk);
     arrangedesktop(desk);
 }
 
@@ -439,7 +440,6 @@ void
 arrange(Desktop *desk)
 {
     arrangeq(desk);
-    reorder(desk);
     switch(desk->layout)
     {
         case Monocle: case Floating: default:
@@ -754,6 +754,7 @@ cleanup(void)
         return;
     }
     XCBCookie cookie = XCBDestroyWindow(_wm.dpy, _wm.wmcheckwin);
+    cleanupcursors();
     XCBDiscardReply(_wm.dpy, cookie);
     XCBSetInputFocus(_wm.dpy, _wm.root, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
     XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow]);
@@ -795,9 +796,21 @@ cleanupclient(Client *c)
 {
     free(c->wmname);
     free(c->netwmname);
+    free(c->classname);
+    free(c->instancename);
     free(c->decor);
+    free(c->icon);
     free(c);
     c = NULL;
+}
+
+void
+cleanupcursors(void)
+{
+    int i;
+    for(i = 0; i < CurLast; ++i) 
+    {   XCBFreeCursor(_wm.dpy, cursors[i]); 
+    }
 }
 
 void
@@ -926,6 +939,7 @@ createclient(void)
     {   DEBUG0("Could not allocated memory for decoration (OutOfMemory).");
         return NULL;
     }
+    c->decor = decor;
     c->x = c->y = 0;
     c->w = c->h = 0;
     c->oldx = c->oldy = 0;
@@ -943,6 +957,8 @@ createclient(void)
     c->desktop = NULL;
     c->wmname = NULL;
     c->netwmname = NULL;
+    c->classname = NULL;
+    c->instancename = NULL;
     return c;
 }
 
@@ -1031,7 +1047,6 @@ createdecoration(void)
         decor->w = 0;
         decor->h = 0;
         decor->win = 0;
-        decor->flags = 0;
     }
     return decor;
 }
@@ -1052,19 +1067,6 @@ dirtomon(u8 dir)
     {   for(m = _wm.mons; m->next != _wm.selmon; m = nextmonitor(m));
     }
     return m;
-}
-
-/* unused. */
-uint8_t
-docked(Client *c)
-{
-    const Monitor *m = c->desktop->mon;
-    uint8_t dockd = 0;
-    if(m)
-    {   
-        dockd = (m->wx == c->x) & (m->wy == c->y) & (WIDTH(c) == m->ww) & (HEIGHT(c) == m->wh);
-    }
-    return dockd;
 }
 
 void
@@ -1148,6 +1150,33 @@ getnamefromreply(XCBWindowProperty *namerep, char **str_return)
             DEBUG("%s", *str_return);
         }
     }
+}
+
+u32 *
+geticonprop(XCBWindowProperty *iconreply)
+{
+    const u8 WIDTH_INDEX = 0;
+    const u8 HEIGHT_INDEX = 1;
+    const u8 MIN_WIDTH = 1;
+    const u8 MIN_HEIGHT = 1;
+    const u8 MIN_ICON_DATA_SIZE = (MIN_WIDTH + MIN_HEIGHT) * 2;     /* times 2 cause the first and second index are the size */
+
+    u32 *ret = NULL;
+    if(iconreply)
+    {
+        u32 *icon = XCBGetPropertyValue(iconreply);
+        size_t size = XCBGetPropertyValueSize(iconreply);
+        u32 length = XCBGetPropertyValueLength(iconreply, sizeof(u32));
+        if(length >= MIN_ICON_DATA_SIZE)
+        {   
+            size_t sz = sizeof(u32) * icon[WIDTH_INDEX] * icon[HEIGHT_INDEX] + sizeof(u32) * 2;
+            ret = malloc(MIN(sz, size));
+            if(ret)
+            {   memcpy(ret, icon, MIN(sz, size));
+            }
+        }
+    }
+    return ret;
 }
 
 i8
@@ -1241,7 +1270,11 @@ grid(Desktop *desk)
     Monitor *m = desk->mon;
 
     for(n = 0, c = desk->focus; c; c = nextfocus(c))
-    {   ++n;
+    {   
+        if(ISFLOATING(c))
+        {   continue;
+        }
+        ++n;
     }
 
     if(!n) 
@@ -1262,6 +1295,9 @@ grid(Desktop *desk)
     cw = m->ww / (cols + !cols);
     for(i = 0, c = desk->focus; c; c = nextfocus(c))
     {
+        if(ISFLOATING(c))
+        {   continue;
+        }
         nx = m->wx + (i / rows) * cw;
         ny = m->wy + (i % rows) * ch;
         /* adjust height/width of last row/column's windows */
@@ -1320,10 +1356,10 @@ killclient(Client *c, enum KillType type)
 void
 managerequest(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
 {
-    const uint32_t REQUEST_MAX_NEEDED_ITEMS = UINT32_MAX;
-    const uint8_t STRUT_P_LENGTH = 12;
-    const uint8_t STRUT_LENGTH = 4;
-    const uint8_t NO_BYTE_OFFSET = 0;
+    const u32 REQUEST_MAX_NEEDED_ITEMS = UINT32_MAX;
+    const u8 STRUT_P_LENGTH = 12;
+    const u8 STRUT_LENGTH = 4;
+    const u8 NO_BYTE_OFFSET = 0;
     XCBCookie wacookie = XCBGetWindowAttributesCookie(_wm.dpy, win);
     XCBCookie wgcookie = XCBGetWindowGeometryCookie(_wm.dpy, win);
     XCBCookie transcookie = XCBGetTransientForHintCookie(_wm.dpy, win);                        
@@ -1338,9 +1374,10 @@ managerequest(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     XCBCookie netwmnamecookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMName], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, netatom[NetUtf8String]);
     XCBCookie wmnamecookie = XCBGetWindowPropertyCookie(_wm.dpy, win, XCB_ATOM_WM_NAME, NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_STRING);
     XCBCookie pidcookie = XCBGetPidCookie(_wm.dpy, win, netatom[NetWMPid]);
+    XCBCookie iconcookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMIcon], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_CARDINAL);
 
     /* Mostly to prevent needing to rewrite the numbers over and over again if we mess up */
-    int i = 0;
+    u8 i = 0;
     requests[i++] = wacookie;
     requests[i++] = wgcookie;
     requests[i++] = transcookie;
@@ -1354,8 +1391,9 @@ managerequest(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     requests[i++] = strutcookie;
     requests[i++] = netwmnamecookie;
     requests[i++] = wmnamecookie;
+    requests[i++] = iconcookie;
     requests[i++] = pidcookie;
-    /* 16 elements in thing */
+    /* 15 elements in thing */
 }
 
 Client *
@@ -1375,6 +1413,7 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     
     const u16 bw = 0;
     const u32 bcol = 0;
+    const u8 showdecor = 1;
 
     Client *c = NULL;
     XCBWindow trans = 0;
@@ -1383,7 +1422,6 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     XCBWindowGeometry *wg = NULL;
 
     XCBGetWindowAttributes *waattributes = NULL;
-    u8 override_redirect = 0;
     XCBWindowProperty *wtypeunused = NULL;
     XCBWindowProperty *stateunused = NULL;
     XCBSizeHints hints;
@@ -1401,7 +1439,6 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     char *netwmname = NULL;
     char *wmname = NULL;
     XCBWindowProperty *iconreply = NULL;
-    char *icon = NULL;
     pid_t pid = 0;
 
     /* we do it here before, because we are waiting for replies and for more memory. */
@@ -1421,7 +1458,7 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     strutreply = XCBGetWindowPropertyReply(_wm.dpy, requests[10]);
     netwmnamereply = XCBGetWindowPropertyReply(_wm.dpy, requests[11]);
     wmnamereply = XCBGetWindowPropertyReply(_wm.dpy, requests[12]);
-    iconreply = XCBGetWindowPropertyReply(_wm.dpy, requests[12]);
+    iconreply = XCBGetWindowPropertyReply(_wm.dpy, requests[13]);
     pid = XCBGetPidReply(_wm.dpy, requests[14]);
     strutp = strutpreply ? XCBGetWindowPropertyValue(strutpreply) : NULL;
     strut = strutreply ? XCBGetWindowPropertyValue(strutpreply) : NULL;
@@ -1436,7 +1473,6 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
 
     if(waattributes && waattributes->override_redirect)
     {   DEBUG("Override Redirect: [%d]", win);
-        override_redirect = 1;
         /* theoredically we could manage these but they are a hastle to deal with */
         goto FAILURE;
     }
@@ -1466,10 +1502,13 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     setclientpid(c, pid);
     setborderwidth(c, bw);
     setbordercolor32(c, bcol);
+    setshowdecor(c, showdecor);
     configure(c);   /* propagates border_width, if size doesn't change */
     updatetitle(c, netwmname, wmname);
     updatesizehints(c, &hints);
+    updateclass(c, &cls);
     updatewmhints(c, wmh);
+    updateicon(c, iconreply);
     XCBSelectInput(_wm.dpy, win, inputmask);
     grabbuttons(win, 0);
 
@@ -1492,7 +1531,6 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     if(c->desktop && c->desktop->sel)
     {   setfullscreen(c, ISFULLSCREEN(c->desktop->sel) || ISFULLSCREEN(c));
     }
-    XCBMapWindow(_wm.dpy, win);
     if(c->desktop)
     {   HASH_ADD_INT(c->desktop->__hash, win, c);
     }
@@ -1577,6 +1615,9 @@ monocle(Desktop *desk)
 
     for(c = desk->focus; c; c = nextfocus(c))
     {
+        if(ISFLOATING(c))
+        {   continue;
+        }
         nw = m->ww - (c->bw * 2);
         nh = m->wh - (c->bw * 2);
         applysizechecks(m, &nx, &ny, &nw, &nh, &unused);
@@ -1609,6 +1650,12 @@ Client *
 nextstack(Client *c)
 {
     return c ? c->snext : c;
+}
+
+Client *
+nextrstack(Client *c)
+{
+    return c ? c->rnext : c;
 }
 
 Client *
@@ -1646,6 +1693,12 @@ Client *
 prevstack(Client *c)
 {
     return c ? c->sprev : c;
+}
+
+Client *
+prevrstack(Client *c)
+{   
+    return c ? c->rprev : c;
 }
 
 Client *
@@ -1771,7 +1824,7 @@ restoresession(void)
                 }
                 else
                 {   /* TODO: Technically we dont need isclientsend, but having that prevents a "fail" due to strcmp("Client.", buff); happening after/ */
-                    DEBUG0("Failed to pass checksum for client.");
+                    DEBUG0("Failed to pass move checksum for client.");
                 }
             }
         }
@@ -1796,6 +1849,17 @@ restoresession(void)
         isclients += !strcmp(str, "Clients.");
         isclientsend += !strcmp(str, "ClientsEnd.");
     }
+    /* map all the windows again */
+    Client *c;
+    for(m = _wm.mons; m; m = nextmonitor(m))
+    {
+        for(desk = m->desktops; desk; desk = nextdesktop(desk))
+        {
+            for(c = desk->clients; c; c = nextclient(c))
+            {   XCBMapWindow(_wm.dpy, c->win);
+            }
+        }
+    }
     arrangemons();
     /* No need to flush run() syncs for us */
     /* XCBFlush(_wm.dpy) */
@@ -1804,7 +1868,7 @@ restoresession(void)
 Client *
 restoreclientsession(Desktop *desk, char *buff, u16 len)
 {
-    const u8 SCANF_CHECK_SUM = 13;
+    const u8 SCANF_CHECK_SUM = 14;
     u8 check = 0;
 
     int x, y;
@@ -1814,6 +1878,7 @@ restoreclientsession(Desktop *desk, char *buff, u16 len)
     XCBWindow WindowId;
     XCBWindow WindowIdFocus;
     XCBWindow WindowIdStack;
+    u32 Flags;
     u32 BorderWidth;
     u32 BorderColor;
 
@@ -1827,6 +1892,7 @@ restoreclientsession(Desktop *desk, char *buff, u16 len)
                     "WindowIdStack: %u" " "
                     "BorderWidth: %u" " "
                     "BorderColor: %u" " "
+                    "Flags: %u" " "
                     ,
                     &x, &y, &w, &h,
                     &ox, &oy, &ow, &oh,
@@ -1834,7 +1900,8 @@ restoreclientsession(Desktop *desk, char *buff, u16 len)
                     &WindowIdFocus,
                     &WindowIdStack,
                     &BorderWidth,
-                    &BorderColor
+                    &BorderColor,
+                    &Flags
                     );
 
     if(check == SCANF_CHECK_SUM)
@@ -1848,6 +1915,7 @@ restoreclientsession(Desktop *desk, char *buff, u16 len)
             setbordercolor32(cclient, BorderColor);
             resize(cclient, ox, oy, ow, oh, 1);
             resize(cclient, x, y, w, h, 1);
+            cclient->flags = Flags;
         }
         if(fclient)
         {
@@ -2076,9 +2144,11 @@ void
 restack(Desktop *desk)
 {
     Client *c;
+    Client *cr;
     XCBWindowChanges wc;
 
     wc.stack_mode = XCB_STACK_MODE_BELOW;
+
     if(desk->mon->bar->win && SHOWBAR(desk->mon->bar))
     {   wc.sibling = desk->mon->bar->win;
     }
@@ -2088,15 +2158,17 @@ restack(Desktop *desk)
     }
 
     /* FIXME restacking doesnt really work with the "stack" */
-    for(c = desk->slast; c; c = prevstack(c))
+    for(c = desk->stack; c; c = nextstack(c))
     {
         XCBConfigureWindow(_wm.dpy, c->win, XCB_CONFIG_WINDOW_SIBLING|XCB_CONFIG_WINDOW_STACK_MODE, &wc);
         wc.sibling = c->win;
     }
-    for(c = desk->focus; c; c = nextfocus(c))
-    {
-        XCBConfigureWindow(_wm.dpy, c->win, XCB_CONFIG_WINDOW_SIBLING|XCB_CONFIG_WINDOW_STACK_MODE, &wc);
-        wc.sibling = c->win;
+    /* arbitrary number */
+    while(desk->rstack)
+    {   detachrestack(desk->rstack);
+    }
+    for(c = desk->stack; c; c = nextstack(c))
+    {   attachrestack(c);
     }
 }
 
@@ -2116,7 +2188,7 @@ restackq(Desktop *desk)
 
     Client *c;
     for(c = desk->stack; c; c = nextstack(c))
-    {   
+    { 
         if(!ISNORMALSTACK(c))
         {   XCBConfigureWindow(_wm.dpy, c->win, XCB_CONFIG_WINDOW_SIBLING|XCB_CONFIG_WINDOW_STACK_MODE, &wc);
             wc.sibling = c->win;
@@ -2127,9 +2199,9 @@ restackq(Desktop *desk)
 static i32
 __cmp_helper(int32_t x1, int32_t x2)
 {
-    const u16 bigger = x1 > x2;
-    const u16 smaller = !bigger;
-    const i32 ret = bigger + (-smaller);
+    const u32 bigger = x1 > x2;
+    const u32 smaller = !bigger;
+    const i32 ret = -bigger + (smaller);
     return ret;
 }
 
@@ -2141,30 +2213,23 @@ __cmp(Client *c1, Client *c2)
      * RETURN -1 on lesser priority
      * RETURN 0 on lesser priority. 
      */
-    /* XOR basically just skips if they both have it and only success if one of them has it AKA compare */
+    /* != basically just skips if they both have it and only success if one of them has it AKA compare */
+
+    if(ISFLOATING(c1) && DOCKED(c1))
+    {   setfloating(c1, 0);
+    }
+    if(ISFLOATING(c2) && DOCKED(c2))
+    {   setfloating(c2, 0);
+    }
+
     if(ISDOCK(c1) != ISDOCK(c2))
     {   return __cmp_helper(ISDOCK(c1), ISDOCK(c2));
     }
     else if(ISALWAYSONTOP(c1) != ISALWAYSONTOP(c2))
     {   return __cmp_helper(ISALWAYSONTOP(c1), ISALWAYSONTOP(c2));
     }
-    else if(ISMODAL(c1) != ISMODAL(c2))
-    {   return __cmp_helper(ISMODAL(c1), ISMODAL(c2));
-    }
-    else if(ISNOTIFICATION(c1) != ISNOTIFICATION(c2))
-    {   return __cmp_helper(ISNOTIFICATION(c1), ISNOTIFICATION(c2));
-    }
-    else if(ISDIALOG(c1) != ISDIALOG(c2))
-    {   return __cmp_helper(ISDIALOG(c1), ISDIALOG(c2));
-    }
-    else if(ISUTILITY(c1) != ISUTILITY(c2))
-    {   return __cmp_helper(ISUTILITY(c1), ISUTILITY(c2));
-    }
     else if(ISFLOATING(c1) != ISFLOATING(c2))
     {   return __cmp_helper(ISFLOATING(c1), ISFLOATING(c2));
-    }
-    else if(ISSELECTED(c1) != ISSELECTED(c2))
-    {   return __cmp_helper(ISSELECTED(c1), ISSELECTED(c2));
     }
     else if(ISNORMALSTACK(c1) != ISNORMALSTACK(c2))
     {   return __cmp_helper(ISNORMALSTACK(c1), ISNORMALSTACK(c2));
@@ -2176,8 +2241,10 @@ __cmp(Client *c1, Client *c2)
     {   return __cmp_helper(ISHIDDEN(c1), ISHIDDEN(c2));
     }
     else
-    {   /* UNRECHEABLE (hopefully) */
-        return 0;
+    {   
+        Client *c;
+        for(c = c1; c && c != c2; c = c->fprev);
+        return c == c2;
     }
 }
 
@@ -2367,6 +2434,7 @@ saveclientsession(FILE *fw, Client *c, unsigned int iteration)
             "WindowIdStack: %u" " "
             "BorderWidth: %u" " "
             "BorderColor: %u" " "
+            "Flags: %u" " "
             "\n"
             ,
             IDENTIFIER,
@@ -2376,7 +2444,8 @@ saveclientsession(FILE *fw, Client *c, unsigned int iteration)
             focus,
             stack,
             c->bw,
-            c->bcol
+            c->bcol,
+            c->flags
             );
 }
 
@@ -2649,28 +2718,10 @@ setclientstate(Client *c, u8 state)
     XCBChangeProperty(_wm.dpy, c->win, wmatom[WMState], wmatom[WMState], 32, XCB_PROP_MODE_REPLACE, (unsigned char *)data, 2);
 }
 
-void
-setdecorvisible(Client *c, uint8_t state)
-{
-    if(state)
-    {   
-        if(c->decor->win)
-        {   XCBMapWindow(_wm.dpy, c->decor->win);   
-        }
-    }
-    else
-    {
-        if(c->decor->win)
-        {   XCBUnmapWindow(_wm.dpy, c->decor->win);
-        }
-    }
-    SETFLAG(c->decor->flags, _DECOR_VISIBLE, !!state);
-}
-
 void 
 setdesktopcount(Monitor *m, uint16_t desktops)
 {
-    const int MIN_DESKTOPS = 1;
+    const u8 MIN_DESKTOPS = 1;
     if(desktops <= MIN_DESKTOPS)
     {   DEBUG0("Cannot make desktop count less than possible.");
         return;
@@ -2825,6 +2876,18 @@ setwtypenormal(Client *c, uint8_t state)
     SETFLAG(c->wtypeflags, _TYPE_NORMAL, !!state);
 }
 
+void
+setwtypemapiconic(Client *c, uint8_t state)
+{
+    SETFLAG(c->wtypeflags, _TYPE_MAP_ICONIC, !!state);
+}
+
+void
+setwtypemapnormal(Client *c, uint8_t state)
+{
+    setwtypemapiconic(c, !state);
+}
+
 void 
 setwmtakefocus(Client *c, uint8_t state)
 {
@@ -2856,6 +2919,24 @@ setskiptaskbar(Client *c, uint8_t state)
 }
 
 void
+setshowdecor(Client *c, uint8_t state)
+{
+    if(state)
+    {   
+        if(c->decor->win)
+        {   XCBMapWindow(_wm.dpy, c->decor->win);   
+        }
+    }
+    else
+    {
+        if(c->decor->win)
+        {   XCBUnmapWindow(_wm.dpy, c->decor->win);
+        }
+    }
+    SETFLAG(c->flags, _FSTATE_SHOW_DECOR, !!state);
+}
+
+void
 setfullscreen(Client *c, u8 state)
 {
     Monitor *m = c->desktop->mon;
@@ -2879,6 +2960,13 @@ setfullscreen(Client *c, u8 state)
 }
 
 void
+setfloating(Client *c, uint8_t state)
+{
+    SETFLAG(c->flags, _FSTATE_WASFLOATING, !!(c->flags & _FSTATE_FLOATING));
+    SETFLAG(c->flags, _FSTATE_FLOATING, !!state);
+}
+
+void
 setfocus(Client *c)
 {
     if(!NEVERFOCUS(c))
@@ -2897,9 +2985,11 @@ sethidden(Client *c, uint8_t state)
 {
     if(state)
     {   winsetstate(c->win, XCB_WINDOW_ICONIC_STATE);
+        setwtypemapiconic(c, 1);
     }
     else
     {   winsetstate(c->win, XCB_WINDOW_NORMAL_STATE);
+        setwtypemapnormal(c, 1);
     }
     SETFLAG(c->wstateflags, _STATE_HIDDEN, !!state);
 }
@@ -3000,10 +3090,12 @@ setup(void)
         cleanup();
         DIECAT("%s", "Could not establish connection with keyboard (OutOfMemory)");
     }
-
+    setupcursors();
     setupcfg();
     updategeom();
+    XCBCookie motifcookie = XCBInternAtomCookie(_wm.dpy, "_MOTIF_WM_HINTS", False);
     XCBInitAtoms(_wm.dpy, wmatom, netatom);
+    motifatom = XCBInternAtomReply(_wm.dpy, motifcookie);
     /* supporting window for NetWMCheck */
     _wm.wmcheckwin = XCBCreateSimpleWindow(_wm.dpy, _wm.root, 0, 0, 1, 1, 0, 0, 0);
     XCBSelectInput(_wm.dpy, _wm.wmcheckwin, XCB_NONE);
@@ -3022,20 +3114,30 @@ setup(void)
     XCBWindowAttributes wa;
     /* xcb_event_mask_t */
     /* ~0 causes event errors because some event masks override others, for some reason... */
+    wa.cursor = cursors[CurNormal];
     wa.event_mask = 
                     XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT|XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY
                     |XCB_EVENT_MASK_BUTTON_PRESS|XCB_EVENT_MASK_BUTTON_RELEASE
-                    |XCB_EVENT_MASK_POINTER_MOTION|XCB_EVENT_MASK_BUTTON_MOTION
-                    |XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_LEAVE_WINDOW
+                    |XCB_EVENT_MASK_POINTER_MOTION|
+                    XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_LEAVE_WINDOW
                     |XCB_EVENT_MASK_STRUCTURE_NOTIFY
                     |XCB_EVENT_MASK_PROPERTY_CHANGE
                     ;   /* the ; is here just so its out of the way */
-    XCBChangeWindowAttributes(_wm.dpy, _wm.root, XCB_CW_EVENT_MASK, &wa);
+    XCBChangeWindowAttributes(_wm.dpy, _wm.root, XCB_CW_EVENT_MASK|XCB_CW_CURSOR, &wa);
     XCBSelectInput(_wm.dpy, _wm.root, wa.event_mask);
     /* init numlock */
     updatenumlockmask();
     grabkeys();
     focus(NULL);
+}
+
+void
+setupcursors(void)
+{
+    cursors[CurNormal] = XCBCreateFontCursor(_wm.dpy, XC_left_ptr);
+    cursors[CurResizeTopL] = XCBCreateFontCursor(_wm.dpy, XC_top_left_corner);
+    cursors[CurResizeTopR] = XCBCreateFontCursor(_wm.dpy, XC_top_right_corner);
+    cursors[CurMove] = XCBCreateFontCursor(_wm.dpy, XC_fleur);
 }
 
 void
@@ -3091,6 +3193,26 @@ seturgent(Client *c, uint8_t state)
         free(wmh);
     }
     /* drawbar */
+}
+
+void
+updatedecor(Client *c, XCBGetWindowAttributes *wa)
+{
+    XCBWindow win = c->decor->win;
+    return;
+    if(!win)
+    {   
+        XCBCreateWindowValueList values =
+        { 
+            .override_redirect = 1,
+        };
+        win = XCBCreateWindow(_wm.dpy, _wm.root, c->x, c->y - 15, c->w, c->h + 15, 0, 
+                XCB_COPY_FROM_PARENT, XCB_WINDOW_CLASS_INPUT_ONLY, XCBGetScreen(_wm.dpy)->root_visual, XCB_CW_OVERRIDE_REDIRECT, &values);
+        XCBReparentWindow(_wm.dpy, c->win, win, c->x, c->y);
+        DEBUG("%u %u", c->win ,win);
+        XCBMapWindow(_wm.dpy, win);
+        c->decor->win = win;
+    }
 }
 
 void
@@ -3326,7 +3448,11 @@ tile(Desktop *desk)
 
     m = desk->mon;
     for(n = 0, c = desk->focus; c; c = nextfocus(c))
-    {   ++n;
+    {   
+        if(ISFLOATING(c))
+        {   continue;
+        }
+        ++n;
     }
 
     if(!n) 
@@ -3342,6 +3468,10 @@ tile(Desktop *desk)
 
     for (i = my = ty = 0, c = desk->focus; c; c = nextfocus(c), ++i)
     {
+        if(ISFLOATING(c))
+        {   --i;
+            continue;
+        }
         if (i < nmaster)
         {
             h = (m->wh - my) / (MIN(n, nmaster) - i);
@@ -3387,12 +3517,6 @@ tile(Desktop *desk)
             if (ty + HEIGHT(c) < (unsigned int)m->wh) ty += HEIGHT(c) + bgw;
         }
     }
-}
-
-void 
-tilecalc(Desktop *desk, Client *optional_start, uint16_t count, int32_t startx, int32_t starty, int32_t *x_ret, int32_t *y_ret, int32_t *width_ret, int32_t *height_ret)
-{
-    /* TODO */
 }
 
 void
@@ -3551,6 +3675,13 @@ updategeom(void)
 }
 
 void
+updateicon(Client *c, XCBWindowProperty *iconprop)
+{
+    free(c->icon);
+    c->icon = geticonprop(iconprop);
+}
+
+void
 unmanage(Client *c, uint8_t destroyed)
 {
     Desktop *desk = c->desktop;
@@ -3655,6 +3786,36 @@ updatebargeom(Monitor *m)
 }
 
 void
+updateclass(Client *c, XCBWMClass *_class)
+{
+    const u32 MAX_LEN = 1024;
+    if(_class)
+    {  
+       free(c->classname);
+       free(c->instancename);
+       const u32 CLASS_NAME_LEN = strnlen(_class->class_name, MAX_LEN) + 1;
+       const u32 INSTANCE_NAME_LEN = strnlen(_class->instance_name, MAX_LEN) + 1;
+       const size_t CLASS_NAME_SIZE = sizeof(char) * CLASS_NAME_LEN;
+       const size_t INSTANCE_NAME_SIZE = sizeof(char) * INSTANCE_NAME_LEN;
+       char *clsname = malloc(CLASS_NAME_SIZE);
+       char *iname = malloc(INSTANCE_NAME_SIZE);
+
+       if(clsname)
+       {    
+           memcpy(clsname, _class->class_name, CLASS_NAME_SIZE - sizeof(char));
+           clsname[CLASS_NAME_LEN - 1] = '\0';
+       }
+       if(iname)
+       {
+           memcpy(iname, _class->instance_name, INSTANCE_NAME_SIZE - sizeof(char));
+        iname[INSTANCE_NAME_LEN - 1] = '\0';
+       }
+       c->classname = clsname;
+       c->instancename = iname;
+    }
+}
+
+void
 updateclientlist(XCBWindow win, uint8_t type)
 {
     Monitor *m;
@@ -3683,13 +3844,10 @@ updateclientlist(XCBWindow win, uint8_t type)
     }
 }
 
-
-
-/* TODO xcb_key_symbols_get_keycode -> xcb_key_symbols_get_keysym is called a fuck ton and is slow as hell like 20% of manage() slow (callgrind) */
+/* this function is really slow, slower than malloc use only in startup or rare mapping changes */
 void
 updatenumlockmask(void)
 {
-    /* taken from i3 */
     XCBKeyboardModifier *reply;
     XCBGenericError *err;
 
@@ -4198,7 +4356,11 @@ updatewmhints(Client *c, XCBWMHints *wmh)
                 case XCB_WINDOW_ICONIC_STATE:
                     sethidden(c, 1);
                     break;
-                case XCB_WINDOW_WITHDRAWN_STATE: case XCB_WINDOW_NORMAL_STATE:
+                case XCB_WINDOW_WITHDRAWN_STATE:
+                    DEBUG("Window Specified is Widthdrawn? %d", c->win);
+                    break;
+                case XCB_WINDOW_NORMAL_STATE:
+                    break;
                 default:
                     break;
             }
