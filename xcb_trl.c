@@ -693,6 +693,15 @@ XCBSyncf(XCBDisplay *display)
 }
 
 
+XCBCookie
+XCBReparentWindow(XCBDisplay *display, XCBWindow source, XCBWindow parent, i32 x, i32 y)
+{
+    XCBCookie ret = xcb_reparent_window(display, source, parent, x, y);
+#ifdef DBG
+    _xcb_push_func(ret, _fn);
+#endif
+    return ret;
+}
 
 
 XCBCookie
@@ -2415,15 +2424,15 @@ XCBCreateWindow(
         u16 height, 
         u16 border_width, 
         u8 depth, 
-        unsigned int class, 
+        u16 class, 
         XCBVisual visual, 
         u32 valuemask, 
-        const u32 *value_list)
+        const XCBCreateWindowValueList *value_list)
 {
     const XCBWindow id = xcb_generate_id(display);
 
     /* not actually used but just for standards */
-    XCBCookie ret = xcb_create_window(display, depth, id, parent, x, y, width, height, border_width, 
+    XCBCookie ret = xcb_create_window_aux(display, depth, id, parent, x, y, width, height, border_width, 
     class, visual, valuemask, value_list);
     
 #ifdef DBG
