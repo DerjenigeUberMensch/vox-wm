@@ -417,7 +417,7 @@ applysizehints(Client *c, i32 *x, i32 *y, i32 *width, i32 *height, uint8_t inter
     return *x != c->x || *y != c->y || *width != c->w || *height != c->h;
 }
 
-void
+void 
 arrangeq(Desktop *desk)
 {
     Client *c;
@@ -2144,7 +2144,6 @@ void
 restack(Desktop *desk)
 {
     Client *c;
-    Client *cr;
     XCBWindowChanges wc;
 
     wc.stack_mode = XCB_STACK_MODE_BELOW;
