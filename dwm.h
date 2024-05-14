@@ -182,8 +182,8 @@ struct Key
 
 struct Button
 {
-    uint8_t type;                  /* ButtonPress/ButtonRelease    */
-    uint8_t button;                /* Button                       */
+    uint8_t type;                   /* ButtonPress/ButtonRelease    */
+    uint8_t button;                 /* Button                       */
     uint16_t mask;                  /* Modifier                     */
     void (*func)(const Arg *arg);   /* Function                     */
     Arg arg;                        /* Argument                     */
@@ -366,8 +366,10 @@ void attach(Client *c);
 /* Adds Client to rendering stack order in desktop linked list.
 */
 void attachstack(Client *c);
+/* Adds Client to previous rendering stack order.
+ */
 void attachrestack(Client *c);
-/* Adds Client to rendering stack order previous 
+/* Adds Client to focus linked list. 
  */
 void attachfocus(Client *c);
 /* Removes Client from clients desktop linked list.
@@ -380,6 +382,8 @@ void detachcompletely(Client *c);
 /* Removes Client from desktop rendering stack order.
 */
 void detachstack(Client *c);
+/* Removes Client from previous restack order. (rstack);
+ */
 void detachrestack(Client *c);
 /* Removes Client from desktop focus order.
 */
@@ -400,24 +404,29 @@ uint8_t checksticky(int64_t x);
 /* Cleanups and frees any data previously allocated.
 */
 void cleanup(void);
-/* frees client and allocated client properties. 
+/* Frees Client and allocated client properties. 
 */
 void cleanupclient(Client *c);
+/* Frees allocated cursors.
+ */
 void cleanupcursors(void);
-/* frees desktop and allocated desktop properties.
+/* Frees desktop and allocated desktop properties.
 */
 void cleanupdesktop(Desktop *desk);
-/* frees Monitor and allocated Monitor properties.
+/* Frees Monitor and allocated Monitor properties.
 */
 void cleanupmon(Monitor *m);
-/* frees all monitors and allocated Monitor properties.
+/* Frees all monitors and allocated Monitor properties.
 */
 void cleanupmons(void);
+/* Initializes the Client geometry from the specified XCBWindowGeometry struct. 
+ */
 void clientinitgeom(Client *c, XCBWindowGeometry *geometry);
-/* TODO rename this to prob something like set client wtype */
+/* Initializes the Client window type from the specified XCBWindowProperty. */
 void clientinitwtype(Client *c, XCBWindowProperty *windowtypereply);
-/* TODO rename this to prob something like set client wstate */
+/* Initializes the Client window state from the specified XCBWindowProperty. */
 void clientinitwstate(Client *c, XCBWindowProperty *windowstatereply);
+/* Sets the correct client desktop if trans found, default to _wm.selmon->desksel if not.*/
 void clientinittrans(Client *c, XCBWindow trans);
 /* Updates the XServers knowledge of the clients coordinates.
  * NOTE: This is a sendevent to the c->win data type.
@@ -473,7 +482,9 @@ void focus(Client *c);
 /* UNUSED/TODO
  */
 int32_t getstate(XCBWindow win, XCBGetWindowAttributes *state);
+/* Allocates memory and resturns the pointer in **str_return from the specified XCBWindowProperty. */
 void getnamefromreply(XCBWindowProperty *namerep, char **str_return);
+/* Gets the icon property from the specified XCBWindowProperty. */
 uint32_t *geticonprop(XCBWindowProperty *iconreply);
 /* Grabs a windows buttons. 
  * Basically this just allows us to receive button press/release events from windows.
@@ -494,6 +505,7 @@ void grid(Desktop *desk);
  *                  Destroy             Destroys a window without sending any message for the window to response (Nuclear option.)
  */
 void killclient(Client *c, enum KillType type);
+/* requests for clients cookies. */
 void managerequest(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT]);
 /* Part of main event loop "run()"
  * Manages AKA adds the window to our current or windows specified desktop.
@@ -541,7 +553,11 @@ Monitor *nextmonitor(Monitor *monitor);
  * RETURN: NULL on Failure.
  */
 Client *nextstack(Client *c);
-Client *nextrstacK(Client *c);
+/* Returns the next client in restack avaible.
+ * RETURN: Client * on Success.
+ * RETURN: NULL on Failure. 
+ */
+Client *nextrstack(Client *c);
 /* Returns the next client in focus order avaible.
  * RETURN: Client* on Success.
  * RETURN: NULL on Failure.
@@ -552,6 +568,10 @@ Client *nextfocus(Client *c);
  * RETURN: NULL on Failure.
  */
 Client *nextvisible(Client *c);
+/* Returns the previous desktop avaible. 
+ * RETURN: Desktop * on Success.
+ * RETURN: NULL on Failure.
+ */
 Desktop *prevdesktop(Desktop *desk);
 /* Returns the prev client avaible.
  * RETURN: Client* on Success.
@@ -568,6 +588,10 @@ Client *prevfocus(Client *c);
  * RETURN: NULL on Failure.
  */
 Client *prevstack(Client *c);
+/* Returns the previous restack stack client avaible.
+ * RETURN: Client * on Success.
+ * RETURN: NULL on Failure.
+ */
 Client *prevrstack(Client *c);
 /* Returns the prev visible client avaible.
  * RETURN: Client* on Success.
@@ -579,11 +603,11 @@ Client *prevvisible(Client *c);
 void quit(void);
 /* Attempts to restore session from SESSION_FILE for all monitors */
 void restoresession(void);
-/* Attempts to restore session from SESSION_FILE for a client */
+/* Attempts to restore session from buff for a client */
 Client *restoreclientsession(Desktop *desk, char *buff, uint16_t len);
-/* Attempts to restore session from SESSION_FILE for a desktop */
+/* Attempts to restore session from buff for a desktop */
 Desktop *restoredesktopsession(Monitor *m, char *buff, uint16_t len);
-/* Attempts to restore session from SESSION_FILE for given monitor */
+/* Attempts to restore session from buff for given monitor */
 Monitor *restoremonsession(char *buff, uint16_t len);
 /* Searches through every monitor for a possible big enough size to fit rectangle parametors specified */
 Monitor *recttomon(int16_t x, int16_t y, uint16_t width, uint16_t height);
@@ -598,8 +622,6 @@ void resize(Client *c, int32_t x, int32_t y, int32_t width, int32_t height, uint
 void resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height);
 /* Reorders(restacks) clients in current desk->stack */
 void restack(Desktop *desk);
-/* Only calculates needed stuff for non monocle/floating layouts */
-void restackq(Desktop *desk);
 /* "Restacks" clients on from linked list no effect unless restack called*/
 void reorder(Desktop *desk);
 /* Flags RESTART and sets running to 0;
@@ -610,7 +632,12 @@ void restart(void);
 void run(void);
 /* Attemps to save session in for every monitor */
 void savesession(void);
+/* Attemps to save session for specified client. 
+ * iteration, the index of the current previous client.
+ * Iteration is used to list the clients in correct order, until I figure out a better way.
+ */
 void saveclientsession(FILE *fw, Client *c, unsigned int interation);
+/* Attemps to save session for specified desktop */
 void savedesktopsession(FILE *fw, Desktop *desktop);
 /* Attemps to save session from file for specified Monitor 
  */
@@ -621,7 +648,9 @@ void scan(void);
 void sendprotocolevent(Client *c, XCBAtom proto);
 /* Sets the flag "alwaysontop" to the provided Client */
 void setalwaysontop(Client *c, uint8_t isalwaysontop);
+/* Sets the flag "alwaysonbottom" to the provided Client */
 void setalwaysonbottom(Client *c, uint8_t state);
+/* Sets the Clients border opacity, "alpha" 0-255 */
 void setborderalpha(Client *c, uint8_t alpha);
 /* Sets the border color using red green and blue values */
 void setbordercolor(Client *c, uint8_t red, uint8_t green, uint8_t blue);
@@ -629,52 +658,99 @@ void setbordercolor(Client *c, uint8_t red, uint8_t green, uint8_t blue);
 void setbordercolor32(Client *c, uint32_t col);
 /* Sets the border width to the provided Client */
 void setborderwidth(Client *c, uint16_t border_width);
+/* Sets the clients desktop to the specified desktop, 
+ * and cleanups any data that may have been left from the previous desktop. 
+ */
 void setclientdesktop(Client *c, Desktop *desktop);
+/* Sets the clients wmatom[WMState] property. */
 void setclientstate(Client *c, uint8_t state);
+/* Sets the decor visibility. */
 void setdecorvisible(Client *c, uint8_t state);
+/* Sets the desktop count rolling back any clients to previous desktops. */
 void setdesktopcount(Monitor *m, uint16_t desktops);
+/* Sets the desktops layouts, (not automatic arrange must be called after to apply changes.) */
 void setdesktoplayout(Desktop *desk, uint8_t layout);
+/* Sets the clients pid. */
 void setclientpid(Client *c, pid_t pid);
+/* Sets the Clients IS Desktop Flag. */
 void setwtypedesktop(Client *c, uint8_t state);
+/* Sets the Clients IS Dialog Flag. */
 void setwtypedialog(Client *c, uint8_t state);
+/* Sets the Clients IS Dock Flag. */
 void setwtypedock(Client *c, uint8_t state);
+/* Sets the Clients IS ToolBar Flag. */
 void setwtypetoolbar(Client *c, uint8_t state);
+/* Sets the Clients IS Menu Flag. */
 void setwtypemenu(Client *c, uint8_t state);
+/* Sets the Clients Never Focus Flag. */
 void setwtypeneverfocus(Client *c, uint8_t state);
+/* Sets the Clients IS Utility Flag. */
 void setwtypeutility(Client *c, uint8_t state);
+/* Sets the Clients IS Splash Flag. */
 void setwtypesplash(Client *c, uint8_t state);
+/* Sets the Clients IS Dropdown Menu Flag. */
 void setwtypedropdownmenu(Client *c, uint8_t state);
+/* Sets the Clients IS Popup Menu Flag. */
 void setwtypepopupmenu(Client *c, uint8_t state);
+/* Sets the Clients IS Tool Tip Flag. */
 void setwtypetooltip(Client *c, uint8_t state);
+/* Sets the Clients IS Notification Flag. */
 void setwtypenotification(Client *c, uint8_t state);
+/* Sets the Clients IS Combo Flag. */
 void setwtypecombo(Client *c, uint8_t state);
+/* Sets the Clients IS DND Flag. */
 void setwtypednd(Client *c, uint8_t state);
+/* Sets the Clients IS Normal Flag. */
 void setwtypenormal(Client *c, uint8_t state);
+/* Sets the Clients IS Map Iconic Flag. */
 void setwtypemapiconic(Client *c, uint8_t state);
+/* Sets the Clients IS Map Normal Flag. */
 void setwtypemapnormal(Client *c, uint8_t state);
+/* Sets the Clients IS Take Focus Flag. */
 void setwmtakefocus(Client *c, uint8_t state);
+/* Sets the Clients IS Save Yourself Flag. */
 void setwmsaveyourself(Client *c, uint8_t state);
+/* Sets the Clients IS Delete Window Flag. */
 void setwmdeletewindow(Client *c, uint8_t state);
+/* Sets the Clients IS Skip Pager Flag. */
 void setskippager(Client *c, uint8_t state);
+/* Sets the Clients IS Skip Taskbar Flag. */
 void setskiptaskbar(Client *c, uint8_t state);
+/* Sets the Clients Show Decor Flag. */
 void setshowdecor(Client *c, uint8_t state);
+/* Makes a client fullscreen and take up the entire monitor. (also sets the isfullscreen flag)*/
 void setfullscreen(Client *c, uint8_t isfullscreen);
+/* Sets the Clients IS Floating Flag. */
 void setfloating(Client *c, uint8_t state);
+/* Sets the current Window Focus. */
 void setfocus(Client *c);
+/* Sets the Windows Map State (Iconic/Normal), and IS hidden Flag. */
 void sethidden(Client *c, uint8_t state);
+/* Resizes a Client to be maximized vertically and Sets the Flag for it. */
 void setmaximizedvert(Client *c, uint8_t state);
+/* Resizes a Client to be maximized horizontally and Sets the Flag for it. */
 void setmaximizedhorz(Client *c, uint8_t state);
+/* Sets the Clients IS Shaded Flag. */
 void setshaded(Client *c, uint8_t state);
+/* Sets the Clients IS Modal Flag. */
 void setmodal(Client *c, uint8_t state);
+/* Sets the monitors currently selected desktop. */
 void setmondesktop(Monitor *m, Desktop *desk);
+/* Replaces the Clients state with the sticky state, and sets IS sticky Flag. */
 void setsticky(Client *c, uint8_t state);
+/* Sets the title bar to be on top. */
 void settopbar(Client *c, uint8_t state);
+/* Vital checks and data setup before any other action is performed. */
 void startup(void);
 /* Sets up Variables, Checks, WM specific data, etc.. */
 void setup(void);
+/* Sets up the cursors used for the WM. */
 void setupcursors(void);
+/* Loads CFG data into Settings struct. */
 void setupcfg(void);
+/* Loads default if CFG data failed to read. */
 void setupcfgdefaults(void);
+/* Updates a Clients state to Urgent, and sets the Urgent Flag. (Updates window border to urgen color.) */
 void seturgent(Client *c, uint8_t isurgent);
 /* Moves Client offscreen if not VISIBLE;
  * Moves Client onscreen if VISIBLE;
@@ -701,13 +777,15 @@ void startup(void);
  *          and "stacking" on top of each other smaller windows on the right.
  */
 void tile(Desktop *desk);
-void tilecalc(Desktop *desk, Client *optional_start, uint16_t count,int32_t startx, int32_t starty, int32_t *x_ret, int32_t *y_ret, int32_t *width_ret, int32_t *height_ret);
 /* Unfocuses specified client and sets to focus to root if setfocus is true */
 void unfocus(Client *c, uint8_t setfocus);
 /* updates the Status Bar Position from given monitor */
 void updatebarpos(Monitor *m);
 /* updates the bar geometry from the given monitor */
 void updatebargeom(Monitor *m);
+/* updates a clients classname from XCBWMClass *_class 
+ * No side effects on non filled _class dataw;
+ */
 void updateclass(Client *c, XCBWMClass *_class);
 /* Updates 
  * type:            0       Adds the client win .

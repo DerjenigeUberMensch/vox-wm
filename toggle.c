@@ -147,7 +147,6 @@ DragWindow(
     /* prevent DOCKED from computing non floating */
     setfloating(c, 1); c->x += 1;
     arrange(c->desktop);
-    XCBRaiseWindow(_wm.dpy, win);
     XCBFlush(_wm.dpy);
     XCBGenericEvent *ev = NULL;
     int exit = 0;
@@ -296,7 +295,6 @@ ResizeWindow(const Arg *arg)
     /* Prevent it from being detected as non floating */
     setfloating(c, 1); c->x += 1;
     arrange(c->desktop);
-    XCBRaiseWindow(_wm.dpy, win);
     XCBFlush(_wm.dpy);
     XCBGenericEvent *ev = NULL;
     int exit = 0;

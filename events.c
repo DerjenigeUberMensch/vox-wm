@@ -220,6 +220,7 @@ buttonpress(XCBGenericEvent *event)
     if((c = wintoclient(eventwin)))
     {   
         focus(c);
+        arrange(c->desktop);
         XCBAllowEvents(_wm.dpy, XCB_ALLOW_REPLAY_POINTER, XCB_CURRENT_TIME);
         sync = 1;
     }
@@ -629,6 +630,8 @@ configurerequest(XCBGenericEvent *event)
             XCBWindowChanges wc;
             const uint32_t modemask = XCB_CONFIG_WINDOW_STACK_MODE | (mask & XCB_CONFIG_WINDOW_SIBLING);
             wc.stack_mode = ev->stack_mode;
+            /* this would technically be undefined if no sibling is set but it shouldnt matter (cause we didnt set the flag for it if it wasnt defined.) */
+            wc.sibling = ev->sibling;
             XCBConfigureWindow(_wm.dpy, c->win, modemask, &wc);
             if(mask & XCB_CONFIG_WINDOW_SIBLING)
             {
