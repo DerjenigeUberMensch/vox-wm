@@ -20,8 +20,6 @@ Currently no window movement is supported (TODO)
 - **Low CPU usage when doing expensive stuff (mapping windows) (~4-10%)**
 
 ## Why Not Use this.
-- **Cant move Windows like WSWM**
-- **Currently in Beta till I figure out threading**
 - **Code base is, ok**
 - **Few Features**
 - **Bugs**
@@ -81,3 +79,10 @@ Screen tearing can be mitigated by using a compositor or by enabling it in your 
 
 If you have any **major** **issues** with the **current** commit you can **revert** to a **previous commit** for a generally stabler version.
 Or you can open an **[issue](https://github.com/DerjenigeUberMensch/xcb-wswm/issues)** about it.
+
+## Planned Features
+- Panel that user can just click buttons or type values to configure windows (kinda like a dev panel).
+- Fully Extend XCB-TRL to use other features.
+- More modularity 
+- Less Complex Code Base
+- Better Documentatin (Likely when I finish implementing the usability part of the Window manager (AKA when I switch over to this.))
