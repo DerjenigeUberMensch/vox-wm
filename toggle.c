@@ -121,7 +121,7 @@ DragWindow(
     i16 nx, ny;
     i16 x, y;
     i16 oldx, oldy;
-    const XCBCursor cur = XCB_NONE;
+    const XCBCursor cur = cursors[CurMove];
 
     /* init data */
     x = y = 0;
@@ -150,40 +150,41 @@ DragWindow(
     XCBRaiseWindow(_wm.dpy, win);
     XCBFlush(_wm.dpy);
     XCBGenericEvent *ev = NULL;
+    int exit = 0;
     do
     {
         if(ev)
         {
             eventhandler(ev);
-            if(XCB_EVENT_RESPONSE_TYPE(ev) == XCB_MOTION_NOTIFY)
+            switch(XCB_EVENT_RESPONSE_TYPE(ev))
             {
-                XCBMotionNotifyEvent *mev = (XCBMotionNotifyEvent *)ev;
-                nx = oldx + (mev->event_x - x);
-                ny = oldy + (mev->event_y - y);
-                resize(c, nx, ny, c->w, c->h, 1);
-                XCBFlush(_wm.dpy);
-                DEBUG("(x: %d, y: %d)", nx, ny);
-            }
-            /* this accounts for users killing the window (cause they can) */
-            else if(XCB_EVENT_RESPONSE_TYPE(ev) == XCB_UNMAP_NOTIFY)
-            {   XCBUnMapNotifyEvent *uev = (XCBUnMapNotifyEvent *)ev;
-                if(uev->window == win)
-                {   free(ev);
-                    win = 0;
+                case XCB_MOTION_NOTIFY:
+                    nx = oldx + (((XCBMotionNotifyEvent *)ev)->event_x - x);
+                    ny = oldy + (((XCBMotionNotifyEvent *)ev)->event_y - y);
+                    resize(c, nx, ny, c->w, c->h, 1);
+                    XCBFlush(_wm.dpy);
                     break;
-                }
-            }
-            else if(XCB_EVENT_RESPONSE_TYPE(ev) == XCB_DESTROY_NOTIFY)
-            {   XCBDestroyNotifyEvent *dev = (XCBDestroyNotifyEvent *)ev;
-                if(dev->window == win)
-                {   free(ev);
-                    win = 0;
+                /* TODO */
+                case XCB_BUTTON_PRESS:
                     break;
-                }
+                case XCB_BUTTON_RELEASE: 
+                    exit = 1;
+                    break;
+                /* this accounts for users killing the window (cause they can) */
+                case XCB_UNMAP_NOTIFY:
+                    if(((XCBUnmapNotifyEvent *)ev)->window == win)
+                    {   win = 0;
+                    }
+                    break;
+                case XCB_DESTROY_NOTIFY:
+                    if(((XCBDestroyNotifyEvent *)ev)->window == win)
+                    {   win = 0;
+                    }
+                    break;
             }
             free(ev);
         }
-    } while(_wm.running && !XCBNextEvent(_wm.dpy, &ev) && XCB_EVENT_RESPONSE_TYPE(ev) != XCB_BUTTON_RELEASE);
+    } while(_wm.running && !exit && win && !XCBNextEvent(_wm.dpy, &ev));
     XCBUngrabPointer(_wm.dpy, XCB_CURRENT_TIME);
     Monitor *m;
     if(win)
@@ -228,15 +229,15 @@ ResizeWindow(const Arg *arg)
 
     i16 curx, cury;
     i32 oldw, oldh;
-    i16 nx, ny;
+    i32 nx, ny;
     i32 nw, nh;
-    i16 oldx, oldy;
+    i32 oldx, oldy;
     i8 horz, vert;
-    u16 basew, baseh;
+    u16 minw, minh;
     XCBCursor cur;
 
     /* init data */
-    curx = cury = oldw = oldh = nx = ny = nw = nh = oldx = oldy = horz = vert = basew = baseh = 0;
+    curx = cury = oldw = oldh = nx = ny = nw = nh = oldx = oldy = horz = vert = 0;
 
     XCBCookie QueryPointerCookie = XCBQueryPointerCookie(display, win);
     XCBQueryPointer *pointer = XCBQueryPointerReply(display, QueryPointerCookie);
@@ -258,18 +259,22 @@ ResizeWindow(const Arg *arg)
 
     if(horz == -1)
     {
+        /* top left */
         if(vert == -1)
-        {   cur = cursors[CurResizeTopR];
-        }
-        else
         {   cur = cursors[CurResizeTopL];
+        }
+        /* Bottom Right */
+        else
+        {   cur = cursors[CurResizeTopR];
         }
     }
     else
     {
+        /* top right */
         if(vert == -1)
         {   cur = cursors[CurResizeTopR];
         }
+        /* bottom right */
         else
         {   cur = cursors[CurResizeTopL];
         }
@@ -286,53 +291,56 @@ ResizeWindow(const Arg *arg)
     oldh = c->h;
     oldx = c->x;
     oldy = c->y;
-    basew = c->minw;
-    baseh = c->minh;
+    minw = c->minw;
+    minh = c->minh;
     /* Prevent it from being detected as non floating */
     setfloating(c, 1); c->x += 1;
     arrange(c->desktop);
     XCBRaiseWindow(_wm.dpy, win);
     XCBFlush(_wm.dpy);
     XCBGenericEvent *ev = NULL;
+    int exit = 0;
     do
     {
         if(ev)
         {
             eventhandler(ev);
-            if(XCB_EVENT_RESPONSE_TYPE(ev) == XCB_MOTION_NOTIFY)
-            {
-                nw = oldw + horz * (((XCBMotionNotifyEvent *)ev)->root_x - curx);
-                nh = oldh + vert * (((XCBMotionNotifyEvent *)ev)->root_y - cury);
+            switch(XCB_EVENT_RESPONSE_TYPE(ev))
+            {   
+                case XCB_MOTION_NOTIFY:
+                    nw = oldw + horz * (((XCBMotionNotifyEvent *)ev)->root_x - curx);
+                    nh = oldh + vert * (((XCBMotionNotifyEvent *)ev)->root_y - cury);
 
-                nw = MAX(nw, basew);
-                nh = MAX(nh, baseh);
+                    nw = MAX(nw, minw);
+                    nh = MAX(nh, minh);
 
-                nx = oldx + !~horz * (oldw - nw);
-                ny = oldy + !~vert * (oldh - nh);
-                resize(c, nx, ny, nw, nh, 1);
-                XCBFlush(_wm.dpy);
-                DEBUG("(x: %d, y: %d, w: %u, h: %u)", nx, ny, nw, nh);
-            }
-            /* this accounts for users killing the window (cause they can) */
-            else if(XCB_EVENT_RESPONSE_TYPE(ev) == XCB_UNMAP_NOTIFY)
-            {   XCBUnMapNotifyEvent *uev = (XCBUnMapNotifyEvent *)ev;
-                if(uev->window == win)
-                {   free(ev);
-                    win = 0;
+                    nx = oldx + !~horz * (oldw - nw);
+                    ny = oldy + !~vert * (oldh - nh);
+                    resize(c, nx, ny, nw, nh, 1);
+                    XCBFlush(_wm.dpy);
                     break;
-                }
-            }
-            else if(XCB_EVENT_RESPONSE_TYPE(ev) == XCB_DESTROY_NOTIFY)
-            {   XCBDestroyNotifyEvent *dev = (XCBDestroyNotifyEvent *)ev;
-                if(dev->window == win)
-                {   free(ev);
-                    win = 0;
+                /* TODO */
+                case XCB_BUTTON_PRESS:
                     break;
-                }
+                case XCB_BUTTON_RELEASE: 
+                    exit = 1;
+                    break;
+                /* this accounts for users killing the window (cause they can) */
+                /* this accounts for users killing the window (cause they can) */
+                case XCB_UNMAP_NOTIFY:
+                    if(((XCBUnmapNotifyEvent *)ev)->window == win)
+                    {   win = 0;
+                    }
+                    break;
+                case XCB_DESTROY_NOTIFY:
+                    if(((XCBDestroyNotifyEvent *)ev)->window == win)
+                    {   win = 0;
+                    }
+                    break;
             }
             free(ev);
         }
-    } while(_wm.running && !XCBNextEvent(_wm.dpy, &ev) && XCB_EVENT_RESPONSE_TYPE(ev) != XCB_BUTTON_RELEASE);
+    } while(_wm.running && !exit && win && !XCBNextEvent(_wm.dpy, &ev)); 
     XCBUngrabPointer(_wm.dpy, XCB_CURRENT_TIME);
     Monitor *m;
     if(win)

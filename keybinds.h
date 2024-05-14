@@ -122,7 +122,9 @@ static const Button buttons[] =
 {
     /* Type                 Button      Mask        function        arg */
     { XCB_BUTTON_PRESS,     RMB,        SUPER,      ResizeWindow,   {0} },
+    { XCB_BUTTON_RELEASE,   RMB,        SUPER,      0,              {0} },
     { XCB_BUTTON_PRESS,     LMB,        SUPER,      DragWindow,     {0} },
+    { XCB_BUTTON_RELEASE,   LMB,        SUPER,      0,              {0} },
 };
 
 

@@ -744,8 +744,7 @@ maprequest(XCBGenericEvent *event)
     }
 
     if(sync)
-    {   
-        XCBFlush(_wm.dpy);
+    {   XCBFlush(_wm.dpy);
     }
 }
 /* popup windows sometimes need this */
@@ -957,7 +956,7 @@ mappingnotify(XCBGenericEvent *event)
 void
 unmapnotify(XCBGenericEvent *event)
 {
-    XCBUnMapNotifyEvent *ev = (XCBUnMapNotifyEvent *)event;
+    XCBUnmapNotifyEvent *ev = (XCBUnmapNotifyEvent *)event;
     const XCBWindow eventwin    = ev->event;
     const XCBWindow win         = ev->window;
     const uint8_t isconfigure   = ev->from_configure;
@@ -1125,14 +1124,12 @@ clientmessage(XCBGenericEvent *event)
             i32 h = l4;
             i32 bw = c->bw;
 
-            applysizechecks(c->desktop->mon, &x, &y, &w, &h, &(bw));
-    
             i16 cleanx = x;
             i16 cleany = y;
             const i16 cleanw = w;
             const i16 cleanh = h;
 
-            applygravity(gravity, &cleanx, &cleany, cleanw, cleanh, c->bw);
+            applygravity(gravity, &cleanx, &cleany, cleanw, cleanh, bw);
             resize(c, cleanx, cleany, cleanw, cleanh, 0);
         }
         else if(atom == netatom[NetMoveResize])

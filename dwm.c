@@ -214,63 +214,6 @@ argcvhandler(int argc, char *argv[])
     }
 }
 
-/* These are mostly user operations type deal */
-void
-applysizechecks(Monitor *m, i32 *x, i32 *y, i32 *width, i32 *height, i32 *border_width)
-{
-    i16 wx = m->wx;     /* Window Area X */
-    i16 wy = m->wy;     /* Window Area Y */
-    u16 ww = m->ww;     /* Window Area W */
-    u16 wh = m->wh;     /* Window Area H */
-
-        /* technically 1 is "too" small for most possible windows (they stay at roughly ~20 or higher) but a window would request this */
-    const u8 MIN_POSSIBLE_WINDOW_SIZE = 1;
-    const u8 NO_BORDER_WIDTH = 0;
-
-    /* I was bored lol */
-
-    /* if width less than min set to min */
-    *width *= *width > MIN_POSSIBLE_WINDOW_SIZE;
-    *width += !(*width) * MIN_POSSIBLE_WINDOW_SIZE;
-
-    /* if width more than max set to max */
-    *width *= *width < ww;
-    *width += !(*width) * ww;
-
-    /* if height less than min to set to min */
-    *height *= *height > MIN_POSSIBLE_WINDOW_SIZE;
-    *height += !(*height) * MIN_POSSIBLE_WINDOW_SIZE;
-
-    /* if height more than max to set to max */
-    *height *= *height < wh;
-    *height += !(*height) * wh;
-
-
-    /* if border_width more than min to set to min */
-    *border_width *= *border_width > NO_BORDER_WIDTH;
-    *border_width += !(*border_width) * NO_BORDER_WIDTH;
-
-    /* if border_width more than max to set to max */
-    *border_width *= *border_width < (ww - MIN_POSSIBLE_WINDOW_SIZE);
-    *border_width += !(*border_width) * (ww - MIN_POSSIBLE_WINDOW_SIZE);
-
-    /* if x less than min set to min */
-    *x *= *x > (wx - ww);
-    *x += !(*x) * (wx - ww);
-
-    /* if x more than max set to max */
-    *x *= *x < (wx + ww);
-    *x += !(*x) * (wx + ww);
-
-    /* if y less than min set to min */
-    *y *= *y > (wy - wh);
-    *y += !(*y) * (wy - wh);
-
-    /* if y more than max set to max */
-    *y *= *y < (wy + wh);
-    *y += !(*y) * (wy + wh);
-}
-
 void
 applygravity(const u32 gravity, i16 *x, i16 *y, const u16 w, const u16 h, const u16 bw)
 {
@@ -333,12 +276,14 @@ applysizehints(Client *c, i32 *x, i32 *y, i32 *width, i32 *height, uint8_t inter
 {
     u8 baseismin;
     const Monitor *m = c->desktop->mon;
+    const u16 MAXW = m->mw * 2;
+    const u16 MAXH = m->mh * 2;
     /* set minimum possible */
     *width = MAX(1, *width);
     *height = MAX(1, *height);
     /* set max possible */
-    *width = MIN(m->mw, *width);
-    *height = MIN(m->mh, *height);
+    *width = MIN(MAXW, *width);
+    *height = MIN(MAXH, *height);
 
     if (interact)
     {
@@ -348,10 +293,10 @@ applysizehints(Client *c, i32 *x, i32 *y, i32 *width, i32 *height, uint8_t inter
         if (*y > _wm.sh) 
         {   *y = _wm.sh - HEIGHT(c);
         }
-        if (*x + *width + (c->bw << 1) < 0)
+        if (*x + *width + (c->bw * 2) < 0)
         {   *x = 0;
         }
-        if (*y + *height + (c->bw << 1) < 0)
+        if (*y + *height + (c->bw * 2) < 0)
         {   *y = 0;
         }
     }
@@ -363,10 +308,10 @@ applysizehints(Client *c, i32 *x, i32 *y, i32 *width, i32 *height, uint8_t inter
         if (*y >= m->wy + m->wh) 
         {   *y = m->wy + m->wh - HEIGHT(c);
         }
-        if (*x + *width + (c->bw << 1) <= m->wx) 
+        if (*x + *width + (c->bw * 2) <= m->wx) 
         {   *x = m->wx;
         }
-        if (*y + *height + (c->bw << 1) <= m->wy) 
+        if (*y + *height + (c->bw * 2) <= m->wy) 
         {   *y = m->wy;
         }
     }
@@ -1265,7 +1210,6 @@ grid(Desktop *desk)
 
     i32 i, n, cw, ch, aw, ah, cols, rows;
     i32 nx, ny, nw, nh;
-    i32 unused = 0;
     Client *c;
     Monitor *m = desk->mon;
 
@@ -1308,8 +1252,6 @@ grid(Desktop *desk)
         nw = cw - (c->bw * 2 + bgw * 2) + aw;
         nh = ch - (c->bw * 2 + bgw * 2) + ah;
 
-        /* sanatize data */
-        applysizechecks(m, &nx, &ny, &nw, &nh, &unused);
         /* Skip resize calls (they are expensive) */
         if(c->x != nx || c->y != ny || c->w != nw || c->h != nh)
         {   resize(c, nx, ny, nw, nh, 0);
@@ -1485,9 +1427,6 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     getnamefromreply(netwmnamereply, &netwmname);
     getnamefromreply(wmnamereply, &wmname);
 
-    /* constrain window to monitor window area */
-    applysizechecks(_wm.selmon, (int32_t *)&c->x, (int32_t *)&c->y, (int32_t *)&c->w, (int32_t *)&c->h, (int32_t *)&c->bw);
-
     if(checkbar && COULDBEBAR(c, strutp || strut))
     {
         Bar *bar = managebar(_wm.selmon, win);
@@ -1503,7 +1442,6 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     setborderwidth(c, bw);
     setbordercolor32(c, bcol);
     setshowdecor(c, showdecor);
-    configure(c);   /* propagates border_width, if size doesn't change */
     updatetitle(c, netwmname, wmname);
     updatesizehints(c, &hints);
     updateclass(c, &cls);
@@ -1534,6 +1472,8 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     if(c->desktop)
     {   HASH_ADD_INT(c->desktop->__hash, win, c);
     }
+    /* propagates border_width, if size doesn't change */
+    configure(c);   
     goto CLEANUP;
 FAILURE:
     free(c);
@@ -1611,7 +1551,6 @@ monocle(Desktop *desk)
     i32 nw, nh;
     i32 nx = m->wx;
     i32 ny = m->wy;
-    i32 unused = 0;
 
     for(c = desk->focus; c; c = nextfocus(c))
     {
@@ -1620,8 +1559,6 @@ monocle(Desktop *desk)
         }
         nw = m->ww - (c->bw * 2);
         nh = m->wh - (c->bw * 2);
-        applysizechecks(m, &nx, &ny, &nw, &nh, &unused);
-        /* Skip resize calls (they are expensive) */
         if(c->x != nx || c->y != ny || c->w != nw || c->h != nh)
         {   resize(c, nx, ny, nw, nh, 0); 
         }
@@ -3441,7 +3378,6 @@ tile(Desktop *desk)
     i32 n = 0, i = 0;
     i32 nx = 0, ny = 0;
     i32 nw = 0, nh = 0;
-    i32 unused = 0;
     Client *c = NULL;
     Monitor *m = NULL;
 
@@ -3487,8 +3423,6 @@ tile(Desktop *desk)
             ny += bgw;
             nw -= bgw * 2;
             nh -= bgw * 2;
-            applysizechecks(m, &nx, &ny, &nw, &nh, &unused);
-            /* Skip resize calls (they are expensive) */
             if(c->x != nx || c->y != ny || c->w != nw || c->h != nh)
             {   resize(c, nx, ny, nw, nh, 0);
             }
@@ -3508,8 +3442,6 @@ tile(Desktop *desk)
             ny += bgw;
             nw -= bgw * 2;
             nh -= bgw * 2;
-            applysizechecks(m, &nx, &ny, &nw, &nh, &unused);
-            /* Skip resize calls (they are expensive) */
             if(c->x != nx || c->y != ny || c->w != nw || c->h != nh)
             {   resize(c, nx, ny, nw, nh, 0);
             }
@@ -3882,7 +3814,9 @@ updatesizehints(Client *c, XCBSizeHints *size)
     /* init values */
     c->basew = c->baseh = 0;
     c->incw = c->inch = 0;
-    c->maxw = c->maxh = 0;
+    /* maxw should just be 2 times the max monitor size (if not set) */
+    c->maxw = c->desktop->mon->ww * 2;
+    c->maxh = c->desktop->mon->wh * 2;
     c->minw = c->minh = 0;
     c->maxa = c->mina = 0.0;
 
@@ -3925,6 +3859,14 @@ updatesizehints(Client *c, XCBSizeHints *size)
     {
         c->mina = (float)size->min_aspect_den / size->min_aspect_num;
         c->maxa = (float)size->max_aspect_num / size->max_aspect_den;
+    }
+
+    /* if client set max size to none */
+    if(!c->maxw)
+    {   c->maxw = c->desktop->mon->ww * 2;
+    }
+    if(!c->maxh)
+    {   c->maxh = c->desktop->mon->wh * 2;
     }
 }
 

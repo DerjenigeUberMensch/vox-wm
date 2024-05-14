@@ -441,7 +441,7 @@ typedef xcb_destroy_notify_event_t XCBDestroyNotifyEvent;
 typedef xcb_gravity_notify_event_t XCBGravityNotifyEvent;
 typedef xcb_map_notify_event_t XCBMapNotifyEvent;
 typedef xcb_mapping_notify_event_t XCBMappingNotifyEvent;
-typedef xcb_unmap_notify_event_t XCBUnMapNotifyEvent;
+typedef xcb_unmap_notify_event_t XCBUnmapNotifyEvent;
 typedef xcb_visibility_notify_event_t XCBVisibilityNotifyEvent;
 typedef xcb_reparent_notify_event_t XCBReparentNotifyEvent;
 typedef xcb_colormap_notify_event_t XCBColormapNotifyEvent;
