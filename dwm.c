@@ -385,15 +385,7 @@ void
 arrange(Desktop *desk)
 {
     arrangeq(desk);
-    switch(desk->layout)
-    {
-        case Monocle: case Floating: default:
-            restack(desk);
-            break;
-        case Tiled: case Grid:
-            restackq(desk);
-            break;
-    }
+    restack(desk);
 }
 
 void
@@ -2038,9 +2030,6 @@ recttomon(i16 x, i16 y, u16 w, u16 h)
 	return r;
 }
 
-/* why arent these their "correct" format of i16's well if we did do that the digits would be a bit busy being overflown/underflown wouldnt they?
- * Defeating the entire purpose of bound checking.
- */
 void
 resize(Client *c, i32 x, i32 y, i32 width, i32 height, uint8_t interact)
 {
@@ -2081,6 +2070,8 @@ void
 restack(Desktop *desk)
 {
     Client *c;
+    u8 inrestack = 0;
+    u8 config = 0;
     XCBWindowChanges wc;
 
     wc.stack_mode = XCB_STACK_MODE_BELOW;
@@ -2093,42 +2084,24 @@ restack(Desktop *desk)
         wc.sibling = _wm.wmcheckwin;
     }
 
-    /* FIXME restacking doesnt really work with the "stack" */
     for(c = desk->stack; c; c = nextstack(c))
     {
-        XCBConfigureWindow(_wm.dpy, c->win, XCB_CONFIG_WINDOW_SIBLING|XCB_CONFIG_WINDOW_STACK_MODE, &wc);
+        /* unattached clients (AKA new clients) have both set to NULL */
+        inrestack = c->rprev || c->rnext;
+        /* Client holds both lists so we just check if the next's are the same if not configure it */
+        config = c->rnext != c->snext;
+        if(!inrestack || config)
+        {   XCBConfigureWindow(_wm.dpy, c->win, XCB_CONFIG_WINDOW_SIBLING|XCB_CONFIG_WINDOW_STACK_MODE, &wc);
+            DEBUG("Configured window: %s", c->netwmname);
+        }
         wc.sibling = c->win;
     }
-    /* arbitrary number */
+    /* Linear time as it will succed the for loop first try and thus be O(n) */
     while(desk->rstack)
     {   detachrestack(desk->rstack);
     }
-    for(c = desk->stack; c; c = nextstack(c))
+    for(c = desk->slast; c; c = prevstack(c))
     {   attachrestack(c);
-    }
-}
-
-void
-restackq(Desktop *desk)
-{
-    XCBWindowChanges wc;
-
-    wc.stack_mode = XCB_STACK_MODE_BELOW;
-    if(desk->mon->bar->win && SHOWBAR(desk->mon->bar))
-    {   wc.sibling = desk->mon->bar->win;
-    }
-    else
-    {   /* TODO: Maybe use wc.sibling = _wm.root? That causes error to be generated though. */
-        wc.sibling = _wm.wmcheckwin;
-    }
-
-    Client *c;
-    for(c = desk->stack; c; c = nextstack(c))
-    { 
-        if(!ISNORMALSTACK(c))
-        {   XCBConfigureWindow(_wm.dpy, c->win, XCB_CONFIG_WINDOW_SIBLING|XCB_CONFIG_WINDOW_STACK_MODE, &wc);
-            wc.sibling = c->win;
-        }
     }
 }
 
@@ -2150,7 +2123,6 @@ __cmp(Client *c1, Client *c2)
      * RETURN 0 on lesser priority. 
      */
     /* != basically just skips if they both have it and only success if one of them has it AKA compare */
-
     if(ISFLOATING(c1) && DOCKED(c1))
     {   setfloating(c1, 0);
     }
@@ -2177,7 +2149,7 @@ __cmp(Client *c1, Client *c2)
     {   return __cmp_helper(ISHIDDEN(c1), ISHIDDEN(c2));
     }
     else
-    {   
+    {   /* get next focused window */
         Client *c;
         for(c = c1; c && c != c2; c = c->fprev);
         return c == c2;
@@ -2993,9 +2965,9 @@ setsticky(Client *c, u8 state)
 {
     const XCBWindow win = c->win;
     const XCBAtom replace = !!state * netatom[NetWMStateSticky];
+    const u8 length = !!state;
     XCBChangeProperty(_wm.dpy, win, netatom[NetWMState], XCB_ATOM_ATOM, 32, 
-            XCB_PROP_MODE_REPLACE, (unsigned char *)&replace, !!replace);
-
+            XCB_PROP_MODE_REPLACE, (unsigned char *)&replace, length);
     SETFLAG(c->wstateflags, _STATE_STICKY, !!state);
 }
 
@@ -3113,7 +3085,7 @@ void
 seturgent(Client *c, uint8_t state) 
 {
     XCBCookie wmhcookie = XCBGetWMHintsCookie(_wm.dpy, c->win);
-    XCBWMHints *wmh = NULL;
+    XCBWMHints *wmh = XCBGetWMHintsReply(_wm.dpy, wmhcookie);
     SETFLAG(c->wstateflags, _STATE_DEMANDS_ATTENTION, !!state);
     if(state)
     {   /* set window border */   
@@ -3122,7 +3094,7 @@ seturgent(Client *c, uint8_t state)
     {   /* set window border */   
     }
 
-    if((wmh = XCBGetWMHintsReply(_wm.dpy, wmhcookie)))
+    if(wmh)
     {
         wmh->flags = state ? (wmh->flags | XCB_WM_HINT_URGENCY) : (wmh->flags & ~XCB_WM_HINT_URGENCY);
         XCBSetWMHintsCookie(_wm.dpy, c->win, wmh);
@@ -3722,8 +3694,6 @@ updateclass(Client *c, XCBWMClass *_class)
     const u32 MAX_LEN = 1024;
     if(_class)
     {  
-       free(c->classname);
-       free(c->instancename);
        const u32 CLASS_NAME_LEN = strnlen(_class->class_name, MAX_LEN) + 1;
        const u32 INSTANCE_NAME_LEN = strnlen(_class->instance_name, MAX_LEN) + 1;
        const size_t CLASS_NAME_SIZE = sizeof(char) * CLASS_NAME_LEN;
@@ -3733,16 +3703,18 @@ updateclass(Client *c, XCBWMClass *_class)
 
        if(clsname)
        {    
-           memcpy(clsname, _class->class_name, CLASS_NAME_SIZE - sizeof(char));
-           clsname[CLASS_NAME_LEN - 1] = '\0';
+            memcpy(clsname, _class->class_name, CLASS_NAME_SIZE - sizeof(char));
+            clsname[CLASS_NAME_LEN - 1] = '\0';
+            free(c->classname);
+            c->classname = clsname;
        }
        if(iname)
        {
-           memcpy(iname, _class->instance_name, INSTANCE_NAME_SIZE - sizeof(char));
-        iname[INSTANCE_NAME_LEN - 1] = '\0';
+            memcpy(iname, _class->instance_name, INSTANCE_NAME_SIZE - sizeof(char));
+            iname[INSTANCE_NAME_LEN - 1] = '\0';
+            free(c->instancename);
+            c->instancename = iname;
        }
-       c->classname = clsname;
-       c->instancename = iname;
     }
 }
 
