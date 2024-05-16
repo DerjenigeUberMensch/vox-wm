@@ -85,11 +85,6 @@ int ISMAXVERT(Client *c)        { return HEIGHT(c) == c->desktop->mon->wh; }
 int ISVISIBLE(Client *c)        { return (!!(c->desktop->mon->desksel == c->desktop) || (!!ISSTICKY(c))) && !ISHIDDEN(c); }
 int SHOWDECOR(Client *c)        { return c->flags & _FSTATE_SHOW_DECOR; }
 int ISSELECTED(Client *c)       { return c->desktop->sel == c; }
-int ISNORMALSTACK(Client *c)    { return   !(
-                                                ISFLOATING(c) | ISALWAYSONTOP(c) |
-                                                ISDIALOG(c) | ISMODAL(c)
-                                            ); 
-                                }
         
 int COULDBEBAR(Client *c, uint8_t strut) 
                                 {
@@ -2096,6 +2091,10 @@ restack(Desktop *desk)
         }
         wc.sibling = c->win;
     }
+    /* technically also this is "slower" and more intensive on ourside but we basically substantially decrease the load on the XServer (for the most part). 
+     * Resizing is still slow af though.
+     */
+
     /* Linear time as it will succed the for loop first try and thus be O(n) */
     while(desk->rstack)
     {   detachrestack(desk->rstack);
@@ -2118,6 +2117,9 @@ static int
 __cmp(Client *c1, Client *c2)
 {
     /* how to return.
+     * reference point is c1.
+     * so if c1 has higher priority return 1.
+     *
      * RETURN 1 on higher priority
      * RETURN -1 on lesser priority
      * RETURN 0 on lesser priority. 
@@ -2130,30 +2132,41 @@ __cmp(Client *c1, Client *c2)
     {   setfloating(c2, 0);
     }
 
-    if(ISDOCK(c1) != ISDOCK(c2))
-    {   return __cmp_helper(ISDOCK(c1), ISDOCK(c2));
+    const u32 dock1 = ISDOCK(c1);
+    const u32 dock2 = ISDOCK(c2);
+
+    const u32 above1 = ISALWAYSONTOP(c1);
+    const u32 above2 = ISALWAYSONTOP(c2);
+
+    const u32 float1 = ISFLOATING(c1);
+    const u32 float2 = ISFLOATING(c2);
+
+    const u32 below1 = ISBELOW(c1);
+    const u32 below2 = ISBELOW(c2);
+
+    const u32 hidden1 = ISHIDDEN(c1);
+    const u32 hidden2 = ISHIDDEN(c2);
+
+    if(dock1 ^ dock2)
+    {   return __cmp_helper(dock1, dock2);
     }
-    else if(ISALWAYSONTOP(c1) != ISALWAYSONTOP(c2))
-    {   return __cmp_helper(ISALWAYSONTOP(c1), ISALWAYSONTOP(c2));
+    else if(above1 ^ above2)
+    {   return __cmp_helper(above1, above2);
     }
-    else if(ISFLOATING(c1) != ISFLOATING(c2))
-    {   return __cmp_helper(ISFLOATING(c1), ISFLOATING(c2));
+    else if(float1 ^ float2)
+    {   return __cmp_helper(float1, float2);
     }
-    else if(ISNORMALSTACK(c1) != ISNORMALSTACK(c2))
-    {   return __cmp_helper(ISNORMALSTACK(c1), ISNORMALSTACK(c2));
+    else if(below1 ^ below2)
+    {   return __cmp_helper(below1, below2);
     }
-    else if(ISBELOW(c1) != ISBELOW(c2))
-    {   return __cmp_helper(ISBELOW(c1), ISBELOW(c2));
+    else if(hidden1 ^ hidden2)
+    {   return __cmp_helper(hidden1, hidden2);
     }
-    else if(ISHIDDEN(c1) != ISHIDDEN(c2))
-    {   return __cmp_helper(ISHIDDEN(c1), ISHIDDEN(c2));
-    }
-    else
-    {   /* get next focused window */
-        Client *c;
-        for(c = c1; c && c != c2; c = c->fprev);
-        return c == c2;
-    }
+    /* till I find a better way this should decrease cpu a bit
+     * this takes about 90% of the cycles of compare so find a better way to get newest focus FIXME
+     */
+    for(; c1 && c1 != c2; c1 = prevfocus(c1));
+    return c1 == c2;
 }
 
 /*

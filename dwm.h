@@ -875,8 +875,6 @@ int NEVERFOCUS(Client *c);
 int ISVISIBLE(Client *c);
 int SHOWDECOR(Client *c);
 int ISSELECTED(Client *c);
-/* if the window doesnt have any stacking priority. */
-int ISNORMALSTACK(Client *c);
 /* checks if a client could be a bar */
 int COULDBEBAR(Client *c, uint8_t strut);
 
