@@ -57,12 +57,14 @@ SIZEONLY= ${RELEASEFLAGS} -Oz -fno-ident -fno-asynchronous-unwind-tables
 RELEASE = ${RELEASEFLAGS} -O2 -ftree-loop-vectorize
 # Release Speed (-O3)
 RELEASES= ${RELEASEFLAGS} -O3 
+# Release Speed (-O3) (debug)
+#RELEASES = ${RELEASEFLAGS} -O3 ${DEBUGFLAGS} -fno-inline -DENABLE_DEBUG -DXCB_TRL_ENABLE_DEBUG
 
 # Build using cpu specific instruction set for more performance (Optional)
 BUILDSELF = ${RELEASEFLAGS} ${XNATIVE} -O3
 
 # Set your options or presets (see above) ex: ${PRESETNAME} (Compiler used is on top)
-CFLAGS = ${DEBUG}
+CFLAGS = ${RELEASES}
 
 CMACROS = -DXINERAMA
 
