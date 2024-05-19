@@ -573,9 +573,23 @@ circulaterequest(XCBGenericEvent *event)
     const XCBWindow eventwin    = ev->event;
     const u8 place              = ev->place;
 
-    (void)win;
     (void)eventwin;
-    (void)place;
+
+    switch(place)
+    {   
+        case XCB_CIRCULATE_RAISE_LOWEST:
+            DEBUG("Circulate Up: [%u] ", win);
+            XCBCirculateSubwindows(_wm.dpy, win, XCB_CIRCULATE_RAISE_LOWEST);
+            break;
+        case XCB_CIRCULATE_LOWER_HIGHEST:
+            DEBUG("Circulate Down: [%u] ", win);
+            XCBCirculateSubwindows(_wm.dpy, win, XCB_CIRCULATE_LOWER_HIGHEST);
+            break;
+        default:
+            DEBUG("Circulate Unknown: [%u] ", win);
+            break;
+    }
+
 }
 
 void
