@@ -3075,6 +3075,7 @@ setupcfg(void)
 void
 setupcfgdefaults(void)
 {
+    UserSettings *s = &_cfg;
     const u16 nmaster = 1;
     const u8 hoverfocus = 0;   /* bool */
     const u8 desktoplayout = Monocle;
@@ -3085,17 +3086,25 @@ setupcfgdefaults(void)
     const u16 winsnap = 10;
     const u16 maxcc = 256;
     const float mfact = 0.55f;
+     const u16 bw = _wm.selmon->ww;
+    const u16 bh = _wm.selmon->wh / 10;     /* div 10 is roughly the same as the WSWM old default bar height */
+    const i16 bx = _wm.selmon->wx;
+    const i16 by = _wm.selmon->wy + bh;     /* because a window is a rectangle calculations start at the top left corner, so we need to add the height */
 
-    USSetMCount(&_cfg, nmaster);
-    USSetLayout(&_cfg, desktoplayout);
-    USSetOLayout(&_cfg, odesktoplayout);
-    USSetDefaultDesk(&_cfg, defaultdesktop);
-    USSetHoverFocus(&_cfg, hoverfocus);
-    USSetRefreshRate(&_cfg, refreshrate);
-    USSetGapWidth(&_cfg, bgw);
-    USSetSnap(&_cfg, winsnap);
-    USSetMaxClientCount(&_cfg, maxcc);
-    USSetMFact(&_cfg, mfact);
+    USSetMCount(s, nmaster);
+    USSetLayout(s, desktoplayout);
+    USSetOLayout(s, odesktoplayout);
+    USSetDefaultDesk(s, defaultdesktop);
+    USSetHoverFocus(s, hoverfocus);
+    USSetRefreshRate(s, refreshrate);
+    USSetGapWidth(s, bgw);
+    USSetSnap(s, winsnap);
+    USSetMaxClientCount(s, maxcc);
+    USSetMFact(s, mfact);
+    USSetBarWidth(s, bw);
+    USSetBarHeight(s, bh);
+    USSetBarX(s, bx);
+    USSetBarY(s, by);
 }
 
 void
