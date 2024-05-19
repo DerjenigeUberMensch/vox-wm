@@ -711,7 +711,6 @@ cleanupdesktop(Desktop *desk)
     Client *c = NULL;
     Client *next = NULL;
     c = desk->clients;
-    HASH_CLEAR(hh, desk->__hash);
     while(c)
     {   
         next = c->next;
@@ -757,6 +756,7 @@ cleanupmon(Monitor *m)
         cleanupdesktop(desk);
         desk = desknext;
     }
+    HASH_CLEAR(hh, m->__hash);
     free(m->bar);
     free(m);
     m = NULL;
@@ -931,7 +931,6 @@ createdesktop(void)
     desk->slast = NULL;
     desk->mon = NULL;
     desk->settings = calloc(1, sizeof(UserSettings));
-    desk->__hash = NULL;
     if(!desk->settings)
     {   
         DEBUG("%s", "WARN: FAILED TO CREATE SETTINGS.");
@@ -1457,7 +1456,7 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     {   setfullscreen(c, ISFULLSCREEN(c->desktop->sel) || ISFULLSCREEN(c));
     }
     if(c->desktop)
-    {   HASH_ADD_INT(c->desktop->__hash, win, c);
+    {   HASH_ADD_INT(c->desktop->mon->__hash, win, c);
     }
     /* propagates border_width, if size doesn't change */
     configure(c);   
@@ -3612,7 +3611,7 @@ unmanage(Client *c, uint8_t destroyed)
      * Memory leak if a client is unmaped and maped again
      * (cause we would get the same input focus twice)
      */
-    HASH_DEL(desk->__hash, c);
+    HASH_DEL(desk->mon->__hash, c);
     detachcompletely(c);
     focus(NULL);
     updateclientlist(c->win, ClientListRemove);
@@ -4352,29 +4351,14 @@ Client *
 wintoclient(XCBWindow win)
 {
     Client *c = NULL;
-    Desktop *desk = NULL;
     Monitor *m = NULL;
 
     /* check sel first */
-    for(desk = _wm.selmon->desktops; desk; desk = nextdesktop(desk))
-    {
-        HASH_FIND_INT(desk->__hash, &win, c);
+    for(m = _wm.selmon; m; m = nextmonitor(m))
+    {   
+        HASH_FIND_INT(m->__hash, &win, c);
         if(c)
         {   return c;
-        }
-    }
-    
-    for(m = _wm.mons; m; m = nextmonitor(m))
-    {
-        if(m == _wm.selmon)
-        {   continue;
-        }
-        for(desk = m->desktops; desk; desk = nextdesktop(desk))
-        {   
-            HASH_FIND_INT(desk->__hash, &win, c);
-            if(c)
-            {   return c;
-            }
         }
     }
     return NULL;

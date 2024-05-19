@@ -270,7 +270,7 @@ struct Monitor
 
     uint16_t deskcount;         /* Desktop Counter                          */
     uint8_t pad[2];
-    uint8_t pad0[8];
+    Client *__hash;             /* Hashed clients                           */
 };
 
 struct Layout
@@ -299,7 +299,6 @@ struct Desktop
     Desktop *next;              /* Next Client in linked list   */
     Desktop *prev;              /* Previous Client in list      */
     UserSettings *settings;     /* User settings data           */
-    Client *__hash;             /* Hashed clients               */
 };
 
 struct WM
