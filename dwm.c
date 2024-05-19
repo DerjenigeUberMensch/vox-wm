@@ -1357,7 +1357,8 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     XCBSizeHints hints;
     u8 hintstatus = 0;
     XCBWMHints *wmh = NULL;
-    XCBWMClass cls = { ._reply = NULL };    /* no safeguards for failure */
+    XCBWMClass cls = { ._reply = NULL };
+    u8 clsstatus = 0;
     XCBWMProtocols wmprotocols = { ._reply = NULL, .atoms_len = 0 };
     u8 wmprotocolsstatus = 0;
     XCBWindowProperty *strutpreply = NULL;
@@ -1382,7 +1383,7 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     stateunused = XCBGetWindowPropertyReply(_wm.dpy, requests[4]);
     hintstatus = XCBGetWMNormalHintsReply(_wm.dpy, requests[5], &hints);
     wmh = XCBGetWMHintsReply(_wm.dpy, requests[6]);
-    XCBGetWMClassReply(_wm.dpy, requests[7], &cls);
+    clsstatus = XCBGetWMClassReply(_wm.dpy, requests[7], &cls);
     wmprotocolsstatus = XCBGetWMProtocolsReply(_wm.dpy, requests[8], &wmprotocols);
     strutpreply = XCBGetWindowPropertyReply(_wm.dpy, requests[9]);
     strutreply = XCBGetWindowPropertyReply(_wm.dpy, requests[10]);
@@ -1432,7 +1433,9 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     setshowdecor(c, showdecor);
     updatetitle(c, netwmname, wmname);
     updatesizehints(c, &hints);
-    updateclass(c, &cls);
+    if(clsstatus)
+    {   updateclass(c, &cls);
+    }
     updatewmhints(c, wmh);
     updateicon(c, iconreply);
     XCBSelectInput(_wm.dpy, win, inputmask);
