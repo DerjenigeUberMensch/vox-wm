@@ -2556,6 +2556,49 @@ XCBDeleteProperty(XCBDisplay *display, XCBWindow window, XCBAtom property)
 }
 
 XCBCookie
+XCBCirculateSubwindows(
+        XCBDisplay *display,
+        XCBWindow window,
+        uint8_t direction
+        )
+{
+    XCBCookie ret = xcb_circulate_window(display, direction, window);
+#ifdef DBG
+    _xcb_push_func(ret, _fn);
+#endif
+
+    return ret;
+}
+
+
+XCBCookie
+XCBCirculateSubwindowsUp(
+        XCBDisplay *display,
+        XCBWindow window
+        )
+{
+    XCBCookie ret = XCBCirculateSubwindows(display, window, XCB_CIRCULATE_RAISE_LOWEST);
+#ifdef DBG
+    _xcb_push_func(ret, _fn);
+#endif
+    return ret;
+}
+
+XCBCookie
+XCBCirculateSubwindowsDown(
+        XCBDisplay *display,
+        XCBWindow window
+        )
+{
+    XCBCookie ret = XCBCirculateSubwindows(display, window, XCB_CIRCULATE_LOWER_HIGHEST);
+#ifdef DBG
+    _xcb_push_func(ret, _fn);
+#endif
+    return ret;
+}
+
+
+XCBCookie
 XCBConfigureWindow(
         XCBDisplay *display, 
         XCBWindow window,

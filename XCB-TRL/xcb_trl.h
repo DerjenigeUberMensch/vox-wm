@@ -3041,6 +3041,43 @@ XCBDeleteProperty(
         XCBWindow window, 
         XCBAtom property);
 
+/* No Documentation Provided.
+ * Prefer XCBRaiseWindow/XCBLowerWindow/XCBConfigureWindow.
+ *
+ * direction:           0/XCB_CIRCULATE_RAISE_LOWEST          Lowest mapped child (if any) will be raised to the top of the stack.
+ *                      1/XCB_CIRCULATE_LOWER_HIGHEST         Highest mapped child (if any) will be lowered to the bottom of the stack.
+ * RETURN: Cookie to request.
+ */
+XCBCookie
+XCBCirculateSubwindows(
+        XCBDisplay *display,
+        XCBWindow window,
+        uint8_t direction
+        );
+
+/* No Documentation Provided.
+ * Prefer XCBRaiseWindow/XCBLowerWindow/XCBConfigureWindow.
+ *
+ * RETURN: Cookie to request.
+ */
+XCBCookie
+XCBCirculateSubwindowsUp(
+        XCBDisplay *display,
+        XCBWindow window
+        );
+
+/* No Documentation Provided.
+ * Prefer XCBRaiseWindow/XCBLowerWindow/XCBConfigureWindow.
+ *
+ * RETURN: Cookie to request.
+ */
+XCBCookie
+XCBCirculateSubwindowsDown(
+        XCBDisplay *display,
+        XCBWindow window
+        );
+
+
 /* Mask;
  * value_mask:          XCB_CONFIG_WINDOW_X;            Sets the flag to configure the X axis.
  *                      XCB_CONFIG_WINDOW_Y;            Sets the flag to configure the Y axis.
