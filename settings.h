@@ -42,6 +42,11 @@ struct UserSettings
     uint16_t flags;
     uint16_t maxcc;
 
+    /* bar stuff */
+    uint16_t barheight;
+    uint16_t barwidth;
+    int16_t barx;
+    int16_t bary;
 };
 
 
@@ -134,6 +139,42 @@ USSetMaxClientCount(
         );
 uint16_t
 USGetMaxClientCount(
+        UserSettings *settings
+        );
+void
+USSetBarHeight(
+        UserSettings *settings,
+        uint16_t height
+        );
+uint16_t
+USGetBarHeight(
+        UserSettings *settings
+        );
+void
+USSetBarWidth(
+        UserSettings *settings,
+        uint16_t width 
+        );
+uint16_t
+USGetBarWidth(
+        UserSettings *settings
+        );
+void
+USSetBarX(
+        UserSettings *settings,
+        int16_t x
+        );
+uint16_t
+USGetBarX(
+        UserSettings *settings
+        );
+void
+USSetBarY(
+        UserSettings *settings,
+        int16_t y
+        );
+uint16_t
+USGetBarY(
         UserSettings *settings
         );
 
