@@ -741,7 +741,7 @@ maprequest(XCBGenericEvent *event)
     (void)parent;
 
     u8 sync = 0;
-    Client *c;
+    Client *c = NULL;
 
     if(!wintoclient(win))
     {
@@ -749,17 +749,15 @@ maprequest(XCBGenericEvent *event)
         XCBCookie cookies[MANAGE_CLIENT_COOKIE_COUNT];
         managerequest(win, cookies);
         c = managereply(win, cookies);
-        if(c)
-        {
-            updatedecor(c, NULL);
-            /* map window before input focus is set cause we just get errors other wise. */
-            XCBMapWindow(_wm.dpy, c->win);
-            focus(c);
-            arrange(c->desktop);
-        }
         sync = 1;
     }
-
+    /* map window before input focus is set cause we just get errors other wise. */
+    XCBMapWindow(_wm.dpy, win);
+    if(c)
+    {
+        focus(c);
+        arrange(c->desktop);
+    }
     if(sync)
     {   XCBFlush(_wm.dpy);
     }
