@@ -218,7 +218,8 @@ Quit(const Arg *arg)
 void
 ResizeWindow(const Arg *arg)
 {
-    if(!_wm.selmon->desksel->sel)
+    static u8 running = 0;
+    if(!_wm.selmon->desksel->sel || running)
     {   return;
     }
     Client *c = _wm.selmon->desksel->sel;
@@ -297,7 +298,7 @@ ResizeWindow(const Arg *arg)
     arrange(c->desktop);
     XCBFlush(_wm.dpy);
     XCBGenericEvent *ev = NULL;
-    int exit = 0;
+    running = 1;
     do
     {
         if(ev)
@@ -321,27 +322,28 @@ ResizeWindow(const Arg *arg)
                 case XCB_BUTTON_PRESS:
                     break;
                 case XCB_BUTTON_RELEASE: 
-                    exit = 1;
+                    running = 0;
                     break;
-                /* this accounts for users killing the window (cause they can) */
                 /* this accounts for users killing the window (cause they can) */
                 case XCB_UNMAP_NOTIFY:
                     if(((XCBUnmapNotifyEvent *)ev)->window == win)
-                    {   win = 0;
+                    {   running = 0;
                     }
                     break;
                 case XCB_DESTROY_NOTIFY:
                     if(((XCBDestroyNotifyEvent *)ev)->window == win)
-                    {   win = 0;
+                    {   running = 0;
                     }
                     break;
             }
             free(ev);
         }
-    } while(_wm.running && !exit && win && !XCBNextEvent(_wm.dpy, &ev)); 
+    } while(_wm.running && running && !XCBNextEvent(_wm.dpy, &ev)); 
+    running = 0;
     XCBUngrabPointer(_wm.dpy, XCB_CURRENT_TIME);
     Monitor *m;
-    if(win)
+    c = wintoclient(win);
+    if(c)
     {
         if ((m = recttomon(c->x, c->y, c->w, c->h)) != _wm.selmon) 
         {
@@ -360,7 +362,7 @@ ResizeWindow(const Arg *arg)
 void
 SetBorderWidth(const Arg *arg)
 {
-    const u16 bw = 50;
+    const u16 bw = 1;
     if(bw + arg->i < 0)
     {   return;
     }
