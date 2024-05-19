@@ -959,6 +959,7 @@ createmon(void)
     setdesktopcount(m, 10);
     m->desksel = m->desktops;
     m->bar = calloc(1, sizeof(Bar ));
+    m->__hash = NULL;
     if(!m->bar)
     {   
         DEBUG0("(OutOfMemory) Failed to create bar.");
