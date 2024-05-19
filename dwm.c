@@ -3015,9 +3015,9 @@ setup(void)
         cleanup();
         DIECAT("%s", "Could not establish connection with keyboard (OutOfMemory)");
     }
+    updategeom();
     setupcursors();
     setupcfg();
-    updategeom();
     XCBCookie motifcookie = XCBInternAtomCookie(_wm.dpy, "_MOTIF_WM_HINTS", False);
     XCBInitAtoms(_wm.dpy, wmatom, netatom);
     motifatom = XCBInternAtomReply(_wm.dpy, motifcookie);
@@ -3086,7 +3086,7 @@ setupcfgdefaults(void)
     const u16 winsnap = 10;
     const u16 maxcc = 256;
     const float mfact = 0.55f;
-     const u16 bw = _wm.selmon->ww;
+    const u16 bw = _wm.selmon->ww;
     const u16 bh = _wm.selmon->wh / 10;     /* div 10 is roughly the same as the WSWM old default bar height */
     const i16 bx = _wm.selmon->wx;
     const i16 by = _wm.selmon->wy + bh;     /* because a window is a rectangle calculations start at the top left corner, so we need to add the height */
