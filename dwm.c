@@ -863,12 +863,13 @@ createclient(void)
     /* This uses calloc as we are currently testing stuff, but we will juse malloc and zero it out later in production*/
     Client *c = calloc(1, sizeof(Client ));
     Decoration *decor = createdecoration();
-    if(!c)
-    {   DEBUG0("Could not allocate memory for client (OutOfMemory).");
-        return NULL;
-    }
-    if(!decor)
-    {   DEBUG0("Could not allocated memory for decoration (OutOfMemory).");
+    if(!c || !decor)
+    {   
+        DEBUG0("Could not allocate memory for client (OutOfMemory).");
+        DEBUG("Client:      %p", (void *)c);
+        DEBUG("Decoration:  %p", (void *)decor);
+        free(c);
+        free(decor);
         return NULL;
     }
     c->decor = decor;
