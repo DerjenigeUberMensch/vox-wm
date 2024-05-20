@@ -2102,7 +2102,7 @@ restack(Desktop *desk)
     while(desk->rstack)
     {   detachrestack(desk->rstack);
     }
-    for(c = desk->stack; c; c = nextstack(c))
+    for(c = desk->slast; c; c = prevstack(c))
     {   attachrestack(c);
     }
 }
