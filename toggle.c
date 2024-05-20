@@ -412,6 +412,9 @@ SpawnWindow(const Arg *arg)
         /* UNREACHABLE */
         DEBUG("%s", "execvp Failed");
     }
+    else
+    {   DEBUG("Failed to fork current process. %d", XCBConnectionNumber(_wm.dpy));
+    }
 }
 
 void

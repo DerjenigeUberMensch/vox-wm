@@ -150,7 +150,7 @@ double functime(void (*_timefunction)(void));
  * https://www.chiark.greenend.org.uk/~sgtatham/algorithms/listsort.html 
  */
 /*
- * This function is copyright 2001 Simon Tatham.
+ * Copyright (c) 2001 Simon Tatham.
  * 
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation

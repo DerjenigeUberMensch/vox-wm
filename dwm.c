@@ -34,7 +34,7 @@
 
 /* for HELP/DEBUGGING see under main() or the bottom */
 
-extern void (*handler[]) (XCBGenericEvent *);
+extern void (*handler[XCBLASTEvent]) (XCBGenericEvent *);
 
 
 WM _wm;
@@ -89,7 +89,7 @@ int ISSELECTED(Client *c)       { return c->desktop->sel == c; }
 int COULDBEBAR(Client *c, uint8_t strut) 
                                 {
                                     const u8 sticky = !!ISSTICKY(c);
-                                    const u8 isdock = !!(ISDOCK(c) | ISTOOLBAR(c));
+                                    const u8 isdock = !!(ISDOCK(c));
                                     const u8 above = !!ISABOVE(c); 
                                     return (sticky && strut && (above || isdock));
                                 }
@@ -500,6 +500,18 @@ attachfocus(Client *c)
 void
 detach(Client *c)
 {
+    if(!c)
+    {   DEBUG0("No client to detach FIXME");
+        return;
+    }
+    if(!c->desktop)
+    {   DEBUG0("No desktop in client FIXME");
+        return;
+    }
+    if(!c->desktop->clients)
+    {   DEBUG0("No clients in desktop FIXME");
+        return;
+    }
     Client **tc;
     for (tc = &c->desktop->clients; *tc && *tc != c; tc = &(*tc)->next);
     *tc = c->next;
@@ -557,6 +569,18 @@ detachdesktop(Monitor *m, Desktop *desktop)
 void
 detachstack(Client *c)
 {
+    if(!c)
+    {   DEBUG0("No client to detach FIXME");
+        return;
+    }
+    if(!c->desktop)
+    {   DEBUG0("No desktop in client FIXME");
+        return;
+    }
+    if(!c->desktop->stack)
+    {   DEBUG0("No clients in desktop FIXME");
+        return;
+    }
     Desktop *desk = c->desktop;
     Client **tc;
 
@@ -582,6 +606,18 @@ detachstack(Client *c)
 void
 detachrestack(Client *c)
 {
+    if(!c)
+    {   DEBUG0("No client to detach FIXME");
+        return;
+    }
+    if(!c->desktop)
+    {   DEBUG0("No desktop in client FIXME");
+        return;
+    }
+    if(!c->desktop->rstack)
+    {   DEBUG0("No clients in desktop FIXME");
+        return;
+    }
     Desktop *desk = c->desktop;
     Client **tc;
 
@@ -608,6 +644,18 @@ detachrestack(Client *c)
 void
 detachfocus(Client *c)
 {
+    if(!c)
+    {   DEBUG0("No client to detach FIXME");
+        return;
+    }
+    if(!c->desktop)
+    {   DEBUG0("No desktop in client FIXME");
+        return;
+    }
+    if(!c->desktop->focus)
+    {   DEBUG0("No clients in desktop FIXME");
+        return;
+    }
     Desktop *desk = c->desktop;
     Client **tc, *t;
 
@@ -1032,7 +1080,7 @@ focus(Client *c)
     Monitor *selmon = _wm.selmon;
     Desktop *desk  = selmon->desksel;
     if(!c || !ISVISIBLE(c))
-    {   for(c = desk->focus; c && !ISVISIBLE(c); c = nextfocus(c));
+    {   for(c = desk->focus; c && (!ISVISIBLE(c) || NEVERFOCUS(c)); c = nextfocus(c));
     }
     if(desk->sel && desk->sel != c)
     {   unfocus(desk->sel, 0);
