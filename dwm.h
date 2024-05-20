@@ -635,7 +635,7 @@ void savesession(void);
  * iteration, the index of the current previous client.
  * Iteration is used to list the clients in correct order, until I figure out a better way.
  */
-void saveclientsession(FILE *fw, Client *c, unsigned int interation);
+void saveclientsession(FILE *fw, Client *c);
 /* Attemps to save session for specified desktop */
 void savedesktopsession(FILE *fw, Desktop *desktop);
 /* Attemps to save session from file for specified Monitor 
