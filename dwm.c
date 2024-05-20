@@ -3709,28 +3709,33 @@ updateclass(Client *c, XCBWMClass *_class)
 {
     const u32 MAX_LEN = 1024;
     if(_class)
-    {  
-       const u32 CLASS_NAME_LEN = strnlen(_class->class_name, MAX_LEN) + 1;
-       const u32 INSTANCE_NAME_LEN = strnlen(_class->instance_name, MAX_LEN) + 1;
-       const size_t CLASS_NAME_SIZE = sizeof(char) * CLASS_NAME_LEN;
-       const size_t INSTANCE_NAME_SIZE = sizeof(char) * INSTANCE_NAME_LEN;
-       char *clsname = malloc(CLASS_NAME_SIZE);
-       char *iname = malloc(INSTANCE_NAME_SIZE);
-
-       if(clsname)
-       {    
-            memcpy(clsname, _class->class_name, CLASS_NAME_SIZE - sizeof(char));
-            clsname[CLASS_NAME_LEN - 1] = '\0';
-            free(c->classname);
-            c->classname = clsname;
-       }
-       if(iname)
-       {
-            memcpy(iname, _class->instance_name, INSTANCE_NAME_SIZE - sizeof(char));
-            iname[INSTANCE_NAME_LEN - 1] = '\0';
-            free(c->instancename);
-            c->instancename = iname;
-       }
+    {
+        if(_class->class_name)
+        {
+            const u32 CLASS_NAME_LEN = strnlen(_class->class_name, MAX_LEN) + 1;
+            const size_t CLASS_NAME_SIZE = sizeof(char) * CLASS_NAME_LEN;
+            char *clsname = malloc(CLASS_NAME_SIZE);
+            if(clsname)
+            {    
+                memcpy(clsname, _class->class_name, CLASS_NAME_SIZE - sizeof(char));
+                clsname[CLASS_NAME_LEN - 1] = '\0';
+                free(c->classname);
+                c->classname = clsname;
+            }
+        }
+        if(_class->instance_name)
+        {   
+            const u32 INSTANCE_NAME_LEN = strnlen(_class->instance_name ? _class->instance_name : "", MAX_LEN) + 1;
+            const size_t INSTANCE_NAME_SIZE = sizeof(char) * INSTANCE_NAME_LEN;
+            char *iname = malloc(INSTANCE_NAME_SIZE);
+            if(iname)
+            {
+                memcpy(iname, _class->instance_name, INSTANCE_NAME_SIZE - sizeof(char));
+                iname[INSTANCE_NAME_LEN - 1] = '\0';
+                free(c->instancename);
+                c->instancename = iname;
+            }
+        }
     }
 }
 
