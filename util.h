@@ -173,78 +173,78 @@ double functime(void (*_timefunction)(void));
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-/* Doesnt work */
-#define MERGE_SORT_LINKED_LIST(TYPE, CMP_FUNC, HEAD, NEXT, PREV, IS_DOUBLE, IS_CIRCULAR, HEAD_RETURN)\
+#define MERGE_SORT_LINKED_LIST(TYPE, CMP_FUNC, HEAD, TAIL, NEXT, PREV, IS_DOUBLE, IS_CIRCULAR)\
                         do                                                              \
                         {                                                               \
-                            TYPE *p, *q, *e, *tail, *oldhead;                           \
-                            TYPE *list;                                                 \
-                            int32_t insize, nmerges, psize, qsize, i;                   \
-                            insize = 1;                                                 \
-                            list = HEAD;                                                \
+                            TYPE *__p, *__q, *__e, *__tail, *__oldhead;                 \
+                            TYPE *__list;                                               \
+                            uint32_t __insize, __nmerges, __psize, __qsize, __i;        \
+                            __insize = 1;                                               \
+                            __list = HEAD;                                              \
                             while(1)                                                    \
-                            {   p = list;                                               \
+                            {                                                           \
+                                __p = __list;                                           \
                                 if(IS_CIRCULAR)                                         \
-                                {   oldhead = list;                                     \
+                                {   __oldhead = __list;                                 \
                                 }                                                       \
-                                list = NULL;                                            \
-                                tail = NULL;                                            \
+                                __list = NULL;                                          \
+                                __tail = NULL;                                          \
                                 /* count number of merges we do in this pass */         \
-                                nmerges = 0;                                            \
-                                while(p)                                                \
+                                __nmerges = 0;                                          \
+                                while(__p)                                              \
                                 {   /* there exists a merge to be done */               \
-                                    ++nmerges;                                          \
+                                    ++__nmerges;                                        \
                                     /* step `insize' places along from p */             \
-                                    q = p;                                              \
-                                    psize = 0;                                          \
-                                    for(i = 0; i < insize; ++i)                         \
+                                    __q = __p;                                          \
+                                    __psize = 0;                                        \
+                                    for(__i = 0; __i < __insize; ++__i)                 \
                                     {                                                   \
-                                        ++psize;                                        \
+                                        ++__psize;                                      \
                                         if(IS_CIRCULAR)                                 \
-                                        {   q = (q->NEXT == oldhead ? NULL : q->NEXT);  \
+                                        {   __q = (__q->NEXT == __oldhead ? NULL : __q->NEXT);  \
                                         }                                               \
                                         else                                            \
-                                        {   q = q->NEXT;                                \
+                                        {   __q = __q->NEXT;                            \
                                         }                                               \
-                                        if(!q)                                          \
+                                        if(!__q)                                        \
                                         {   break;                                      \
                                         }                                               \
                                     }                                                   \
                                     /* if q hasn't fallen off end,                      \
                                      * we have two lists to merge                       \
                                      */                                                 \
-                                    qsize = insize;                                     \
+                                    __qsize = __insize;                                 \
                                                                                         \
                                     /* now we have two lists; merge them */             \
-                                    while(psize > 0 || (qsize > 0 && q))                \
+                                    while(__psize > 0 || (__qsize > 0 && __q))          \
                                     {                                                   \
                                         /* decide where the next element                \
                                          * of merge comes from p or q                   \
                                          */                                             \
-                                        if(psize == 0)                                  \
+                                        if(__psize == 0)                                \
                                         {                                               \
                                             /* p is empty; e must come from q. */       \
-                                            e = q; q = q->NEXT; --qsize;                \
-                                            if(IS_CIRCULAR && q == oldhead)             \
-                                            {   q = NULL;                               \
+                                            __e = __q; __q = __q->NEXT; --__qsize;      \
+                                            if(IS_CIRCULAR && __q == __oldhead)         \
+                                            {   __q = NULL;                             \
                                             }                                           \
                                         }                                               \
-                                        else if(qsize == 0 || !q)                       \
+                                        else if(__qsize == 0 || !__q)                   \
                                         {                                               \
                                             /* q is empty; e must come from p. */       \
-                                            e = p; p = p->NEXT; --psize;                \
-                                            if(IS_CIRCULAR && p == oldhead)             \
-                                            {   p = NULL;                               \
+                                            __e = __p; __p = __p->NEXT; --__psize;      \
+                                            if(IS_CIRCULAR && __p == __oldhead)         \
+                                            {   __p = NULL;                             \
                                             }                                           \
                                         }                                               \
-                                        else if(CMP_FUNC(p, q) <= 0)                    \
+                                        else if(CMP_FUNC(__p, __q) <= 0)                \
                                         {                                               \
                                             /* First element of p is lower (or same);   \
                                              * e must come from p.                      \
                                              */                                         \
-                                            e = p; p = p->NEXT; --psize;                \
-                                            if(IS_CIRCULAR && p == oldhead)             \
-                                            {   p = NULL;                               \
+                                            __e = __p; __p = __p->NEXT; --__psize;      \
+                                            if(IS_CIRCULAR && __p == __oldhead)         \
+                                            {   __p = NULL;                             \
                                             }                                           \
                                         }                                               \
                                         else                                            \
@@ -252,49 +252,56 @@ double functime(void (*_timefunction)(void));
                                             /* First element of q is lower;             \
                                              * e must come from q.                      \
                                              */                                         \
-                                            e = q; q = q->NEXT; --qsize;                \
-                                            if(IS_CIRCULAR && q == oldhead)             \
-                                            {   q = NULL;                               \
+                                            __e = __q; __q = __q->NEXT; --__qsize;      \
+                                            if(IS_CIRCULAR && __q == __oldhead)         \
+                                            {   __q = NULL;                             \
                                             }                                           \
                                         }                                               \
                                         /* add the next element to the merged list */   \
-                                        if(tail)                                        \
-                                        {   tail->NEXT = e;                             \
+                                        if(__tail)                                      \
+                                        {   __tail->NEXT = __e;                         \
                                         }                                               \
                                         else                                            \
-                                        {   list = e;                                   \
+                                        {   __list = __e;                               \
                                         }                                               \
                                         if(IS_DOUBLE)                                   \
                                         {                                               \
                                             /* Maintain reverse pointers                \
                                              * in a doubly linked list.                 \
                                              */                                         \
-                                            e->PREV = tail;                             \
+                                            __e->PREV = __tail;                         \
                                         }                                               \
-                                        tail = e;                                       \
+                                        __tail = __e;                                   \
                                     }                                                   \
                                     /* now p has stepped `insize' places along,         \
                                      * and q has too                                    \
                                      */                                                 \
-                                    p = q;                                              \
+                                    __p = __q;                                          \
                                 }                                                       \
                                 if(IS_CIRCULAR)                                         \
-                                {   if(tail) { tail->NEXT = HEAD; }                     \
+                                {                                                       \
+                                    if(__tail)                                          \
+                                    {   __tail->NEXT = __list;                          \
+                                    }                                                   \
                                     if(IS_DOUBLE)                                       \
-                                    {   HEAD->PREV = tail;                              \
+                                    {   __list->PREV = __tail;                          \
                                     }                                                   \
                                 }                                                       \
                                 else                                                    \
-                                {   if(tail)                                            \
-                                    {   tail->NEXT = NULL;                              \
+                                {                                                       \
+                                    if(__tail)                                          \
+                                    {   __tail->NEXT = NULL;                            \
                                     }                                                   \
                                 }                                                       \
                                 /* If we have done only one merge, we're finished.*/    \
-                                if(nmerges <= 1)                                        \
-                                {   *HEAD_RETURN = list; break;                         \
+                                if(__nmerges <= 1)                                      \
+                                {                                                       \
+                                    HEAD = __list;                                      \
+                                    TAIL = __tail;                                      \
+                                    break;                                              \
                                 }                                                       \
                                 /* Otherwise repeat, merging lists twice the size */    \
-                                insize *= 2;                                            \
+                                __insize *= 2;                                          \
                             }                                                           \
                         } while(0)
 
