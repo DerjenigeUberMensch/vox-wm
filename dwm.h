@@ -323,10 +323,6 @@ struct WM
 
 /* Handles the main(int argc, char **argv) arguments. */
 void argcvhandler(int argc, char *argv[]);
-/* Applies size restrictions to the specified values.
- * NOTE: Cannot handle any NULL values.
-*/
-void applysizechecks(Client *c, int32_t *x, int32_t *y, int32_t *width, int32_t *height, int32_t *border_width);
 /* Applies the gravity shifts specified by the gravity onto the x and y coordinates.
 */
 void applygravity(const uint32_t gravity, int16_t *x, int16_t *y, const uint16_t width, const uint16_t height, const uint16_t border_width);
