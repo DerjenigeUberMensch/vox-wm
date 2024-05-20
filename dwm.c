@@ -2290,21 +2290,20 @@ savesession(void)
 }
 
 void
-saveclientsession(FILE *fw, Client *c, unsigned int iteration)
+saveclientsession(FILE *fw, Client *c)
 {
     const char *IDENTIFIER = "Client.";
-    Client *c1;
-    Client *c2;
+    static Client *c1 = NULL;
+    static Client *c2 = NULL;
     XCBWindow focus;
     XCBWindow stack;
     int i;
 
-    c1 = c->desktop->flast;
-    c2 = c->desktop->slast;
-    for(i = 0; i < iteration; ++i)
-    {   
-        c1 = prevfocus(c);
-        c2 = prevstack(c);
+    if(!c1)
+    {   c1 = c->desktop->flast;
+    }
+    if(!c2)
+    {   c2 = c->desktop->slast;
     }
 
     focus = c1 ? c1->win : 0;
@@ -2333,6 +2332,13 @@ saveclientsession(FILE *fw, Client *c, unsigned int iteration)
             c->bcol,
             c->flags
             );
+
+    if(c1 && prevfocus(c1))
+    {   c1 = prevfocus(c1);
+    }
+    if(c2 && prevstack(c2))
+    {   c2 = prevstack(c2);
+    }
 }
 
 void
