@@ -1054,8 +1054,6 @@ clientmessage(XCBGenericEvent *event)
     const XCBClientMessageData data = ev->data;     /* union "same" as xlib data8 -> b[20] data16 -> s[10] data32 = l[5] */
 
 
-    (void)format;
-
     /* move resize */
     #define _NET_WM_MOVERESIZE_SIZE_TOPLEFT      0
     #define _NET_WM_MOVERESIZE_SIZE_TOP          1
@@ -1099,6 +1097,10 @@ clientmessage(XCBGenericEvent *event)
      *      data.l[0]       _NET_WM_SYNC_REQUEST
      */
 
+    if(format != 32)
+    {   return;
+    }
+
     Client *c = wintoclient(win);
     if(c)
     {
@@ -1126,26 +1128,7 @@ clientmessage(XCBGenericEvent *event)
             }
         }
         else if(atom == netatom[NetCloseWindow])
-        {   
-            killclient(c, Graceful);
-        }
-        else if(atom == netatom[NetMoveResizeWindow])
-        {
-            const u32 gravity = l0;
-            /* 32bit to cover bounds checks */
-            i32 x = l1;
-            i32 y = l2;
-            i32 w = l3;
-            i32 h = l4;
-            i32 bw = c->bw;
-
-            i16 cleanx = x;
-            i16 cleany = y;
-            const i16 cleanw = w;
-            const i16 cleanh = h;
-
-            applygravity(gravity, &cleanx, &cleany, cleanw, cleanh, bw);
-            resize(c, cleanx, cleany, cleanw, cleanh, 0);
+        {   killclient(c, Graceful);
         }
         else if(atom == netatom[NetMoveResize])
         {
@@ -1175,11 +1158,12 @@ clientmessage(XCBGenericEvent *event)
         else if(atom == netatom[NetMoveResizeWindow])
         {
             i32 gravity = l0;
-            i16 x = l1;
-            i16 y = l2;
-            const u16 w = l3;
-            const u16 h = l4;
-            applygravity(gravity, &x, &y, w, h, c->bw);
+            i32 x = l1;
+            i32 y = l2;
+            i32 w = l3;
+            i32 h = l4;
+            applysizehints(c, &x, &y, &w, &h, 0);
+            applygravity(gravity, (int16_t *)&x, (int16_t *)&y, w, h, c->bw);
             resize(c, x, y, w, h, 0);
         }
         else if(atom == netatom[NetRestackWindow])

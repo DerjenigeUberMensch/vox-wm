@@ -2145,6 +2145,7 @@ restack(Desktop *desk)
         wc.sibling = _wm.wmcheckwin;
     }
 
+    /* The following works good enough at most ussually 1-5 windows but we could probably bring it down a bit */
     for(c = desk->stack; c; c = nextstack(c))
     {
         /* unattached clients (AKA new clients) have both set to NULL */
