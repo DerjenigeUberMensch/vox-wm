@@ -2065,6 +2065,8 @@ resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
     configure(c);
 }
 
+static int __cmp(Client *c1, Client *c2);
+
 void
 restack(Desktop *desk)
 {
@@ -2088,22 +2090,19 @@ restack(Desktop *desk)
         /* unattached clients (AKA new clients) have both set to NULL */
         inrestack = c->rprev || c->rnext;
         /* Client holds both lists so we just check if the next's are the same if not configure it */
-        config = c->rnext != c->snext;
-        if(!inrestack || config)
+        config = c->rnext != c->snext || !inrestack;
+
+        if(config)
         {   XCBConfigureWindow(_wm.dpy, c->win, XCB_CONFIG_WINDOW_SIBLING|XCB_CONFIG_WINDOW_STACK_MODE, &wc);
             DEBUG("Configured window: %s", c->netwmname);
         }
         wc.sibling = c->win;
     }
-    /* technically also this is "slower" and more intensive on ourside but we basically substantially decrease the load on the XServer (for the most part). 
-     * Resizing is still slow af though.
-     */
-
-    /* Linear time as it will succed the for loop first try and thus be O(n) */
+    /* TODO find a better way todo this without causing infinite loop issues FIXME */
     while(desk->rstack)
     {   detachrestack(desk->rstack);
     }
-    for(c = desk->slast; c; c = prevstack(c))
+    for(c = desk->stack; c; c = nextstack(c))
     {   attachrestack(c);
     }
 }
@@ -2200,93 +2199,7 @@ __cmp(Client *c1, Client *c2)
 void
 reorder(Desktop *desk)
 {
-
-    /* TODO Doesnt work quite well */
-    Client *list = desk->stack;
-
-    Client *p, *q, *e, *tail;
-    uint32_t insize, nmerges, psize, qsize, i;
-
-    insize = 1;
-    while(1)
-    {
-        p = list;
-        list = NULL;
-        tail = NULL;
-        nmerges = 0;
-        while(p)
-        {
-            ++nmerges;
-            /* step `insize' places along from p */
-            q = p;
-            psize = 0;
-            for(i = 0; i < insize; ++i)
-            {
-                ++psize;
-                q = q->snext;
-                if(!q)
-                {   break;
-                }
-            }
-            qsize = insize;
-            while(psize > 0 || (qsize > 0 && q))
-            {
-                if(!psize)
-                {
-                    e = q; 
-                    q = q->snext;
-                    --qsize;
-                }
-                else if(!qsize || !q)
-                {   
-                    e = p;
-                    p = p->snext;
-                    --psize;
-                }
-                else if(__cmp(p, q) <= 0)
-                {
-                    e = p;
-                    p = p->snext;
-                    --psize;
-                }
-                else
-                {   
-                    e = q;
-                    q = q->snext;
-                    --qsize;
-                }
-                if(tail)
-                {   tail->snext = e;
-                }
-                else 
-                {   list = e;
-                }
-                e->sprev = tail;
-                tail = e;
-            }
-            p = q;
-        }
-        if(tail)
-        {   tail->snext = NULL;
-        }
-        if(nmerges <= 1)
-        {   break;
-        }
-        insize *= 2;
-    }
-    desk->stack = list;
-    if(!tail)
-    {   
-        Client *c = desk->stack;
-        /* check if there is a stack */
-        if(c)
-        {
-            /* find last client */
-            while(c->snext && (c = nextstack(c)));
-            tail = c;
-        }
-    }
-    desk->slast = tail;
+    MERGE_SORT_LINKED_LIST(Client, __cmp, desk->stack, desk->slast, snext, sprev, 1, 0);
 }
 
 void
