@@ -3625,6 +3625,9 @@ unmanagebar(Bar *bar)
 void
 updatebarpos(Monitor *m)
 {
+    if(!m->bar)
+    {   return;
+    }
     Bar *bar = m->bar;
     if(SHOWBAR(bar))
     {
@@ -3692,6 +3695,13 @@ updatebarpos(Monitor *m)
 void
 updatebargeom(Monitor *m)
 {
+    UserSettings *settings = &_cfg;
+    Bar *b = m->bar;
+    const u16 bw = USGetBarWidth(settings);
+    const u16 bh = USGetBarHeight(settings);
+    const u16 bx = USGetBarX(settings);
+    const u16 by = USGetBarY(settings);
+    resizebar(b, bx, by, bh, bw);
 }
 
 void
