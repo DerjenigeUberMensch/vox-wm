@@ -632,8 +632,6 @@ void run(void);
 /* Attemps to save session in for every monitor */
 void savesession(void);
 /* Attemps to save session for specified client. 
- * iteration, the index of the current previous client.
- * Iteration is used to list the clients in correct order, until I figure out a better way.
  */
 void saveclientsession(FILE *fw, Client *c);
 /* Attemps to save session for specified desktop */
