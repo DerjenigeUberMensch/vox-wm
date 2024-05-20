@@ -1311,24 +1311,36 @@ killclient(Client *c, enum KillType type)
     else
     {
         XCBWindow win = c->win;
+        XCBUnmapNotifyEvent ev;
+        XCBCookie seq;
         switch(type)
         {
             case Graceful:
-                XCBKillClient(_wm.dpy, win);
+                seq = XCBKillClient(_wm.dpy, win);
                 break;
             case Safedestroy:
                 /* TODO */
-                XCBKillClient(_wm.dpy, win);
+                seq = XCBKillClient(_wm.dpy, win);
                 break;
             case Destroy:
-                XCBDestroyWindow(_wm.dpy, win);
+                seq = XCBDestroyWindow(_wm.dpy, win);
                 break;
             default:
-                XCBKillClient(_wm.dpy, win);
+                seq = XCBKillClient(_wm.dpy, win);
                 break;
         }
+        /* let event handler handle this */
+        ev.from_configure = 0;
+        ev.response_type = XCB_UNMAP_NOTIFY;
+        ev.event = _wm.root;
+        ev.window = win;
+        ev.sequence = seq.sequence + 1;
+        ev.pad0 = 0;
+        ev.pad1[0] = 0;
+        ev.pad1[1] = 0;
+        ev.pad1[2] = 0;
+        XCBSendEvent(_wm.dpy, win, 0, XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY, (const char *)&ev);
     }
-    unmanage(c, 0);
 }
 
 void
@@ -3578,10 +3590,12 @@ updateicon(Client *c, XCBWindowProperty *iconprop)
 void
 unmanage(Client *c, uint8_t destroyed)
 {
-    Desktop *desk = c->desktop;
     if(!c)
     {   return;
     }
+    Desktop *desk = c->desktop;
+    const XCBWindow win = c->win;
+
     if(!destroyed)
     {   
         /* TODO causes alot of errors for some reason even if its not "destroyed" */
@@ -3593,10 +3607,11 @@ unmanage(Client *c, uint8_t destroyed)
     HASH_DEL(desk->mon->__hash, c);
     detachcompletely(c);
     focus(NULL);
-    updateclientlist(c->win, ClientListRemove);
+    updateclientlist(win, ClientListRemove);
     /* no need to arrange fully cause client is not mapped anymore */
     arrange(desk);
     cleanupclient(c);
+    DEBUG("Unmanaged: [%u]", win);
 }
 
 void
