@@ -2297,7 +2297,6 @@ saveclientsession(FILE *fw, Client *c)
     static Client *c2 = NULL;
     XCBWindow focus;
     XCBWindow stack;
-    int i;
 
     if(!c1)
     {   c1 = c->desktop->flast;
@@ -2372,9 +2371,8 @@ savedesktopsession(FILE *fw, Desktop *desk)
         }
     }
     fprintf(fw, "%s\n", IDENTIFIERCLIENTSEND);
-    int i = 0;
     for(c = desk->clast; c; c = prevclient(c))
-    {   saveclientsession(fw, c, i++);
+    {   saveclientsession(fw, c); 
     }
 }
 
