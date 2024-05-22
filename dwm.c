@@ -18,9 +18,6 @@
 
 #include <X11/cursorfont.h>     /* cursors */
 
-#include <X11/X.h> /* error codes */
-
-
 /* keycodes */
 #include <X11/keysym.h>
 
@@ -128,6 +125,33 @@ int ISFOCUSED(Client *c)        { return c->wstateflags & _STATE_FOCUSED; }
 int HASWMTAKEFOCUS(Client *c)   { return c->wstateflags & _STATE_SUPPORTED_WM_TAKE_FOCUS; }
 int HASWMSAVEYOURSELF(Client *c){ return c->wstateflags & _STATE_SUPPORTED_WM_SAVE_YOURSELF; }
 int HASWMDELETEWINDOW(Client *c){ return c->wstateflags & _STATE_SUPPORTED_WM_DELETE_WINDOW; }
+
+enum BarSides GETBARSIDE(Monitor *m, Bar *bar) 
+                                { 
+                                    const u8 sidebar = bar->w <= m->mw / 2 || bar->h >= m->mh / 2;
+                                    const u8 left = bar->x + bar->w / 2 <= m->mx + m->mw / 2;
+                                    const u8 top = bar->y + bar->h / 2 >= m->my + m->mh / 2;
+                                    enum BarSides side;
+                                    if(sidebar)
+                                    {   
+                                        if(left)
+                                        {   side = BarSideLeft;
+                                        }
+                                        else
+                                        {   side = BarSideRight;
+                                        }
+                                    }
+                                    else 
+                                    {   
+                                        if(top)
+                                        {   side = BarSideTop;
+                                        }
+                                        else
+                                        {   side = BarSideRight;
+                                        }
+                                    }
+                                    return side;
+                                }
 
 void
 argcvhandler(int argc, char *argv[])
@@ -1288,10 +1312,7 @@ grid(Desktop *desk)
         nw = cw - (c->bw * 2 + bgw * 2) + aw;
         nh = ch - (c->bw * 2 + bgw * 2) + ah;
 
-        /* Skip resize calls (they are expensive) */
-        if(c->x != nx || c->y != ny || c->w != nw || c->h != nh)
-        {   resize(c, nx, ny, nw, nh, 0);
-        }
+        resize(c, nx, ny, nw, nh, 0);
         ++i;
     }
 }
@@ -1564,6 +1585,7 @@ managebar(Monitor *m, XCBWindow win)
     setshowbar(m->bar, 1);
     updatebargeom(_wm.selmon);
     updatebarpos(_wm.selmon);
+    arrangemon(m);
     XCBSelectInput(_wm.dpy, win, inputmask);
     updateclientlist(win, ClientListAdd);
     XCBMapWindow(_wm.dpy, win);
@@ -1610,9 +1632,7 @@ monocle(Desktop *desk)
         }
         nw = m->ww - (c->bw * 2);
         nh = m->wh - (c->bw * 2);
-        if(c->x != nx || c->y != ny || c->w != nw || c->h != nh)
-        {   resize(c, nx, ny, nw, nh, 0); 
-        }
+        resize(c, nx, ny, nw, nh, 0); 
     }
 }
 
@@ -3067,7 +3087,7 @@ setupcfgdefaults(void)
     const u16 bw = _wm.selmon->ww;
     const u16 bh = _wm.selmon->wh / 10;     /* div 10 is roughly the same as the WSWM old default bar height */
     const i16 bx = _wm.selmon->wx;
-    const i16 by = _wm.selmon->wy + bh;     /* because a window is a rectangle calculations start at the top left corner, so we need to add the height */
+    const i16 by = _wm.selmon->wy + _wm.selmon->wh - bh;     /* because a window is a rectangle calculations start at the top left corner, so we need to add the height */
 
     USSetMCount(s, nmaster);
     USSetLayout(s, desktoplayout);
@@ -3399,9 +3419,7 @@ tile(Desktop *desk)
             ny += bgw;
             nw -= bgw * 2;
             nh -= bgw * 2;
-            if(c->x != nx || c->y != ny || c->w != nw || c->h != nh)
-            {   resize(c, nx, ny, nw, nh, 0);
-            }
+            resize(c, nx, ny, nw, nh, 0);
             if (my + HEIGHT(c) < (unsigned int)m->wh) 
             {   my += HEIGHT(c) + bgw;
             }
@@ -3418,9 +3436,7 @@ tile(Desktop *desk)
             ny += bgw;
             nw -= bgw * 2;
             nh -= bgw * 2;
-            if(c->x != nx || c->y != ny || c->w != nw || c->h != nh)
-            {   resize(c, nx, ny, nw, nh, 0);
-            }
+            resize(c, nx, ny, nw, nh, 0);
             if (ty + HEIGHT(c) < (unsigned int)m->wh) ty += HEIGHT(c) + bgw;
         }
     }
@@ -3618,79 +3634,89 @@ unmanage(Client *c, uint8_t destroyed)
 void
 unmanagebar(Bar *bar)
 {
+    Monitor *m = wintobar(bar->win, 1);
     if(bar)
     {   memset(bar, 0, sizeof(Bar));
     }
+
+    if(m)
+    {
+        updatebarpos(m);
+        arrangemon(m);
+    }
+    else
+    {   DEBUG0("Could not find mon");
+    }
+    DEBUG0("Unmanaged bar.");
 }
 
 void
 updatebarpos(Monitor *m)
 {
-    if(!m->bar)
+    /* reset space */
+    m->ww = m->mw;
+    m->wh = m->mh;
+    m->wx = m->mx;
+    m->wy = m->wy;
+    Bar *bar = m->bar;
+    if(!bar || !bar->win)
     {   return;
     }
-    Bar *bar = m->bar;
+    enum BarSides side = GETBARSIDE(m, bar);
     if(SHOWBAR(bar))
     {
-        /* side bar checks */
-        if(bar->w <= m->mw / 2 || bar->h >= m->mh / 2)
+        switch(side)
         {
-            m->wx = m->mx;
-            m->ww = m->mw;
-            m->ww -= bar->w;
-            /* if left */
-            if(bar->x + bar->w / 2 <= m->mx + m->mw / 2)
-            {
-                bar->x = m->wx;
+            case BarSideLeft:
+                bar->x = m->mx;
                 m->wx += bar->w;
-            }
-            /* else right */
-            else
-            {
+                m->ww -= bar->w;
+                DEBUG0("Bar Placed Left.");
+                break;
+            case BarSideRight:
+                m->ww -= bar->w;
                 bar->x = m->wx + m->ww;
-            }
-            return;
-        }
-        /* top/bottom bar */
-        m->wy = m->my;
-        m->wh = m->mh;
-        m->wh -= m->bar->h;
-        /* is it topbar? */
-        if(bar->y + bar->h / 2 >= m->my + m->mh / 2)
-        {
-            bar->y = m->wy;
-            m->wy += bar->h;
-        }
-        else
-        {   
-            bar->y = m->wy + m->wh;
+                DEBUG0("Bar Placed Right.");
+                break;
+            case BarSideTop:
+                bar->y = m->wy;
+                m->wy += bar->h;
+                m->wh -= bar->h;
+                DEBUG0("Bar Placed Top.");
+                break;
+            case BarSideBottom:
+                m->wh -= bar->h;
+                bar->y = m->wy + m->wh;
+                DEBUG0("Bar Placed Bottom.");
+                break;
+            default:
+                break;
         }
     }
     else
     {   
-        /* side bar checks */
-        if(bar->w <= m->mw / 2 || bar->h >= m->mh / 2)
+        switch(side)
         {
-            m->wx = m->mx;
-            m->ww = m->mw;
-            /* mostly for compositors animating it sliding out to the side */
-            /* if left */
-            if(bar->x + bar->w / 2 <= m->mx + m->mw / 2)
-            {
+            case BarSideLeft:
                 bar->x = -bar->w;
-            }
-            /* else right */
-            else
-            {
-                bar->x += bar->w;
-            }
-            return;
+                break;
+            case BarSideRight:
+                bar->x = m->mw + bar->w;
+                break;
+            case BarSideTop:
+                bar->y = -bar->h;
+                break;
+            case BarSideBottom:
+                bar->y = m->mh + bar->h;
+                break;
+            default:
+                /* just warp offscreen */
+                bar->x = m->mw;
+                bar->y = m->mh;
+                break;
         }
-        /* top/bottom bar */
-        m->wy = m->my;
-        m->wh = m->mh;
-        bar->y = -bar->h;
     }
+    resizebar(bar, bar->x, bar->y, bar->w, bar->h);
 }
 
 void
@@ -3698,11 +3724,11 @@ updatebargeom(Monitor *m)
 {
     UserSettings *settings = &_cfg;
     Bar *b = m->bar;
-    const u16 bw = USGetBarWidth(settings);
-    const u16 bh = USGetBarHeight(settings);
     const u16 bx = USGetBarX(settings);
     const u16 by = USGetBarY(settings);
-    resizebar(b, bx, by, bh, bw);
+    const u16 bw = USGetBarWidth(settings);
+    const u16 bh = USGetBarHeight(settings);
+    resizebar(b, bx, by, bw, bh);
 }
 
 void

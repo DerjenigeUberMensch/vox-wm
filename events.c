@@ -224,6 +224,12 @@ buttonpress(XCBGenericEvent *event)
         XCBAllowEvents(_wm.dpy, XCB_ALLOW_REPLAY_POINTER, XCB_CURRENT_TIME);
         sync = 1;
     }
+    else
+    {   
+        if(_wm.selmon->desksel->sel)
+        {   unfocus(_wm.selmon->desksel->sel, 1);
+        }
+    }
     int i;
     for(i = 0; i < LENGTH(buttons); ++i)
     {   
@@ -243,7 +249,7 @@ buttonpress(XCBGenericEvent *event)
     if(sync)
     {   XCBFlush(_wm.dpy);
     }
-    DEBUG("ButtonPress: (x: %d, y: %d)", rootx, rooty);
+    DEBUG("ButtonPress: (x: %d, y: %d) [%u]", rootx, rooty, eventwin);
 }
 
 void
