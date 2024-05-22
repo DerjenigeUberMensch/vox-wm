@@ -127,25 +127,9 @@ enum ClientListModes
     ClientListAdd, ClientListRemove, ClientListReload,
 };
 
-/* Restacking stuff */
-/* Priotity:
- * StackHidden      Low Priority,
- * ...
- * StackDock        High Priority.
- */
-enum StackPriority
+enum BarSides
 {
-    StackHidden,
-    StackBelow,
-    StackNormal,
-    StackSel,
-    StackFloating,
-    StackUtil,
-    StackDialogue,
-    StackNotify,
-    StackModal,
-    StackAlwaysOnTop,
-    StackDock,
+    BarSideLeft, BarSideRight, BarSideTop, BarSideBottom
 };
 
 typedef union  Arg Arg;
@@ -907,10 +891,13 @@ int HASWMTAKEFOCUS(Client *c);
 int HASWMSAVEYOURSELF(Client *c);
 int HASWMDELETEWINDOW(Client *c);
 
+enum BarSides GETBARSIDE(Monitor *m, Bar *bar);
+
 uint16_t OLDWIDTH(Client *c);
 uint16_t OLDHEIGHT(Client *c);
 uint16_t WIDTH(Client *c);
 uint16_t HEIGHT(Client *c);
+
 
 static const Layout layouts[4] =
 {
