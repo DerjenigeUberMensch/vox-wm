@@ -25,6 +25,14 @@ extern XCBCursor cursors[CurLast];
 void
 UserStats(const Arg *arg)
 {
+    static Pannel *p = NULL;
+
+    if(!p)
+    {   p = PannelCreate(_wm.dpy, _wm.screen, _wm.root, 0, 0, 500, 500);
+    }
+    XCBMapWindow(_wm.dpy, p->win);
+
+
     Client *c = _wm.selmon->desksel->sel;
 
     if(c)
@@ -51,6 +59,8 @@ UserStats(const Arg *arg)
     else
     {   DEBUG0("NULL");
     }
+    DEBUG0("Manually flushed win");
+    XCBFlush(_wm.dpy);
 }
 
 void
@@ -112,21 +122,33 @@ DragWindow(
         const Arg *arg
         )
 {
+    DEBUG0("Called.");
     static u8 running = 0;
-    if(!_wm.selmon->desksel->sel || running)
+    if(!arg->v || ((XCBButtonPressEvent *)arg->v)->event == _wm.root || running)
     {   return;
     }
-    Client *c = _wm.selmon->desksel->sel;
-    XCBWindow win = c->win;
+    XCBWindow win = ((XCBButtonPressEvent *)arg->v)->event;
+    Client *c = wintoclient(win);
     i16 nx, ny;
     i16 x, y;
     i16 oldx, oldy;
+    u16 oldw, oldh;
     const XCBCursor cur = cursors[CurMove];
 
-    /* init data */
-    x = y = 0;
-    oldx = c->x;
-    oldy = c->y;
+    XCBCookie GetGeometryCookie = XCBGetGeometryCookie(_wm.dpy, win);
+    XCBGeometry *geom = XCBGetGeometryReply(_wm.dpy, GetGeometryCookie);
+
+    if(geom)
+    {
+        oldx = geom->x;
+        oldy = geom->y;
+        oldw = geom->width;
+        oldh = geom->height;
+        free(geom);
+    }
+    else
+    {   return;
+    }
 
     XCBCookie QueryPointerCookie = XCBQueryPointerCookie(_wm.dpy, win);
     XCBQueryPointer *pointer = XCBQueryPointerReply(_wm.dpy, QueryPointerCookie);
@@ -144,9 +166,16 @@ DragWindow(
     {   free(GrabPointer);
         return;
     }
-    /* prevent DOCKED from computing non floating */
-    setfloating(c, 1); c->x += 1;
-    arrange(c->desktop);
+
+    if(c)
+    {
+        /* prevent DOCKED from computing non floating */
+        setfloating(c, 1); c->x += 1;
+        arrange(c->desktop);
+    }
+    else
+    {   XCBRaiseWindow(_wm.dpy, win);
+    }
     XCBFlush(_wm.dpy);
     XCBGenericEvent *ev = NULL;
     running = 1;
@@ -160,7 +189,12 @@ DragWindow(
                 case XCB_MOTION_NOTIFY:
                     nx = oldx + (((XCBMotionNotifyEvent *)ev)->event_x - x);
                     ny = oldy + (((XCBMotionNotifyEvent *)ev)->event_y - y);
-                    resize(c, nx, ny, c->w, c->h, 1);
+                    if(c)
+                    {   resize(c, nx, ny, c->w, c->h, 1);
+                    }
+                    else
+                    {   XCBMoveResizeWindow(_wm.dpy, win, nx, ny, oldw, oldh);
+                    }
                     XCBFlush(_wm.dpy);
                     break;
                 /* TODO */
@@ -220,14 +254,15 @@ Quit(const Arg *arg)
 void
 ResizeWindow(const Arg *arg)
 {
+    DEBUG0("Called.");
     static u8 running = 0;
-    if(!_wm.selmon->desksel->sel || running)
+    if(!arg->v || ((XCBButtonPressEvent *)arg->v)->event == _wm.root || running)
     {   return;
     }
-    Client *c = _wm.selmon->desksel->sel;
-
+    XCBGenericEvent *ev = arg->v;
+    XCBWindow win = ((XCBButtonPressEvent *)ev)->event;
+    Client *c = wintoclient(win);
     XCBDisplay *display = _wm.dpy;
-    XCBWindow win = c->win;
 
     i16 curx, cury;
     i32 oldw, oldh;
@@ -236,10 +271,12 @@ ResizeWindow(const Arg *arg)
     i32 oldx, oldy;
     i8 horz, vert;
     u16 minw, minh;
+    u16 maxw, maxh;
     XCBCursor cur;
 
     /* init data */
     curx = cury = oldw = oldh = nx = ny = nw = nh = oldx = oldy = horz = vert = 0;
+    minw = minh = maxw = maxh = 0;
 
     XCBCookie QueryPointerCookie = XCBQueryPointerCookie(display, win);
     XCBQueryPointer *pointer = XCBQueryPointerReply(display, QueryPointerCookie);
@@ -256,8 +293,72 @@ ResizeWindow(const Arg *arg)
     {   return;
     }
 
-    horz = nx < c->w / 2 ? -1 : 1;
-    vert = ny < c->h / 2 ? -1 : 1;
+    if(!c)
+    {
+        XCBCookie GetGeometryCookie = XCBGetGeometryCookie(display, win);
+        XCBGeometry *wa = XCBGetGeometryReply(display, GetGeometryCookie);
+
+        if(wa)
+        {   
+            oldw = wa->width;
+            oldh = wa->height;
+            oldx = wa->x;
+            oldy = wa->y;
+            free(wa);
+        }
+        else
+        {   return;
+        }
+    }
+    else
+    {
+        oldw = c->w;
+        oldh = c->h;
+        oldx = c->x;
+        oldy = c->y;
+    }
+
+    if(!c)
+    {
+        XCBSizeHints hints;
+        XCBCookie GetWMNormalHintsCookie = XCBGetWMNormalHintsCookie(_wm.dpy, win);
+        u8 hintsstatus = XCBGetWMNormalHintsReply(_wm.dpy, GetWMNormalHintsCookie, &hints);
+        if(hintsstatus)
+        {
+            maxw = UINT16_MAX;
+            maxh = UINT16_MAX;
+            minw = 1;
+            minh = 1;
+            if(hints.flags & XCB_SIZE_HINT_P_MIN_SIZE)
+            {
+                minw = hints.min_width;
+                minh = hints.min_height;
+            }
+            else if(hints.flags & XCB_SIZE_HINT_P_BASE_SIZE)
+            {
+                minw = hints.base_width;
+                minh = hints.base_height;
+            }
+            if(hints.flags & XCB_SIZE_HINT_P_MAX_SIZE)
+            {
+                maxw = hints.max_width;
+                maxh = hints.max_height;
+            }
+        }
+        else
+        {   return;
+        }
+    }
+    else
+    {
+        minw = c->minw;
+        minh = c->minh;
+        maxw = c->maxw;
+        maxh = c->maxh;
+    }
+
+    horz = nx < oldw / 2 ? -1 : 1;
+    vert = ny < oldh / 2 ? -1 : 1;
 
     if(horz == -1)
     {
@@ -289,18 +390,18 @@ ResizeWindow(const Arg *arg)
     {   free(GrabPointer);
         return;
     }
-    oldw = c->w;
-    oldh = c->h;
-    oldx = c->x;
-    oldy = c->y;
-    minw = c->minw;
-    minh = c->minh;
     /* Prevent it from being detected as non floating */
-    setfloating(c, 1); c->x += 1;
-    arrange(c->desktop);
+    if(c)
+    {
+        setfloating(c, 1); c->x += 1;
+        arrange(c->desktop);
+    }
+    else
+    {   XCBRaiseWindow(display, win);
+    }
     XCBFlush(_wm.dpy);
-    XCBGenericEvent *ev = NULL;
     running = 1;
+    ev = NULL;
     do
     {
         if(ev)
@@ -312,12 +413,20 @@ ResizeWindow(const Arg *arg)
                     nw = oldw + horz * (((XCBMotionNotifyEvent *)ev)->root_x - curx);
                     nh = oldh + vert * (((XCBMotionNotifyEvent *)ev)->root_y - cury);
 
+                    nw = MIN(nw, maxw);
+                    nh = MIN(nh, maxh);
+
                     nw = MAX(nw, minw);
                     nh = MAX(nh, minh);
 
                     nx = oldx + !~horz * (oldw - nw);
                     ny = oldy + !~vert * (oldh - nh);
-                    resize(c, nx, ny, nw, nh, 1);
+                    if(c)
+                    {   resize(c, nx, ny, nw, nh, 1);
+                    }
+                    else
+                    {   XCBMoveResizeWindow(_wm.dpy, win, nx, ny, nw, nh);
+                    }
                     XCBFlush(_wm.dpy);
                     break;
                 /* TODO */
@@ -431,6 +540,7 @@ MaximizeWindow(const Arg *arg)
     /* floating are auto handled to be any window that isnt maxed */
     if(!DOCKED(c))
     {
+        setfloating(c, 0);
         if(ISFIXED(c))
         {   /* snap to grid instead. */
             resize(c, m->wx, m->wy, c->w, c->h, 0);
@@ -448,10 +558,12 @@ MaximizeWindow(const Arg *arg)
         const uint8_t sameh = c->h == c->oldh;
         const uint8_t sameall = samex && samey && samew && sameh;
 
+        setfloating(c, 1);
         if(sameall)
         {
             if(ISFIXED(c))
-            {   /* just snap out of grid */
+            {   
+                /* just snap out of grid */
                 resize(c, c->x + snap, c->y + snap, c->w, c->h, 0);
             }
             else
