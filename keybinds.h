@@ -102,9 +102,6 @@ static const Key keys[] =
     { XCBKeyPress,         SUPER,                   XK_c,                   SetWindowLayout,    {Monocle} },
     { XCBKeyPress,         SUPER,                   XK_g,                   SetWindowLayout,    {Grid} },
     { XCBKeyPress,         0,                       XF11,                   ToggleFullscreen,   {0} },
-    { XCBKeyPress,         SUPER,                   XK_f,                   SetBorderWidth,     {.i = +1}},
-    { XCBKeyPress,         SUPER,                   XK_v,                   SetBorderWidth,     {.i = -1}},
-    { XCBKeyPress,         ALT,                     TAB,                    AltTab,	            {0} },
 
     /* multimedia keys */
     { XCBKeyPress,         0,                       XAudioMute,             SpawnWindow,        {.v = mute_vol } },

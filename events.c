@@ -3,6 +3,7 @@
 #include "keybinds.h"
 #include "dwm.h"
 
+
 extern WM _wm;
 extern XCBAtom netatom[NetLast];
 extern XCBAtom wmatom[WMLast];
@@ -229,6 +230,8 @@ buttonpress(XCBGenericEvent *event)
         if(_wm.selmon->desksel->sel)
         {   unfocus(_wm.selmon->desksel->sel, 1);
         }
+        XCBSetInputFocus(_wm.dpy, eventwin, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
+        XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&(eventwin), 1);
     }
     int i;
     for(i = 0; i < LENGTH(buttons); ++i)
@@ -612,7 +615,6 @@ configurerequest(XCBGenericEvent *event)
     const XCBWindow win     = ev->window;
     const XCBWindow parent  = ev->parent;
     const XCBWindow sibling = ev->sibling;
-
 
     (void)parent;
 
@@ -1139,6 +1141,13 @@ clientmessage(XCBGenericEvent *event)
         else if(atom == netatom[NetMoveResize])
         {
             const int netwmstate = l2;
+            XCBButtonPressEvent bev;
+            bev.root = _wm.root;
+            bev.time = XCB_CURRENT_TIME;
+            bev.child = 0;
+            bev.event = win;
+            Arg arg;
+            arg.v = &bev;
             /* TODO */
             switch(netwmstate)
             {
@@ -1150,8 +1159,10 @@ clientmessage(XCBGenericEvent *event)
                 case _NET_WM_MOVERESIZE_SIZE_BOTTOM:
                 case _NET_WM_MOVERESIZE_SIZE_BOTTOMLEFT:
                 case _NET_WM_MOVERESIZE_SIZE_LEFT:
+                    ResizeWindow(&arg);
                     break;
                 case _NET_WM_MOVERESIZE_MOVE:
+                    DragWindow(&arg);
                     break;
                 case _NET_WM_MOVERESIZE_SIZE_KEYBOARD: 
                     break;

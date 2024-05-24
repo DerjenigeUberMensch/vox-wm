@@ -8,6 +8,7 @@
 #include "uthash.h"
 #include "bar.h"
 #include "settings.h"
+#include "pannel.h"
 #include "XCB-TRL/xcb_trl.h"
 #include "XCB-TRL/xcb_winutil.h"
 
@@ -254,6 +255,8 @@ struct Monitor
 
     uint16_t deskcount;         /* Desktop Counter                          */
     uint8_t pad[2];
+    uint8_t pad0[4];
+
     Client *__hash;             /* Hashed clients                           */
 };
 
@@ -770,7 +773,7 @@ void updateclass(Client *c, XCBWMClass *_class);
  *                  2       Reloads the entire list.
  * _NET_WM_CLIENT_LIST */
 void updateclientlist(XCBWindow win, uint8_t type);
-void updatedecor(Client *c, XCBGetWindowAttributes *wa);
+void updatedecor(Client *c);
 /* Updates the XServer to the Current destop */
 void updatedesktop(void);
 /* Updates the desktop names if they have changed */

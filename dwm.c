@@ -128,9 +128,9 @@ int HASWMDELETEWINDOW(Client *c){ return c->wstateflags & _STATE_SUPPORTED_WM_DE
 
 enum BarSides GETBARSIDE(Monitor *m, Bar *bar) 
                                 { 
-                                    const u8 sidebar = bar->w <= m->mw / 2 || bar->h >= m->mh / 2;
+                                    const u8 sidebar = bar->w < bar->h;
                                     const u8 left = bar->x + bar->w / 2 <= m->mx + m->mw / 2;
-                                    const u8 top = bar->y + bar->h / 2 >= m->my + m->mh / 2;
+                                    const u8 top = bar->y <= m->my + (m->mh / 2);
                                     enum BarSides side;
                                     if(sidebar)
                                     {   
@@ -147,7 +147,7 @@ enum BarSides GETBARSIDE(Monitor *m, Bar *bar)
                                         {   side = BarSideTop;
                                         }
                                         else
-                                        {   side = BarSideRight;
+                                        {   side = BarSideBottom;
                                         }
                                     }
                                     return side;
@@ -1266,7 +1266,7 @@ grabkeys(void)
 void
 grid(Desktop *desk)
 {
-    const u16 bgw = 0;
+    const u16 bgw = USGetGapWidth(&_cfg);
 
     i32 i, n, cw, ch, aw, ah, cols, rows;
     i32 nx, ny, nw, nh;
@@ -1360,7 +1360,7 @@ killclient(Client *c, enum KillType type)
         ev.pad1[0] = 0;
         ev.pad1[1] = 0;
         ev.pad1[2] = 0;
-        XCBSendEvent(_wm.dpy, win, 0, XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY, (const char *)&ev);
+        XCBSendEvent(_wm.dpy, _wm.root, 0, XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY, (const char *)&ev);
     }
 }
 
@@ -1500,7 +1500,9 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     if(checkbar && COULDBEBAR(c, strutp || strut))
     {
         Bar *bar = managebar(_wm.selmon, win);
-        resizebar(bar, c->x, c->y, c->w, c->h);
+        if(bar)
+        {   resizebar(bar, c->x, c->y, c->w, c->h);
+        }
         free(c);
         c = NULL;
         DEBUG("Found a bar: [%d]", win);
@@ -1544,6 +1546,7 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     if(c->desktop)
     {   HASH_ADD_INT(c->desktop->mon->__hash, win, c);
     }
+    updatedecor(c);
     /* propagates border_width, if size doesn't change */
     configure(c);   
     goto CLEANUP;
@@ -1577,6 +1580,13 @@ managebar(Monitor *m, XCBWindow win)
     const u32 inputmask = XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_FOCUS_CHANGE|XCB_EVENT_MASK_PROPERTY_CHANGE|XCB_EVENT_MASK_STRUCTURE_NOTIFY;
     
     if(!win)
+    {   return NULL;
+    }
+    if(!m->bar)
+    {   m->bar = createbar();
+        DEBUG0("No bar alloced this should not be possible");
+    }
+    if(!m->bar)
     {   return NULL;
     }
     m->bar->win = win;
@@ -2030,7 +2040,8 @@ restoremonsession(char *buff, u16 len)
         Monitor *target = NULL;
         const u8 errorleeway = 5;
         Monitor *possible[errorleeway];
-        memset(possible, 0, errorleeway * sizeof(Monitor *));
+        int i;
+        for(i = 0; i < errorleeway; ++i) { possible[i] = NULL; }
         u8 possibleInterator = 0;
 
         for(pullm = _wm.mons; pullm; pullm = nextmonitor(pullm))
@@ -2058,7 +2069,6 @@ restoremonsession(char *buff, u16 len)
         pullm = target;
         if(!pullm) 
         {
-            u8 i;
             for(i = 0; i < errorleeway; ++i)
             {
                 if(possible[i])
@@ -2074,7 +2084,12 @@ restoremonsession(char *buff, u16 len)
         }
         if(pullm)
         {
-            managebar(pullm, BarId);
+            Bar *b = wintobar(BarId, 0);
+            if(b)
+            {
+                unmanagebar(b);
+                managebar(pullm, BarId);
+            }
             /* TODO */
             setdesktopcount(pullm, DeskCount);
             if(DeskSelNum != pullm->desksel->num)
@@ -2085,8 +2100,8 @@ restoremonsession(char *buff, u16 len)
                 {   setmondesktop(pullm, desk);
                 }
             }
+            DEBUG("Restored Monitor: [%p]", (void *)pullm);
         }
-        DEBUG("Restored Monitor: [%d]", pullm ? pullm->bar->win : 0);
         return pullm;
     }
     else
@@ -3128,20 +3143,13 @@ seturgent(Client *c, uint8_t state)
 }
 
 void
-updatedecor(Client *c, XCBGetWindowAttributes *wa)
+updatedecor(Client *c)
 {
-    XCBWindow win = c->decor->win;
     return;
+    XCBWindow win = c->decor->win;
     if(!win)
     {   
-        XCBCreateWindowValueList values =
-        { 
-            .override_redirect = 1,
-        };
-        win = XCBCreateWindow(_wm.dpy, _wm.root, c->x, c->y - 15, c->w, c->h + 15, 0, 
-                XCB_COPY_FROM_PARENT, XCB_WINDOW_CLASS_INPUT_ONLY, XCBGetScreen(_wm.dpy)->root_visual, XCB_CW_OVERRIDE_REDIRECT, &values);
-        XCBReparentWindow(_wm.dpy, c->win, win, c->x, c->y);
-        DEBUG("%u %u", c->win ,win);
+        win = XCBCreateSimpleWindow(_wm.dpy, c->win, c->x, c->y - 15, c->w, 15, 0, 0, 0);
         XCBMapWindow(_wm.dpy, win);
         c->decor->win = win;
     }
@@ -3366,9 +3374,9 @@ startup(void)
 void
 tile(Desktop *desk)
 {
-    const u16 nmaster = 0;
-    const float mfact = 0.0f;
-    const u16 bgw = 0;
+    const u16 nmaster = USGetMCount(&_cfg);
+    const float mfact = USGetMFact(&_cfg);
+    const u16 bgw = USGetGapWidth(&_cfg);
     
     i32 h = 0, mw = 0, my = 0, ty = 0;
     i32 n = 0, i = 0;
@@ -3636,9 +3644,10 @@ unmanagebar(Bar *bar)
 {
     Monitor *m = wintobar(bar->win, 1);
     if(bar)
-    {   memset(bar, 0, sizeof(Bar));
+    {
+        memset(bar, 0, sizeof(Bar));
+        setshowbar(bar, 0);
     }
-
     if(m)
     {
         updatebarpos(m);
