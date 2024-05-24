@@ -477,6 +477,8 @@ XCBWMHandlerConfigureRequest(
     const XCBWindow parent          = ev->parent;
     const XCBWindow sibling         = ev->sibling;
 
+    (void)parent;
+
     if(!display)
     {   return;
     }

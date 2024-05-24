@@ -2474,13 +2474,17 @@ XCBCreateSimpleWindow(
 
 
 XCBGC
-XCBCreateGC(XCBDisplay *display, XCBDrawable drawable, 
-u32 valuemask, const void *valuelist)
+XCBCreateGC(
+        XCBDisplay *display, 
+        XCBDrawable drawable, 
+        u32 valuemask, 
+        XCBCreateGCValueList *valuelist
+        )
 {
     const XCBGC id = xcb_generate_id(display);
 
     /* not actually used but just for standards */
-    XCBCookie ret = xcb_create_gc(display, id, drawable, valuemask, valuelist);
+    XCBCookie ret = xcb_create_gc_aux(display, id, drawable, valuemask, valuelist);
 #ifdef DBG
     _xcb_push_func(ret, _fn);
 #endif
@@ -2636,16 +2640,6 @@ XCBChangeGC(XCBDisplay *display, XCBGC gc, u32 valuemask, const void *valuelist)
     return ret;
 }
 
-XCBCookie
-XCBDrawPoint(XCBDisplay *display, u8 coordinatemode, XCBDrawable drawable, XCBGC gc, uint32_t points_len, XCBPoint *points)
-{
-    XCBCookie ret = xcb_poly_point(display, coordinatemode, drawable, gc, points_len, points);
-#ifdef DBG
-    _xcb_push_func(ret, _fn);
-#endif
-
-    return ret;
-}
 
 int
 XCBDiscardReply(XCBDisplay *display, XCBCookie cookie)
