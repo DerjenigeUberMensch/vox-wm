@@ -296,6 +296,7 @@ typedef xcb_timestamp_t XCBTimestamp;
 typedef xcb_client_message_data_t  XCBClientMessageData;
 typedef xcb_get_property_reply_t XCBWindowProperty;
 typedef xcb_create_window_value_list_t XCBCreateWindowValueList;
+typedef xcb_create_gc_value_list_t XCBCreateGCValueList;
 
 /* Analagous to Xlib's XA_(type)
  * XCB_ATOM_NONE = 0,
@@ -390,7 +391,6 @@ typedef xcb_get_geometry_reply_t XCBWindowGeometry;
 typedef xcb_pixmap_t XCBPixmap;
 typedef xcb_gcontext_t XCBGC;
 typedef xcb_drawable_t XCBDrawable;
-typedef xcb_point_t XCBPoint;
 typedef xcb_font_t XCBFont;
 typedef xcb_generic_event_t XCBGenericEvent;
 typedef xcb_generic_event_t XCBEvent;
@@ -2951,7 +2951,7 @@ XCBCreateGC(
         XCBDisplay *display, 
         XCBDrawable drawable, 
         uint32_t valuemask, 
-        const void *valuelist
+        XCBCreateGCValueList *valuelist
         );
 
 /*
@@ -3140,17 +3140,6 @@ XCBChangeGC(
         uint32_t valuemask, 
         const void *valuelist);
 
-/*
- */
-XCBCookie
-XCBDrawPoint(
-        XCBDisplay *display,
-        uint8_t coordinate_mode,
-        XCBDrawable drawable,
-        XCBGC gc,
-        uint32_t points_len,
-        XCBPoint *points
-        );
 
 /*
  */
