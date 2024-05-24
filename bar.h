@@ -31,7 +31,7 @@ struct Bar
     unsigned int screen;
 
     size_t buffsize;
-    char *writebuff;
+    uint32_t *writebuff;
 };
 
 

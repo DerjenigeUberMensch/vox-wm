@@ -103,7 +103,7 @@ BarResizeBuff(
             char *buff = realloc(bar->writebuff, newsize);
             if(buff)
             {   
-                bar->writebuff = buff;
+                bar->writebuff = (uint32_t *)buff;
                 bar->buffsize = newsize;
             }
             return !buff;
