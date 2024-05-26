@@ -20,14 +20,15 @@ struct Pannel
     uint8_t pad[3];
 
     XCBWindow win;
-    XCBPixmap pix;
     XCBGC gc;
     XCBDisplay *dpy;
     unsigned int screen;
 
     size_t itemsize;
-    uint32_t bufflength;
+    uint64_t bufflength;
     char *buff;
+    PannelWidget *widgets;
+    uint32_t widgetslen;
 };
 
 struct PannelWidget
@@ -73,6 +74,12 @@ PannelDestroy(
     Pannel *pannel
         );
 
+/* Data should not be freed instead to free all data use PannelDestroy();
+ * Do note that this pointer should be recycled and not thrown away as that would poison the pool.
+ *
+ * RETURN: PannelWidget * On Success.
+ * RETURN: NULL On Failure.
+ */
 PannelWidget *
 PannelWidgetCreate(
         Pannel *pannel,
@@ -88,29 +95,39 @@ PannelWidgetCreate(
  */
 int
 PannelWidgetResize(
-        Pannel *pannel,
         PannelWidget *widget,
         uint16_t w,
         uint16_t h
         );
 
-/* Copies data to widget buffer using specified coordinates,
- * char *buffcopy is simply char * to get constant size, 
- * real data is interpreted by user.
- *
- * RETURN: 1 on Failure.
- * RETURN: 0 on Success.
- */
-int
+void
 PannelWidgetWrite(
         Pannel *pannel,
         PannelWidget *widget,
-        char *buffcopy,
         int32_t x,
         int32_t y,
         uint32_t w,
-        uint32_t h
+        uint32_t h,
+        uint8_t *buffcopy
         );
+int
+PannelWritePixel(
+        Pannel *pannel,
+        int16_t x,
+        int16_t y,
+        uint8_t *color
+        );
+
+int
+PannelWriteBuff(
+        Pannel *pannel,
+        int16_t x,
+        int16_t y,
+        uint16_t w,
+        uint16_t h,
+        uint8_t *data
+        );
+
 /* TOD */
 XCBCookie
 PannelDrawBuff(
