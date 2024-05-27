@@ -60,8 +60,6 @@ PannelResizeBuff(
 
 Pannel *
 PannelCreate(
-    XCBDisplay *display,
-    int32_t screen,
     XCBWindow parent, 
     int32_t x, 
     int32_t y, 
@@ -108,24 +106,70 @@ PannelWidgetWrite(
         int32_t y,
         uint32_t w,
         uint32_t h,
-        uint8_t *buffcopy
+        void *buffcopy
         );
 int
 PannelWritePixel(
         Pannel *pannel,
         int16_t x,
         int16_t y,
-        uint8_t *color
+        void *color
         );
 
 int
 PannelWriteBuff(
         Pannel *pannel,
-        int16_t x,
-        int16_t y,
-        uint16_t w,
-        uint16_t h,
-        uint8_t *data
+        int32_t x,
+        int32_t y,
+        uint32_t w,
+        uint32_t h,
+        void *data
+        );
+
+/* Overflow results in undefined behaviour.
+ */
+void
+PannelDrawLine(
+        Pannel *pannel,
+        int32_t startx,
+        int32_t starty,
+        int32_t endx,
+        int32_t endy,
+        void *color
+        );
+
+void
+PannelDrawRectangle(
+        Pannel *pannel,
+        int32_t x,
+        int32_t y,
+        uint32_t w,
+        uint32_t h,
+        uint8_t fill,
+        void *color
+        );
+
+/* Overflow results in undefined behaviour.
+ */
+void
+PannelWidgetDrawLine(
+        PannelWidget *widget,
+        int32_t startx,
+        int32_t starty,
+        int32_t endx,
+        int32_t endy,
+        void *color
+        );
+
+void
+PannelWidgetDrawRectangle(
+        PannelWidget *wi,
+        int32_t x,
+        int32_t y,
+        uint32_t w,
+        uint32_t h,
+        uint8_t fill,
+        void *color
         );
 
 /* TOD */
