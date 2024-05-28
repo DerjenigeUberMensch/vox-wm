@@ -809,7 +809,7 @@ void updatewindowtypes(Client *c, XCBAtom wtype[], uint32_t atomslength);
 /* Updates WM_HINTS for specified Client */
 void updatewmhints(Client *c, XCBWMHints *hints);
 /* Wakups the current X connection by sending a event to it */
-void wakeupconnection();
+void wakeupconnection(XCBDisplay *display, int screen);
 /* Sets the window _WM_STATE based on state specified */
 void winsetstate(XCBWindow win, int32_t state);
 /* Returns the bar or the monitor depending on if is_return_mon is true.
@@ -847,6 +847,7 @@ int ISALWAYSONTOP(Client *c);
 int ISALWAYSONBOTTOM(Client *c);
 int WASFLOATING(Client *c);
 int ISFLOATING(Client *c);
+int ISFAKEFLOATING(Client *c);
 int DOCKED(Client *c);
 int WASDOCKED(Client *c);
 int ISFIXED(Client *c);
