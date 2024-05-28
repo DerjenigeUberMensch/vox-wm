@@ -108,9 +108,9 @@
  * int running = 1;
  * uint8_t cleanev;
  * XCBGenericEvent *ev;
- *                  // XCBNextEvent returns 0, IF an I/O Errors occured, this more often than not this means the XServer died. Or we ran out of memory..
+ *                  // XCBNextEvent returns 1, IF an I/O Errors occured, this more often than not this means the XServer died. Or we ran out of memory..
  *                  // Though linux will almost always prevent an out of memory error it could still happen.
- * while(running && XCBNextEvent(dpy, &ev))
+ * while(running && !XCBNextEvent(dpy, &ev))
  * {
  *      // if ev->response_type is ever 0 then an error occured
  *      if(ev->response_type == 0)
@@ -164,7 +164,7 @@
  * 
  * XCBCookie cookie;
  * cookie = XCBMapWindow(dpy, cool_window);
- * # Sync the Display
+ * // Sync the Display
  * XCBSync(dpy) # or XCBFlush(dpy);
  *
  * # This does nothing because we flushed the buffer to the display using XCBSync()
@@ -469,23 +469,27 @@ struct XCBCookie64
  */
 union XCBARGB
 {
+    struct
+    {
 #if __BYTE_ORDER == __ORDER_LITTLE_ENDIAN__
-    uint8_t a;  /* Alpha value */
-    uint8_t r;  /* Red Value   */
-    uint8_t g;  /* Green Value */
     uint8_t b;  /* Blue Value  */
+    uint8_t g;  /* Green Value */
+    uint8_t r;  /* Red Value   */
+    uint8_t a;  /* Alpha value */
 #elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-    uint8_t b;  /* Blue Value  */
-    uint8_t g;  /* Green Value */
-    uint8_t r;  /* Red Value   */
     uint8_t a;  /* Alpha value */
+    uint8_t r;  /* Red Value   */
+    uint8_t g;  /* Green Value */
+    uint8_t b;  /* Blue Value  */
 #else
+    uint8_t pad[4];
     /* 
      * NO SUPPORTED ENDIAN TYPE.
      * If you are using PDP_ENDIAN you might have to manually shift the values yourself.
      */
     #error "No supported endian type. If you are using PDP_ENDIAN you might have to manually shift the values yourself."
 #endif
+    } c;
     uint32_t argb;  /* ARGB 32bit value */
 };
 
@@ -985,7 +989,7 @@ are reserved in the protocol for errors and replies. */
 #define XCBGCDashList		    XCB_GC_DASH_LIST
 #define XCBGCArcMode		    XCB_GC_ARC_MODE
 
-                                /* Refers quite literrally to the last bit so   0000 0000 0000 0000
+                                /* Refers quite literrally to the last bit so   1000 0000 0000 0000
                                  *                                              ^
                                  * like that last bit, for now it does nothing
                                  */
@@ -1046,17 +1050,17 @@ are reserved in the protocol for errors and replies. */
  * KEYBOARD/POINTER STUFF
  *****************************************************************/
 
-#define XCBAutoRepeatModeOff	XCB_AUTO_REPEAT_MODE_OFF
-#define XCBAutoRepeatModeOn	    XCB_AUTO_REPEAT_MODE_ON
+#define XCBAutoRepeatModeOff	    XCB_AUTO_REPEAT_MODE_OFF
+#define XCBAutoRepeatModeOn	        XCB_AUTO_REPEAT_MODE_ON
 #define XCBAutoRepeatModeDefault	XCB_AUTO_REPEAT_MODE_DEFAULT
 
-#define XCBLedModeOff		    XCB_LED_MODE_OFF
-#define XCBLedModeOn		    XCB_LED_MODE_ON
+#define XCBLedModeOff		        XCB_LED_MODE_OFF
+#define XCBLedModeOn		        XCB_LED_MODE_ON
 
 /* masks for ChangeKeyboardControl */
 
 #define XCBKBKeyClickPercent	XCB_KB_KEY_CLICK_PERCENT
-#define XCBKBBellPercent		XCB_KB_BELL_PERCENT
+#define XCBKBBellPercent		XCB_KB_Bint ELL_PERCENT
 #define XCBKBBellPitch		    XCB_KB_BELL_PITCH
 #define XCBKBBellDuration		XCB_KB_BELL_DURATION
 #define XCBKBLed			    XCB_KB_LED
@@ -1080,7 +1084,9 @@ are reserved in the protocol for errors and replies. */
 #define XCBPreferBlanking		XCB_BLANKING_PREFERRED
 #define XCBDefaultBlanking		XCB_BLANKING_DEFAULT
 
+/* Not sure how to directly translate this but this will probably do FIXME */
 #define XCBDisableScreenSaver	((!XCB_SCREEN_SAVER_ACTIVE))
+/* Not sure how to directly translate this but this will probably do FIXME */
 #define XCBDisableScreenInterval	0
 
 #define XCBDontAllowExposures	XCB_EXPOSURES_NOT_ALLOWED
@@ -1130,6 +1136,7 @@ are reserved in the protocol for errors and replies. */
  *
  * display_name:                Pass in as ":X" where X is the number of the display to connect to.              
  * *screen_number_return:       This returns the display screen number.
+ *
  * RETURN: NULL on Failure.
  * RETURN: XCBDisplay * on Success.
  */
@@ -1144,11 +1151,11 @@ XCBOpenDisplay(
  *
  * display_name:                Pass in as ":X" where X is the number of the display to connect to.              
  * *screen_number_return:       This returns the display screen number.
- * 
- * RETURN: XCB Display * ;
  *
  * NOTE: This function will NEVER return NULL.
  * NOTE: To check error use XCBCheckDisplayError() to get error number.
+ * 
+ * RETURN: XCB Display * ;
  */
 XCBDisplay *
 XCBOpenConnection(
@@ -1163,16 +1170,16 @@ XCBCloseDisplay(
         XCBDisplay *display);
 /* 
  * display: Specifies the connection to the X server.
- * return a connection number for the specified display. 
- * On a POSIX-conformant system, this is the file descriptor of the connection.
+ *
+ * RETURN: a connection number for the specified display, On a POSIX-conformant system, this is the file descriptor of the connection.
  */
 int 
 XCBDisplayNumber(
         XCBDisplay *display);
 /* 
  * display: Specifies the connection to the X server.
- * return a connection number for the specified display. 
- * On a POSIX-conformant system, this is the file descriptor of the connection.
+ *
+ * RETURN: a connection number for the specified display, On a POSIX-conformant system, this is the file descriptor of the connection.
  */
 int 
 XCBConnectionNumber(
@@ -1183,7 +1190,7 @@ XCBConnectionNumber(
 XCBScreen *
 XCBScreenOfDisplay(
         XCBDisplay *display, 
-        int scren);
+        int screen);
 /*
  * RETURN: a pointer to the default screen.
  */
@@ -1193,26 +1200,32 @@ XCBDefaultScreenOfDisplay(
         int screen);
 /*
  * display: Specifies the connection to the X server.
- * return the number of available screens.
+ *
+ * RETURN: the number of available screens.
  */
 int 
 XCBScreenCount(
         XCBDisplay *display);
 /*
- * return a pointer to a string that provides some identification of the owner of the X server implementation. If the data returned by the server is in the Latin Portable Character Encoding, then the string is in the Host Portable Character Encoding. Otherwise, the contents of the string are implementation dependent.
+ * RETURN: * a pointer to a string that provides some identification of the owner of the X server implementation. 
+ * If the data returned by the server is in the Latin Portable Character Encoding, then the string is in the Host Portable Character Encoding. 
+ * Otherwise, the contents of the string are implementation dependent.
+ *
  * MUST BE FREED BY CALLING free()
  */
 char *
 XCBServerVendor(
         XCBDisplay *display);
 /*  display Specifies the connection to the X server.
- *  return the major version number (11) of the X protocol associated with the connected display. 
+ *
+ *  RETURN: the major version number (11) of the X protocol associated with the connected display. 
  */
 int 
 XCBProtocolVersion(
         XCBDisplay *display);
 /* display 	Specifies the connection to the X server.
- * return the minor protocol revision number of the X server.
+ *
+ * RETURN: the minor protocol revision number of the X server.
  */
 int 
 XCBProtocolRevision(
@@ -1270,7 +1283,7 @@ XCBRootOfScreen(
 
 /* Gets the screen setup struct AKA screen stuff 
  *
- * RETURN: XCBSetup *
+ * RETURN: const XCBSetup *
  */
 const XCBSetup *
 XCBGetSetup(
@@ -1343,7 +1356,7 @@ XCBDefaultDepth(
 /* See Xlib's documentation of XSelectInput()
  *
  * NOTE: This function IS buffered and must be Flushed before receiving any thing back. (IE your events you want to listen to.)
- *       XCBFlush(MyDisplay); 
+ *       XCBFlush(); 
  *       XCBSync(); Has different behaviour, prefer XCBFlush()
  *
  * RETURN: Cookie to request.
@@ -1364,7 +1377,8 @@ XCBSelectInput(
  *
  *  
  *
- *  time:               XCB_CURRENT_TIME                    A u32 value to the specified XCB_TIME
+ *  time:               XCBTimestamp                        The time you want, ONLY use this if you know what your doing.
+ *                      XCB_CURRENT_TIME                    A u32 value to the specified XCB_TIME
  *                      XCB_TIME_CURRENT_TIME               The current XCB time.
  *
  *
@@ -1458,7 +1472,10 @@ XCBSyncf(
         XCBDisplay *display
         );
 
-/* Reparents the window with win being the source Window and parent being the new Parent window */
+/* Reparents the window with win being the source Window and parent being the new Parent window 
+ *
+ * RETURN: Cookie to request.
+ */
 XCBCookie
 XCBReparentWindow(
         XCBDisplay *display,
@@ -1681,7 +1698,7 @@ XCBGetPropertyReply(
 
 /*
  *
- * RETURN: 
+ * RETURN: void *
  */
 void *
 XCBGetPropertyValue(
@@ -1924,7 +1941,6 @@ XCBQueryPointer *
 XCBQueryPointerReply(
         XCBDisplay *display, 
         XCBCookie cookie);
-/**/
 /* text props */
 XCBCookie
 XCBGetTextPropertyCookie(
@@ -1954,17 +1970,10 @@ XCBFreeTextProperty(
  * Flushes buffered output to XServer.
  * Blocks Until buffer is fully flushed.
  *
- * !!!!!!IMPORTANT!!!!!!
- * This function should not be called often and should be called on important things that cant wait for XCBSync();
- *
- * NOTE: Flushing small buffers, e.g. requests_pending < 100 is slightly faster than calling XCBSync.
- *       however due to the nature of flushing this case rarely if ever occurs.
- * NOTE: Flushing large buffers e.g., requests_pending > 200-1000 is considerably slower than calling XCBSync.
- *       however yields faster results then calling neither.
- * 
- * CONCLUSION: Use XCBSync() when ever possible, and after every ~1000 requests_pending due to the Display buffer filling up.
- *             Though depending on use case XCBSync may never need to be called, if there arent enough requests_pending to fill up Display buffer.
- *
+ * NOTE: >> This is how you send requests to the server after doing buffering requests          <<.
+ *       >> AKA you wont get responses back from non XCBGetCookie/XCBGetReply type functions    <<.
+ *       >> Remember to Flush! Or Sync (slower)                                                 <<.
+ *       
  * RETURN: 1 on Success.
  * RETURN: 0 on Failure.
  */ 
@@ -1994,64 +2003,63 @@ XCBGetMaximumRequestLength(
 
 /* Check if the display flag has set a connection error display->has_error;
  * 
- * RETURN: XCB_CONN_ERROR, because of socket errors, pipe errors or other stream errors.
- * RETURN: XCB_CONN_CLOSED_EXT_NOTSUPPORTED, when extension not supported.
- * RETURN: XCB_CONN_CLOSED_MEM_INSUFFICIENT, when memory not available.
- * RETURN: XCB_CONN_CLOSED_REQ_LEN_EXCEED, exceeding request length that server accepts.
- * RETURN: XCB_CONN_CLOSED_PARSE_ERR, error during parsing display string.
- * RETURN: XCB_CONN_CLOSED_INVALID_SCREEN, because the server does not have a screen matching the display.
+ * RETURN: XCB_CONN_ERROR,                      because of socket errors, pipe errors or other stream errors.
+ * RETURN: XCB_CONN_CLOSED_EXT_NOTSUPPORTED,    when extension not supported.
+ * RETURN: XCB_CONN_CLOSED_MEM_INSUFFICIENT,    when memory not available.
+ * RETURN: XCB_CONN_CLOSED_REQ_LEN_EXCEED,      exceeding request length that server accepts.
+ * RETURN: XCB_CONN_CLOSED_PARSE_ERR,           error during parsing display string.
+ * RETURN: XCB_CONN_CLOSED_INVALID_SCREEN,      because the server does not have a screen matching the display.
  */
 int 
 XCBCheckDisplayError(
         XCBDisplay *display);
 /* Check if the display flag has set a connection error display->has_error;
  * 
- * RETURN: XCB_CONN_ERROR, because of socket errors, pipe errors or other stream errors.
- * RETURN: XCB_CONN_CLOSED_EXT_NOTSUPPORTED, when extension not supported.
- * RETURN: XCB_CONN_CLOSED_MEM_INSUFFICIENT, when memory not available.
- * RETURN: XCB_CONN_CLOSED_REQ_LEN_EXCEED, exceeding request length that server accepts.
- * RETURN: XCB_CONN_CLOSED_PARSE_ERR, error during parsing display string.
- * RETURN: XCB_CONN_CLOSED_INVALID_SCREEN, because the server does not have a screen matching the display.
+ * RETURN: XCB_CONN_ERROR,                      because of socket errors, pipe errors or other stream errors.
+ * RETURN: XCB_CONN_CLOSED_EXT_NOTSUPPORTED,    when extension not supported.
+ * RETURN: XCB_CONN_CLOSED_MEM_INSUFFICIENT,    when memory not available.
+ * RETURN: XCB_CONN_CLOSED_REQ_LEN_EXCEED,      exceeding request length that server accepts.
+ * RETURN: XCB_CONN_CLOSED_PARSE_ERR,           error during parsing display string.
+ * RETURN: XCB_CONN_CLOSED_INVALID_SCREEN,      because the server does not have a screen matching the display.
  */
 int
 XCBCheckConnectionError(
         XCBDisplay *display);
 /* Check if the display flag has set a connection error display->has_error;
  * 
- * RETURN: XCB_CONN_ERROR, because of socket errors, pipe errors or other stream errors.
- * RETURN: XCB_CONN_CLOSED_EXT_NOTSUPPORTED, when extension not supported.
- * RETURN: XCB_CONN_CLOSED_MEM_INSUFFICIENT, when memory not available.
- * RETURN: XCB_CONN_CLOSED_REQ_LEN_EXCEED, exceeding request length that server accepts.
- * RETURN: XCB_CONN_CLOSED_PARSE_ERR, error during parsing display string.
- * RETURN: XCB_CONN_CLOSED_INVALID_SCREEN, because the server does not have a screen matching the display.
+ * RETURN: XCB_CONN_ERROR,                      because of socket errors, pipe errors or other stream errors.
+ * RETURN: XCB_CONN_CLOSED_EXT_NOTSUPPORTED,    when extension not supported.
+ * RETURN: XCB_CONN_CLOSED_MEM_INSUFFICIENT,    when memory not available.
+ * RETURN: XCB_CONN_CLOSED_REQ_LEN_EXCEED,      exceeding request length that server accepts.
+ * RETURN: XCB_CONN_CLOSED_PARSE_ERR,           error during parsing display string.
+ * RETURN: XCB_CONN_CLOSED_INVALID_SCREEN,      because the server does not have a screen matching the display.
  */
 int 
 XCBHasConnectionError(
         XCBDisplay *display);
 /* Check if the display flag has set a connection error display->has_error;
  * 
- * RETURN: XCB_CONN_ERROR, because of socket errors, pipe errors or other stream errors.
- * RETURN: XCB_CONN_CLOSED_EXT_NOTSUPPORTED, when extension not supported.
- * RETURN: XCB_CONN_CLOSED_MEM_INSUFFICIENT, when memory not available.
- * RETURN: XCB_CONN_CLOSED_REQ_LEN_EXCEED, exceeding request length that server accepts.
- * RETURN: XCB_CONN_CLOSED_PARSE_ERR, error during parsing display string.
- * RETURN: XCB_CONN_CLOSED_INVALID_SCREEN, because the server does not have a screen matching the display.
+ * RETURN: XCB_CONN_ERROR,                      because of socket errors, pipe errors or other stream errors.
+ * RETURN: XCB_CONN_CLOSED_EXT_NOTSUPPORTED,    when extension not supported.
+ * RETURN: XCB_CONN_CLOSED_MEM_INSUFFICIENT,    when memory not available.
+ * RETURN: XCB_CONN_CLOSED_REQ_LEN_EXCEED,      exceeding request length that server accepts.
+ * RETURN: XCB_CONN_CLOSED_PARSE_ERR,           error during parsing display string.
+ * RETURN: XCB_CONN_CLOSED_INVALID_SCREEN,      because the server does not have a screen matching the display.
  */
 int 
 XCBHasDisplayError(
         XCBDisplay *display);
 
 /* 
- * 1 -> Error handler set.
- * 0 -> Error handler unset.
- *
- * Incase of an unset error handler (default) XCB simply calls die() when an error occurs which may not be desired.
- * One should note that this function simply sets the function to be called when an error occurs using this API.
- * Meaning that this only handles calls made by this API, this does not handle any errors caused by another thread or raw xcb calls.
+ * Incase of an unset error handler (default) XCB does nothing.
+ * One should note that this function simply sets the function to be called when an error occurs in general X11 fashion.
+ * Though this api may provide more specific calls when debug mode is used.
  *
  * NOTE: Handler provided should NOT free() the XCBGenericError * provided.
+ * NOTE: Handler is global and only 1 handler can be set when interacting with this API.
  *
- * RETURN: {1, 0}.
+ * RETURN: 1 Error handler set.
+ * RETURN: 0 Error handler unset.
  */
 int 
 XCBSetErrorHandler(
