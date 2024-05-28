@@ -25,15 +25,20 @@ extern XCBCursor cursors[CurLast];
 void
 UserStats(const Arg *arg)
 {
-    static Pannel *p = NULL;
-
-    if(!p)
-    {   p = PannelCreate(_wm.dpy, _wm.screen, _wm.root, 0, 0, 500, 500);
-    }
-    XCBMapWindow(_wm.dpy, p->win);
-
-
     Client *c = _wm.selmon->desksel->sel;
+    if(!c)
+    {   return;
+    }
+
+    static Pannel *p = NULL;
+    if(!p)
+    {   p = PannelCreate(_wm.root, 0, 0, 500, 500);
+    }
+
+    uint32_t col = ~0;
+    PannelDrawRectangle(p, 0, 0, 500, 500, 1, &col);
+    XCBMapWindow(p->dpy, p->win);
+    PannelDrawBuff(p, 0, 0, p->w, p->h);
 
     if(c)
     {   
@@ -47,7 +52,7 @@ UserStats(const Arg *arg)
         DEBUG("INSTANCENAME:%s", c->instancename);
         DEBUG("WindowID:    %u", c->win);
         DEBUG("PID:         %u", c->pid);
-        DEBUG("RBGA:        (%u, %u, %u, %u)", argb.r, argb.g, argb.b, argb.a);
+        DEBUG("RGBA:        (R: %u, G: %u, B: %u, A: %u)", argb.c.r, argb.c.g, argb.c.b, argb.c.a);
         DEBUG("BorderWidth: %u", c->bw);
         DEBUG("MINW:        %u", c->minw);
         DEBUG("MINH:        %u", c->minh);
@@ -55,6 +60,7 @@ UserStats(const Arg *arg)
         DEBUG("MAXH:        %u", c->maxh);
         DEBUG("INCW:        %d", c->incw);
         DEBUG("INCH:        %d", c->inch);
+        DEBUG("Icon:        (w: %u, h: %u)", c->icon ? c->icon[0] : 0, c->icon ? c->icon[1] : 0);
     }
     else
     {   DEBUG0("NULL");
@@ -127,6 +133,8 @@ DragWindow(
     if(!arg->v || ((XCBButtonPressEvent *)arg->v)->event == _wm.root || running)
     {   return;
     }
+    /* get any requests that may have moved the window back */
+    XCBSync(_wm.dpy);
     XCBWindow win = ((XCBButtonPressEvent *)arg->v)->event;
     Client *c = wintoclient(win);
     i16 nx, ny;
@@ -134,17 +142,19 @@ DragWindow(
     i16 oldx, oldy;
     u16 oldw, oldh;
     const XCBCursor cur = cursors[CurMove];
+    nx = ny = x = y = oldx = oldy = oldw = oldh = 0;
 
-    XCBCookie GetGeometryCookie = XCBGetGeometryCookie(_wm.dpy, win);
-    XCBGeometry *geom = XCBGetGeometryReply(_wm.dpy, GetGeometryCookie);
+    XCBCookie GrabPointerCookie = XCBGrabPointerCookie(_wm.dpy, _wm.root, False, MOUSEMASK, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, None, cur, XCB_CURRENT_TIME);
+    XCBGrabPointer *GrabPointer = XCBGrabPointerReply(_wm.dpy, GrabPointerCookie);
 
-    if(geom)
+    /* FIXME this looks horrible */
+    if(GrabPointer)
     {
-        oldx = geom->x;
-        oldy = geom->y;
-        oldw = geom->width;
-        oldh = geom->height;
-        free(geom);
+        if(GrabPointer->status != XCB_GRAB_STATUS_SUCCESS)
+        {   free(GrabPointer);
+            return;
+        }
+        free(GrabPointer);
     }
     else
     {   return;
@@ -159,12 +169,33 @@ DragWindow(
         y = pointer->root_y;
         free(pointer);
     }
-    XCBCookie GrabPointerCookie = XCBGrabPointerCookie(_wm.dpy, _wm.root, False, MOUSEMASK, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, None, cur, XCB_CURRENT_TIME);
-    XCBGrabPointer *GrabPointer = XCBGrabPointerReply(_wm.dpy, GrabPointerCookie);
+    else
+    {   return;
+    }
 
-    if(!GrabPointer || GrabPointer->status != XCB_GRAB_STATUS_SUCCESS)
-    {   free(GrabPointer);
-        return;
+    if(!c)
+    {
+        XCBCookie GetGeometryCookie = XCBGetGeometryCookie(_wm.dpy, win);
+        XCBGeometry *geom = XCBGetGeometryReply(_wm.dpy, GetGeometryCookie);
+
+        if(geom)
+        {
+            oldx = geom->x;
+            oldy = geom->y;
+            oldw = geom->width;
+            oldh = geom->height;
+            free(geom);
+        }
+        else
+        {   return;
+        }
+    }
+    else
+    {   
+        oldx = c->x;
+        oldy = c->y;
+        oldw = c->w;
+        oldh = c->h;
     }
 
     if(c)
@@ -259,6 +290,8 @@ ResizeWindow(const Arg *arg)
     if(!arg->v || ((XCBButtonPressEvent *)arg->v)->event == _wm.root || running)
     {   return;
     }
+    /* get any requests that may have moved the window back */
+    XCBSync(_wm.dpy);
     XCBGenericEvent *ev = arg->v;
     XCBWindow win = ((XCBButtonPressEvent *)ev)->event;
     Client *c = wintoclient(win);
