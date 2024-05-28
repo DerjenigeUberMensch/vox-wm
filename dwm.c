@@ -52,6 +52,8 @@ int ISALWAYSONTOP(Client *c)    { return c->wstateflags & _STATE_ABOVE; }
 int ISALWAYSONBOTTOM(Client *c) { return c->wstateflags & _STATE_BELOW; }
 int WASFLOATING(Client *c)      { return c->flags & _FSTATE_WASFLOATING; }
 int ISFLOATING(Client *c)       { return c->flags & _FSTATE_FLOATING; }
+/* used in __cmp calculation when restacking */
+int ISFAKEFLOATING(Client *c)   { return c->flags & _FSTATE_FLOATING || c->desktop->layout == Floating; }
 int WASDOCKED(Client *c)   {   
                                     const i16 wx = c->desktop->mon->wx;
                                     const i16 wy = c->desktop->mon->wy;
@@ -396,8 +398,9 @@ arrangeq(Desktop *desk)
         }
         workingdesk = desk;
     }
-    reorder(desk);
+    /* plz call before reorder as reorder updates floating status, we kinda never let the WM know about that to keep floatings working */
     arrangedesktop(desk);
+    reorder(desk);
 }
 
 void
@@ -1164,20 +1167,46 @@ geticonprop(XCBWindowProperty *iconreply)
     const u8 HEIGHT_INDEX = 1;
     const u8 MIN_WIDTH = 1;
     const u8 MIN_HEIGHT = 1;
+    const u8 MAX_WIDTH = 255;
+    const u8 MAX_HEIGHT = 255;
     const u8 MIN_ICON_DATA_SIZE = (MIN_WIDTH + MIN_HEIGHT) * 2;     /* times 2 cause the first and second index are the size */
 
     u32 *ret = NULL;
     if(iconreply)
     {
+        if(iconreply->format != 32)
+        {   DEBUG("Icon format is not standard, icon may be corrupt. %d", iconreply->format);
+        }
+        if(iconreply->format == 0)
+        {   DEBUG0("Icon has no format, icon may be corrupt.");
+            return ret;
+        }
         u32 *icon = XCBGetPropertyValue(iconreply);
         size_t size = XCBGetPropertyValueSize(iconreply);
         u32 length = XCBGetPropertyValueLength(iconreply, sizeof(u32));
         if(length >= MIN_ICON_DATA_SIZE)
         {   
-            size_t sz = sizeof(u32) * icon[WIDTH_INDEX] * icon[HEIGHT_INDEX] + sizeof(u32) * 2;
+            u64 i = 0;
+            u64 wi = WIDTH_INDEX;
+            u32 hi = HEIGHT_INDEX;
+            /* get the biggest size */
+            while(i + 2 < length)
+            {                                               /* bounds check */
+                if(icon[i + WIDTH_INDEX] > icon[wi] && icon[i + WIDTH_INDEX] <= MAX_WIDTH && length - i >= icon[i])
+                {   wi = i;
+                }
+                                                                            /* bounds check */
+                if(icon[i + HEIGHT_INDEX] > icon[hi] && icon[i + HEIGHT_INDEX] <= MAX_HEIGHT && length - i >= icon[i + 1])
+                {   hi = i + HEIGHT_INDEX;
+                }
+                i += icon[i] + icon[i + 1];
+                /* this covers use fucking up and the +plus 2 for width and height offset */
+                i += 2;
+            }
+            size_t sz = sizeof(u32) * icon[wi] * icon[hi] + sizeof(u32) * 2;
             ret = malloc(MIN(sz, size));
             if(ret)
-            {   memcpy(ret, icon, MIN(sz, size));
+            {   memcpy(ret, &icon[wi], MIN(sz, size));
             }
         }
     }
@@ -1266,6 +1295,7 @@ grabkeys(void)
 void
 grid(Desktop *desk)
 {
+    /* TODO implement bgw without fucking up 1 side */
     const u16 bgw = USGetGapWidth(&_cfg);
 
     i32 i, n, cw, ch, aw, ah, cols, rows;
@@ -1273,7 +1303,7 @@ grid(Desktop *desk)
     Client *c;
     Monitor *m = desk->mon;
 
-    for(n = 0, c = desk->focus; c; c = nextfocus(c))
+    for(n = 0, c = desk->stack; c; c = nextstack(c))
     {   
         if(ISFLOATING(c))
         {   continue;
@@ -1297,7 +1327,7 @@ grid(Desktop *desk)
     /* window geoms (cell height/width) */
     ch = m->wh / (rows + !rows);
     cw = m->ww / (cols + !cols);
-    for(i = 0, c = desk->focus; c; c = nextfocus(c))
+    for(i = 0, c = desk->stack; c; c = nextstack(c))
     {
         if(ISFLOATING(c))
         {   continue;
@@ -1309,8 +1339,8 @@ grid(Desktop *desk)
         aw = !!(i >= rows * (cols - 1)) * (m->ww - cw * cols);
 
         /* _cfg.bgw without fucking everything else */
-        nw = cw - (c->bw * 2 + bgw * 2) + aw;
-        nh = ch - (c->bw * 2 + bgw * 2) + ah;
+        nw = cw - c->bw * 2 + aw;
+        nh = ch - c->bw * 2 + ah;
 
         resize(c, nx, ny, nw, nh, 0);
         ++i;
@@ -1546,7 +1576,6 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     if(c->desktop)
     {   HASH_ADD_INT(c->desktop->mon->__hash, win, c);
     }
-    updatedecor(c);
     /* propagates border_width, if size doesn't change */
     configure(c);   
     goto CLEANUP;
@@ -1565,10 +1594,8 @@ CLEANUP:
     XCBWipeGetWMProtocols(&wmprotocols);
     free(strutpreply);
     free(strutreply);
-    /* Dont free we reused mem allocated previously
-     * free(netwmnamereply);
-     * free(wmnamereply);
-     */
+    free(netwmnamereply);
+    free(wmnamereply);
     /* maybe no or just memcpy the first icon into a buffer and keep the thing just there. */
     free(iconreply);
     return c;
@@ -1632,13 +1659,13 @@ monocle(Desktop *desk)
     Client *c;
     Monitor *m = desk->mon;
     i32 nw, nh;
-    i32 nx = m->wx;
-    i32 ny = m->wy;
+    const i32 nx = m->wx;
+    const i32 ny = m->wy;
 
     for(c = desk->focus; c; c = nextfocus(c))
     {
-        if(ISFLOATING(c))
-        {   continue;
+        if(ISFLOATING(c) && DOCKED(c))
+        {   setfloating(c, 0);
         }
         nw = m->ww - (c->bw * 2);
         nh = m->wh - (c->bw * 2);
@@ -1732,7 +1759,7 @@ void
 quit(void)
 {
     _wm.running = 0;
-    wakeupconnection();
+    wakeupconnection(_wm.dpy, _wm.screen);
 }
 
 static u8
@@ -2224,7 +2251,7 @@ __cmp(Client *c1, Client *c2)
      * RETURN 0 on lesser priority. 
      */
     /* != basically just skips if they both have it and only success if one of them has it AKA compare */
-    if(ISFLOATING(c1) && DOCKED(c1))
+    if(ISFLOATING (c1) && DOCKED(c1))
     {   setfloating(c1, 0);
     }
     if(ISFLOATING(c2) && DOCKED(c2))
@@ -2237,8 +2264,8 @@ __cmp(Client *c1, Client *c2)
     const u32 above1 = ISALWAYSONTOP(c1);
     const u32 above2 = ISALWAYSONTOP(c2);
 
-    const u32 float1 = ISFLOATING(c1);
-    const u32 float2 = ISFLOATING(c2);
+    const u32 float1 = ISFAKEFLOATING(c1);
+    const u32 float2 = ISFAKEFLOATING(c2);
 
     const u32 below1 = ISBELOW(c1);
     const u32 below2 = ISBELOW(c2);
@@ -3143,19 +3170,6 @@ seturgent(Client *c, uint8_t state)
 }
 
 void
-updatedecor(Client *c)
-{
-    return;
-    XCBWindow win = c->decor->win;
-    if(!win)
-    {   
-        win = XCBCreateSimpleWindow(_wm.dpy, c->win, c->x, c->y - 15, c->w, 15, 0, 0, 0);
-        XCBMapWindow(_wm.dpy, win);
-        c->decor->win = win;
-    }
-}
-
-void
 updatedesktop(void)
 {
     i32 data[1] = { _wm.selmon->desksel->num };
@@ -3378,46 +3392,41 @@ tile(Desktop *desk)
     const float mfact = USGetMFact(&_cfg);
     const u16 bgw = USGetGapWidth(&_cfg);
     
-    i32 h = 0, mw = 0, my = 0, ty = 0;
-    i32 n = 0, i = 0;
-    i32 nx = 0, ny = 0;
-    i32 nw = 0, nh = 0;
-    Client *c = NULL;
-    Monitor *m = NULL;
+    u32 h, mw, my, ty;
+    i32 n, i;
+    i32 nx, ny;
+    i32 nw, nh;
+    Client *c;
+    Monitor *m = desk->mon;
 
-    m = desk->mon;
-    for(n = 0, c = desk->focus; c; c = nextfocus(c))
-    {   
-        if(ISFLOATING(c))
-        {   continue;
-        }
-        ++n;
+    n = 0;
+    for(c = desk->stack; c; c = nextstack(c))
+    {   n += !ISFLOATING(c);
     }
 
-    if(!n) 
+    if(!n)
     {   return;
     }
-    
+
     if(n > nmaster)
-    {   mw = nmaster ? m->ww * mfact: 0;
+    {   mw = nmaster ? m->ww * mfact : 0;
     }
     else
     {   mw = m->ww;
     }
-
-    for (i = my = ty = 0, c = desk->focus; c; c = nextfocus(c), ++i)
+    i = my = ty = 0;
+    for (c = desk->stack; c; c = nextstack(c))
     {
         if(ISFLOATING(c))
-        {   --i;
-            continue;
+        {   continue;
         }
         if (i < nmaster)
         {
             h = (m->wh - my) / (MIN(n, nmaster) - i);
             nx = m->wx;
             ny = m->wy + my;
-            nw = mw - c->bw * 2;
-            nh = h - c->bw * 2;
+            nw = mw - (c->bw << 1);
+            nh = h - (c->bw << 1);
 
             /* we divide nw also to get even gaps
              * if we didnt the center gap would be twices as big
@@ -3425,10 +3434,10 @@ tile(Desktop *desk)
              */
             nx += bgw;
             ny += bgw;
-            nw -= bgw * 2;
-            nh -= bgw * 2;
+            nw -= bgw << 1;
+            nh -= bgw << 1;
             resize(c, nx, ny, nw, nh, 0);
-            if (my + HEIGHT(c) < (unsigned int)m->wh) 
+            if (my + HEIGHT(c) < m->wh) 
             {   my += HEIGHT(c) + bgw;
             }
         }
@@ -3438,15 +3447,20 @@ tile(Desktop *desk)
             nx = m->wx + mw;
             ny = m->wy + ty;
             nw = m->ww - mw - (c->bw << 1);
-            nh = h - c->bw * 2;
+            nh = h - (c->bw << 1);
 
-            nx += bgw / 2;
+            nx += bgw >> 1;
             ny += bgw;
-            nw -= bgw * 2;
-            nh -= bgw * 2;
+            nw -= bgw << 1;
+            nh -= bgw << 1;
+
             resize(c, nx, ny, nw, nh, 0);
-            if (ty + HEIGHT(c) < (unsigned int)m->wh) ty += HEIGHT(c) + bgw;
+                                                                    /* spacing for windows below */ 
+            if (ty + HEIGHT(c) < m->wh) 
+            {   ty += HEIGHT(c) + bgw;
+            }
         }
+        ++i;
     }
 }
 
@@ -3904,7 +3918,7 @@ updatetitle(Client *c, char *netwmname, char *wmname)
 {
     if(c->wmname != wmname)
     {   free(c->wmname);
-        c->netwmname = NULL;
+        c->wmname = NULL;
     }
     if(c->netwmname != netwmname)
     {   free(c->netwmname);
@@ -4345,9 +4359,9 @@ updatewmhints(Client *c, XCBWMHints *wmh)
 }
 
 void
-wakeupconnection()
+wakeupconnection(XCBDisplay *display, int screen)
 {
-    if(!_wm.dpy)
+    if(!display)
     {   DEBUG0("No connection avaible");
         return;
     }
@@ -4360,7 +4374,7 @@ wakeupconnection()
     ev.data.data32[0] = wmatom[WMDeleteWindow];
     ev.data.data32[1] = XCB_CURRENT_TIME;
                                         /* XCB_EVENT_MASK_NO_EVENT legit does nothing lol */
-    XCBSendEvent(_wm.dpy, _wm.root, False, XCB_EVENT_MASK_STRUCTURE_NOTIFY, (const char *)&ev);
+    XCBSendEvent(display, XCBRootWindow(display, screen), False, XCB_EVENT_MASK_STRUCTURE_NOTIFY, (const char *)&ev);
     /* make sure display gets the event (duh) */
     XCBFlush(_wm.dpy);
 }
