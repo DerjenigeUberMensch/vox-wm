@@ -17,18 +17,22 @@ struct Pannel
     uint16_t h;
 
     uint8_t flags;
-    uint8_t pad[3];
+    uint8_t running;
+    uint8_t pad[2];
 
     XCBWindow win;
     XCBGC gc;
     XCBDisplay *dpy;
-    unsigned int screen;
+    int screen;
 
     size_t itemsize;
     uint64_t bufflength;
     char *buff;
     PannelWidget *widgets;
     uint32_t widgetslen;
+    pthread_mutex_t *mut;
+    pthread_spinlock_t *qmut;
+    pthread_cond_t *cond;
 };
 
 struct PannelWidget
@@ -55,6 +59,12 @@ PannelResizeBuff(
         Pannel *pannel,
         uint32_t w,
         uint32_t h
+        );
+
+
+void
+PannelRedraw(
+        Pannel *p
         );
 /* Builtin pannel Stuff */
 
@@ -93,6 +103,7 @@ PannelWidgetCreate(
  */
 int
 PannelWidgetResize(
+        Pannel *pannel,
         PannelWidget *widget,
         uint16_t w,
         uint16_t h
@@ -153,6 +164,7 @@ PannelDrawRectangle(
  */
 void
 PannelWidgetDrawLine(
+        Pannel *pannel,
         PannelWidget *widget,
         int32_t startx,
         int32_t starty,
@@ -163,6 +175,7 @@ PannelWidgetDrawLine(
 
 void
 PannelWidgetDrawRectangle(
+        Pannel *pannel,
         PannelWidget *wi,
         int32_t x,
         int32_t y,

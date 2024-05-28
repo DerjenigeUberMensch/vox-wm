@@ -82,7 +82,199 @@ PLOT_WIDGET(PannelWidget *wi, i32 x, i32 y, void *data)
 static void
 PLOT_WIDGET_POINTS(PannelWidget *wi, i32 x, i32 y, u32 w, u32 h, void *data)
 {
+    u64 _x, _y;
+    for(_x = 0; _x < w; ++_x)
+    {
+        for(_y = 0; _y < h; ++_y)
+        {   
+            PLOT_WIDGET(wi, x + _x, y + _y, ((uint8_t *)data) + ((_y * w + _x) * wi->itemsize));
+        }
+    }
 }
+
+static int 
+PannelLock(Pannel *p)
+{
+    return pthread_mutex_lock(p->mut);
+}
+
+static int
+PannelUnlock(Pannel *p)
+{
+    return pthread_mutex_unlock(p->mut);
+}
+
+static int 
+PannelLockQ(Pannel *p)
+{
+    return pthread_spin_lock(p->qmut);
+}
+
+static int
+PannelUnlockQ(Pannel *p)
+{
+    return pthread_spin_unlock(p->qmut);
+}
+
+static int 
+PannelCondWait(Pannel *p)
+{   
+    PannelLock(p);
+    return pthread_cond_wait(p->cond, p->mut);
+}
+
+static int
+PannelCondUnwait(Pannel *p)
+{
+    pthread_cond_signal(p->cond);
+    return PannelUnlock(p);
+}
+
+static void
+PannelGraphicsExpose(Pannel *p, XCBGenericEvent *_x)
+{
+    XCBGraphicsExposeEvent *ev  = (XCBGraphicsExposeEvent *)_x;
+    const i16 x                 = ev->x;
+    const i16 y                 = ev->y;
+    const u16 w                 = ev->width;
+    const u16 h                 = ev->height;
+    const u16 count             = ev->count;
+    const XCBDrawable drawable  = ev->drawable;
+    const u8 majoropcode        = ev->major_opcode;
+    const u16 minoropcode       = ev->minor_opcode;
+    PannelDrawBuff(p, x, y, w, h);
+}
+
+static void
+PannelExpose(Pannel *p, XCBGenericEvent *_x)
+{
+    XCBExposeEvent *ev      = (XCBExposeEvent *)_x;
+    const XCBWindow win     = ev->window;
+    const i16 x             = ev->x;
+    const i16 y             = ev->y;
+    const u16 w             = ev->width;
+    const u16 h             = ev->height;
+    const u16 count         = ev->count;
+    PannelDrawBuff(p, x, y, w, h);
+}
+
+static void
+PannelConfigureNotify(Pannel *p, XCBGenericEvent *_x)
+{
+    XCBConfigureNotifyEvent *ev = (XCBConfigureNotifyEvent *)_x;
+    const XCBWindow eventwin = ev->event;
+    const XCBWindow win = ev->window;
+    const XCBWindow abovesibling = ev->above_sibling;
+    const i16 x = ev->x;
+    const i16 y = ev->y;
+    const u16 w = ev->width;
+    const u16 h = ev->height;
+    const u16 borderwidth = ev->border_width;
+    const u8 overrideredirect = ev->override_redirect;
+
+    if(p->win == win)
+    {
+        p->x = x;
+        p->y = y;
+        p->w = w;
+        p->h = h;
+        PannelRedraw(p);
+    }
+}
+
+
+static void *
+PannelInitLoop(
+        void *pannel
+        )
+{
+    Pannel *p = (Pannel *)pannel;
+    XCBGenericEvent *ev = NULL;
+    XCBSelectInput(p->dpy, p->win, XCB_EVENT_MASK_EXPOSURE|XCB_EVENT_MASK_FOCUS_CHANGE|XCB_EVENT_MASK_BUTTON_PRESS|XCB_EVENT_MASK_KEY_PRESS|XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY|XCB_EVENT_MASK_STRUCTURE_NOTIFY);
+    XCBSync(p->dpy);
+    while(p->running && !XCBNextEvent(p->dpy, &ev))
+    {
+        PannelLock(p);
+        switch(XCB_EVENT_RESPONSE_TYPE(ev))
+        {
+            case XCB_EXPOSE:
+                PannelExpose(p, ev);
+                break;
+            case XCB_GRAPHICS_EXPOSURE:
+                PannelGraphicsExpose(p, ev);
+                break;
+            case XCB_CONFIGURE_NOTIFY:
+                PannelConfigureNotify(p, ev);
+                break;
+            case XCB_NONE:
+                xerror(p->dpy, (XCBGenericError *)ev);
+                break;
+
+        }
+        free(ev);
+        PannelUnlock(p);
+    }
+    return NULL;
+}
+
+/*
+ * RETURN: 1 on Failure.
+ * RETURN: 0 on Success.
+ */
+static int
+PannelInitThreads(Pannel *p)
+{
+    p->mut = malloc(sizeof(pthread_mutex_t));
+    p->qmut = malloc(sizeof(pthread_spinlock_t));
+    p->cond = malloc(sizeof(pthread_cond_t));
+
+    if(!p->mut || p->qmut || !p->cond)
+    {   goto FAILURE;
+    }
+    pthread_mutexattr_t recursive_attr;
+    pthread_mutexattr_init(&recursive_attr);
+    pthread_mutexattr_settype(&recursive_attr, PTHREAD_MUTEX_RECURSIVE);
+    if(pthread_mutex_init(p->mut, &recursive_attr))
+    {   goto FAILURE;
+    }
+    else if(pthread_spin_init(p->qmut, 1))
+    {   
+        pthread_mutex_destroy(p->mut);
+        goto FAILURE;
+    }
+    else if(pthread_cond_init(p->cond, NULL))
+    {   
+        pthread_mutex_destroy(p->mut);
+        pthread_spin_destroy(p->qmut);
+        goto FAILURE;
+    }
+    return 0;
+FAILURE:
+    free(p->mut);
+    free((void *)p->qmut);
+    free(p->cond);
+    return 1;
+}
+
+static void
+PannelDestroyThreads(Pannel *pannel)
+{
+    pthread_mutex_destroy(pannel->mut);
+    pthread_spin_destroy(pannel->qmut);
+    pthread_cond_destroy(pannel->cond);
+    free(pannel->mut);
+    free((void *)pannel->qmut);
+    free(pannel->cond);
+}
+
+void
+PannelRedraw(Pannel *pannel)
+{
+    PannelLock(pannel);
+    /* stuff */
+    PannelUnlock(pannel);
+}
+
 
 
 /*
@@ -98,6 +290,7 @@ PannelResizeBuff(
         uint32_t h
         )
 {
+    PannelLock(pannel);
     if(w * h > pannel->bufflength)
     {
         const u64 length = w * h;
@@ -112,6 +305,7 @@ PannelResizeBuff(
     }
     pannel->w = w;
     pannel->h = h;
+    PannelUnlock(pannel);
     return 0;
 }
 
@@ -158,10 +352,11 @@ PannelCreate(
         pannel->widgets = NULL;
         pannel->widgetslen = 0;
         XCBSetLineAttributes(display, pannel->gc, 1, XCB_LINE_STYLE_SOLID, XCB_CAP_STYLE_BUTT, XCB_JOIN_STYLE_MITER);
-        if(!pannel->buff)
+        if(!pannel->buff || PannelInitThreads(pannel))
         {   
             XCBDestroyWindow(pannel->dpy, pannel->win);
             XCBFreeGC(pannel->dpy, pannel->gc);
+            free(pannel->buff);
             free(pannel);
             pannel = NULL;
         }
@@ -175,15 +370,25 @@ PannelDestroy(
         )
 {
     uint32_t i;
+    PannelLock(pannel);
+    pannel->running = 0;
+    wakeupconnection(pannel->dpy, pannel->screen);
+    PannelUnlock(pannel);
+
+    /* hopefully this works */
+    PannelLock(pannel);
     XCBDestroyWindow(pannel->dpy, pannel->win);
     XCBFreeGC(pannel->dpy, pannel->gc);
     XCBFlush(pannel->dpy);
     XCBCloseDisplay(pannel->dpy);
+    PannelUnlock(pannel);
+    /* cleanup */
     free(pannel->buff);
     for(i = 0 ; i < pannel->widgetslen; ++i)
     {   free((((PannelWidget *)pannel->widgets) + i)->buff);
     }
     free(pannel->widgets);
+    PannelDestroyThreads(pannel);
     free(pannel);   
 }
 
@@ -196,6 +401,7 @@ PannelWidgetCreate(
         uint16_t h
         )
 {
+    PannelLock(pannel);
     size_t offset = pannel->widgetslen * sizeof(PannelWidget);
     /* + sizeof(PannelWidget) cause were creating a new one */
     size_t newsize = offset + sizeof(PannelWidget);
@@ -212,6 +418,7 @@ PannelWidgetCreate(
         widget->bufflength = w * h;
         widget->buff = calloc(1, widget->bufflength * widget->itemsize);
     }
+    PannelUnlock(pannel);
     return widget;
 }
 
@@ -222,26 +429,35 @@ PannelWidgetCreate(
  */
 int
 PannelWidgetResize(
+        Pannel *pannel,
         PannelWidget *widget,
         uint16_t w,
         uint16_t h
         )
 {
+    PannelLock(pannel);
+    u8 ret = 1;
     if(w * h > widget->bufflength)
     {
         const u64 length = w * h;
         void *realoc = realloc(widget->buff, length * widget->itemsize);
         if(realoc)
-        {   widget->buff = realoc;
+        {   
+            widget->buff = realoc;
             widget->bufflength = length;
-        }
-        else    /* dont change anything exit failure */
-        {   return 1;
+            widget->w = w;
+            widget->h = h;
+            ret = 0;
         }
     }
-    widget->w = w;
-    widget->h = h;
-    return 0;
+    else
+    {   
+        widget->w = w;
+        widget->h = h;
+        ret = 0;
+    }
+    PannelUnlock(pannel);
+    return ret;
 }
 
 void
@@ -255,6 +471,7 @@ PannelWidgetWrite(
         void *data
         )
 {
+    PannelLock(pannel);
     VALUE_CLAMP_WIDGET(widget, &x, &y, &w, &h);
     uint32_t coordoffset = (y * widget->w) + x;
     uint32_t itemsize = widget->itemsize;
@@ -265,6 +482,7 @@ PannelWidgetWrite(
     if(size > 0)
     {   memcpy(((uint8_t *)widget->buff) + (byteoffset), data, size);
     }
+    PannelUnlock(pannel);
 }
 
 int
@@ -275,12 +493,13 @@ PannelWritePixel(
         void *colour
         )
 {
-    if(x * y < pannel->w * pannel->h)
-    {   
-        PLOT_PANNEL(pannel, x, y, colour);
-        return 0;
+    PannelLock(pannel);
+    u8 check = x * y < pannel->w * pannel->h;
+    if(check)
+    {   PLOT_PANNEL(pannel, x, y, colour);
     }
-    return 1;
+    PannelUnlock(pannel);
+    return !check;
 }
 
 int
@@ -293,16 +512,16 @@ PannelWriteBuff(
         void *data
         )
 {
+    PannelLock(pannel);
     VALUE_CLAMP_PANNEL(pannel, &x, &y, &w, &h);
 
     size_t size = pannel->itemsize * w * h;
     /* make sure its not empty/negative */
     if(size > 0)
-    {   
-        PLOT_PANNEL_POINTS(pannel, x, y, w, h, data);
-        return 0;
+    {   PLOT_PANNEL_POINTS(pannel, x, y, w, h, data);
     }
-    return 1;
+    PannelUnlock(pannel);
+    return size < 0;
 }
 
 
@@ -316,6 +535,7 @@ PannelDrawLine(
         void *colour 
         )
 {
+    PannelLock(pannel);
     i32 dx = abs(endx - startx);
     i32 dy = abs(endy - starty);
     i32 sx = startx < endx ? 1 : -1;
@@ -336,6 +556,7 @@ PannelDrawLine(
             starty += sy;
         }
     }
+    PannelUnlock(pannel);
 }
 
 void
@@ -352,6 +573,7 @@ PannelDrawRectangle(
     if(!w || !h)
     {   return;
     }
+    PannelLock(pannel);
     if(fill)
     {
         int64_t _y;
@@ -368,10 +590,12 @@ PannelDrawRectangle(
     /* right side */
     PannelDrawLine(pannel, x + w, y, x + w, y + h, colour);
 
+    PannelUnlock(pannel);
 }
 
 void
 PannelWidgetDrawLine(
+        Pannel *pannel,
         PannelWidget *widget,
         int32_t startx,
         int32_t starty,
@@ -380,6 +604,7 @@ PannelWidgetDrawLine(
         void *colour
         )
 {
+    PannelLock(pannel);
     int dx = abs(endx - startx);
     int dy = abs(endy - starty);
     int sx = startx < endx ? 1 : -1;
@@ -400,10 +625,12 @@ PannelWidgetDrawLine(
             starty += sy;
         }
     }
+    PannelUnlock(pannel);
 }
 
 void
 PannelWidgetDrawRectangle(
+        Pannel *pannel,
         PannelWidget *wi,
         int32_t x,
         int32_t y,
@@ -417,21 +644,23 @@ PannelWidgetDrawRectangle(
     {   return;
     }
 
+    PannelLock(pannel);
     if(fill)
     {
         int64_t _y;
         for(_y = 0; _y < h; ++_y)
-        {   PannelWidgetDrawLine(wi, x, _y + y, x + w, _y + y, colour);
+        {   PannelWidgetDrawLine(pannel, wi, x, _y + y, x + w, _y + y, colour);
         }
     }
     /* top */
-    PannelWidgetDrawLine(wi, x, y, x + w, y, colour);
+    PannelWidgetDrawLine(pannel, wi, x, y, x + w, y, colour);
     /* bottom */
-    PannelWidgetDrawLine(wi, x, y + h, x + w, y + h, colour);
+    PannelWidgetDrawLine(pannel, wi, x, y + h, x + w, y + h, colour);
     /* left side */
-    PannelWidgetDrawLine(wi, x, y, x, y + h, colour);
+    PannelWidgetDrawLine(pannel, wi, x, y, x, y + h, colour);
     /* right side */
-    PannelWidgetDrawLine(wi, x + w, y, x + w, y + h, colour);
+    PannelWidgetDrawLine(pannel, wi, x + w, y, x + w, y + h, colour);
+    PannelUnlock(pannel);
 }
 
 void
@@ -456,6 +685,7 @@ PannelDrawBuff(
     const uint16_t h
         )
 {
+    PannelLock(pannel);
     const unsigned int screen = pannel->screen;
     XCBDisplay *display = pannel->dpy;
     const XCBGC gc = pannel->gc;
@@ -463,8 +693,8 @@ PannelDrawBuff(
     const u8 format = XCB_IMAGE_FORMAT_BGRA;
     const u8 depth = XCBDefaultDepth(display, screen);
     const u8 left_pad = 0;
-    const i32 x = pannel->x + xoffset;
-    const i32 y = pannel->y + yoffset;
+    const i32 x = xoffset;
+    const i32 y = yoffset;
     const u32 size = w * h * sizeof(uint32_t);
     const uint8_t *data = (uint8_t *)pannel->buff;
     u32 i;
@@ -474,6 +704,7 @@ PannelDrawBuff(
         PLOT_PANNEL_POINTS(pannel, widget->x, widget->y, widget->w, widget->h, widget->buff);
     }
     XCBCookie ret = XCBPutPixels(display, gc, win, format, depth, left_pad, x, y, w, h, size, data);
+    PannelUnlock(pannel);
     return ret;
 }
 
