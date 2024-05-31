@@ -11,6 +11,7 @@
 #include "util.h"
 #include "dwm.h"
 #include "toggle.h"
+#include "keybinds.h"
 
 /*
  * For people wanting to make new functions:
@@ -22,24 +23,21 @@ extern void (*handler[XCBLASTEvent]) (XCBGenericEvent *);
 extern WM _wm;
 extern XCBCursor cursors[CurLast];
 
+static const char *
+GET_BOOL(i64 x)
+{
+    if(x)
+    {   return "True";
+    }
+    else
+    {   return "False";
+    }
+}
+
 void
 UserStats(const Arg *arg)
 {
     Client *c = _wm.selmon->desksel->sel;
-    if(!c)
-    {   return;
-    }
-
-    static Pannel *p = NULL;
-    if(!p)
-    {   p = PannelCreate(_wm.root, 0, 0, 500, 500);
-    }
-
-    uint32_t col = ~0;
-    PannelDrawRectangle(p, 0, 0, 500, 500, 1, &col);
-    XCBMapWindow(p->dpy, p->win);
-    PannelDrawBuff(p, 0, 0, p->w, p->h);
-
     if(c)
     {   
         XCBARGB argb;
@@ -61,6 +59,42 @@ UserStats(const Arg *arg)
         DEBUG("INCW:        %d", c->incw);
         DEBUG("INCH:        %d", c->inch);
         DEBUG("Icon:        (w: %u, h: %u)", c->icon ? c->icon[0] : 0, c->icon ? c->icon[1] : 0);
+        DEBUG0("STATES.");
+        DEBUG("MODAL:               %s", GET_BOOL(ISMODAL(c)));
+        DEBUG("STICKY:              %s", GET_BOOL(ISSTICKY(c)));
+        DEBUG("MAXIMIZED VERT:      %s", GET_BOOL(ISMAXIMIZEDVERT(c)));
+        DEBUG("MAXIMIZED HORZ:      %s", GET_BOOL(ISMAXIMIZEDHORZ(c)));
+        DEBUG("SHADED:              %s", GET_BOOL(ISSHADED(c)));
+        DEBUG("SKIP TASKBAR:        %s", GET_BOOL(SKIPTASKBAR(c)));
+        DEBUG("SKIP PAGER:          %s", GET_BOOL(SKIPPAGER(c)));
+        DEBUG("HIDDEN:              %s", GET_BOOL(ISHIDDEN(c)));
+        DEBUG("FULLSCREEN:          %s", GET_BOOL(ISFULLSCREEN(c)));
+        DEBUG("ABOVE:               %s", GET_BOOL(ISABOVE(c)));
+        DEBUG("BELOW:               %s", GET_BOOL(ISBELOW(c)));
+        DEBUG("DEMANDS ATTENTION:   %s", GET_BOOL(DEMANDSATTENTION(c)));
+        DEBUG("FOCUSED:             %s", GET_BOOL(ISFOCUSED(c)));
+        DEBUG0("Supported States.");
+        DEBUG("WM_TAKE_FOCUS:       %s", GET_BOOL(HASWMTAKEFOCUS(c)));
+        DEBUG("WM_SAVE_YOURSELF:    %s", GET_BOOL(HASWMSAVEYOURSELF(c)));
+        DEBUG("WM_DELETE_WINDOW:    %s", GET_BOOL(HASWMDELETEWINDOW(c)));
+        DEBUG0("Window Types.");
+        DEBUG("DESKTOP:             %s", GET_BOOL(ISDESKTOP(c)));
+        DEBUG("DOCK:                %s", GET_BOOL(ISDOCK(c)));
+        DEBUG("TOOLBAR:             %s", GET_BOOL(ISTOOLBAR(c)));
+        DEBUG("MENU:                %s", GET_BOOL(ISMENU(c)));
+        DEBUG("UTILITY:             %s", GET_BOOL(ISUTILITY(c)));
+        DEBUG("SPLASH:              %s", GET_BOOL(ISSPLASH(c)));
+        DEBUG("DIALOG:              %s", GET_BOOL(ISDIALOG(c)));
+        DEBUG("DROPDOWN MENU:       %s", GET_BOOL(ISDROPDOWNMENU(c)));
+        DEBUG("POPUP MENU:          %s", GET_BOOL(ISPOPUPMENU(c)));
+        DEBUG("TOOLTIP:             %s", GET_BOOL(ISTOOLTIP(c)));
+        DEBUG("NOTIFICATION:        %s", GET_BOOL(ISNOTIFICATION(c)));
+        DEBUG("COMBO:               %s", GET_BOOL(ISCOMBO(c)));
+        DEBUG("DND:                 %s", GET_BOOL(ISDND(c)));
+        DEBUG("NORMAL:              %s", GET_BOOL(ISNORMAL(c)));
+        DEBUG0("Extras.");
+        DEBUG("NEVERFOCUS:          %s", GET_BOOL(NEVERFOCUS(c)));
+        DEBUG("MAP ICONIC:          %s", GET_BOOL(ISMAPICONIC(c)));
     }
     else
     {   DEBUG0("NULL");
@@ -142,6 +176,7 @@ DragWindow(
     i16 oldx, oldy;
     u16 oldw, oldh;
     const XCBCursor cur = cursors[CurMove];
+    const i64 detail = ((XCBButtonPressEvent *)arg->v)->detail;
     nx = ny = x = y = oldx = oldy = oldw = oldh = 0;
 
     XCBCookie GrabPointerCookie = XCBGrabPointerCookie(_wm.dpy, _wm.root, False, MOUSEMASK, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, None, cur, XCB_CURRENT_TIME);
@@ -201,8 +236,7 @@ DragWindow(
     if(c)
     {
         /* prevent DOCKED from computing non floating */
-        setfloating(c, 1); c->x += 1;
-        arrange(c->desktop);
+        setfloating(c, 1); 
     }
     else
     {   XCBRaiseWindow(_wm.dpy, win);
@@ -231,8 +265,14 @@ DragWindow(
                 /* TODO */
                 case XCB_BUTTON_PRESS:
                     break;
-                case XCB_BUTTON_RELEASE: 
-                    running = 0;
+                case XCB_BUTTON_RELEASE:                                /* failsafe (mainly chromium) */
+                    if(((XCBButtonPressEvent *)ev)->detail == detail || ((XCBButtonPressEvent *)ev)->detail == LMB)
+                    {   running = 0;
+                    }
+                    break;
+                case XCB_KEY_PRESS:
+                    break;
+                case XCB_KEY_RELEASE:
                     break;
                 /* this accounts for users killing the window (cause they can) */
                 case XCB_UNMAP_NOTIFY:
@@ -293,6 +333,7 @@ ResizeWindow(const Arg *arg)
     /* get any requests that may have moved the window back */
     XCBSync(_wm.dpy);
     XCBGenericEvent *ev = arg->v;
+    const i64 detail = ((XCBButtonPressEvent *)arg->v)->detail;
     XCBWindow win = ((XCBButtonPressEvent *)ev)->event;
     Client *c = wintoclient(win);
     XCBDisplay *display = _wm.dpy;
@@ -465,8 +506,14 @@ ResizeWindow(const Arg *arg)
                 /* TODO */
                 case XCB_BUTTON_PRESS:
                     break;
-                case XCB_BUTTON_RELEASE: 
-                    running = 0;
+                case XCB_BUTTON_RELEASE:                                /* failsafe (mainly chromium) */
+                    if(((XCBButtonPressEvent *)ev)->detail == detail || ((XCBButtonPressEvent *)ev)->detail == RMB)
+                    {   running = 0;
+                    }
+                    break;
+                case XCB_KEY_PRESS:
+                    break;
+                case XCB_KEY_RELEASE:
                     break;
                 /* this accounts for users killing the window (cause they can) */
                 case XCB_UNMAP_NOTIFY:
@@ -567,55 +614,11 @@ MaximizeWindow(const Arg *arg)
     if(!c)
     {   return;
     }
-
-    const u16 snap = 0;
-
-    /* floating are auto handled to be any window that isnt maxed */
     if(!DOCKED(c))
-    {
-        setfloating(c, 0);
-        if(ISFIXED(c))
-        {   /* snap to grid instead. */
-            resize(c, m->wx, m->wy, c->w, c->h, 0);
-        }
-        else
-        {   maximize(c);
-        }
-        DEBUG("Maximized: %u", c->win);
+    {   maximize(c);
     }
     else /* else its maximized */
-    {
-        const uint8_t samex = c->x == c->oldx;
-        const uint8_t samey = c->y == c->oldy;
-        const uint8_t samew = c->w == c->oldw;
-        const uint8_t sameh = c->h == c->oldh;
-        const uint8_t sameall = samex && samey && samew && sameh;
-
-        setfloating(c, 1);
-        if(sameall)
-        {
-            if(ISFIXED(c))
-            {   
-                /* just snap out of grid */
-                resize(c, c->x + snap, c->y + snap, c->w, c->h, 0);
-            }
-            else
-            {   /* make half the size */
-                resize(c, c->x + WIDTH(c) / 2, c->y + HEIGHT(c) / 2, WIDTH(c) / 2, HEIGHT(c) / 2, 0);
-            }
-        }
-        else
-        {   
-            if(ISFIXED(c))
-            {   /* just use old position */
-                resize(c, c->oldx, c->oldy, c->w, c->h, 0);
-            }
-            else
-            {   /* use old dimentions */
-                resize(c, c->oldx, c->oldy, c->oldw, c->oldh, 0);
-            }
-        }
-        DEBUG("UnMaximized: %u", c->win);
+    {   unmaximize(c);
     }
     arrange(c->desktop);
     XCBFlush(_wm.dpy);
@@ -624,13 +627,33 @@ MaximizeWindow(const Arg *arg)
 void
 MaximizeWindowVertical(const Arg *arg) 
 {
-    /* TODO */
+    const Monitor *m = _wm.selmon;
+    Client *c = m->desksel->sel;
+    if(!c)
+    {   return;
+    }
+    if(!DOCKEDVERT(c))
+    {   maximizevert(c);
+    }
+    else
+    {   unmaximizevert(c);
+    }
 }
 
 void
 MaximizeWindowHorizontal(const Arg *arg) 
 {
-    /* TODO */
+    const Monitor *m = _wm.selmon;
+    Client *c = m->desksel->sel;
+    if(!c)
+    {   return;
+    }
+    if(!DOCKEDHORZ(c))
+    {   maximizehorz(c);
+    }
+    else
+    {   unmaximizehorz(c);
+    }
 }
 
 
