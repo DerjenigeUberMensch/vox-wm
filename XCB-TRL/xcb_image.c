@@ -12,6 +12,7 @@ XCBCreateImage(
         XCBImageOrder bytes_per_line
         )
 {
+    return NULL;
 }
 
 /*
@@ -93,6 +94,44 @@ XCBFillRectangles(
 }
 
 XCBCookie
+XCBDrawRectangle(
+        XCBDisplay *display,
+        XCBDrawable drawable,
+        XCBGC gc,
+        int32_t x,
+        int32_t y,
+        uint32_t w,
+        uint32_t h
+        )
+{
+    const XCBRectangle rect = 
+    {
+        .x = x,
+        .y = y,
+        .width = w,
+        .height = h
+    };
+    XCBCookie ret = xcb_poly_rectangle(display, drawable, gc, 1, &rect);
+
+    return ret;
+}
+
+XCBCookie
+XCBDrawRectangles(
+        XCBDisplay *display,
+        XCBDrawable drawable,
+        XCBGC gc,
+        XCBRectangle *rectangles,
+        uint32_t nrectangles
+        )
+{
+    XCBCookie ret = xcb_poly_rectangle(display, drawable, gc, nrectangles, rectangles);
+
+    return ret;
+}
+
+
+XCBCookie
 XCBFillPolygon(
         XCBDisplay *display,
         XCBDrawable drawable,
@@ -150,9 +189,29 @@ XCBFillArcs(
     return ret;
 }
 
-
 XCBCookie
 XCBDrawPoint(
+        XCBDisplay *display, 
+        uint8_t coordinatemode, 
+        XCBDrawable drawable, 
+        XCBGC gc, 
+        int32_t x,
+        int32_t y
+        )
+{
+    const XCBPoint points = 
+    {
+        .x = x,
+        .y = y
+    };
+
+    XCBCookie ret = xcb_poly_point(display, coordinatemode, drawable, gc, 1, &points);
+
+    return ret;
+}
+
+XCBCookie
+XCBDrawPoints(
         XCBDisplay *display, 
         uint8_t coordinatemode, 
         XCBDrawable drawable, 
@@ -165,4 +224,63 @@ XCBDrawPoint(
 
     return ret;
 }
+
+XCBCookie
+XCBDrawLine(
+        XCBDisplay *display,
+        uint8_t coordinatemode,
+        XCBDrawable drawable,
+        XCBGC gc,
+        int32_t x1,
+        int32_t y1,
+        int32_t x2,
+        int32_t y2
+        )
+{
+    const XCBPoint points[2] = 
+    { 
+        /* point 1 */
+        { 
+            .x = x1, 
+            .y = y1 
+        }, 
+        /* point 2 */
+        { 
+            .x = x2, 
+            .y = y2
+        }
+    };
+
+    XCBCookie ret = xcb_poly_line(display, coordinatemode, drawable, gc, 2, points);
+
+    return ret;
+}
+
+XCBCookie
+XCBDrawLines(
+        XCBDisplay *display, 
+        uint8_t coordinatemode, 
+        XCBDrawable drawable, 
+        XCBGC gc, 
+        uint32_t points_len, 
+        XCBPoint *points
+        )
+{
+    XCBCookie ret = xcb_poly_line(display, coordinatemode, drawable, gc, points_len, points);
+
+    return ret;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
