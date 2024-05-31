@@ -297,6 +297,7 @@ typedef xcb_client_message_data_t  XCBClientMessageData;
 typedef xcb_get_property_reply_t XCBWindowProperty;
 typedef xcb_create_window_value_list_t XCBCreateWindowValueList;
 typedef xcb_create_gc_value_list_t XCBCreateGCValueList;
+typedef xcb_change_gc_value_list_t XCBChangeGCValueList;
 
 /* Analagous to Xlib's XA_(type)
  * XCB_ATOM_NONE = 0,
@@ -377,8 +378,11 @@ typedef xcb_keycode_t XCBKeyCode;
 typedef xcb_visualid_t XCBVisual;
 
 
-/* array of characters NEVER use as char */
-typedef char XCBClassHint;
+typedef struct 
+{
+    char *instance_name;
+    char *class_name;
+} XCBClassHint;
 
 
 typedef xcb_configure_window_value_list_t XCBWindowChanges;
@@ -3104,17 +3108,27 @@ XCBConfigureWindow(
         XCBWindow window,
         uint16_t value_mask,
         XCBWindowChanges *changes);
-/* Sets the classhint for a specified window with class_name as the name hint similiar to XSetClassHint()
- *
- * NOTE: class_name does not protect against non terminating strings.
- *
- * RETURN: A Cookie to request.
- */
+
 XCBCookie
+XCBStoreName(
+        XCBDisplay *display,
+        XCBWindow window,
+        const char *window_name
+        );
+
+/* 
+ *
+ * NOTE: This operation makes use of "malloc"
+ *
+ * RETURN: 0 on Success.
+ * RETURN: 1 on Failure.
+ */
+int
 XCBSetClassHint(
         XCBDisplay *display, 
         XCBWindow window, 
-        const char *class_name);
+        XCBClassHint *hint
+        );
 
 /* Valuemasks
 XCB_GC_FUNCTION
@@ -3146,8 +3160,15 @@ XCBChangeGC(
         XCBDisplay *display, 
         XCBGC gc, 
         uint32_t valuemask, 
-        const void *valuelist);
+        XCBChangeGCValueList *va
+        );
 
+XCBCookie
+XCBSetForeground(
+        XCBDisplay *display, 
+        XCBGC gc, 
+        uint32_t colour
+        );
 
 /*
  */
@@ -3342,6 +3363,15 @@ XCBGetWMNameReply(
         XCBDisplay *display, 
         XCBCookie cookie, 
         XCBTextProperty *prop_return
+        );
+
+/*
+ */
+XCBCookie
+XCBSetWMNormalHints(
+        XCBDisplay *display,
+        XCBWindow window,
+        XCBSizeHints *hints
         );
 /*
  */

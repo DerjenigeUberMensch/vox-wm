@@ -2618,22 +2618,80 @@ XCBConfigureWindow(
 }
 
 XCBCookie
-XCBSetClassHint(XCBDisplay *display, XCBWindow window, const char *class_name)
+XCBStoreName(
+        XCBDisplay *display,
+        XCBWindow window,
+        const char *window_name
+        )
 {
-    const int len = strlen(class_name);
-    XCBCookie ret = xcb_change_property(display, XCB_PROP_MODE_REPLACE, window, XCB_ATOM_WM_CLASS, XCB_ATOM_STRING, 8, len, class_name);
+    const long int MAX_LEN = UINT32_MAX;
+    const uint32_t len = strnlen(window_name, MAX_LEN);
+    XCBCookie ret = xcb_change_property(display, XCB_PROP_MODE_REPLACE, window, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, len, window_name);
+
 #ifdef DBG
     _xcb_push_func(ret, _fn);
 #endif
-
     return ret;
+}
+
+int
+XCBSetClassHint(
+        XCBDisplay *display, 
+        XCBWindow window, 
+        XCBClassHint *class_hint
+        )
+{
+    uint32_t ilen = 0;
+    uint32_t clen = 0;
+    const uint8_t NULL_BYTE_COUNT = 2;
+    uint32_t MAX_LEN = USHRT_MAX - NULL_BYTE_COUNT;
+    char *mem = NULL;
+    XCBCookie ret = { .sequence = 0 };
+    if(class_hint->instance_name)
+    {   ilen = strnlen(class_hint->instance_name, MAX_LEN);
+        MAX_LEN -= ilen;
+    }
+    if(class_hint->class_name)
+    {   clen = strnlen(class_hint->class_name, MAX_LEN);
+    }
+    mem = malloc(sizeof(char) * (ilen + clen + NULL_BYTE_COUNT));
+    if(mem)
+    {
+        if(ilen)
+        {   strncpy(mem, class_hint->instance_name, ilen);
+        }
+        mem[ilen] = '\0';
+        if(clen)
+        {   strncpy(mem + (sizeof(char) * (ilen + 1)), class_hint->class_name, clen);
+        }
+        mem[ilen + clen + 1] = '\0';
+        ret = xcb_icccm_set_wm_class(display, window, clen + ilen + 2, mem);
+        free(mem);
+    }
+#ifdef DBG
+    _xcb_push_func(ret, _fn);
+#endif
+    return !mem;
 }
 
 
 XCBCookie
-XCBChangeGC(XCBDisplay *display, XCBGC gc, u32 valuemask, const void *valuelist)
+XCBChangeGC(XCBDisplay *display, XCBGC gc, u32 valuemask, XCBChangeGCValueList *valuelist)
 {
-    XCBCookie ret = xcb_change_gc(display, gc, valuemask, valuelist);
+    XCBCookie ret = xcb_change_gc_aux(display, gc, valuemask, valuelist);
+#ifdef DBG
+    _xcb_push_func(ret, _fn);
+#endif
+    return ret;
+}
+
+XCBCookie
+XCBSetForeground(XCBDisplay *display, XCBGC gc, uint32_t colour)
+{
+    XCBChangeGCValueList va = { .foreground = colour };
+    const u32 mask = XCB_GC_FOREGROUND;
+    XCBCookie ret = XCBChangeGC(display, gc, mask, &va);
+
 #ifdef DBG
     _xcb_push_func(ret, _fn);
 #endif
@@ -2960,6 +3018,22 @@ XCBGetWMNameReply(XCBDisplay *display, XCBCookie cookie, XCBTextProperty *prop_r
         status = 0;
     }
     return status;
+}
+
+XCBCookie
+XCBSetWMNormalHints(
+        XCBDisplay *display,
+        XCBWindow window,
+        XCBSizeHints *hints
+        )
+{
+    XCBCookie ret = xcb_icccm_set_wm_normal_hints(display, window, hints);
+
+#ifdef DBG
+    _xcb_push_func(ret, _fn);
+#endif
+
+    return ret;
 }
 
 XCBCookie

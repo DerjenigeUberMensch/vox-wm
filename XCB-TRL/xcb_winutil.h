@@ -45,7 +45,7 @@ enum NETWMPROTOCOLS
 
     NetWMStateAbove, NetWMStateAlwaysOnTop = NetWMStateAbove,
 
-    NetWMStateMaximizedVert, NetWMStateMaximizedHorz, NetWMStateMinimize, 
+    NetWMStateMaximizedVert, NetWMStateMaximizedHorz,
     NetWMStateBelow, NetWMStateDemandAttention,  NetWMStateSticky,
     NetWMStateShaded, NetWMStateSkipTaskbar, NetWMStateSkipPager,
     NetWMStateModal, NetWMStateHidden, NetWMStateFocused,
@@ -55,7 +55,6 @@ enum NETWMPROTOCOLS
     NetWMActionFullscreen, NetWMActionChangeDesktop, NetWMActionClose,
     NetWMActionAbove, NetWMActionMinimize, NetWMActionBelow,
     /* actions msg */
-    NetWMAbove, NetWMBelow, NetWMDemandAttention, NetWMFocused, 
     NetWMFullscreen,
     
     /* window types */
@@ -72,7 +71,7 @@ enum NETWMPROTOCOLS
     NetWMFullscreenMonitors,
     /* other */
     NetWMFullPlacement ,NetWMBypassCompositor,
-    NetWMWindowsOpacity,
+    NetWMWindowOpacity,
 
     NetUtf8String,
     /* last */

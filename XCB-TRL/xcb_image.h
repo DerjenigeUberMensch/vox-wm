@@ -84,6 +84,25 @@ XCBFillRectangles(
         uint32_t nrectangles
         );
 
+XCBCookie
+XCBDrawRectangle(
+        XCBDisplay *display,
+        XCBDrawable drawable,
+        XCBGC gc,
+        int32_t x,
+        int32_t y,
+        uint32_t w,
+        uint32_t h
+        );
+
+XCBCookie
+XCBDrawRectangles(
+        XCBDisplay *display,
+        XCBDrawable drawable,
+        XCBGC gc,
+        XCBRectangle *rectangles,
+        uint32_t nrectangles
+        );
 /*
  */
 XCBCookie
@@ -122,14 +141,59 @@ XCBFillArcs(
         uint32_t number_of_arcs
         );
 /*
+ * coordinatemode:          XCB_COORD_MODE_ORIGIN           Treats all coordinates as relative to the origin.
+ *                          XCB_COORD_MODE_PREVIOUS         Treats all coordinates after the first as relative to the previous coordinate.
  */
 XCBCookie
 XCBDrawPoint(
+        XCBDisplay *display, 
+        uint8_t coordinatemode, 
+        XCBDrawable drawable, 
+        XCBGC gc, 
+        int32_t x,
+        int32_t y
+        );
+/*
+ * coordinatemode:          XCB_COORD_MODE_ORIGIN           Treats all coordinates as relative to the origin.
+ *                          XCB_COORD_MODE_PREVIOUS         Treats all coordinates after the first as relative to the previous coordinate.
+ */
+XCBCookie
+XCBDrawPoints(
         XCBDisplay *display,
-        uint8_t coordinate_mode,
+        uint8_t coordinatemode,
         XCBDrawable drawable,
         XCBGC gc,
         uint32_t points_len,
+        XCBPoint *points
+        );
+
+
+/*
+ * coordinatemode:          XCB_COORD_MODE_ORIGIN           Treats all coordinates as relative to the origin.
+ *                          XCB_COORD_MODE_PREVIOUS         Treats all coordinates after the first as relative to the previous coordinate.
+ */
+XCBCookie
+XCBDrawLine(
+        XCBDisplay *display,
+        uint8_t coordinatemode,
+        XCBDrawable drawable,
+        XCBGC gc,
+        int32_t x1,
+        int32_t y1,
+        int32_t x2,
+        int32_t y2
+        );
+/*
+ * coordinatemode:          XCB_COORD_MODE_ORIGIN           Treats all coordinates as relative to the origin.
+ *                          XCB_COORD_MODE_PREVIOUS         Treats all coordinates after the first as relative to the previous coordinate.
+ */
+XCBCookie
+XCBDrawLines(
+        XCBDisplay *display, 
+        uint8_t coordinatemode, 
+        XCBDrawable drawable, 
+        XCBGC gc, 
+        uint32_t points_len, 
         XCBPoint *points
         );
 
