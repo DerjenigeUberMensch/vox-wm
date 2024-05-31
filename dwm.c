@@ -54,28 +54,36 @@ int WASFLOATING(Client *c)      { return c->flags & _FSTATE_WASFLOATING; }
 int ISFLOATING(Client *c)       { return c->flags & _FSTATE_FLOATING; }
 /* used in __cmp calculation when restacking */
 int ISFAKEFLOATING(Client *c)   { return c->flags & _FSTATE_FLOATING || c->desktop->layout == Floating; }
-int WASDOCKED(Client *c)   {   
-                                    const i16 wx = c->desktop->mon->wx;
-                                    const i16 wy = c->desktop->mon->wy;
-                                    const u16 ww = c->desktop->mon->ww;
+
+int WASDOCKEDVERT(Client *c)    {   const i16 wy = c->desktop->mon->wy;
                                     const u16 wh = c->desktop->mon->wh;
-                                    const i16 x = c->oldx;
                                     const i16 y = c->oldy;
-                                    const u16 w = OLDWIDTH(c);
                                     const u16 h = OLDHEIGHT(c);
-                                    return !((wx != x) + (wy != y) + (ww != w) + (wh != h));
+                                    return !((wy != y) + (wh != h));
                                 }
-int DOCKED(Client *c)       {
-                                    const i16 wx = c->desktop->mon->wx;
-                                    const i16 wy = c->desktop->mon->wy;
+int WASDOCKEDHORZ(Client *c)    {   const i16 wx = c->desktop->mon->wx;
                                     const u16 ww = c->desktop->mon->ww;
-                                    const u16 wh = c->desktop->mon->wh;
-                                    const i16 x = c->x;
-                                    const i16 y = c->y;
-                                    const u16 w = WIDTH(c);
-                                    const u16 h = HEIGHT(c);
-                                    return !((wx != x) + (wy != y) + (ww != w) + (wh != h));
+                                    const i16 x = c->oldx;
+                                    const u16 w = OLDWIDTH(c);
+                                    return !((wx != x) + (ww != w));
                                 }
+
+int WASDOCKED(Client *c)        { return WASDOCKEDVERT(c) & WASDOCKEDHORZ(c); }
+
+int DOCKEDVERT(Client *c)       {   const i16 wy = c->desktop->mon->wy;
+                                    const u16 wh = c->desktop->mon->wh;
+                                    const i16 y = c->y;
+                                    const u16 h = HEIGHT(c);
+                                    return !((wy != y) + (wh != h));
+                                }
+
+int DOCKEDHORZ(Client *c)       {   const i16 wx = c->desktop->mon->wx;
+                                    const u16 ww = c->desktop->mon->ww;
+                                    const i16 x = c->x;
+                                    const u16 w = WIDTH(c);
+                                    return !((wx != x) + (ww != w));
+                                }
+int DOCKED(Client *c)           { return DOCKEDVERT(c) & DOCKEDHORZ(c); }
 int ISFIXED(Client *c)          { return (c->minw != 0) && (c->minh != 0) && (c->minw == c->maxw) && (c->minh == c->maxh); }
 int ISURGENT(Client *c)         { return c->wstateflags & _STATE_DEMANDS_ATTENTION; }
 int NEVERFOCUS(Client *c)       { return c->wtypeflags & _TYPE_NEVERFOCUS; }
@@ -112,7 +120,9 @@ int ISMAPNORMAL(Client *c)                { return !ISMAPICONIC(c); }
 /* EWMH Window states */
 int ISMODAL(Client *c)          { return c->wstateflags & _STATE_MODAL; }
 int ISSTICKY(Client *c)         { return c->wstateflags & _STATE_STICKY; }
+/* DONT USE */
 int ISMAXIMIZEDVERT(Client *c)  { return c->wstateflags & _STATE_MAXIMIZED_VERT; }
+/* DONT USE */
 int ISMAXIMIZEDHORZ(Client *c)  { return c->wstateflags & _STATE_MAXIMIZED_HORZ; }
 int ISSHADED(Client *c)         { return c->wstateflags & _STATE_SHADED; }
 int SKIPTASKBAR(Client *c)      { return c->wstateflags & _STATE_SKIP_TASKBAR; }
@@ -398,7 +408,6 @@ arrangeq(Desktop *desk)
         }
         workingdesk = desk;
     }
-    /* plz call before reorder as reorder updates floating status, we kinda never let the WM know about that to keep floatings working */
     arrangedesktop(desk);
     reorder(desk);
 }
@@ -1298,6 +1307,9 @@ grid(Desktop *desk)
     /* TODO implement bgw without fucking up 1 side */
     const u16 bgw = USGetGapWidth(&_cfg);
 
+    /* TODO */
+    (void)bgw;
+
     i32 i, n, cw, ch, aw, ah, cols, rows;
     i32 nx, ny, nw, nh;
     Client *c;
@@ -1569,6 +1581,9 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     {   unfocus(_wm.selmon->desksel->sel, 0);
     }
 
+    if(!ISFLOATING(c))
+    {   setfloating(c, trans || !DOCKED(c));
+    }
     /* inherit previous client state */
     if(c->desktop && c->desktop->sel)
     {   setfullscreen(c, ISFULLSCREEN(c->desktop->sel) || ISFULLSCREEN(c));
@@ -1632,24 +1647,31 @@ managebar(Monitor *m, XCBWindow win)
 void
 maximize(Client *c)
 {
-    const Monitor *m = c->desktop->mon;
-    resize(c, m->wx, m->wy, m->ww, m->wh, 0);
+    maximizehorz(c);
+    maximizevert(c);
+    DEBUG("Maximized: %u", c->win);
 }
 
 void
 maximizehorz(Client *c)
 {
     const Monitor *m = c->desktop->mon;
-    
-    resize(c, m->wx, c->y, m->ww, c->h, 0);
+    const i16 x = m->wx;
+    const i16 y = c->y;
+    const u16 w = m->ww - (WIDTH(c) - c->w);
+    const u16 h = c->h;
+    resize(c, x, y, w, h, 0);
 }
 
 void
 maximizevert(Client *c)
 {
     const Monitor *m = c->desktop->mon;
-
-    resize(c, c->x, m->wy, c->w, m->wh, 0);
+    const i16 x = c->x;
+    const i16 y = m->my;
+    const u16 w = c->w;
+    const u16 h = m->wh - (HEIGHT(c) - c->h);
+    resize(c, x, y, w, h, 0);
 }
 
 
@@ -1664,8 +1686,8 @@ monocle(Desktop *desk)
 
     for(c = desk->focus; c; c = nextfocus(c))
     {
-        if(ISFLOATING(c) && DOCKED(c))
-        {   setfloating(c, 0);
+        if(ISFLOATING(c))
+        {   continue;   
         }
         nw = m->ww - (c->bw * 2);
         nh = m->wh - (c->bw * 2);
@@ -2162,14 +2184,30 @@ resize(Client *c, i32 x, i32 y, i32 width, i32 height, uint8_t interact)
 void 
 resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
 {
-    c->oldx = c->x;
-    c->oldy = c->y;
-    c->oldw = c->w;
-    c->oldh = c->h;
-    c->x = x;
-    c->y = y;
-    c->w = width;
-    c->h = height;
+    u32 mask = 0;
+    if(c->x != x)
+    {   c->oldx = c->x;
+        c->x = x;
+        mask |= XCB_CONFIG_WINDOW_X;
+    }
+    if(c->y != y)
+    {
+        c->oldy = c->y;
+        c->y = y;
+        mask |= XCB_CONFIG_WINDOW_Y;
+    }
+    if(c->w != width)
+    {
+        c->oldw = c->w;
+        c->w = width;
+        mask |= XCB_CONFIG_WINDOW_WIDTH;
+    }
+    if(c->h != height)
+    {   
+        c->oldh = c->h;
+        c->h = height;
+        mask |= XCB_CONFIG_WINDOW_HEIGHT;
+    }
     XCBWindowChanges changes =
     {   
         .x = x,
@@ -2178,12 +2216,7 @@ resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
         .height = height,
         .border_width = c->bw
     };
-    XCBConfigureWindow(_wm.dpy, c->win, 
-            XCB_CONFIG_WINDOW_X|XCB_CONFIG_WINDOW_Y
-            |XCB_CONFIG_WINDOW_WIDTH|XCB_CONFIG_WINDOW_HEIGHT
-            |XCB_CONFIG_WINDOW_BORDER_WIDTH, 
-            &changes
-            );
+    XCBConfigureWindow(_wm.dpy, c->win, mask, &changes);
     configure(c);
 }
 
@@ -2233,10 +2266,7 @@ restack(Desktop *desk)
 static i32
 __cmp_helper(int32_t x1, int32_t x2)
 {
-    const u32 bigger = x1 > x2;
-    const u32 smaller = !bigger;
-    const i32 ret = -bigger + (smaller);
-    return ret;
+    return x1 < x2;
 }
 
 static int
@@ -2288,40 +2318,18 @@ __cmp(Client *c1, Client *c2)
     else if(hidden1 ^ hidden2)
     {   return __cmp_helper(hidden1, hidden2);
     }
-    /* till I find a better way this should decrease cpu a bit
-     * this takes about 90% of the cycles of compare so find a better way to get newest focus FIXME
-     */
-    for(; c1 && c1 != c2; c1 = prevfocus(c1));
-    return c1 == c2;
+
+    return __cmp_helper(c1->rstacknum, c2->rstacknum);
 }
 
-/*
- * This function is copyright 2001 Simon Tatham.
- * 
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation
- * files (the "Software"), to deal in the Software without
- * restriction, including without limitation the rights to use,
- * copy, modify, merge, publish, distribute, sublicense, and/or
- * sell copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following
- * conditions:
- * 
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- * 
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
- * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT.  IN NO EVENT SHALL SIMON TATHAM BE LIABLE FOR
- * ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
- * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
 void
 reorder(Desktop *desk)
 {
+    Client *c;
+    u16 i = 0;
+    for(c = desk->flast; c; c = prevfocus(c))
+    {   c->rstacknum = ++i;
+    }
     MERGE_SORT_LINKED_LIST(Client, __cmp, desk->stack, desk->slast, snext, sprev, 1, 0);
 }
 
@@ -2962,39 +2970,13 @@ sethidden(Client *c, uint8_t state)
 void
 setmaximizedvert(Client *c, uint8_t state)
 {
-    const Monitor *m = c->desktop->mon;
     SETFLAG(c->wstateflags, _STATE_MAXIMIZED_VERT, !!state);
-    if(state)
-    {
-        if(!ISMAXVERT(c))
-        {   resize(c, c->x, c->y, c->w, m->wh, 0);
-        }
-    }
-    else
-    {
-        if(ISMAXVERT(c))
-        {   resize(c, c->x, c->y, c->w, c->oldh != m->wh ? c->oldh : c->oldh / 2, 0);
-        }
-    }
 }
 
 void
 setmaximizedhorz(Client *c, uint8_t state)
 {
-    const Monitor *m = c->desktop->mon;
     SETFLAG(c->wstateflags, _STATE_MAXIMIZED_HORZ, !!state);
-    if(state)
-    {
-        if(!ISMAXHORZ(c))
-        {   resize(c, c->x, c->y, m->ww, c->h, 0);
-        }
-    }
-    else
-    {
-        if(ISMAXHORZ(c))
-        {   resize(c, c->x, c->y, c->oldw != m->ww ? c->oldw : c->oldw / 2, c->h, 0);
-        }
-    }
 }
 
 void
@@ -3673,6 +3655,58 @@ unmanagebar(Bar *bar)
     DEBUG0("Unmanaged bar.");
 }
 
+void 
+unmaximize(Client *c)
+{
+    unmaximizevert(c);
+    unmaximizehorz(c);
+    DEBUG("Umaximized: [%u]", c->win);
+}
+
+void 
+unmaximizehorz(Client *c)
+{
+    const i16 x = c->oldx;
+    const i16 y = c->y;
+    const u16 w = c->oldw;
+    const u16 h = c->h;
+
+    if(DOCKEDHORZ(c))
+    {   
+        /* if never maximized */
+        if(WASDOCKEDHORZ(c))
+        {   resize(c, x / 2, y, w / 2, h, 0);
+        }
+        else
+        {   resize(c, x, y, w, h, 0);
+        }
+    }
+    else
+    {   DEBUG("Client already unmaxed horz: [%u]", c->win);
+    }
+}
+
+void 
+unmaximizevert(Client *c)
+{
+    const i16 x = c->x;
+    const i16 y = c->oldy;
+    const u16 w = c->w;
+    const u16 h = c->oldh;
+    if(DOCKEDVERT(c))
+    {
+        if(WASDOCKEDVERT(c))
+        {   resize(c, x, y / 2, w, h / 2, 0);
+        }
+        else
+        {   resize(c, x, y, w, h, 0);
+        }
+    }
+    else
+    {   DEBUG("Client already unmaxed vert: [%u]", c->win);
+    }
+}
+
 void
 updatebarpos(Monitor *m)
 {
@@ -3775,7 +3809,7 @@ updateclass(Client *c, XCBWMClass *_class)
         }
         if(_class->instance_name)
         {   
-            const u32 INSTANCE_NAME_LEN = strnlen(_class->instance_name ? _class->instance_name : "", MAX_LEN) + 1;
+            const u32 INSTANCE_NAME_LEN = strnlen(_class->instance_name, MAX_LEN) + 1;
             const size_t INSTANCE_NAME_SIZE = sizeof(char) * INSTANCE_NAME_LEN;
             char *iname = malloc(INSTANCE_NAME_SIZE);
             if(iname)
@@ -4007,13 +4041,55 @@ updatewindowstate(Client *c, XCBAtom state, uint8_t add_remove_toggle)
     }
     else if (state == netatom[NetWMStateMaximizedHorz])
     {
-        /* toggle is already handled here */
-        setmaximizedhorz(c, add_remove_toggle);
+        if(toggle)
+        {   
+            if(DOCKEDHORZ(c))
+            {   
+                unmaximizehorz(c);
+                setmaximizedhorz(c, 0);
+            }
+            else
+            {   
+                maximizehorz(c);
+                setmaximizedhorz(c, 1);
+            }
+        }
+        else
+        {   
+            if(add_remove_toggle)
+            {   maximizehorz(c);
+            }
+            else
+            {   unmaximizehorz(c);
+            }
+            setmaximizedhorz(c, add_remove_toggle);
+        }
     }
     else if (state == netatom[NetWMStateMaximizedVert])
     {
-        /* toggle is already handled here */
-        setmaximizedhorz(c, add_remove_toggle);
+        if(toggle)
+        {
+            if(DOCKEDVERT(c))
+            {   
+                unmaximizevert(c);
+                setmaximizedvert(c, 0);
+            }
+            else
+            {   
+                maximizevert(c);
+                setmaximizedvert(c, 1);
+            }
+        }
+        else
+        {
+            if(add_remove_toggle)
+            {   maximizevert(c);
+            }
+            else
+            {   unmaximizevert(c);
+            }
+            setmaximizedvert(c, add_remove_toggle);
+        }
     }
     else if (state == netatom[NetWMStateSticky])
     {
@@ -4436,6 +4512,8 @@ wintomon(XCBWindow win)
     return _wm.selmon;
 }
 
+
+
 void
 xerror(XCBDisplay *display, XCBGenericError *err)
 {
@@ -4449,9 +4527,11 @@ xerror(XCBDisplay *display, XCBGenericError *err)
            err->error_code, err->major_code, err->minor_code, 
            err->sequence, err->response_type, err->resource_id, 
            err->full_sequence);
+#ifdef ENABLE_DEBUG
         XCBCookie id;
         id.sequence = err->sequence;
         DEBUG("%s()", XCBDebugGetNameFromId(id));
+#endif
     }
 }
 

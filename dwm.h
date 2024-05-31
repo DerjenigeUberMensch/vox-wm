@@ -206,6 +206,8 @@ struct Client
     uint16_t minh;      /* Minimum Height           */
 
     XCBWindow win;      /* Client Window            */
+    uint16_t rstacknum; /* Used in calculating pos  */
+    uint8_t pad[2];
     pid_t pid;          /* Client Pid               */
 
     Client *next;       /* The next client in list  */
@@ -501,13 +503,13 @@ Client *managereply(XCBWindow window, XCBCookie requests[MANAGE_CLIENT_COOKIE_CO
  * RETURN: NULL on Failure.
  */
 Bar *managebar(Monitor *m, XCBWindow win);
-/* Maximizes the speified clients vertical and horizontal axis.
+/* Maximizes a client if unmaxed, Sets flag.
  */
 void maximize(Client *c);
-/* Maximizes the speified clients horizontal axis.
+/* Maximizes horizontally a client if unmaxed horz, Sets flag.
  */
 void maximizehorz(Client *c);
-/* Maximizes the specified clients vertical axis.
+/* Maximizes vertically a client if unmaxed vert, Sets flag.
  */
 void maximizevert(Client *c);
 /* Sets the "monocle" layout for the specified desktop.
@@ -706,9 +708,9 @@ void setfloating(Client *c, uint8_t state);
 void setfocus(Client *c);
 /* Sets the Windows Map State (Iconic/Normal), and IS hidden Flag. */
 void sethidden(Client *c, uint8_t state);
-/* Resizes a Client to be maximized vertically and Sets the Flag for it. */
+/* Sets the "Maximized Vert" Flag */
 void setmaximizedvert(Client *c, uint8_t state);
-/* Resizes a Client to be maximized horizontally and Sets the Flag for it. */
+/* Sets the "Maximized Horz" Flag */
 void setmaximizedhorz(Client *c, uint8_t state);
 /* Sets the Clients IS Shaded Flag. */
 void setshaded(Client *c, uint8_t state);
@@ -837,6 +839,12 @@ void unmanage(Client *c, uint8_t destroyed);
 /* memsets the specified bar to all 0's thus unmanaging the bar
  */
 void unmanagebar(Bar *bar);
+/* unmaximizes a client if maxed, Sets flag. */
+void unmaximize(Client *c);
+/* unmaximizes a client horizontally if maxed horz, Sets flag. */
+void unmaximizehorz(Client *c);
+/* unmaximizes a client vertically if maxed vert, Sets flag. */
+void unmaximizevert(Client *c);
 /* Error handler */
 void xerror(XCBDisplay *display, XCBGenericError *error);
 
@@ -848,7 +856,11 @@ int ISALWAYSONBOTTOM(Client *c);
 int WASFLOATING(Client *c);
 int ISFLOATING(Client *c);
 int ISFAKEFLOATING(Client *c);
+int DOCKEDVERT(Client *c);
+int DOCKEDHORZ(Client *c);
 int DOCKED(Client *c);
+int WASDOCKEDVERT(Client *c);
+int WASDOCKEDHORZ(Client *c);
 int WASDOCKED(Client *c);
 int ISFIXED(Client *c);
 int ISURGENT(Client *c);
