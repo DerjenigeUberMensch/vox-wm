@@ -22,12 +22,12 @@ struct Pannel
 
     XCBWindow win;
     XCBGC gc;
+    XCBPixmap pix;
+    uint16_t pixw;
+    uint16_t pixh;
     XCBDisplay *dpy;
     int screen;
 
-    size_t itemsize;
-    uint64_t bufflength;
-    char *buff;
     PannelWidget *widgets;
     uint32_t widgetslen;
     pthread_mutex_t *mut;
@@ -42,14 +42,14 @@ struct PannelWidget
     uint16_t w;
     uint16_t h;
 
-    size_t itemsize;
-    uint32_t bufflength;
-    char *buff;
+    XCBPixmap pix;
+    uint16_t pixw;
+    uint16_t pixh;
 };
 
 
 /*
- * NOTE: No side effects if resize fails.
+ * Data is destroyed on resize.
  *
  * RETURN: 0 On Success.
  * RETURN: 1 On Failure.
@@ -96,7 +96,7 @@ PannelWidgetCreate(
         uint16_t w,
         uint16_t h
         );
-/* Resizes a widget based on parametors. Widget is assumed to be empty, as data WILL be destroyed.
+/* Data will be destroyed
  * 
  * RETURN: 1 on Failure.
  * RETURN: 0 on Success.
@@ -110,35 +110,13 @@ PannelWidgetResize(
         );
 
 void
-PannelWidgetWrite(
-        Pannel *pannel,
-        PannelWidget *widget,
-        int32_t x,
-        int32_t y,
-        uint32_t w,
-        uint32_t h,
-        void *buffcopy
-        );
-int
 PannelWritePixel(
         Pannel *pannel,
         int16_t x,
         int16_t y,
-        void *color
+        uint32_t colour
         );
 
-int
-PannelWriteBuff(
-        Pannel *pannel,
-        int32_t x,
-        int32_t y,
-        uint32_t w,
-        uint32_t h,
-        void *data
-        );
-
-/* Overflow results in undefined behaviour.
- */
 void
 PannelDrawLine(
         Pannel *pannel,
@@ -146,7 +124,7 @@ PannelDrawLine(
         int32_t starty,
         int32_t endx,
         int32_t endy,
-        void *color
+        uint32_t colour
         );
 
 void
@@ -157,7 +135,7 @@ PannelDrawRectangle(
         uint32_t w,
         uint32_t h,
         uint8_t fill,
-        void *color
+        uint32_t colour
         );
 
 /* Overflow results in undefined behaviour.
@@ -170,7 +148,7 @@ PannelWidgetDrawLine(
         int32_t starty,
         int32_t endx,
         int32_t endy,
-        void *color
+        uint32_t colour
         );
 
 void
@@ -182,7 +160,7 @@ PannelWidgetDrawRectangle(
         uint32_t w,
         uint32_t h,
         uint8_t fill,
-        void *color
+        uint32_t colour
         );
 
 /* TOD */
