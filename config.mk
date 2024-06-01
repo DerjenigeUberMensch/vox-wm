@@ -30,17 +30,17 @@ DEBUGFLAGS = -ggdb -g -pg ${CCVERSION} ${WARNINGFLAGS} ${INCS} ${CPPFLAGS} ${BIN
 
 WARNINGFLAGS = -pedantic -Wall -Wno-deprecated-declarations -Wshadow -Wuninitialized -Werror=format-security
 
-LINKTIMEOPTIMIZATIONS = -flto
+LINKTIMEOPTIMIZATIONS = -flto -flto=auto
 
 ifeq ($(CC), clang)
 	LINKTIMEOPTIMIZATIONS = 
 endif
 
-PRELINKERFLAGS = -fprefetch-loop-arrays -fstack-protector-strong -fstack-clash-protection -fpie ${LINKTIMEOPTIMIZATIONS} ${SECTIONCODE} 
+PRELINKERFLAGS = -fstack-protector-strong -fstack-clash-protection -fpie ${LINKTIMEOPTIMIZATIONS} ${SECTIONCODE} 
 
 # can set higher but function overhead is pretty small so meh
 INLINELIMIT = 15
-LINKERFLAGS = ${DYNAMICLINK} -Wl,--gc-sections,--as-needed,--relax,--strip-all,-z,relro,-z,now,-z,noexecstack,-z,defs,-pie -finline-functions -finline-limit=${INLINELIMIT}  ${LINKTIMEOPTIMIZATIONS}
+LINKERFLAGS = ${DYNAMICLINK} -Wl,--gc-sections,--as-needed,--relax,--strip-all,-z,relro,-z,now,-z,noexecstack,-z,defs,-pie -finline-limit=${INLINELIMIT}  ${LINKTIMEOPTIMIZATIONS}
 
 BINARY = ${X64}
 CPPFLAGS = -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L ${XINERAMAFLAGS}
@@ -50,15 +50,15 @@ RELEASEFLAGS = ${CCFLAGS}
 DEBUG 	= ${DEBUGFLAGS} -O0
 
 SIZE  	= ${RELEASEFLAGS} -Os 
-# This sacrifies some speed for a 10-20% decrease in size
+
 SIZEONLY= ${RELEASEFLAGS} -Oz -fno-ident -fno-asynchronous-unwind-tables
 
 # Release Stable (-O2)
-RELEASE = ${RELEASEFLAGS} -O2 -ftree-loop-vectorize
+RELEASE = ${RELEASEFLAGS} -O2 
 # Release Speed (-O3)
-RELEASES= ${RELEASEFLAGS} -O3 
+#RELEASES= ${RELEASEFLAGS} -O3 
 # Release Speed (-O3) (debug)
-#RELEASES = ${RELEASEFLAGS} -O3 ${DEBUGFLAGS} -fno-inline -DENABLE_DEBUG -DXCB_TRL_ENABLE_DEBUG
+RELEASES = ${RELEASEFLAGS} -O3 ${DEBUGFLAGS} -fno-inline -DENABLE_DEBUG -DXCB_TRL_ENABLE_DEBUG
 
 # Build using cpu specific instruction set for more performance (Optional)
 BUILDSELF = ${RELEASEFLAGS} ${XNATIVE} -O3
