@@ -95,6 +95,8 @@ UserStats(const Arg *arg)
         DEBUG0("Extras.");
         DEBUG("NEVERFOCUS:          %s", GET_BOOL(NEVERFOCUS(c)));
         DEBUG("MAP ICONIC:          %s", GET_BOOL(ISMAPICONIC(c)));
+        DEBUG("FLOATING:            %s", GET_BOOL(ISFLOATING(c)));
+        DEBUG("WASFLOATING:         %s", GET_BOOL(WASFLOATING(c)));
     }
     else
     {   DEBUG0("NULL");
@@ -236,7 +238,8 @@ DragWindow(
     if(c)
     {
         /* prevent DOCKED from computing non floating */
-        setfloating(c, 1); 
+        setfloating(c, 1); c->x += 1;
+        arrange(_wm.selmon->desksel);
     }
     else
     {   XCBRaiseWindow(_wm.dpy, win);
@@ -258,7 +261,7 @@ DragWindow(
                     {   resize(c, nx, ny, c->w, c->h, 1);
                     }
                     else
-                    {   XCBMoveResizeWindow(_wm.dpy, win, nx, ny, oldw, oldh);
+                    {   XCBMoveWindow(_wm.dpy, win, nx, ny);
                     }
                     XCBFlush(_wm.dpy);
                     break;
@@ -399,25 +402,12 @@ ResizeWindow(const Arg *arg)
         u8 hintsstatus = XCBGetWMNormalHintsReply(_wm.dpy, GetWMNormalHintsCookie, &hints);
         if(hintsstatus)
         {
-            maxw = UINT16_MAX;
-            maxh = UINT16_MAX;
-            minw = 1;
-            minh = 1;
-            if(hints.flags & XCB_SIZE_HINT_P_MIN_SIZE)
-            {
-                minw = hints.min_width;
-                minh = hints.min_height;
-            }
-            else if(hints.flags & XCB_SIZE_HINT_P_BASE_SIZE)
-            {
-                minw = hints.base_width;
-                minh = hints.base_height;
-            }
-            if(hints.flags & XCB_SIZE_HINT_P_MAX_SIZE)
-            {
-                maxw = hints.max_width;
-                maxh = hints.max_height;
-            }
+            Client c1;
+            updatesizehints(&c1, &hints);
+            minw = c1.minw;
+            minh = c1.minh;
+            maxw = c1.maxw;
+            maxh = c1.maxh;
         }
         else
         {   return;
@@ -430,6 +420,10 @@ ResizeWindow(const Arg *arg)
         maxw = c->maxw;
         maxh = c->maxh;
     }
+
+    const u8 MIN_SIZE = 1 * 1;
+    minw = MAX(minw, MIN_SIZE);
+    minh = MAX(minh, MIN_SIZE);
 
     horz = nx < oldw / 2 ? -1 : 1;
     vert = ny < oldh / 2 ? -1 : 1;
@@ -487,8 +481,12 @@ ResizeWindow(const Arg *arg)
                     nw = oldw + horz * (((XCBMotionNotifyEvent *)ev)->root_x - curx);
                     nh = oldh + vert * (((XCBMotionNotifyEvent *)ev)->root_y - cury);
 
-                    nw = MIN(nw, maxw);
-                    nh = MIN(nh, maxh);
+                    if(maxw)
+                    {   nw = MIN(nw, maxw);
+                    }
+                    if(maxh)
+                    {   nh = MIN(nh, maxh);
+                    }
 
                     nw = MAX(nw, minw);
                     nh = MAX(nh, minh);
@@ -615,11 +613,16 @@ MaximizeWindow(const Arg *arg)
     {   return;
     }
     if(!DOCKED(c))
-    {   maximize(c);
+    {   
+        setfloating(c, 0);
+        maximize(c);
     }
     else /* else its maximized */
-    {   unmaximize(c);
+    {   
+        unmaximize(c);
+        setfloating(c, 1);
     }
+    DEBUG("(x: %d, y: %d), (w: %u, h: %u)", c->x, c->y, c->w, c->h);
     arrange(c->desktop);
     XCBFlush(_wm.dpy);
 }
