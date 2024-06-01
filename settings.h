@@ -28,13 +28,13 @@ typedef struct UserSettings UserSettings;
 struct UserSettings
 {
     float mfact;
+    float gapratio;
 
     uint16_t mcount;        /* tiling master count */
     uint8_t defaultlayout;
     uint8_t odefaultlayout;
 
     uint16_t defaultdesk;
-    uint16_t gapwidth;
 
     uint16_t snap;
     uint16_t refreshrate;
@@ -106,12 +106,12 @@ USGetDefaultDesk(
         UserSettings *settings
         );
 void
-USSetGapWidth(
+USSetGapRatio(
         UserSettings *settings,
-        uint16_t gapwidth
+        float ratio
         );
-uint16_t
-USGetGapWidth(
+float
+USGetGapRatio(
         UserSettings *settings
         );
 void

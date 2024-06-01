@@ -120,7 +120,7 @@ enum KillType
 /* layout(s) */
 enum LayoutType
 {
-    Tiled, Floating, Monocle, Grid
+    Tiled, Floating, Monocle, Grid, LayoutTypeLAST
 };
 
 enum ClientListModes
@@ -178,37 +178,51 @@ struct Client
 {
     int16_t x;          /* X coordinate             */
     int16_t y;          /* Y coordinate             */
+
     uint16_t w;         /* Width                    */
     uint16_t h;         /* height                   */
+
+
     int16_t oldx;       /* Previous X coordinate    */
     int16_t oldy;       /* Previous Y coordinate    */
+
     uint16_t oldw;      /* Previous Width           */
     uint16_t oldh;      /* Previous Height          */
 
+
     uint16_t wtypeflags;/* Window type flags        */
     uint16_t wstateflags;/* Window state flags      */
+
     uint32_t flags;     /* Misc States              */
+
 
     uint16_t bw;        /* Border Width             */
     uint16_t oldbw;     /* Old Border Width         */
 
     uint32_t bcol;      /* Border Colour            */
 
+
     float mina;         /* Minimum Aspect           */
     float maxa;         /* Maximum Aspect           */
+
+
     uint16_t basew;     /* Base Width               */
     uint16_t baseh;     /* Base Height              */
+
     uint16_t incw;      /* Increment Width          */
     uint16_t inch;      /* Increment Height         */
-    uint16_t maxw;      /* Max Width                */
-    uint16_t maxh;      /* Max Height               */
+
+
+    uint16_t maxw;      /* Max Width.               */
+    uint16_t maxh;      /* Max Height.              */
+
     uint16_t minw;      /* Minimum Width            */
     uint16_t minh;      /* Minimum Height           */
 
+
     XCBWindow win;      /* Client Window            */
-    uint16_t rstacknum; /* Used in calculating pos  */
-    uint8_t pad[2];
     pid_t pid;          /* Client Pid               */
+
 
     Client *next;       /* The next client in list  */
     Client *prev;       /* The previous client      */
@@ -226,7 +240,10 @@ struct Client
     char *classname;    /* Class Name               */
     char *instancename; /* Instance Name            */
     uint32_t *icon;     /* Array of icon values     */
+
     UT_hash_handle hh;  /* hash handle              */
+    uint16_t rstacknum; /* Used in calculating pos  */
+    uint8_t pad0[6];
 };
 
 struct Decoration
@@ -252,19 +269,15 @@ struct Monitor
     Desktop *desklast;          /* Last Desktop                             */
     Desktop *desksel;           /* Selected Desktop                         */
     Monitor *next;              /* Next Monitor                             */
-
     Bar *bar;                   /* The Associated Task-Bar                  */
+    Client *__hash;             /* Hashed clients                           */
 
     uint16_t deskcount;         /* Desktop Counter                          */
-    uint8_t pad[2];
-    uint8_t pad0[4];
-
-    Client *__hash;             /* Hashed clients                           */
+    uint8_t pad0[6];
 };
 
 struct Layout
-{
-    char *symbol;
+{   
     void (*arrange)(Desktop *);
 };
 
@@ -294,14 +307,19 @@ struct WM
 {
     int screen;                     /* Screen id            */
     int numlockmask;                /* numlockmask          */
+
     int running;                    /* Running flag         */
+
     uint8_t restart;                /* Restart flag         */
     uint8_t has_error;              /* Error flag           */
     uint8_t pad[2];                 /* Pad                  */
+
     uint16_t sw;                    /* Screen Height u16    */
     uint16_t sh;                    /* Screen Width  u16    */
+
     XCBWindow root;                 /* The root window      */
     XCBWindow wmcheckwin;           /* window manager check */
+
     XCBDisplay *dpy;                /* The current display  */
     Monitor *selmon;                /* Selected Monitor     */
     Monitor *mons;                  /* Monitors             */
@@ -547,6 +565,7 @@ Client *nextrstack(Client *c);
  * RETURN: NULL on Failure.
  */
 Client *nextfocus(Client *c);
+Client *nexttiled(Client *c);
 /* Returns the next visible client avaible.
  * RETURN: Client* on Success.
  * RETURN: NULL on Failure.
@@ -790,7 +809,9 @@ void updateicon(Client *c, XCBWindowProperty *iconprop);
 void updatemotifhints(void);
 /* checks and updates mask if numlock is active */
 void updatenumlockmask(void);
-/* Updates a Clients sizehints property using the provided hints pointer "size" */
+/* Updates a Clients sizehints property using the provided hints pointer "size".
+ * Doesnt require any data from client, AKA modular. still requires "size" though.
+ */
 void updatesizehints(Client *c, XCBSizeHints *size);
 /* Updates Client tile if we find one;
  * if none found default to dwm.h BROKEN
@@ -915,13 +936,13 @@ uint16_t WIDTH(Client *c);
 uint16_t HEIGHT(Client *c);
 
 
-static const Layout layouts[4] =
+static const Layout layouts[LayoutTypeLAST] =
 {
-    /* Name          symbol     arrange function */
-    [Tiled]     = { "[T]",      tile            },
-    [Floating]  = { "[F]",      floating        },
-    [Monocle]   = { "[M]",      monocle         },
-    [Grid]      = { "[G]",      grid            },
+    /* Name             arrange     */
+    [Tiled]     = {     tile        },
+    [Floating]  = {     floating    },
+    [Monocle]   = {     monocle     },
+    [Grid]      = {     grid        },
 };
 
 #endif 

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include <unistd.h>
 #include <unistd.h>
 #include <signal.h>
@@ -59,13 +60,13 @@ int WASDOCKEDVERT(Client *c)    {   const i16 wy = c->desktop->mon->wy;
                                     const u16 wh = c->desktop->mon->wh;
                                     const i16 y = c->oldy;
                                     const u16 h = OLDHEIGHT(c);
-                                    return !((wy != y) + (wh != h));
+                                    return (wy == y) && (wh == h);
                                 }
 int WASDOCKEDHORZ(Client *c)    {   const i16 wx = c->desktop->mon->wx;
                                     const u16 ww = c->desktop->mon->ww;
                                     const i16 x = c->oldx;
                                     const u16 w = OLDWIDTH(c);
-                                    return !((wx != x) + (ww != w));
+                                    return (wx == x) && (ww == w);
                                 }
 
 int WASDOCKED(Client *c)        { return WASDOCKEDVERT(c) & WASDOCKEDHORZ(c); }
@@ -74,14 +75,14 @@ int DOCKEDVERT(Client *c)       {   const i16 wy = c->desktop->mon->wy;
                                     const u16 wh = c->desktop->mon->wh;
                                     const i16 y = c->y;
                                     const u16 h = HEIGHT(c);
-                                    return !((wy != y) + (wh != h));
+                                    return (wy == y) && (wh == h);
                                 }
 
 int DOCKEDHORZ(Client *c)       {   const i16 wx = c->desktop->mon->wx;
                                     const u16 ww = c->desktop->mon->ww;
                                     const i16 x = c->x;
                                     const u16 w = WIDTH(c);
-                                    return !((wx != x) + (ww != w));
+                                    return (wx == x) && (ww == w);
                                 }
 int DOCKED(Client *c)           { return DOCKEDVERT(c) & DOCKEDHORZ(c); }
 int ISFIXED(Client *c)          { return (c->minw != 0) && (c->minh != 0) && (c->minw == c->maxw) && (c->minh == c->maxh); }
@@ -307,14 +308,6 @@ applysizehints(Client *c, i32 *x, i32 *y, i32 *width, i32 *height, uint8_t inter
 {
     u8 baseismin;
     const Monitor *m = c->desktop->mon;
-    const u16 MAXW = m->mw * 2;
-    const u16 MAXH = m->mh * 2;
-    /* set minimum possible */
-    *width = MAX(1, *width);
-    *height = MAX(1, *height);
-    /* set max possible */
-    *width = MIN(MAXW, *width);
-    *height = MIN(MAXH, *height);
 
     if (interact)
     {
@@ -324,10 +317,10 @@ applysizehints(Client *c, i32 *x, i32 *y, i32 *width, i32 *height, uint8_t inter
         if (*y > _wm.sh) 
         {   *y = _wm.sh - HEIGHT(c);
         }
-        if (*x + *width + (c->bw * 2) < 0)
+        if (*x + *width + (WIDTH(c) - c->w) < 0)
         {   *x = 0;
         }
-        if (*y + *height + (c->bw * 2) < 0)
+        if (*y + *height + (HEIGHT(c) - c->h) < 0)
         {   *y = 0;
         }
     }
@@ -339,15 +332,15 @@ applysizehints(Client *c, i32 *x, i32 *y, i32 *width, i32 *height, uint8_t inter
         if (*y >= m->wy + m->wh) 
         {   *y = m->wy + m->wh - HEIGHT(c);
         }
-        if (*x + *width + (c->bw * 2) <= m->wx) 
+        if (*x + *width + (WIDTH(c) - c->w) <= m->wx) 
         {   *x = m->wx;
         }
-        if (*y + *height + (c->bw * 2) <= m->wy) 
+        if (*y + *height + (HEIGHT(c) - c->h) <= m->wy) 
         {   *y = m->wy;
         }
     }
 
-    if (ISFLOATING(c))
+    if (!DOCKED(c))
     {
         /* see last two sentences in ICCCM 4.1.2.3 */
         baseismin = c->basew == c->minw && c->baseh == c->minh;
@@ -444,7 +437,6 @@ arrangedesktop(Desktop *desk)
     if(layouts[desk->layout].arrange)
     {   layouts[desk->layout].arrange(desk);
     }
-    /* update the bar or something */
 }
 
 /* Macro helper */
@@ -936,6 +928,10 @@ configure(Client *c)
         .border_width = c->bw,
         .above_sibling = XCB_NONE,
         .override_redirect = False,
+        /* valgrind complains about "uninitialized bytes" */
+        .pad0 = 0,
+        .pad1 = 0,
+        .sequence = 0
     };
     /* valgrind says that this generates some stack allocation error in writev(vector[1]) but it seems to be a xcb issue */
     XCBSendEvent(_wm.dpy, c->win, False, XCB_EVENT_MASK_STRUCTURE_NOTIFY, (const char *)&ce);
@@ -1183,12 +1179,12 @@ geticonprop(XCBWindowProperty *iconreply)
     u32 *ret = NULL;
     if(iconreply)
     {
-        if(iconreply->format != 32)
-        {   DEBUG("Icon format is not standard, icon may be corrupt. %d", iconreply->format);
-        }
         if(iconreply->format == 0)
         {   DEBUG0("Icon has no format, icon may be corrupt.");
             return ret;
+        }
+        if(iconreply->format != 32)
+        {   DEBUG("Icon format is not standard, icon may be corrupt. %d", iconreply->format);
         }
         u32 *icon = XCBGetPropertyValue(iconreply);
         size_t size = XCBGetPropertyValueSize(iconreply);
@@ -1304,59 +1300,65 @@ grabkeys(void)
 void
 grid(Desktop *desk)
 {
-    /* TODO implement bgw without fucking up 1 side */
-    const u16 bgw = USGetGapWidth(&_cfg);
+    const float bgwr = USGetGapRatio(&_cfg);
 
-    /* TODO */
-    (void)bgw;
-
-    i32 i, n, cw, ch, aw, ah, cols, rows;
-    i32 nx, ny, nw, nh;
-    Client *c;
+    i32 n, cols, rows, cn, rn, i, cx, cy, cw, ch;
+    i32 nx, ny;
+    i32 nw, nh;
+	Client *c;
     Monitor *m = desk->mon;
 
-    for(n = 0, c = desk->stack; c; c = nextstack(c))
-    {   
-        if(ISFLOATING(c))
-        {   continue;
-        }
-        ++n;
-    }
-
-    if(!n) 
+	for(n = 0, c = nexttiled(desk->stack); c; c = nexttiled(c->snext), n++);
+	if(n == 0)
     {   return;
     }
 
-    /* grid dimensions */
-    for(rows = 0; rows <= n * 2; ++rows)
-    {
-        if(rows * rows >= n)
+	/* grid dimensions */
+	for(cols = 0; cols <= n/2; cols++)
+    {   
+        if(cols*cols >= n)
         {   break;
         }
     }
-
-    cols = rows - !!(rows && (rows - 1) * rows >= n);
-    /* window geoms (cell height/width) */
-    ch = m->wh / (rows + !rows);
-    cw = m->ww / (cols + !cols);
-    for(i = 0, c = desk->stack; c; c = nextstack(c))
-    {
-        if(ISFLOATING(c))
-        {   continue;
-        }
-        nx = m->wx + (i / rows) * cw;
-        ny = m->wy + (i % rows) * ch;
-        /* adjust height/width of last row/column's windows */
-        ah = !!((i + 1) % rows) * (m->wh - ch * rows);
-        aw = !!(i >= rows * (cols - 1)) * (m->ww - cw * cols);
-
-        /* _cfg.bgw without fucking everything else */
-        nw = cw - c->bw * 2 + aw;
-        nh = ch - c->bw * 2 + ah;
-
-        resize(c, nx, ny, nw, nh, 0);
-        ++i;
+    /* set layout against the general calculation: not 1:2:2, but 2:3 */
+	if(n == 5) 
+    {   cols = 2;
     }
+	rows = n / cols;
+
+	/* window geometries */
+    cw = m->ww / (cols + !cols);
+    /* current column number */
+	cn = 0;
+    /* current row number */
+	rn = 0; 
+	for(i = 0, c = nexttiled(desk->stack); c; i++, c = nexttiled(c->snext)) 
+    {
+		if((i / rows) + 1 > cols - (n % cols))
+        {   rows = n/cols + 1;
+        }
+        ch = m->wh / (rows + !rows);
+		cx = m->wx + cn * cw;
+		cy = m->wy + rn * ch;
+
+        nx = cx;
+        ny = cy;
+        nw = cw - (WIDTH(c) - c->w);
+        nh = ch - (HEIGHT(c) - c->h);
+
+        nx += (nw - (nw * bgwr)) / 2;
+        ny += (nh - (nh * bgwr)) / 2;
+        nw *= bgwr;
+        nh *= bgwr;
+
+		resize(c, nx, ny, nw, nh, 0);
+        ++rn;
+		if(rn >= rows) 
+        {
+			rn = 0;
+            ++cn;
+		}
+	}
 }
 
 void 
@@ -1582,7 +1584,10 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     }
 
     if(!ISFLOATING(c))
-    {   setfloating(c, trans || !DOCKED(c));
+    {   
+        if(trans || DOCKED(c))
+        {   setfloating(c, 1);
+        }
     }
     /* inherit previous client state */
     if(c->desktop && c->desktop->sel)
@@ -1684,14 +1689,11 @@ monocle(Desktop *desk)
     const i32 nx = m->wx;
     const i32 ny = m->wy;
 
-    for(c = desk->focus; c; c = nextfocus(c))
+    for(c = nexttiled(desk->stack); c; c = nexttiled(c->snext))
     {
-        if(ISFLOATING(c))
-        {   continue;   
-        }
         nw = m->ww - (c->bw * 2);
         nh = m->wh - (c->bw * 2);
-        resize(c, nx, ny, nw, nh, 0); 
+        resize(c, nx, ny, nw, nh, 0);
     }
 }
 
@@ -1729,6 +1731,13 @@ Client *
 nextfocus(Client *c)
 {
     return c ? c->fnext : c;
+}
+
+Client *
+nexttiled(Client *c)
+{   
+    for(; c && (ISFLOATING(c) || !ISVISIBLE(c)); c = nextstack(c));
+    return c;
 }
 
 Client *
@@ -1980,8 +1989,8 @@ restoreclientsession(Desktop *desk, char *buff, u16 len)
         {
             setborderwidth(cclient, BorderWidth);
             setbordercolor32(cclient, BorderColor);
-            resize(cclient, ox, oy, ow, oh, 1);
-            resize(cclient, x, y, w, h, 1);
+            resize(cclient, ox, oy, ow, oh, 0);
+            resize(cclient, x, y, w, h, 0);
             cclient->flags = Flags;
         }
         if(fclient)
@@ -2280,13 +2289,7 @@ __cmp(Client *c1, Client *c2)
      * RETURN -1 on lesser priority
      * RETURN 0 on lesser priority. 
      */
-    /* != basically just skips if they both have it and only success if one of them has it AKA compare */
-    if(ISFLOATING (c1) && DOCKED(c1))
-    {   setfloating(c1, 0);
-    }
-    if(ISFLOATING(c2) && DOCKED(c2))
-    {   setfloating(c2, 0);
-    }
+    /* XOR basically just skips if they both have it and only success if one of them has it AKA compare */
 
     const u32 dock1 = ISDOCK(c1);
     const u32 dock2 = ISDOCK(c2);
@@ -2328,7 +2331,11 @@ reorder(Desktop *desk)
     Client *c;
     u16 i = 0;
     for(c = desk->flast; c; c = prevfocus(c))
-    {   c->rstacknum = ++i;
+    {   
+        c->rstacknum = ++i;
+        if(ISFLOATING(c) && DOCKED(c))
+        {   setfloating(c, 0);
+        }
     }
     MERGE_SORT_LINKED_LIST(Client, __cmp, desk->stack, desk->slast, snext, sprev, 1, 0);
 }
@@ -3104,7 +3111,7 @@ setupcfgdefaults(void)
     const u8 odesktoplayout = Tiled;
     const u8 defaultdesktop = 0;
     const u16 refreshrate = 60;
-    const u16 bgw = 15;
+    const float bgw = 0.95f;
     const u16 winsnap = 10;
     const u16 maxcc = 256;
     const float mfact = 0.55f;
@@ -3119,7 +3126,7 @@ setupcfgdefaults(void)
     USSetDefaultDesk(s, defaultdesktop);
     USSetHoverFocus(s, hoverfocus);
     USSetRefreshRate(s, refreshrate);
-    USSetGapWidth(s, bgw);
+    USSetGapRatio(s, bgw);
     USSetSnap(s, winsnap);
     USSetMaxClientCount(s, maxcc);
     USSetMFact(s, mfact);
@@ -3372,13 +3379,14 @@ tile(Desktop *desk)
 {
     const u16 nmaster = USGetMCount(&_cfg);
     const float mfact = USGetMFact(&_cfg);
-    const u16 bgw = USGetGapWidth(&_cfg);
-    
-    u32 h, mw, my, ty;
+    const float bgwr = USGetGapRatio(&_cfg);
+
+    i32 h, mw, my, ty;
     i32 n, i;
     i32 nx, ny;
     i32 nw, nh;
-    Client *c;
+
+    Client *c = NULL;
     Monitor *m = desk->mon;
 
     n = 0;
@@ -3386,16 +3394,17 @@ tile(Desktop *desk)
     {   n += !ISFLOATING(c);
     }
 
-    if(!n)
+    if(!n) 
     {   return;
     }
-
+    
     if(n > nmaster)
-    {   mw = nmaster ? m->ww * mfact : 0;
+    {   mw = nmaster ? m->ww * mfact: 0;
     }
     else
     {   mw = m->ww;
     }
+
     i = my = ty = 0;
     for (c = desk->stack; c; c = nextstack(c))
     {
@@ -3407,20 +3416,17 @@ tile(Desktop *desk)
             h = (m->wh - my) / (MIN(n, nmaster) - i);
             nx = m->wx;
             ny = m->wy + my;
-            nw = mw - (c->bw << 1);
-            nh = h - (c->bw << 1);
+            nw = mw - c->bw * 2;
+            nh = h - c->bw * 2;
 
-            /* we divide nw also to get even gaps
-             * if we didnt the center gap would be twices as big
-             * Although this may be desired, one would simply remove the shift ">>" by 1 in nw 
-             */
-            nx += bgw;
-            ny += bgw;
-            nw -= bgw << 1;
-            nh -= bgw << 1;
+            nx += (nw - (nw * bgwr)) / 2;
+            ny += (nh - (nh * bgwr)) / 2;
+            nw *= bgwr;
+            nh *= bgwr;
+
             resize(c, nx, ny, nw, nh, 0);
             if (my + HEIGHT(c) < m->wh) 
-            {   my += HEIGHT(c) + bgw;
+            {   my += HEIGHT(c);
             }
         }
         else
@@ -3428,23 +3434,23 @@ tile(Desktop *desk)
             h = (m->wh - ty) / (n - i);
             nx = m->wx + mw;
             ny = m->wy + ty;
-            nw = m->ww - mw - (c->bw << 1);
-            nh = h - (c->bw << 1);
+            nw = m->ww - mw - c->bw * 2;
+            nh = h - c->bw * 2;
 
-            nx += bgw >> 1;
-            ny += bgw;
-            nw -= bgw << 1;
-            nh -= bgw << 1;
+            nx += (nw - (nw * bgwr)) / 2;
+            ny += (nh - (nh * bgwr)) / 2;
+            nw *= bgwr;
+            nh *= bgwr;
 
             resize(c, nx, ny, nw, nh, 0);
-                                                                    /* spacing for windows below */ 
             if (ty + HEIGHT(c) < m->wh) 
-            {   ty += HEIGHT(c) + bgw;
+            {   ty += HEIGHT(c);
             }
         }
         ++i;
     }
 }
+
 
 void
 unfocus(Client *c, uint8_t setfocus)
@@ -3888,63 +3894,84 @@ updatenumlockmask(void)
 void
 updatesizehints(Client *c, XCBSizeHints *size)
 {
-    /* init values */
-    c->basew = c->baseh = 0;
-    c->incw = c->inch = 0;
-    /* maxw should just be 2 times the max monitor size (if not set) */
-    c->maxw = c->desktop->mon->ww * 2;
-    c->maxh = c->desktop->mon->wh * 2;
-    c->minw = c->minh = 0;
-    c->maxa = c->mina = 0.0;
+    const int UNINITIALIZED = 0;
+    i32 basew = UNINITIALIZED;
+    i32 baseh = UNINITIALIZED;
+    i32 minw = UNINITIALIZED;
+    i32 minh = UNINITIALIZED;
+    i32 maxw = UNINITIALIZED;
+    i32 maxh = UNINITIALIZED;
+    i32 incw = UNINITIALIZED;
+    i32 inch = UNINITIALIZED;       
+    float mina = (float)UNINITIALIZED + 0.0f;   /* make sure sign is positive */
+    float maxa = (float)UNINITIALIZED + 0.0f;   /* make sure sign is positive */
 
     /* size is uninitialized, ensure that size.flags aren't used */
-    size->flags += !size->flags * XCB_SIZE_HINT_P_SIZE;
-
+    if(!size->flags)
+    {   size->flags = XCB_SIZE_HINT_P_SIZE;
+    }
     if(size->flags & XCB_SIZE_HINT_P_MIN_SIZE)
     {
-        c->minw = size->min_width;
-        c->minh = size->min_height;
+        minw = size->min_width;
+        minh = size->min_height;
     }
     else if(size->flags & XCB_SIZE_HINT_P_BASE_SIZE)
-    {
-        c->minw = size->base_width;
-        c->minh = size->base_height;
+    {   
+        minw = size->base_width;
+        minh = size->base_height;
     }
 
     if(size->flags & XCB_SIZE_HINT_P_BASE_SIZE)
     {
-        c->basew = size->base_width;
-        c->baseh = size->base_height;
+        basew = size->base_width;
+        baseh = size->base_height;
     }
     else if(size->flags & XCB_SIZE_HINT_P_MIN_SIZE)
-    {
-        c->basew = c->minw;
-        c->baseh = c->minh;
+    {   
+        minw = size->min_width;
+        minh = size->min_height;
     }
 
     if(size->flags & XCB_SIZE_HINT_P_RESIZE_INC)
     {
-        c->incw = size->width_inc;
-        c->inch = size->height_inc;
+        incw = size->width_inc;
+        inch = size->height_inc;
     }
-    if(size->flags & XCB_SIZE_HINT_P_MIN_SIZE)
+    if(size->flags & XCB_SIZE_HINT_P_MAX_SIZE)
     {
-        c->maxw = size->max_width;
-        c->maxh = size->max_height;
-    }
-    if(size->flags & XCB_SIZE_HINT_P_ASPECT)
-    {
-        c->mina = (float)size->min_aspect_den / size->min_aspect_num;
-        c->maxa = (float)size->max_aspect_num / size->max_aspect_den;
+        maxw = size->max_width;
+        maxh = size->max_height;
     }
 
-    /* if client set max size to none */
-    if(!c->maxw)
-    {   c->maxw = c->desktop->mon->ww * 2;
+    if(size->flags & XCB_SIZE_HINT_P_ASPECT)
+    {
+        mina = (float)size->min_aspect_den / (size->min_aspect_num + !size->min_aspect_den);
+        maxa = (float)size->max_aspect_num / (size->max_aspect_den + !size->max_aspect_num);
+        mina = fabsf(mina);
+        maxa = fabsf(maxa);
     }
-    if(!c->maxh)
-    {   c->maxh = c->desktop->mon->wh * 2;
-    }
+    /* clamp */
+    minw = MIN(minw, UINT16_MAX);
+    minh = MIN(minh, UINT16_MAX);
+    maxw = MIN(maxw, UINT16_MAX);
+    maxh = MIN(maxh, UINT16_MAX);
+    basew = MIN(basew, UINT16_MAX);
+    baseh = MIN(baseh, UINT16_MAX);
+    (void)mina;
+    (void)maxa;
+    inch = MIN(inch, UINT16_MAX);
+    incw = MIN(incw, UINT16_MAX);
+
+    c->minw = minw;
+    c->minh = minh;
+    c->maxw = maxw;
+    c->maxh = maxh;
+    c->basew = basew;
+    c->baseh = baseh;
+    c->mina = mina;
+    c->maxa = maxa;
+    c->inch = inch;
+    c->incw = incw;
 }
 
 void

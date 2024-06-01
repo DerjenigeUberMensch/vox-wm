@@ -96,7 +96,7 @@ union ARGB
 #define DEBUG0(X) (fprintf(stderr, "[%s:%d] by %s(): " X "\n", __FILE__, __LINE__, __func__))
 #else
 #define DEBUG(fmt, ...) ((void)0)
-#define DEBUG0(X) ((void)0)
+#define DEBUG0(X)       ((void)0)
 #endif
 
 /* gcc */

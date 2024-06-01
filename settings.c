@@ -108,20 +108,20 @@ USGetDefaultDesk(
 }
 
 void
-USSetGapWidth(
+USSetGapRatio(
         UserSettings *settings,
-        uint16_t gapwidth
+        float ratio
         )
 {
-    settings->gapwidth = gapwidth;
+    settings->gapratio = ratio;
 }
 
-uint16_t
-USGetGapWidth(
+float
+USGetGapRatio(
         UserSettings *settings
         )
 {
-    return settings->gapwidth;
+    return settings->gapratio;
 }
 
 void
