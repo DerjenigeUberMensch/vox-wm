@@ -720,8 +720,12 @@ XCBCookie
 XCBMoveResizeWindow(XCBDisplay *display, XCBWindow window, i32 x, i32 y, u32 width, u32 height)
 {
     /* fucks up sometimes so this will do */
-    XCBMoveWindow(display, window, x, y);
-    XCBCookie ret = XCBResizeWindow(display, window, width, height);
+    const i32 value1[2] = { x, y };
+    const u16 mask1 = XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y;
+    const u32 value2[2] = { width, height };
+    const u16 mask2 = XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT;
+    xcb_configure_window(display, window, mask1, value1);
+    XCBCookie ret = xcb_configure_window(display, window, mask2, value2);
 #ifdef DBG
     _xcb_push_func(ret, _fn);
 #endif
@@ -732,7 +736,7 @@ XCBCookie
 XCBResizeWindow(XCBDisplay *display, XCBWindow window, u32 width, u32 height)
 {
     const u32 values[2] = { width, height };
-    const u32 mask = XCB_CONFIG_WINDOW_WIDTH|XCB_CONFIG_WINDOW_HEIGHT;
+    const u32 mask = XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT;
     XCBCookie ret = xcb_configure_window(display, window, mask, values);
 #ifdef DBG
     _xcb_push_func(ret, _fn);
