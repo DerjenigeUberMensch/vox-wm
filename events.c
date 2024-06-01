@@ -786,7 +786,7 @@ resizerequest(XCBGenericEvent *event)
     if(c)
     {   
         resize(c, c->x, c->y, w, h, 0);
-        if(!DOCKED(c))
+        if(!ISFLOATING(c) && !DOCKED(c))
         {   setfloating(c, 1);
         }
         sync = 1;
@@ -1109,6 +1109,7 @@ clientmessage(XCBGenericEvent *event)
     {   return;
     }
 
+    u8 sync = 0;
     Client *c = wintoclient(win);
     if(c)
     {
@@ -1128,24 +1129,38 @@ clientmessage(XCBGenericEvent *event)
             const XCBAtom prop2 = l2;
             updatewindowstate(c, prop1, action);
             updatewindowstate(c, prop2, action);
+            sync = 1;
         }
         else if(atom == netatom[NetActiveWindow])
         {
             if(c->desktop && c->desktop->sel != c && !ISURGENT(c))
-            {   seturgent(c, 1);
+            {   
+                seturgent(c, 1);
+                sync = 1;
             }
         }
         else if(atom == netatom[NetCloseWindow])
-        {   killclient(c, Graceful);
+        {   
+            killclient(c, Graceful);
+            sync = 1;
         }
         else if(atom == netatom[NetMoveResize])
         {
             const int netwmstate = l2;
+            const u8 button = l3;
             XCBButtonPressEvent bev;
+            bev.state = SUPER;
             bev.root = _wm.root;
             bev.time = XCB_CURRENT_TIME;
             bev.child = 0;
             bev.event = win;
+            bev.detail = button;
+            bev.root_x = 0;
+            bev.root_y = 0;
+            bev.event_x = 0;
+            bev.event_y = 0;
+            bev.sequence = 0;
+            bev.same_screen = 1;
             Arg arg;
             arg.v = &bev;
             /* TODO */
@@ -1168,9 +1183,11 @@ clientmessage(XCBGenericEvent *event)
                     break;
                 case _NET_WM_MOVERESIZE_MOVE_KEYBOARD: 
                     break;
+                /* Not sure where the race condition occurs?? */
                 case _NET_WM_MOVERESIZE_CANCEL: 
                     break;
             }
+            sync = 1;
         }
         else if(atom == netatom[NetMoveResizeWindow])
         {
@@ -1182,9 +1199,23 @@ clientmessage(XCBGenericEvent *event)
             applysizehints(c, &x, &y, &w, &h, 0);
             applygravity(gravity, (int16_t *)&x, (int16_t *)&y, w, h, c->bw);
             resize(c, x, y, w, h, 0);
+            sync = 1;
         }
         else if(atom == netatom[NetRestackWindow])
-        {   /* TODO */
+        {   
+            /* "and therefore the Window Manager should always obey it. "
+             * Doesnt seem very safe.
+             */
+            XCBWindow sibling = l1;
+            u8 detail = l2;
+            /* todo figure out what this does */
+            (void)detail;
+            XCBConfigureRequestEvent config;
+            config.window = sibling;
+            config.parent = c->win;
+            config.value_mask = XCB_CONFIG_WINDOW_SIBLING | XCB_CONFIG_WINDOW_STACK_MODE;
+            configurerequest((XCBGenericEvent *)&config);
+            sync = 1;
         }
         else if(atom == netatom[NetRequestFrameExtents])
         {   /* TODO */
@@ -1196,7 +1227,7 @@ clientmessage(XCBGenericEvent *event)
         {   /* ignore */
         }
         else if (atom == netatom[NetDesktopViewport])
-        {   /* TODO */
+        {   /* ignore */
         }
         else if (atom == netatom[NetCurrentDesktop])
         {   
@@ -1208,7 +1239,13 @@ clientmessage(XCBGenericEvent *event)
                 u32 i = 0;
                 for(desk = m->desktops; desk && i != target; desk = nextdesktop(desk), ++i);
                 if(desk)
-                {   setclientdesktop(c, desk);
+                {   
+                    /* prevent focus/stack breaking if its already there */
+                    if(c->desktop != desk)
+                    {   
+                        setclientdesktop(c, desk);
+                        sync = 1;
+                    }
                 }
                 else
                 {   DEBUG0("Desktop was not in range defaulting to no desktop change.");
@@ -1216,21 +1253,59 @@ clientmessage(XCBGenericEvent *event)
             }
         }
         else if (atom == netatom[NetShowingDesktop])
-        {   /* TODO */
+        {   /* TODO
+             * Prob just reserve a desktop and just warp to it/warp back. (of course with no clients.)
+             */
         }
         else if (atom == netatom[NetWMDesktop])
         {
             /* refer: https://specifications.freedesktop.org/wm-spec/latest/ _NET_WM_DESKTOP */
             if(checksticky(l0))
-            {   setsticky(c, 1);
+            {   
+                setsticky(c, 1);
+                sync = 1;
+            }
+            else
+            {
+                u32 target = l0;
+                Monitor *m = c->desktop->mon;
+                if(m)
+                {
+                    Desktop *desk;
+                    u32 i = 0;
+                    for(desk = m->desktops; desk && i != target; desk = nextdesktop(desk), ++i);
+                    if(desk)
+                    {   
+                        /* prevent focus/stack breaking if its already there */
+                        if(c->desktop != desk)
+                        {   
+                            setclientdesktop(c, desk);
+                            sync = 1;
+                        }
+                    }
+                    else
+                    {   DEBUG0("Desktop was not in range defaulting to no desktop change.");
+                    }
+                }
             }
         }
         else if (atom == netatom[WMProtocols])
-        {   /* Protocol handler */
+        {   
+            XCBAtom _atom = l0;
+            XCBTimestamp _time = l1;
+            (void)_time;
+            XCBWMProtocols proto;
+            proto.atoms = &_atom;
+            proto.atoms_len = 1;
+            updatewindowprotocol(c, &proto);
+            sync = 1;
         }
         else if (atom == netatom[NetWMFullscreenMonitors])
         {   /* TODO */
         }
+    }
+    if(sync)
+    {   XCBFlush(_wm.dpy);
     }
 }
 
@@ -1260,6 +1335,7 @@ propertynotify(XCBGenericEvent *event)
         {   
             updatebargeom(_wm.selmon);
             updatebarpos(_wm.selmon);
+            sync = 1;
         }
         else
         {
