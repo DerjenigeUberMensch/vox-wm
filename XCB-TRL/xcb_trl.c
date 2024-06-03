@@ -2422,16 +2422,17 @@ XCBWindow
 XCBCreateWindow(
         XCBDisplay *display, 
         XCBWindow parent, 
-        i16 x, 
-        i16 y, 
-        u16 width, 
-        u16 height, 
-        u16 border_width, 
-        u8 depth, 
-        u16 class, 
+        int32_t x, 
+        int32_t y, 
+        uint32_t width, 
+        uint32_t height, 
+        uint32_t border_width, 
+        uint8_t depth, 
+        uint16_t class, 
         XCBVisual visual, 
         u32 valuemask, 
-        const XCBCreateWindowValueList *value_list)
+        const XCBCreateWindowValueList *value_list
+        )
 {
     const XCBWindow id = xcb_generate_id(display);
 
@@ -2451,11 +2452,11 @@ XCBWindow
 XCBCreateSimpleWindow(
         XCBDisplay *display,
         XCBWindow parent,
-        i16 x,
-        i16 y,
-        u16 width,
-        u16 height,
-        u16 border_width,
+        int32_t x,
+        int32_t y,
+        uint32_t width,
+        uint32_t height,
+        uint32_t border_width,
         uint32_t border_color,
         uint32_t background_color
         )
