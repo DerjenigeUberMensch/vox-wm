@@ -6,6 +6,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <pthread.h>
 
 
@@ -46,6 +47,49 @@ PannelCondUnwait(Pannel *p)
     pthread_cond_signal(p->cond);
     return PannelUnlock(p);
 }
+
+static 
+xcb_void_cookie_t xcb_poly_text_16_simple(xcb_connection_t * c,
+    xcb_drawable_t drawable, xcb_gcontext_t gc, int16_t x, int16_t y,
+    uint32_t len, const uint16_t *str)
+{
+    static const xcb_protocol_request_t xcb_req = {
+        5,                // count
+        0,                // ext
+        XCB_POLY_TEXT_16, // opcode
+        1                 // isvoid
+    };
+    struct iovec xcb_parts[7];
+    uint8_t xcb_lendelta[2];
+    xcb_void_cookie_t xcb_ret;
+    xcb_poly_text_8_request_t xcb_out;
+
+    xcb_out.pad0 = 0;
+    xcb_out.drawable = drawable;
+    xcb_out.gc = gc;
+    xcb_out.x = x;
+    xcb_out.y = y;
+
+    xcb_lendelta[0] = len;
+    xcb_lendelta[1] = 0;
+
+    xcb_parts[2].iov_base = (char *)&xcb_out;
+    xcb_parts[2].iov_len = sizeof(xcb_out);
+    xcb_parts[3].iov_base = 0;
+    xcb_parts[3].iov_len = -xcb_parts[2].iov_len & 3;
+
+    xcb_parts[4].iov_base = xcb_lendelta;
+    xcb_parts[4].iov_len = sizeof(xcb_lendelta);
+    xcb_parts[5].iov_base = (char *)str;
+    xcb_parts[5].iov_len = len * sizeof(int16_t);
+
+    xcb_parts[6].iov_base = 0;
+    xcb_parts[6].iov_len = -(xcb_parts[4].iov_len + xcb_parts[5].iov_len) & 3;
+
+    xcb_ret.sequence = xcb_send_request(c, 0, xcb_parts + 2, &xcb_req);
+    return xcb_ret;
+}
+
 
 static void
 PannelGraphicsExpose(Pannel *p, XCBGenericEvent *_x)
@@ -107,6 +151,25 @@ PannelResizeRequest(Pannel *p, XCBGenericEvent *_x)
     }
 }
 
+static void
+PannelUnmapNotify(Pannel *p, XCBGenericEvent *_x)
+{
+    XCBUnmapNotifyEvent *ev = (XCBUnmapNotifyEvent *)_x;
+
+    if(ev->window == p->win)
+    {   p->running = 0;
+    }
+}
+
+static void
+PannelDestroyNotify(Pannel *p, XCBGenericEvent *_x)
+{
+    XCBDestroyNotifyEvent *ev = (XCBDestroyNotifyEvent *)_x;
+    
+    if(ev->window == p->win)
+    {   p->running = 0;
+    }
+}
 
 
 static void *
@@ -116,7 +179,8 @@ PannelInitLoop(
 {
     Pannel *p = (Pannel *)pannel;
     XCBGenericEvent *ev = NULL;
-    const u32 mask = XCB_EVENT_MASK_EXPOSURE|XCB_EVENT_MASK_RESIZE_REDIRECT|XCB_EVENT_MASK_BUTTON_PRESS|XCB_EVENT_MASK_KEY_PRESS|XCB_EVENT_MASK_FOCUS_CHANGE;
+    const u32 mask = XCB_EVENT_MASK_EXPOSURE|XCB_EVENT_MASK_RESIZE_REDIRECT|XCB_EVENT_MASK_BUTTON_PRESS|XCB_EVENT_MASK_KEY_PRESS|XCB_EVENT_MASK_FOCUS_CHANGE
+        |XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY;
     XCBSelectInput(p->dpy, p->win, mask);
     XCBSync(p->dpy);
     while(p->running && !XCBNextEvent(p->dpy, &ev))
@@ -133,6 +197,10 @@ PannelInitLoop(
             case XCB_RESIZE_REQUEST:
                 PannelResizeRequest(p, ev);
                 break;
+            case XCB_DESTROY_NOTIFY:
+                break;
+            case XCB_UNMAP_NOTIFY:
+                break;
             case XCB_NONE:
                 xerror(p->dpy, (XCBGenericError *)ev);
                 break;
@@ -141,6 +209,8 @@ PannelInitLoop(
         free(ev);
         PannelUnlock(p);
     }
+    DEBUG0("Pannel Killed");
+    PannelDestroy(p);
     return NULL;
 }
 
@@ -194,11 +264,26 @@ PannelDestroyThreads(Pannel *pannel)
     free(pannel->cond);
 }
 
+int32_t
+PannelDrawText(
+        Pannel *pannel, 
+        i32 x, 
+        i32 y, 
+        char *str
+        )
+{
+    xcb_poly_text_16_simple(pannel->dpy, pannel->pix, pannel->gc, x, y, strnlen(str, 1024), (uint16_t *)str);
+    return 10;
+}
+
 void
 PannelRedraw(Pannel *pannel)
 {
     PannelLock(pannel);
-    /* TODO */
+
+    const char *txt = "FuckYou";
+    PannelDrawText(pannel, 0, 0, (char *)txt);
+    PannelDrawRectangle(pannel, 0, 0, pannel->w, pannel->h, 1, (uint32_t )255);
     PannelDrawBuff(pannel, 0, 0, pannel->w, pannel->h);
     /* stuff */
     PannelUnlock(pannel);
@@ -349,6 +434,7 @@ PannelCreate(
             else
             {   pthread_detach(id);
             }
+            XCBMapWindow(pannel->dpy, pannel->win);
         }
     }
     return pannel;

@@ -77,10 +77,23 @@ PannelCreate(
     int32_t h
     );
 
+/* Documentation Purposes.
+ * Automatically destroyed on Unmap/destroy notify.
+ * this function should not be used, aside from testing.
+ */
 void
 PannelDestroy(
     Pannel *pannel
         );
+
+int32_t
+PannelDrawText(
+        Pannel *pannel, 
+        i32 x, 
+        i32 y, 
+        char *str
+        );
+
 
 /* Data should not be freed instead to free all data use PannelDestroy();
  * Do note that this pointer should be recycled and not thrown away as that would poison the pool.
