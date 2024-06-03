@@ -227,11 +227,17 @@ buttonpress(XCBGenericEvent *event)
     }
     else
     {   
+        /* set focus to root, but still maintain the selected client.
+         * This makes it "seem" like we unfocused the window while still maintaing correct stack order.
+         */
         if(_wm.selmon->desksel->sel)
         {   unfocus(_wm.selmon->desksel->sel, 1);
         }
+        /* if no selected window, this should just set input focus to root, failsafe for above basically */
         XCBSetInputFocus(_wm.dpy, eventwin, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
         XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&(eventwin), 1);
+        /* shouldnt need to sync, but too lazy to test */
+        sync = 1;
     }
     int i;
     for(i = 0; i < LENGTH(buttons); ++i)
@@ -519,15 +525,13 @@ expose(XCBGenericEvent *event)
     const u16 count         = ev->count;
 
 
+    (void)win;
     (void)x;
     (void)y;
     (void)w;
     (void)h;
+    (void)count;
 
-    Monitor *m = wintomon(win);
-    if(count == 0 && m)
-    {   /* redrawbar */
-    }
 }
 
 void
@@ -584,21 +588,20 @@ circulaterequest(XCBGenericEvent *event)
 
     (void)eventwin;
 
+    /* TODO update stack */
+    XCBCirculateSubwindows(_wm.dpy, win, !!place);
     switch(place)
     {   
         case XCB_CIRCULATE_RAISE_LOWEST:
             DEBUG("Circulate Up: [%u] ", win);
-            XCBCirculateSubwindows(_wm.dpy, win, XCB_CIRCULATE_RAISE_LOWEST);
             break;
         case XCB_CIRCULATE_LOWER_HIGHEST:
             DEBUG("Circulate Down: [%u] ", win);
-            XCBCirculateSubwindows(_wm.dpy, win, XCB_CIRCULATE_LOWER_HIGHEST);
             break;
         default:
             DEBUG("Circulate Unknown: [%u] ", win);
             break;
     }
-
 }
 
 void
@@ -620,6 +623,7 @@ configurerequest(XCBGenericEvent *event)
 
     Client *c;
     u8 sync = 0;
+    u8 restack = 0;
     if((c = wintoclient(win)))
     {
         const Monitor *m = c->desktop->mon;
@@ -649,29 +653,69 @@ configurerequest(XCBGenericEvent *event)
         }
         if(mask & XCB_CONFIG_WINDOW_STACK_MODE)
         {
+            /* UNUSED, we do our own restacking */
+            /* 
             XCBWindowChanges wc;
             const uint32_t modemask = XCB_CONFIG_WINDOW_STACK_MODE | (mask & XCB_CONFIG_WINDOW_SIBLING);
             wc.stack_mode = ev->stack_mode;
-            /* this would technically be undefined if no sibling is set but it shouldnt matter (cause we didnt set the flag for it if it wasnt defined.) */
             wc.sibling = ev->sibling;
             XCBConfigureWindow(_wm.dpy, c->win, modemask, &wc);
+            */
             if(mask & XCB_CONFIG_WINDOW_SIBLING)
             {
+                Client *c1 = wintoclient(ev->sibling);
                 switch(stack)
                 {
                     case XCB_STACK_MODE_ABOVE:
+                        if(c1)
+                        {   attachfocusbefore(c, c1);
+                        }
                         DEBUG("Raised Client: [%u] above [%u]", c->win, ev->sibling);
                         break;
                     case XCB_STACK_MODE_BELOW:
+                        if(c1)
+                        {   attachfocusafter(c, c1);
+                        }
                         DEBUG("Lowered Client: [%u] below [%u]", c->win, ev->sibling);
                         break;
-                    case XCB_STACK_MODE_TOP_IF:     
+                    case XCB_STACK_MODE_TOP_IF:
+                        if(c1)
+                        {
+                            if(stackpriority(c, c1))
+                            {   
+                                detachfocus(c);
+                                attachfocus(c);
+                            }
+                        }
                         DEBUG("Raised Client: [%u] above stack from [%u]", c->win, ev->sibling);
                         break;
                     case XCB_STACK_MODE_BOTTOM_IF:  
+                        if(c1)
+                        {   
+                            if(stackpriority(c, c1))
+                            {   
+                                if(c->desktop->slast != c)
+                                {   attachfocusafter(c->desktop->slast, c);
+                                }
+                            }
+                        }
                         DEBUG("Lowerd Client: [%u] below stack from [%u]", c->win, ev->sibling);
                         break;
                     case XCB_STACK_MODE_OPPOSITE:   
+                        if(c1)
+                        {   
+                            if(stackpriority(c, c1))
+                            {   
+                                if(c->desktop->slast != c)
+                                {   attachfocusafter(c->desktop->slast, c);
+                                }
+                            }
+                            else
+                            {   
+                                detachfocus(c);
+                                attachfocus(c);
+                            }
+                        }
                         DEBUG("Flipped Client: [%u] flipped one to bottom [%u]", c->win, ev->sibling);
                         break;
                 }
@@ -681,22 +725,44 @@ configurerequest(XCBGenericEvent *event)
                 switch(stack)
                 {
                     case XCB_STACK_MODE_ABOVE:      
+                        detachfocus(c);
+                        attachfocus(c);
                         DEBUG("Raised Client: [%u] above stack", c->win); 
                         break;
                     case XCB_STACK_MODE_BELOW:      
+                        if(c->desktop->slast != c)
+                        {   attachfocusafter(c->desktop->slast, c);
+                        }
                         DEBUG("Lowered Client: [%u] below stack", c->win); 
                         break;
-                    case XCB_STACK_MODE_TOP_IF:     
+                    case XCB_STACK_MODE_TOP_IF:
+                        detachfocus(c);
+                        attachfocus(c);
                         DEBUG("Raised Client: [%u] above stack if occluded", c->win);
                         break;
-                    case XCB_STACK_MODE_BOTTOM_IF:  
+                    case XCB_STACK_MODE_BOTTOM_IF:
+                        if(c->desktop->slast != c)
+                        {   attachfocusafter(c->desktop->slast, c);
+                        }
                         DEBUG("Lowerd Client: [%u] below stack if occluded", c->win);
                         break;
-                    case XCB_STACK_MODE_OPPOSITE:   
+                    case XCB_STACK_MODE_OPPOSITE:
+                        if(c->desktop->sel == c)
+                        {
+                            if(c->desktop->slast != c)
+                            {   attachfocusafter(c->desktop->slast, c);
+                            }
+                        }
+                        else
+                        {   
+                            detachfocus(c);
+                            attachfocus(c);
+                        }
                         DEBUG("Flipped Client: [%u] XORed stack if occluded (Above if so, Below if not)", c->win);
                         break;
                 }
             }
+            restack = 1;
         }
         if((c->x + c->w) > m->mx + m->mw && ISFLOATING(c))
         {   
@@ -711,6 +777,7 @@ configurerequest(XCBGenericEvent *event)
         /* these checks are so we maintain wasfloating correctly without messing everything up */
         if(!ISFLOATING(c) && !DOCKED(c))
         {   setfloating(c, 1);
+            restack = 1;
         }
 
         if(mask & (XCB_CONFIG_WINDOW_X|XCB_CONFIG_WINDOW_Y) && !(mask & (XCB_CONFIG_WINDOW_WIDTH|XCB_CONFIG_WINDOW_HEIGHT)))
@@ -733,6 +800,19 @@ configurerequest(XCBGenericEvent *event)
         wc.stack_mode = stack;
         XCBConfigureWindow(_wm.dpy, win, mask, &wc);
         sync = 1;
+    }
+    if(restack)
+    {
+        if(c)
+        {   
+            /* this fixes windows not maintaing focus order correctly for some applications that use configure requests.
+             * Basically while we did reattach focus we never set focus, so the stack order is correct but the focus order isnt.
+             * AKA altttab.
+             */
+            focus(NULL);
+            /* rearrange the stuff duh */
+            arrange(c->desktop);
+        }
     }
     if(sync)
     {   XCBFlush(_wm.dpy);
@@ -857,7 +937,7 @@ configurenotify(XCBGenericEvent *event)
             /* update the bar */
             for(m = _wm.mons; m; m = nextmonitor(m))
             {
-                if(m->bar->win)
+                if(m->bar && m->bar->win)
                 {   XCBMoveResizeWindow(_wm.dpy, m->bar->win, m->wx, m->bar->y, m->ww, m->bar->h);
                 }
             }
@@ -907,17 +987,11 @@ destroynotify(XCBGenericEvent *event)
     (void)eventwin;
 
     Client *c = NULL;
-    Bar *b = NULL;
     u8 sync = 0;
     /* destroyed windows no longer need to be managed */
     if((c = wintoclient(win)))
     {   
         unmanage(c, 1);
-        sync = 1;
-    }
-    else if((b = wintobar(win, 0)))
-    {
-        unmanagebar(b);
         sync = 1;
     }
     if(sync)
@@ -988,16 +1062,10 @@ unmapnotify(XCBGenericEvent *event)
     (void)isconfigure;
 
     Client *c;
-    Bar *bar;
     u8 sync = 0;
     if((c = wintoclient(win)))
     {   
         unmanage(c, 0);
-        sync = 1;
-    }
-    else if((bar = wintobar(win, 0)))
-    {
-        unmanagebar(bar);
         sync = 1;
     }
 
@@ -1133,9 +1201,10 @@ clientmessage(XCBGenericEvent *event)
         }
         else if(atom == netatom[NetActiveWindow])
         {
-            if(c->desktop && c->desktop->sel != c && !ISURGENT(c))
+            if(c->desktop->sel != c)
             {   
-                seturgent(c, 1);
+                focus(c);
+                arrange(c->desktop);
                 sync = 1;
             }
         }
@@ -1326,21 +1395,6 @@ propertynotify(XCBGenericEvent *event)
 
     if(state == XCB_PROPERTY_DELETE)
     {   return;
-    }
-
-    if(_wm.selmon->bar->win == win)
-    {
-        /* probably one of the _NET_WM_STRUT's */
-        if(atom == netatom[NetWMStrutPartial] || atom == netatom[NetWMStrut])
-        {   
-            updatebargeom(_wm.selmon);
-            updatebarpos(_wm.selmon);
-            sync = 1;
-        }
-        else
-        {
-            DEBUG0("Unknown atom prop.");
-        }
     }
 
     if((c = wintoclient(win)))
