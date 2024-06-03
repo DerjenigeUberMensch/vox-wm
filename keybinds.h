@@ -20,6 +20,8 @@
 #define RMB         XCBButton3
 #define BUTTON4     XCBButton4
 #define BUTTON5     XCBButton5
+#define ENTER       XK_Return
+#define RETURN      XK_Return
 /* F1 - F12 */
 #define XF1         XK_F1
 #define XF2         XK_F2
@@ -89,7 +91,7 @@ static const Key keys[] =
 /*  Action                 modifier                 key                     function            argument */
     { XCBKeyPress,         SUPER,                   XK_n,                   UserStats,          {0} },
     { XCBKeyPress,         SUPER,                   XK_d,                   SpawnWindow,        {.v = dmenucmd } },
-    { XCBKeyPress,         SUPER,                   XK_Return,              SpawnWindow,        {.v = termcmd } },
+    { XCBKeyPress,         SUPER,                   RETURN,                 SpawnWindow,        {.v = termcmd } },
     { XCBKeyPress,         SUPER,                   XK_e,                   SpawnWindow,        {.v = filemanager } },
     { XCBKeyPress,         SUPER,                   XK_b,                   ToggleStatusBar,    {0} },
     { XCBKeyPress,         SUPER|SHIFT,             XK_q,                   KillWindow,         {0} },
@@ -118,10 +120,10 @@ static const Key keys[] =
 static const Button buttons[] = 
 {
     /* Type                 Button      Mask        function        arg */
-    { XCB_BUTTON_PRESS,     RMB,        SUPER,      ResizeWindow,   {0} },
-    { XCB_BUTTON_RELEASE,   RMB,        SUPER,      0,              {0} },
-    { XCB_BUTTON_PRESS,     LMB,        SUPER,      DragWindow,     {0} },
-    { XCB_BUTTON_RELEASE,   LMB,        SUPER,      0,              {0} },
+    { XCBButtonPress,     RMB,        SUPER,      ResizeWindow,   {0} },
+    { XCBButtonRelease,   RMB,        SUPER,      0,              {0} },
+    { XCBButtonPress,     LMB,        SUPER,      DragWindow,     {0} },
+    { XCBButtonRelease,   LMB,        SUPER,      0,              {0} },
 };
 
 
