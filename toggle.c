@@ -37,6 +37,11 @@ GET_BOOL(i64 x)
 void
 UserStats(const Arg *arg)
 {
+    static Pannel *p = NULL;
+
+    if(!p)
+    {   p = PannelCreate(_wm.root, 0, 0, _wm.sw, _wm.sh);
+    }
     Client *c = _wm.selmon->desksel->sel;
     if(c)
     {   
@@ -694,9 +699,7 @@ ToggleStatusBar(const Arg *arg)
     if(!m || !m->bar)
     {   return;
     }
-    setshowbar(m->bar, !SHOWBAR(m->bar));
-    updatebarpos(_wm.selmon);
-    XCBMoveResizeWindow(_wm.dpy, _wm.selmon->bar->win, _wm.selmon->wx, _wm.selmon->bar->y, _wm.selmon->ww, _wm.selmon->bar->h);
+    sethidden(m->bar, !ISHIDDEN(m->bar));
     arrange(_wm.selmon->desksel);
     XCBFlush(_wm.dpy);
 }
@@ -704,4 +707,10 @@ ToggleStatusBar(const Arg *arg)
 void
 ToggleFullscreen(const Arg *arg)
 {
+    Client *c = _wm.selmon->desksel->sel;
+    if(!c)
+    {   return;
+    }
+    
+    setfullscreen(c, !ISFULLSCREEN(c));
 }
