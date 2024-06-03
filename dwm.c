@@ -53,7 +53,6 @@ int ISALWAYSONTOP(Client *c)    { return c->wstateflags & _STATE_ABOVE; }
 int ISALWAYSONBOTTOM(Client *c) { return c->wstateflags & _STATE_BELOW; }
 int WASFLOATING(Client *c)      { return c->flags & _FSTATE_WASFLOATING; }
 int ISFLOATING(Client *c)       { return c->flags & _FSTATE_FLOATING; }
-/* used in __cmp calculation when restacking */
 int ISFAKEFLOATING(Client *c)   { return c->flags & _FSTATE_FLOATING || c->desktop->layout == Floating; }
 
 int WASDOCKEDVERT(Client *c)    {   const i16 wy = c->desktop->mon->wy;
@@ -139,7 +138,7 @@ int HASWMTAKEFOCUS(Client *c)   { return c->wstateflags & _STATE_SUPPORTED_WM_TA
 int HASWMSAVEYOURSELF(Client *c){ return c->wstateflags & _STATE_SUPPORTED_WM_SAVE_YOURSELF; }
 int HASWMDELETEWINDOW(Client *c){ return c->wstateflags & _STATE_SUPPORTED_WM_DELETE_WINDOW; }
 
-enum BarSides GETBARSIDE(Monitor *m, Bar *bar) 
+enum BarSides GETBARSIDE(Monitor *m, Client *bar) 
                                 { 
                                     const u8 sidebar = bar->w < bar->h;
                                     const u8 left = bar->x + bar->w / 2 <= m->mx + m->mw / 2;
@@ -340,48 +339,45 @@ applysizehints(Client *c, i32 *x, i32 *y, i32 *width, i32 *height, uint8_t inter
         }
     }
 
-    if (!DOCKED(c))
+    /* see last two sentences in ICCCM 4.1.2.3 */
+    baseismin = c->basew == c->minw && c->baseh == c->minh;
+    /* temporarily remove base dimensions */
+    if (!baseismin)
     {
-        /* see last two sentences in ICCCM 4.1.2.3 */
-        baseismin = c->basew == c->minw && c->baseh == c->minh;
-        /* temporarily remove base dimensions */
-        if (!baseismin)
-        {
-            *width  -= c->basew;
-            *height -= c->baseh;
+        *width  -= c->basew;
+        *height -= c->baseh;
+    }
+    /* adjust for aspect limits */
+    if (c->mina > 0 && c->maxa > 0)
+    {
+        if (c->maxa < (float)*width / *height) 
+        {   *width = *height * c->maxa + 0.5;
         }
-        /* adjust for aspect limits */
-        if (c->mina > 0 && c->maxa > 0)
-        {
-            if (c->maxa < (float)*width / *height) 
-            {   *width = *height * c->maxa + 0.5;
-            }
-            else if (c->mina < (float)*height / *width) 
-            {   *height = *width * c->mina + 0.5;
-            }
+        else if (c->mina < (float)*height / *width) 
+        {   *height = *width * c->mina + 0.5;
         }
-        /* increment calculation requires this */
-        if (baseismin)
-        {
-            *width  -= c->basew;
-            *height -= c->baseh;
-        }
-        /* adjust for increment value */
-        if (c->incw)
-        {   *width -= *width % c->incw;
-        }
-        if (c->inch) 
-        {   *height -= *height % c->inch;
-        }
-        /* restore base dimensions */
-        *width = MAX(*width + c->basew, c->minw);
-        *height = MAX(*height + c->baseh, c->minh);
-        if (c->maxw) 
-        {   *width = MIN(*width, c->maxw);
-        }
-        if (c->maxh) 
-        {   *height = MIN(*height, c->maxh);
-        }
+    }
+    /* increment calculation requires this */
+    if (baseismin)
+    {
+        *width  -= c->basew;
+        *height -= c->baseh;
+    }
+    /* adjust for increment value */
+    if (c->incw)
+    {   *width -= *width % c->incw;
+    }
+    if (c->inch) 
+    {   *height -= *height % c->inch;
+    }
+    /* restore base dimensions */
+    *width = MAX(*width + c->basew, c->minw);
+    *height = MAX(*height + c->baseh, c->minh);
+    if (c->maxw) 
+    {   *width = MIN(*width, c->maxw);
+    }
+    if (c->maxh) 
+    {   *height = MIN(*height, c->maxh);
     }
     return *x != c->x || *y != c->y || *width != c->w || *height != c->h;
 }
@@ -402,13 +398,17 @@ arrangeq(Desktop *desk)
         workingdesk = desk;
     }
     arrangedesktop(desk);
-    reorder(desk);
 }
 
 void
 arrange(Desktop *desk)
 {
+    /* bar stuff */
+    updatebargeom(desk->mon);
+    updatebarpos(desk->mon);
+
     arrangeq(desk);
+    reorder(desk);
     restack(desk);
 }
 
@@ -452,6 +452,31 @@ arrangedesktop(Desktop *desk)
                                                                 /* prevent circular linked list */  \
                                                                 STRUCT->PREV = NULL;                \
                                                             } while(0)
+#define __attach_after(START, AFTER, NEXT, PREV, HEAD, LAST)        do                                  \
+                                                                    {                                   \
+                                                                        AFTER->NEXT = START->NEXT;      \
+                                                                        AFTER->PREV = START;            \
+                                                                        if(!START->NEXT)                \
+                                                                        {   LAST = START;               \
+                                                                        }                               \
+                                                                        else                            \
+                                                                        {   START->NEXT->PREV = AFTER;  \
+                                                                        }                               \
+                                                                        START->NEXT = AFTER;            \
+                                                                    } while(0)
+#define __attach_before(START, BEFORE, NEXT, PREV, HEAD, LAST, ATTACH)  do                                  \
+                                                                        {                                   \
+                                                                            if(!START->PREV)                \
+                                                                            {   ATTACH(BEFORE);             \
+                                                                            }                               \
+                                                                            else                            \
+                                                                            {                               \
+                                                                                BEFORE->PREV = START->PREV; \
+                                                                                BEFORE->NEXT = START;       \
+                                                                                START->PREV->NEXT = BEFORE; \
+                                                                                START->PREV = BEFORE;       \
+                                                                            }                               \
+                                                                        } while(0)
 
 /* Too hard to implement */
 /*
@@ -523,6 +548,22 @@ void
 attachfocus(Client *c)
 {
     __attach_helper(c, desktop->focus, fnext, fprev, desktop->flast);
+}
+
+void
+attachfocusafter(Client *start, Client *after)
+{
+    Desktop *desk = start->desktop;
+    detachfocus(after);
+    __attach_after(start, after, fnext, fprev, desk->focus, desk->slast);
+}
+
+void
+attachfocusbefore(Client *start, Client *after)
+{
+    Desktop *desk = start->desktop;
+    detachfocus(after);
+    __attach_before(start, after, fnext, fprev, desk->focus, desk->slast, attachfocus);
 }
 
 void
@@ -833,7 +874,6 @@ cleanupmon(Monitor *m)
         desk = desknext;
     }
     HASH_CLEAR(hh, m->__hash);
-    free(m->bar);
     free(m);
     m = NULL;
 }
@@ -975,26 +1015,6 @@ createclient(void)
     return c;
 }
 
-Bar *
-createbar(void)
-{
-    Bar *bar = ecalloc(1, sizeof(Bar));
-
-    if(!bar)
-    {   /* bar is not important enough to stop operation. */
-        DEBUG0("Failed to init bar.");
-        return NULL;
-    }
-
-    bar->x = 0;
-    bar->y = 0;
-    bar->h = 0;
-    bar->w = 0;
-    bar->win = 0;
-    bar->flags = 0;
-    return bar;
-}
-
 Desktop *
 createdesktop(void)
 {
@@ -1039,14 +1059,8 @@ createmon(void)
     m->deskcount = 1;
     setdesktopcount(m, 10);
     m->desksel = m->desktops;
-    m->bar = calloc(1, sizeof(Bar ));
+    m->bar = NULL;
     m->__hash = NULL;
-    if(!m->bar)
-    {   
-        DEBUG0("(OutOfMemory) Failed to create bar.");
-        cleanupmon(m);
-        return NULL;
-    }
     return m;
 }
 
@@ -1464,7 +1478,7 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
         return NULL;
     } 
     /* barwin checks */
-    u8 checkbar = !_wm.selmon->bar->win;
+    u8 checkbar = !_wm.selmon->bar;
     
     const u16 bw = 0;
     const u32 bcol = 0;
@@ -1541,18 +1555,6 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     getnamefromreply(netwmnamereply, &netwmname);
     getnamefromreply(wmnamereply, &wmname);
 
-    if(checkbar && COULDBEBAR(c, strutp || strut))
-    {
-        Bar *bar = managebar(_wm.selmon, win);
-        if(bar)
-        {   resizebar(bar, c->x, c->y, c->w, c->h);
-        }
-        free(c);
-        c = NULL;
-        DEBUG("Found a bar: [%d]", win);
-        goto CLEANUP;
-    }
-
     /* Custom stuff */
     setclientpid(c, pid);
     setborderwidth(c, bw);
@@ -1579,25 +1581,30 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     updateclientlist(win, ClientListAdd);
     setclientstate(c, XCB_WINDOW_NORMAL_STATE);
 
-    if(c->desktop == _wm.selmon->desksel)
-    {   unfocus(_wm.selmon->desksel->sel, 0);
+    if(c->desktop)
+    {   HASH_ADD_INT(c->desktop->mon->__hash, win, c);
     }
 
-    if(!ISFLOATING(c))
-    {   
-        if(trans || DOCKED(c))
-        {   setfloating(c, 1);
-        }
+    if(checkbar && COULDBEBAR(c, strutp || strut))
+    {
+        detachcompletely(c);
+        setborderwidth(c, 0);
+        configure(c);
+        c->desktop->mon->bar = c;
+        c = NULL;
+        DEBUG("Found a bar: [%d]", win);
+        goto CLEANUP;
+    }
+
+    if(trans || DOCKED(c))
+    {   setfloating(c, 1);
     }
     /* inherit previous client state */
     if(c->desktop && c->desktop->sel)
     {   setfullscreen(c, ISFULLSCREEN(c->desktop->sel) || ISFULLSCREEN(c));
     }
-    if(c->desktop)
-    {   HASH_ADD_INT(c->desktop->mon->__hash, win, c);
-    }
     /* propagates border_width, if size doesn't change */
-    configure(c);   
+    configure(c);
     goto CLEANUP;
 FAILURE:
     free(c);
@@ -1619,34 +1626,6 @@ CLEANUP:
     /* maybe no or just memcpy the first icon into a buffer and keep the thing just there. */
     free(iconreply);
     return c;
-}
-
-Bar *
-managebar(Monitor *m, XCBWindow win)
-{
-    const u32 inputmask = XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_FOCUS_CHANGE|XCB_EVENT_MASK_PROPERTY_CHANGE|XCB_EVENT_MASK_STRUCTURE_NOTIFY;
-    
-    if(!win)
-    {   return NULL;
-    }
-    if(!m->bar)
-    {   m->bar = createbar();
-        DEBUG0("No bar alloced this should not be possible");
-    }
-    if(!m->bar)
-    {   return NULL;
-    }
-    m->bar->win = win;
-
-    DEBUG("New bar: [%d]", win);
-    setshowbar(m->bar, 1);
-    updatebargeom(_wm.selmon);
-    updatebarpos(_wm.selmon);
-    arrangemon(m);
-    XCBSelectInput(_wm.dpy, win, inputmask);
-    updateclientlist(win, ClientListAdd);
-    XCBMapWindow(_wm.dpy, win);
-    return m->bar;
 }
 
 void
@@ -2142,11 +2121,18 @@ restoremonsession(char *buff, u16 len)
         }
         if(pullm)
         {
-            Bar *b = wintobar(BarId, 0);
+            Client *b = wintoclient(BarId);
             if(b)
-            {
-                unmanagebar(b);
-                managebar(pullm, BarId);
+            {   
+                if(pullm->bar)
+                {   
+                    XCBWindow win = pullm->bar->win;
+                    unmanage(pullm->bar, 0);
+                    XCBCookie cookies[MANAGE_CLIENT_COOKIE_COUNT];
+                    managerequest(win, cookies);
+                    managereply(win, cookies);
+                }
+                pullm->bar = b;
             }
             /* TODO */
             setdesktopcount(pullm, DeskCount);
@@ -2229,19 +2215,18 @@ resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
     configure(c);
 }
 
-static int __cmp(Client *c1, Client *c2);
 
 void
 restack(Desktop *desk)
 {
     Client *c;
-    u8 inrestack = 0;
     u8 config = 0;
+    u8 instack = 0;
     XCBWindowChanges wc;
 
     wc.stack_mode = XCB_STACK_MODE_BELOW;
 
-    if(desk->mon->bar->win && SHOWBAR(desk->mon->bar))
+    if(desk->mon->bar && !ISHIDDEN(desk->mon->bar))
     {   wc.sibling = desk->mon->bar->win;
     }
     else
@@ -2252,16 +2237,16 @@ restack(Desktop *desk)
     /* The following works good enough at most ussually 1-5 windows but we could probably bring it down a bit */
     for(c = desk->stack; c; c = nextstack(c))
     {
-        /* unattached clients (AKA new clients) have both set to NULL */
-        inrestack = c->rprev || c->rnext;
+        instack = c->rprev || c->rnext;
         /* Client holds both lists so we just check if the next's are the same if not configure it */
-        config = c->rnext != c->snext || !inrestack;
-
+        config = c->rnext != c->snext || !instack;
         if(config)
-        {   XCBConfigureWindow(_wm.dpy, c->win, XCB_CONFIG_WINDOW_SIBLING|XCB_CONFIG_WINDOW_STACK_MODE, &wc);
+        {   
+            XCBConfigureWindow(_wm.dpy, c->win, XCB_CONFIG_WINDOW_SIBLING|XCB_CONFIG_WINDOW_STACK_MODE, &wc);
             DEBUG("Configured window: %s", c->netwmname);
         }
         wc.sibling = c->win;
+        DEBUG("%d", c->rstacknum);
     }
     /* TODO find a better way todo this without causing infinite loop issues FIXME */
     while(desk->rstack)
@@ -2272,72 +2257,11 @@ restack(Desktop *desk)
     }
 }
 
-static i32
-__cmp_helper(int32_t x1, int32_t x2)
-{
-    return x1 < x2;
-}
-
-static int
-__cmp(Client *c1, Client *c2)
-{
-    /* how to return.
-     * reference point is c1.
-     * so if c1 has higher priority return 1.
-     *
-     * RETURN 1 on higher priority
-     * RETURN -1 on lesser priority
-     * RETURN 0 on lesser priority. 
-     */
-    /* XOR basically just skips if they both have it and only success if one of them has it AKA compare */
-
-    const u32 dock1 = ISDOCK(c1);
-    const u32 dock2 = ISDOCK(c2);
-
-    const u32 above1 = ISALWAYSONTOP(c1);
-    const u32 above2 = ISALWAYSONTOP(c2);
-
-    const u32 float1 = ISFAKEFLOATING(c1);
-    const u32 float2 = ISFAKEFLOATING(c2);
-
-    const u32 below1 = ISBELOW(c1);
-    const u32 below2 = ISBELOW(c2);
-
-    const u32 hidden1 = ISHIDDEN(c1);
-    const u32 hidden2 = ISHIDDEN(c2);
-
-    if(dock1 ^ dock2)
-    {   return __cmp_helper(dock1, dock2);
-    }
-    else if(above1 ^ above2)
-    {   return __cmp_helper(above1, above2);
-    }
-    else if(float1 ^ float2)
-    {   return __cmp_helper(float1, float2);
-    }
-    else if(below1 ^ below2)
-    {   return __cmp_helper(below1, below2);
-    }
-    else if(hidden1 ^ hidden2)
-    {   return __cmp_helper(hidden1, hidden2);
-    }
-
-    return __cmp_helper(c1->rstacknum, c2->rstacknum);
-}
-
 void
 reorder(Desktop *desk)
 {
-    Client *c;
-    u16 i = 0;
-    for(c = desk->flast; c; c = prevfocus(c))
-    {   
-        c->rstacknum = ++i;
-        if(ISFLOATING(c) && DOCKED(c))
-        {   setfloating(c, 0);
-        }
-    }
-    MERGE_SORT_LINKED_LIST(Client, __cmp, desk->stack, desk->slast, snext, sprev, 1, 0);
+    updatestackpriorityfocus(desk);
+    MERGE_SORT_LINKED_LIST(Client, stackpriority, desk->stack, desk->slast, snext, sprev, 1, 0);
 }
 
 void
@@ -2482,7 +2406,7 @@ savemonsession(FILE *fw, Monitor *m)
             ,
             IDENTIFIER,
             m->mx, m->my, m->mw, m->mh,
-            m->bar->win,
+            m->bar ? m->bar->win : 0,
             m->deskcount,
             m->desksel->num
             );
@@ -2722,8 +2646,9 @@ setdesktopcount(Monitor *m, uint16_t desktops)
             if(desk && prevdesktop(desk))
             {   
                 for(c = desk->clients; c; c = nextclient(c))
-                {   setclientdesktop(c, prevdesktop(desk));
-                }
+                {   
+                    setclientdesktop(c, prevdesktop(desk));
+                } 
                 tmp = prevdesktop(desk);
                 detachdesktop(m, desk);
                 cleanupdesktop(desk);
@@ -2922,8 +2847,7 @@ setfullscreen(Client *c, u8 state)
     Monitor *m = c->desktop->mon;
     if(state && !ISFULLSCREEN(c))
     {
-        XCBChangeProperty(_wm.dpy, c->win, netatom[NetWMState], XCB_ATOM_ATOM, 32,
-        XCB_PROP_MODE_REPLACE, (unsigned char *)&netatom[NetWMStateFullscreen], 1);
+        XCBChangeProperty(_wm.dpy, c->win, netatom[NetWMState], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&netatom[NetWMStateFullscreen], 1);
         setborderwidth(c, c->bw);
         setborderwidth(c, 0);
         resizeclient(c, m->mx, m->wy, m->mw, m->mh);
@@ -2931,8 +2855,7 @@ setfullscreen(Client *c, u8 state)
     }
     else if(!state && ISFULLSCREEN(c))
     {
-        XCBChangeProperty(_wm.dpy, c->win, netatom[NetWMState], XCB_ATOM_ATOM, 32, 
-        XCB_PROP_MODE_REPLACE, (unsigned char *)0, 0);
+        XCBChangeProperty(_wm.dpy, c->win, netatom[NetWMState], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)0, 0);
         setborderwidth(c, c->oldbw);
         resizeclient(c, c->oldx, c->oldy, c->oldw, c->oldh);
     }
@@ -3116,7 +3039,7 @@ setupcfgdefaults(void)
     const u16 maxcc = 256;
     const float mfact = 0.55f;
     const u16 bw = _wm.selmon->ww;
-    const u16 bh = _wm.selmon->wh / 10;     /* div 10 is roughly the same as the WSWM old default bar height */
+    const u16 bh = MAX(_wm.selmon->wh / 30, 15);
     const i16 bx = _wm.selmon->wx;
     const i16 by = _wm.selmon->wy + _wm.selmon->wh - bh;     /* because a window is a rectangle calculations start at the top left corner, so we need to add the height */
 
@@ -3161,34 +3084,28 @@ seturgent(Client *c, uint8_t state)
 void
 updatedesktop(void)
 {
-    i32 data[1] = { _wm.selmon->desksel->num };
-    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetCurrentDesktop], XCB_ATOM_CARDINAL, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)data, 1);
+    u32 data = _wm.selmon->desksel->num;
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetCurrentDesktop], XCB_ATOM_CARDINAL, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&data, 1);
 }
 
 void
 updatedesktopnames(void)
 {
-    char names[_wm.selmon->deskcount];
-    u16 i;
-    for(i = 0; i < _wm.selmon->deskcount; ++i)
-    {   names[i] = i;
-    }
-    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetDesktopNames], XCB_ATOM_STRING, 8, XCB_PROP_MODE_REPLACE, names, _wm.selmon->deskcount);
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetDesktopNames], XCB_ATOM_STRING, 8, XCB_PROP_MODE_REPLACE, "~0", _wm.selmon->deskcount);
 }
 
 void
 updatedesktopnum(void)
 {
-    i32 data[1] = { _wm.selmon->deskcount };
-    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetNumberOfDesktops], XCB_ATOM_CARDINAL, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)data, 1);
+    i32 data =  _wm.selmon->deskcount;
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetNumberOfDesktops], XCB_ATOM_CARDINAL, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&data, 1);
 }
 
 void
 updateviewport(void)
 {
     i32 data[2] = { 0, 0 };
-    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetDesktopViewport], 
-            XCB_ATOM_CARDINAL, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)data, 2);
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetDesktopViewport], XCB_ATOM_CARDINAL, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)data, 2);
 }
 
 
@@ -3343,6 +3260,69 @@ specialconds(int argc, char *argv[])
         /* UNREACHABLE */
         DEBUG("%s", "Failed to restart " NAME);
     }
+}
+
+/* how to return.
+ * reference point is c1.
+ * so if c1 has higher priority return 1.
+ *
+ * so return 1 if x1 > x2;
+ * return 0 if x1 <= x2
+ * sort order is 1,2,3,4,5,6
+ */
+static int
+__stack_priority_helper(int32_t x1, int32_t x2)
+{
+    return x1 < x2;
+}
+
+int
+stackpriority(Client *c1, Client *c2)
+{
+    const unsigned int dock1 = ISDOCK(c1);
+    const unsigned int dock2 = ISDOCK(c2);
+
+    const unsigned int above1 = ISALWAYSONTOP(c1);
+    const unsigned int above2 = ISALWAYSONTOP(c2);
+
+    const unsigned int float1 = ISFAKEFLOATING(c1);
+    const unsigned int float2 = ISFAKEFLOATING(c2);
+
+    const unsigned int below1 = ISBELOW(c1);
+    const unsigned int below2 = ISBELOW(c2);
+
+    const unsigned int hidden1 = ISHIDDEN(c1);
+    const unsigned int hidden2 = ISHIDDEN(c2);
+
+    if(dock1 ^ dock2)
+    {   
+        DEBUG0("DOCK");
+        return __stack_priority_helper(dock1, dock2);
+    }
+    else if(above1 ^ above2)
+    {   
+        DEBUG0("ABOVE");
+        return __stack_priority_helper(above1, above2);
+    }
+    else if(float1 ^ float2)
+    {   
+        DEBUG0("FLOAT");
+        return __stack_priority_helper(float1, float2);
+    }
+    else if(below1 ^ below2)
+    {   
+        DEBUG0("BELOW");
+        return __stack_priority_helper(below1, below2);
+    }
+    else if(hidden1 ^ hidden2)
+    {   
+        DEBUG0("HIDDEN");
+        return __stack_priority_helper(hidden1, hidden2);
+    }
+
+    DEBUG0("FOCUS");
+    /* focus is forward order so, we must calculate reversely */
+    return __stack_priority_helper(c2->rstacknum, c1->rstacknum);
 }
 
 void
@@ -3623,6 +3603,9 @@ unmanage(Client *c, uint8_t destroyed)
     Desktop *desk = c->desktop;
     const XCBWindow win = c->win;
 
+    if(desk->mon->bar == c)
+    {   desk->mon->bar = NULL;
+    }
     if(!destroyed)
     {   
         /* TODO causes alot of errors for some reason even if its not "destroyed" */
@@ -3639,26 +3622,6 @@ unmanage(Client *c, uint8_t destroyed)
     arrange(desk);
     cleanupclient(c);
     DEBUG("Unmanaged: [%u]", win);
-}
-
-void
-unmanagebar(Bar *bar)
-{
-    Monitor *m = wintobar(bar->win, 1);
-    if(bar)
-    {
-        memset(bar, 0, sizeof(Bar));
-        setshowbar(bar, 0);
-    }
-    if(m)
-    {
-        updatebarpos(m);
-        arrangemon(m);
-    }
-    else
-    {   DEBUG0("Could not find mon");
-    }
-    DEBUG0("Unmanaged bar.");
 }
 
 void 
@@ -3721,12 +3684,12 @@ updatebarpos(Monitor *m)
     m->wh = m->mh;
     m->wx = m->mx;
     m->wy = m->wy;
-    Bar *bar = m->bar;
-    if(!bar || !bar->win)
+    Client *bar = m->bar;
+    if(!bar)
     {   return;
     }
     enum BarSides side = GETBARSIDE(m, bar);
-    if(SHOWBAR(bar))
+    if(!ISHIDDEN(bar))
     {
         switch(side)
         {
@@ -3779,19 +3742,24 @@ updatebarpos(Monitor *m)
                 break;
         }
     }
-    resizebar(bar, bar->x, bar->y, bar->w, bar->h);
+    resize(bar, bar->x, bar->y, bar->w, bar->h, 0);
 }
 
 void
 updatebargeom(Monitor *m)
 {
     UserSettings *settings = &_cfg;
-    Bar *b = m->bar;
-    const u16 bx = USGetBarX(settings);
-    const u16 by = USGetBarY(settings);
-    const u16 bw = USGetBarWidth(settings);
-    const u16 bh = USGetBarHeight(settings);
-    resizebar(b, bx, by, bw, bh);
+    Client *bar = m->bar;
+
+    if(bar)
+    {
+        const u16 bx = USGetBarX(settings);
+        const u16 by = USGetBarY(settings);
+        const u16 bw = USGetBarWidth(settings);
+        const u16 bh = USGetBarHeight(settings);
+        resize(bar, bx, by, bw, bh, 0);
+        DEBUG("%u %u", bw, bh);
+    }
 }
 
 void
@@ -3972,6 +3940,20 @@ updatesizehints(Client *c, XCBSizeHints *size)
     c->maxa = maxa;
     c->inch = inch;
     c->incw = incw;
+}
+
+void
+updatestackpriorityfocus(Desktop *desk)
+{
+    Client *c;
+    int i = 0;
+    for(c = desk->focus; c; c = nextfocus(c))
+    {
+        c->rstacknum = ++i;
+        if(ISFLOATING(c) && DOCKED(c))
+        {   setfloating(c, 0);
+        }
+    }
 }
 
 void
