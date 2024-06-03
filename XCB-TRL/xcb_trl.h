@@ -527,30 +527,30 @@ enum XCBWindowState
 
 #define XCBNoEventMask			            XCB_NO_EVENT_MASK
 #define XCBKeyPressMask			            XCB_EVENT_MASK_KEY_PRESS
-#define XCBKeyReleaseMask	                XCB_EVENT_MASK_KEY_RELEASE 
-#define XCBButtonPressMask	                XCB_EVENT_MASK_BUTTON_PRESS 
-#define XCBButtonReleaseMask		        XCB_EVENT_MASK_BUTTON_RELEASE 
-#define XCBEnterWindowMask                  XCB_EVENT_MASK_ENTER_WINDOW 
-#define XCBLeaveWindowMask		            XCB_EVENT_MASK_LEAVE_WINDOW 
-#define XCBPointerMotionMask		        XCB_EVENT_MASK_POINTER_MOTION 
-#define XCBPointerMotionHintMask            XCB_EVENT_MASK_POINTER_MOTION_HINT 
-#define XCBButton1MotionMask		        XCB_EVENT_MASK_BUTTON_1_MOTION 
-#define XCBButton2MotionMask		        XCB_EVENT_MASK_BUTTON_2_MOTION 
-#define XCBButton3MotionMask		        XCB_EVENT_MASK_BUTTON_3_MOTION 
-#define XCBButton4MotionMask		        XCB_EVENT_MASK_BUTTON_4_MOTION 
-#define XCBButton5MotionMask	            XCB_EVENT_MASK_BUTTON_5_MOTION 
-#define XCBButtonMotionMask		            XCB_EVENT_MASK_BUTTON_MOTION 
-#define XCBKeymapStateMask		            XCB_EVENT_MASK_KEYMAP_STATE 
-#define XCBExposureMask			            XCB_EVENT_MASK_EXPOSURE 
-#define XCBVisibilityChangeMask	            XCB_EVENT_MASK_VISIBILITY_CHANGE 
-#define XCBStructureNotifyMask              XCB_EVENT_MASK_STRUCTURE_NOTIFY 
-#define XCBResizeRedirectMask		        XCB_EVENT_MASK_RESIZE_REDIRECT 
-#define XCBSubstructureNotifyMask           XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY 
-#define XCBSubstructureRedirectMask         XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT 
-#define XCBFocusChangeMask		            XCB_EVENT_MASK_FOCUS_CHANGE 
-#define XCBPropertyChangeMask	            XCB_EVENT_MASK_PROPERTY_CHANGE 
-#define XCBColormapChangeMask	            XCB_EVENT_MASK_COLOR_MAP_CHANGE 
-#define XCBOwnerGrabButtonMask	            XCB_EVENT_MASK_OWNER_GRAB_BUTTON 
+#define XCBKeyReleaseMask	                XCB_EVENT_MASK_KEY_RELEASE
+#define XCBButtonPressMask	                XCB_EVENT_MASK_BUTTON_PRESS
+#define XCBButtonReleaseMask		        XCB_EVENT_MASK_BUTTON_RELEASE
+#define XCBEnterWindowMask                  XCB_EVENT_MASK_ENTER_WINDOW
+#define XCBLeaveWindowMask		            XCB_EVENT_MASK_LEAVE_WINDOW
+#define XCBPointerMotionMask		        XCB_EVENT_MASK_POINTER_MOTION
+#define XCBPointerMotionHintMask            XCB_EVENT_MASK_POINTER_MOTION_HINT
+#define XCBButton1MotionMask		        XCB_EVENT_MASK_BUTTON_1_MOTION
+#define XCBButton2MotionMask		        XCB_EVENT_MASK_BUTTON_2_MOTION
+#define XCBButton3MotionMask		        XCB_EVENT_MASK_BUTTON_3_MOTION
+#define XCBButton4MotionMask		        XCB_EVENT_MASK_BUTTON_4_MOTION
+#define XCBButton5MotionMask	            XCB_EVENT_MASK_BUTTON_5_MOTION
+#define XCBButtonMotionMask		            XCB_EVENT_MASK_BUTTON_MOTION
+#define XCBKeymapStateMask		            XCB_EVENT_MASK_KEYMAP_STATE
+#define XCBExposureMask			            XCB_EVENT_MASK_EXPOSURE
+#define XCBVisibilityChangeMask	            XCB_EVENT_MASK_VISIBILITY_CHANGE
+#define XCBStructureNotifyMask              XCB_EVENT_MASK_STRUCTURE_NOTIFY
+#define XCBResizeRedirectMask		        XCB_EVENT_MASK_RESIZE_REDIRECT
+#define XCBSubstructureNotifyMask           XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY
+#define XCBSubstructureRedirectMask         XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT
+#define XCBFocusChangeMask		            XCB_EVENT_MASK_FOCUS_CHANGE
+#define XCBPropertyChangeMask	            XCB_EVENT_MASK_PROPERTY_CHANGE
+#define XCBColormapChangeMask	            XCB_EVENT_MASK_COLOR_MAP_CHANGE
+#define XCBOwnerGrabButtonMask	            XCB_EVENT_MASK_OWNER_GRAB_BUTTON
 
 
 
@@ -791,7 +791,7 @@ are reserved in the protocol for errors and replies. */
 #define XCBCWEventMask	        XCB_CW_EVENT_MASK
 #define XCBCWDontPropagate	    XCB_CW_DONT_PROPAGATE
 #define XCBCWColormap	        XCB_CW_COLORMAP
-#define XCBCWCursor	            XCB_CW_CURSOR 
+#define XCBCWCursor	            XCB_CW_CURSOR
 
 /* ConfigureWindow structure */
 
@@ -2919,17 +2919,41 @@ XCBDestroyWindow(
         );
 
 /* 
- * window
+ *  depth:              uint8_t                                 Depth you want your window to be.
+ *                      XCB_COPY_FROM_PARENT                    Copy depth from parent.
+ *
+ *  _class:             XCB_WINDOW_CLASS_COPY_FROM_PARENT 
+ *                      XCB_WINDOW_CLASS_INPUT_OUTPUT 
+ *                      XCB_WINDOW_CLASS_INPUT_ONLY
+ *
+ *  visual:             XCBVisual                               Visual you want your window to be.
+ *                      XCB_COPY_FROM_PARENT                    Copy visual from parent.
+ *  value_mask:         (enum) xcb_cw_t                         Value mask for value_list.
+ *                      XCB_CW_BACK_PIXMAP                      (mask) Window Background Pixmap.
+ *                      XCB_CW_BACK_PIXEL                       (mask) Window Background Pixel.
+ *                      XCB_CW_BORDER_PIXMAP                    (mask) Window Border Pixmap.
+ *                      XCB_CW_BORDER_PIXEL                     (mask) Window Border Pixel.
+ *                      XCB_CW_BIT_GRAVITY                      (mask) Window (Expose) Gravity.
+ *                      XCB_CW_WIN_GRAVITY                      (mask) Window Gravity.
+ *                      XCB_CW_BACKING_STORE                    (mask) Window Backing Store.
+ *                      XCB_CW_BACKING_PLANES                   (mask) Window Backing Planes.
+ *                      XCB_CW_BACKING_PIXEL                    (mask) Window Backing Pixel.
+ *                      XCB_CW_OVERRIDE_REDIRECT                (mask) Window Override Redirect.
+ *                      XCB_CW_SAVE_UNDER                       (mask) Window Save Under.
+ *                      XCB_CW_EVENT_MASK                       (mask) Window Event Mask.
+ *                      XCB_CW_DONT_PROPAGATE                   (mask) Window Dont Propogate.
+ *                      XCB_CW_COLORMAP                         (mask) Window Colormap.
+ *                      XCB_CW_CURSOR                           (mask) Window Cursor.
  */
 XCBWindow 
 XCBCreateWindow(
         XCBDisplay *display, 
         XCBWindow parent, 
-        int16_t x, 
-        int16_t y, 
-        uint16_t width, 
-        uint16_t height, 
-        uint16_t border_width, 
+        int32_t x, 
+        int32_t y, 
+        uint32_t width, 
+        uint32_t height, 
+        uint32_t border_width, 
         uint8_t depth, 
         uint16_t _class, 
         XCBVisual visual, 
@@ -2937,24 +2961,32 @@ XCBCreateWindow(
         const XCBCreateWindowValueList *value_list
         );
 /*
+ *
+ * border:          uint32_t        The Border Colour.
+ *                  XCBARGB.argb
+ *
+ * background:      uint32_t        The background Colour.
+ *                  XCBARGB.argb
+ *
+ * BLUE     (0, 255) (unsigned char)
+ * RED      (0, 255) (unsigned char)
+ * GREEN    (0, 255) (unsigned char)
+ * ALPHA    (0, 255) (unsigned char)
+ *
+ * FORMAT: BLUE + (GREEN << 8) + (RED << 16) + (ALPHA << 24).
  */
 XCBWindow
 XCBCreateSimpleWindow(
         XCBDisplay *display,
         XCBWindow parent,
-        int16_t x,
-        int16_t y,
-        uint16_t width,
-        uint16_t height,
-        uint16_t border_width,
-        uint32_t border,
-        uint32_t background
+        int32_t x,
+        int32_t y,
+        uint32_t width,
+        uint32_t height,
+        uint32_t border_width,
+        uint32_t border_color,
+        uint32_t background_color
         );
-
-
-/* GC */
-
-
 /* 
  * RETURN: GC id (identification number) 
  */
