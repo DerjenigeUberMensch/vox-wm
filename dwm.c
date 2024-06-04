@@ -116,7 +116,8 @@ int ISCOMBO(Client *c)          { return c->wtypeflags & _TYPE_COMBO; }
 int ISDND(Client *c)            { return c->wtypeflags & _TYPE_DND; }
 int ISNORMAL(Client *c)         { return c->wtypeflags & _TYPE_NORMAL; }
 int ISMAPICONIC(Client *c)      { return c->wtypeflags & _TYPE_MAP_ICONIC; }
-int ISMAPNORMAL(Client *c)                { return !ISMAPICONIC(c); }
+int ISMAPNORMAL(Client *c)      { return !ISMAPICONIC(c); }
+int WTYPENONE(Client *c)        { return c->wtypeflags == 0; }
 /* EWMH Window states */
 int ISMODAL(Client *c)          { return c->wstateflags & _STATE_MODAL; }
 int ISSTICKY(Client *c)         { return c->wstateflags & _STATE_STICKY; }
@@ -133,6 +134,7 @@ int ISABOVE(Client *c)          { return c->wstateflags & _STATE_ABOVE; }
 int ISBELOW(Client *c)          { return c->wstateflags & _STATE_BELOW; }
 int DEMANDSATTENTION(Client *c) { return c->wstateflags & _STATE_DEMANDS_ATTENTION; }
 int ISFOCUSED(Client *c)        { return c->wstateflags & _STATE_FOCUSED; }
+int WSTATENONE(Client *c)       { return c->wstateflags == 0; }
 /* WM Protocol */
 int HASWMTAKEFOCUS(Client *c)   { return c->wstateflags & _STATE_SUPPORTED_WM_TAKE_FOCUS; }
 int HASWMSAVEYOURSELF(Client *c){ return c->wstateflags & _STATE_SUPPORTED_WM_SAVE_YOURSELF; }
@@ -1419,6 +1421,8 @@ killclient(Client *c, enum KillType type)
         ev.pad1[1] = 0;
         ev.pad1[2] = 0;
         XCBSendEvent(_wm.dpy, _wm.root, 0, XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY, (const char *)&ev);
+        /* focus next client (prevent focus artifacts) */
+        focus(c->fnext);
     }
 }
 
@@ -1554,7 +1558,9 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     updatewindowprotocol(c, wmprotocolsstatus ? &wmprotocols : NULL);
     getnamefromreply(netwmnamereply, &netwmname);
     getnamefromreply(wmnamereply, &wmname);
-
+    if(trans || !DOCKED(c))
+    {   setfloating(c, 1);
+    }
     /* Custom stuff */
     setclientpid(c, pid);
     setborderwidth(c, bw);
@@ -1595,14 +1601,18 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
         DEBUG("Found a bar: [%d]", win);
         goto CLEANUP;
     }
-
-    if(trans || DOCKED(c))
-    {   setfloating(c, 1);
+    /* assume simple window, likely not using EWMH/ICCCM */
+    if(c->x == c->desktop->mon->wx && c->y == c->desktop->mon->wy)
+    {   /* for now this should cover windows like st which are minimal in protocol handling */
+        if(WTYPENONE(c))
+        {   setfloating(c, 0);
+        }
     }
     /* inherit previous client state */
     if(c->desktop && c->desktop->sel)
     {   setfullscreen(c, ISFULLSCREEN(c->desktop->sel) || ISFULLSCREEN(c));
     }
+
     /* propagates border_width, if size doesn't change */
     configure(c);
     goto CLEANUP;
@@ -1904,6 +1914,7 @@ restoresession(void)
         isclients += !strcmp(str, "Clients.");
         isclientsend += !strcmp(str, "ClientsEnd.");
     }
+    fclose(fr);
     /* map all the windows again */
     Client *c;
     for(m = _wm.mons; m; m = nextmonitor(m))
@@ -2435,7 +2446,7 @@ scan(void)
             XCBCookie *wa = malloc(countsz);
             XCBCookie *wastates = malloc(countsz);
             XCBCookie *tfh = malloc(countsz);
-            XCBCookie **managecookies = malloc(sizeof(XCBCookie *) * num);
+            XCBCookie *managecookies = malloc(managecookiesz * num);
             XCBGetWindowAttributes **replies = malloc(sizeof(XCBGetWindowAttributes *) * num);
             XCBGetWindowAttributes **replystates = malloc(sizeof(XCBGetWindowAttributes *) * num);
             XCBWindow *trans = malloc(sizeof(XCBWindow) * num);
@@ -2458,10 +2469,7 @@ scan(void)
                 /* this specifically queries for the state which wa[i] might fail to provide */
                 wastates[i] = XCBGetWindowPropertyCookie(_wm.dpy, wins[i], wmatom[WMState], 0L, 2L, False, wmatom[WMState]);
                 tfh[i] = XCBGetTransientForHintCookie(_wm.dpy, wins[i]);
-                managecookies[i] = malloc(managecookiesz);
-                if(managecookies[i])
-                {   managerequest(wins[i], managecookies[i]);
-                }
+                managerequest(wins[i], &managecookies[i * MANAGE_CLIENT_COOKIE_COUNT]);
             }
             
             uint8_t hastrans = 0;
@@ -2480,19 +2488,16 @@ scan(void)
                 if(replies[i]->override_redirect || trans[i]) 
                 {   continue;
                 }
-                if(!managecookies[i])
-                {   continue;
-                }
                 if(replies[i] && replies[i]->map_state == XCB_MAP_STATE_VIEWABLE)
-                {   managereply(wins[i], managecookies[i]);
+                {   managereply(wins[i], &managecookies[i * MANAGE_CLIENT_COOKIE_COUNT]);
                 }
                 else if(replystates[i] && replystates[i]->map_state == XCB_WINDOW_ICONIC_STATE)
-                {   managereply(wins[i], managecookies[i]);
+                {   managereply(wins[i], &managecookies[i * MANAGE_CLIENT_COOKIE_COUNT]);
                 }
             }
 
             /* now the transients */
-            for(i = 0; i <  num; ++i)
+            for(i = 0; i < num; ++i)
             {   
                 if(trans[i])
                 {
@@ -2500,16 +2505,16 @@ scan(void)
                     {
                         /* technically we shouldnt have to do this but just in case */
                         if(!wintoclient(wins[i]))
-                        {   
-                            if(managecookies[i])
-                            {   managereply(wins[i], managecookies[i]);
-                            }
+                        {   managereply(wins[i], &managecookies[i * MANAGE_CLIENT_COOKIE_COUNT]);
                         }
                     }
                 }
+            }
+            /* cleanup */
+            for(i = 0; i < num; ++i)
+            {
                 free(replies[i]);
                 free(replystates[i]);
-                free(managecookies[i]);
             }
             free(wa);
             free(wastates);
