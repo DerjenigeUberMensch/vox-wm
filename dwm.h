@@ -37,10 +37,10 @@
 #define MANAGE_CLIENT_COOKIE_COUNT 16 + 1
 
 /* Client struct flags */
-#define _FSTATE_FLOATING        ((1 << 0))
-#define _FSTATE_WASFLOATING     ((1 << 1))
-#define _FSTATE_SHOW_DECOR      ((1 << 2))
-
+#define _FSTATE_FLOATING            ((1 << 0))
+#define _FSTATE_WASFLOATING         ((1 << 1))
+#define _FSTATE_SHOW_DECOR          ((1 << 2))
+#define _FSTATE_OVERRIDE_REDIRECT   ((1 << 3))
 /* EWMH window types */
 #define _TYPE_DESKTOP       ((1 << 0))
 #define _TYPE_DOCK          ((1 << 1))
@@ -728,6 +728,10 @@ void setshaded(Client *c, uint8_t state);
 void setmodal(Client *c, uint8_t state);
 /* Sets the monitors currently selected desktop. */
 void setmondesktop(Monitor *m, Desktop *desk);
+/* Sets override redirect flag, which disallows attaching to any linked list for a desktop 
+ * But still allows a client to be found using wintoclient()
+ */
+void setoverrideredirect(Client *c, uint8_t state);
 /* Replaces the Clients state with the sticky state, and sets IS sticky Flag. */
 void setsticky(Client *c, uint8_t state);
 /* Vital checks and data setup before any other action is performed. */
@@ -869,6 +873,7 @@ int ISALWAYSONTOP(Client *c);
 int ISALWAYSONBOTTOM(Client *c);
 int WASFLOATING(Client *c);
 int ISFLOATING(Client *c);
+int ISOVERRIDEREDIRECT(Client *c);
 int ISFAKEFLOATING(Client *c);
 int DOCKEDVERT(Client *c);
 int DOCKEDHORZ(Client *c);
