@@ -630,6 +630,13 @@ are reserved in the protocol for errors and replies. */
 #define XCBButton4Mask		                XCB_BUTTON_MASK_4
 #define XCBButton5Mask		                XCB_BUTTON_MASK_5
 
+
+/* extras LIMIT 32768 */
+#define XCB_BUTTON_MASK_6                   (XCB_BUTTON_MASK_5 << 1)
+
+#define XCBButton6Mask                      XCB_BUTTON_MASK_6
+
+
 /* button names. Used as arguments to GrabButton and as detail in ButtonPress
  * and ButtonRelease events.  Not to be confused with button masks above.
  * Note that 0 is already defined above as "AnyButton".  */
@@ -639,6 +646,38 @@ are reserved in the protocol for errors and replies. */
 #define XCBButton3			                XCB_BUTTON_INDEX_3
 #define XCBButton4			                XCB_BUTTON_INDEX_4
 #define XCBButton5			                XCB_BUTTON_INDEX_5
+
+/* extra's if you need more buttons just define them as the number ya want */
+#define XCB_BUTTON_INDEX_6                  (6)
+/*
+#define XCB_BUTTON_INDEX_7                  (7)
+#define XCB_BUTTON_INDEX_8                  (8)
+#define XCB_BUTTON_INDEX_9                  (9)
+#define XCB_BUTTON_INDEX_10                 (10)
+#define XCB_BUTTON_INDEX_11                 (11)
+#define XCB_BUTTON_INDEX_12                 (12)
+#define XCB_BUTTON_INDEX_13                 (13)
+#define XCB_BUTTON_INDEX_14                 (14)
+#define XCB_BUTTON_INDEX_15                 (15)
+#define XCB_BUTTON_INDEX_16                 (16)
+#define XCB_BUTTON_INDEX_17                 (17)
+#define XCB_BUTTON_INDEX_18                 (18)
+#define XCB_BUTTON_INDEX_19                 (19)
+#define XCB_BUTTON_INDEX_20                 (20)
+*/
+#define XCBButton6                          XCB_BUTTON_INDEX_6
+/*
+#define XCBButton7                          XCB_BUTTON_INDEX_7
+#define XCBButton8                          XCB_BUTTON_INDEX_8
+#define XCBButton9                          XCB_BUTTON_INDEX_9
+#define XCBButton10                         XCB_BUTTON_INDEX_10
+#define XCBButton11                         XCB_BUTTON_INDEX_11
+#define XCBButton12                         XCB_BUTTON_INDEX_12
+#define XCBButton13                         XCB_BUTTON_INDEX_13
+#define XCBButton14                         XCB_BUTTON_INDEX_14
+#define XCBButton15                         XCB_BUTTON_INDEX_15
+#define XCBButton16                         XCB_BUTTON_INDEX_16
+*/
 
 /* This is a button number, NOT a button mask. */
 #define XCBButtonAny                        XCB_BUTTON_INDEX_ANY

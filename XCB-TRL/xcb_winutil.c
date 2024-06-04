@@ -7,7 +7,7 @@
 #include "xcb_trl.h"
 #include "xcb_winutil.h"
 
-static const char *WM_ATOM_NAMES[WMLast]= 
+static const char *const WM_ATOM_NAMES[WMLast]= 
 {
     [WMName]              = "WM_NAME",
     [WMIconName]          = "WM_ICON_NAME",
@@ -26,7 +26,7 @@ static const char *WM_ATOM_NAMES[WMLast]=
     [WMState]             = "WM_STATE"
 };
 
-static const uint8_t WM_ATOM_LEN[WMLast] = 
+static const unsigned int WM_ATOM_LEN[WMLast] = 
 {
     [WMName]              = sizeof("WM_NAME") - 1,
     [WMIconName]          = sizeof("WM_ICON_NAME") - 1,
@@ -45,7 +45,7 @@ static const uint8_t WM_ATOM_LEN[WMLast] =
     [WMState]             = sizeof("WM_STATE") - 1
 };
 
-static const char *NET_WM_ATOM_NAMES[NetLast] =
+static const char *const NET_WM_ATOM_NAMES[NetLast] =
 {
     [NetSupported]               = "_NET_SUPPORTED",
     [NetClientList]              = "_NET_CLIENT_LIST",
@@ -130,7 +130,7 @@ static const char *NET_WM_ATOM_NAMES[NetLast] =
     [NetUtf8String]              = "UTF8_STRING",
 };
 
-static const uint8_t NET_WM_ATOM_LEN[NetLast] = 
+static const unsigned int NET_WM_ATOM_LEN[NetLast] = 
 {
     [NetSupported]               = sizeof("_NET_SUPPORTED") - 1,
     [NetClientList]              = sizeof("_NET_CLIENT_LIST") - 1,
@@ -216,42 +216,84 @@ static const uint8_t NET_WM_ATOM_LEN[NetLast] =
 };
 
 void
-XCBInitAtoms(XCBDisplay *display, XCBAtom *wm_atom_return, XCBAtom *net_atom_return)
+XCBInitWMAtomsCookie(
+        XCBDisplay *display, 
+        XCBCookie *net_cookie_return
+        )
 {
-    /* wm */
-    XCBCookie wmcookies[WMLast];
-    XCBCookie netcookies[NetLast];
-
     unsigned int i;
-    if(wm_atom_return)
-    {
-        for(i = 0; i < WMLast; ++i)
-        {   wmcookies[i] = (XCBCookie) { .sequence = xcb_intern_atom(display, False, WM_ATOM_LEN[i], WM_ATOM_NAMES[i]).sequence };
-        }
-    }
-
-    /* wm state */
-    if(net_atom_return)
-    {
-        for(i = 0; i < NetLast; ++i)
-        {   netcookies[i] = (XCBCookie) { .sequence = xcb_intern_atom(display, False, NET_WM_ATOM_LEN[i], NET_WM_ATOM_NAMES[i]).sequence };
-        }
-    }
-
-    if(wm_atom_return)
-    {
-        for(i = 0; i < WMLast; ++i)
-        {   wm_atom_return[i] = XCBInternAtomReply(display, wmcookies[i]);
-        }
-    }
-    if(net_atom_return)
-    {
-        for(i = 0; i < NetLast; ++i)
-        {   net_atom_return[i] = XCBInternAtomReply(display, netcookies[i]);
-        }
+    for(i = 0; i < WMLast; ++i)
+    {   net_cookie_return[i] = (XCBCookie) { .sequence = xcb_intern_atom(display, False, WM_ATOM_LEN[i], WM_ATOM_NAMES[i]).sequence };
     }
 }
 
+void
+XCBInitWMAtomsReply(
+        XCBDisplay *display,
+        XCBCookie *cookies,
+        XCBAtom *atom_return
+        )
+{
+    unsigned int i;
+    XCBGenericError *err = NULL;
+    xcb_intern_atom_reply_t *rep = NULL;
+    for(i = 0; i < WMLast; ++i)
+    {   
+        rep = xcb_intern_atom_reply(display, (xcb_intern_atom_cookie_t) { cookies[i].sequence }, &err);
+        if(rep)
+        {   atom_return[i] = rep->atom;
+        }
+        else
+        {   atom_return[i] = 0;
+        }
+        if(err)
+        {   
+            free(err);
+            err = NULL;
+        }
+        free(rep);
+    }
+}
+
+void 
+XCBInitNetWMAtomsCookie(
+        XCBDisplay *display, 
+        XCBCookie *net_cookie_return
+        )
+{
+    unsigned int i;
+    for(i = 0; i < NetLast; ++i)
+    {   net_cookie_return[i] = (XCBCookie) { .sequence = xcb_intern_atom(display, False, NET_WM_ATOM_LEN[i], NET_WM_ATOM_NAMES[i]).sequence };
+    }
+}
+
+void 
+XCBInitNetWMAtomsReply(
+        XCBDisplay *display, 
+        XCBCookie *cookies,
+        XCBAtom *atom_return
+        )
+{
+    unsigned int i;
+    XCBGenericError *err = NULL;
+    xcb_intern_atom_reply_t *rep = NULL;
+    for(i = 0; i < NetLast; ++i)
+    {   
+        rep = xcb_intern_atom_reply(display, (xcb_intern_atom_cookie_t) { cookies[i].sequence }, &err);
+        if(rep)
+        {   atom_return[i] = rep->atom;
+        }
+        else
+        {   atom_return[i] = 0;
+        }
+        if(err)
+        {   
+            free(err);
+            err = NULL;
+        }
+        free(rep);
+    }
+}
 
 int 
 XCBGetTextProp(
