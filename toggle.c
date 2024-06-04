@@ -147,9 +147,11 @@ ChangeMasterWindow(const Arg *arg)
 void
 KillWindow(const Arg *arg)
 {
-    if(_wm.selmon->desksel->sel)
+    Client *c = _wm.selmon->desksel->sel;
+
+    if(c)
     {
-        killclient(_wm.selmon->desksel->sel, Graceful);
+        killclient(c, Graceful);
         XCBFlush(_wm.dpy);
     }
 }
