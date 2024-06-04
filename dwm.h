@@ -902,6 +902,7 @@ int ISDND(Client *c);
 int ISNORMAL(Client *c);
 int ISMAPICONIC(Client *c);
 int ISMAPNORMAL(Client *c);
+int WTYPENONE(Client *c);
 /* EWMH Window states */
 int ISMODAL(Client *c);
 int ISSTICKY(Client *c);
@@ -916,6 +917,7 @@ int ISABOVE(Client *c);
 int ISBELOW(Client *c);
 int DEMANDSATTENTION(Client *c);
 int ISFOCUSED(Client *c);
+int WSTATENONE(Client *c);
 /* WM Protocol */
 int HASWMTAKEFOCUS(Client *c);
 int HASWMSAVEYOURSELF(Client *c);
