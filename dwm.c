@@ -1421,8 +1421,6 @@ killclient(Client *c, enum KillType type)
         ev.pad1[1] = 0;
         ev.pad1[2] = 0;
         XCBSendEvent(_wm.dpy, _wm.root, 0, XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY, (const char *)&ev);
-        /* focus next client (prevent focus artifacts) */
-        focus(c->fnext);
     }
 }
 
