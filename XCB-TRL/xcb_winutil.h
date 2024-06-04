@@ -100,7 +100,7 @@ enum WMPROTOCOLS {
 
 
 
-/* Fills wm_atom_return and net_atom_return with every atom know for X11.
+/* Fills wm_atom_return and net_atom_return with every atom part of the X11 standard. + EWMH
  * wm_atom_return are default atoms.
  * net_atom_return are part of the Extended Window Manager Hints. (and some regulars too).
  *
@@ -117,10 +117,28 @@ enum WMPROTOCOLS {
  * NOTE: XCBInitAtoms() assumes that the space given is enough, i.e. WMLast or NetLast for array size 
  * 
  */
-void XCBInitAtoms(
+void 
+XCBInitNetWMAtomsCookie(
         XCBDisplay *display, 
-        XCBAtom *wm_atom_return, 
-        XCBAtom *net_atom_return);
+        XCBCookie *net_cookie_return
+        );
+void 
+XCBInitNetWMAtomsReply(
+        XCBDisplay *display, 
+        XCBCookie *net_cookies,
+        XCBAtom *net_atom_return
+        );
+void
+XCBInitWMAtomsCookie(
+        XCBDisplay *display,
+        XCBCookie *wm_cookie_return
+        );
+void
+XCBInitWMAtomsReply(
+        XCBDisplay *display,
+        XCBCookie *wm_cookies,
+        XCBAtom *wm_atom_return
+        );
 int 
 XCBGetTextProp(
         XCBDisplay *display, 
