@@ -340,48 +340,45 @@ applysizehints(Client *c, i32 *x, i32 *y, i32 *width, i32 *height, uint8_t inter
         }
     }
 
-    if (!DOCKED(c))
+    /* see last two sentences in ICCCM 4.1.2.3 */
+    baseismin = c->basew == c->minw && c->baseh == c->minh;
+    /* temporarily remove base dimensions */
+    if (!baseismin)
     {
-        /* see last two sentences in ICCCM 4.1.2.3 */
-        baseismin = c->basew == c->minw && c->baseh == c->minh;
-        /* temporarily remove base dimensions */
-        if (!baseismin)
-        {
-            *width  -= c->basew;
-            *height -= c->baseh;
+        *width  -= c->basew;
+        *height -= c->baseh;
+    }
+    /* adjust for aspect limits */
+    if (c->mina > 0 && c->maxa > 0)
+    {
+        if (c->maxa < (float)*width / *height) 
+        {   *width = *height * c->maxa + 0.5;
         }
-        /* adjust for aspect limits */
-        if (c->mina > 0 && c->maxa > 0)
-        {
-            if (c->maxa < (float)*width / *height) 
-            {   *width = *height * c->maxa + 0.5;
-            }
-            else if (c->mina < (float)*height / *width) 
-            {   *height = *width * c->mina + 0.5;
-            }
+        else if (c->mina < (float)*height / *width) 
+        {   *height = *width * c->mina + 0.5;
         }
-        /* increment calculation requires this */
-        if (baseismin)
-        {
-            *width  -= c->basew;
-            *height -= c->baseh;
-        }
-        /* adjust for increment value */
-        if (c->incw)
-        {   *width -= *width % c->incw;
-        }
-        if (c->inch) 
-        {   *height -= *height % c->inch;
-        }
-        /* restore base dimensions */
-        *width = MAX(*width + c->basew, c->minw);
-        *height = MAX(*height + c->baseh, c->minh);
-        if (c->maxw) 
-        {   *width = MIN(*width, c->maxw);
-        }
-        if (c->maxh) 
-        {   *height = MIN(*height, c->maxh);
-        }
+    }
+    /* increment calculation requires this */
+    if (baseismin)
+    {
+        *width  -= c->basew;
+        *height -= c->baseh;
+    }
+    /* adjust for increment value */
+    if (c->incw)
+    {   *width -= *width % c->incw;
+    }
+    if (c->inch) 
+    {   *height -= *height % c->inch;
+    }
+    /* restore base dimensions */
+    *width = MAX(*width + c->basew, c->minw);
+    *height = MAX(*height + c->baseh, c->minh);
+    if (c->maxw) 
+    {   *width = MIN(*width, c->maxw);
+    }
+    if (c->maxh) 
+    {   *height = MIN(*height, c->maxh);
     }
     return *x != c->x || *y != c->y || *width != c->w || *height != c->h;
 }
