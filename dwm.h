@@ -6,7 +6,6 @@
 #include <stdio.h>
 
 #include "uthash.h"
-#include "bar.h"
 #include "settings.h"
 #include "pannel.h"
 #include "XCB-TRL/xcb_trl.h"
@@ -269,7 +268,7 @@ struct Monitor
     Desktop *desklast;          /* Last Desktop                             */
     Desktop *desksel;           /* Selected Desktop                         */
     Monitor *next;              /* Next Monitor                             */
-    Bar *bar;                   /* The Associated Task-Bar                  */
+    Client *bar;                /* The Associated Task-Bar                  */
     Client *__hash;             /* Hashed clients                           */
 
     uint16_t deskcount;         /* Desktop Counter                          */
@@ -442,11 +441,6 @@ void configure(Client *c);
  * RETURN: NULL on Failure.
 */
 Client *createclient(void);
-/* Allocates a bar and bar properties with all data set to 0 or to the adress of any newly allocated data.
- * RETURN: Bar * on Success.
- * RETURN: NULL on Failure.
-*/
-Bar *createbar(void);
 /* Allocates a desktop and desktop properties with all data set to 0 or to the adress of any newly allocated data.
  * RETURN: Desktop * on Success.
  * RETURN: NULL on Failure.
@@ -518,11 +512,6 @@ void managerequest(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT]
  * RETURN: NULL on Failure.
  */
 Client *managereply(XCBWindow window, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT]);
-/* Sets the window to the specified bar, if the bar doesnt exist it creates it.
- * RETURN: Bar * on Success.
- * RETURN: NULL on Failure.
- */
-Bar *managebar(Monitor *m, XCBWindow win);
 /* Maximizes a client if unmaxed, Sets flag.
  */
 void maximize(Client *c);
@@ -741,8 +730,6 @@ void setmodal(Client *c, uint8_t state);
 void setmondesktop(Monitor *m, Desktop *desk);
 /* Replaces the Clients state with the sticky state, and sets IS sticky Flag. */
 void setsticky(Client *c, uint8_t state);
-/* Sets the title bar to be on top. */
-void settopbar(Client *c, uint8_t state);
 /* Vital checks and data setup before any other action is performed. */
 void startup(void);
 /* Sets up Variables, Checks, WM specific data, etc.. */
@@ -771,6 +758,12 @@ void sigterm(int signo);
  * NOTE: This is only checked when the program is about to exit.
  */
 void specialconds(int argc, char *argcv[]);
+/*      reference point is c1.
+ *      so if c1 has higher priority return 1.
+ *      RETURN: 1 on higher priority.
+ *      RETURN: 0 on lesser priority.
+ */
+int stackpriority(Client *c1, Client *c2);
 /* Setups most vital data for the context. 
  * Calls exit(1) on Failure.
  */
@@ -815,6 +808,7 @@ void updatenumlockmask(void);
  * Doesnt require any data from client, AKA modular. still requires "size" though.
  */
 void updatesizehints(Client *c, XCBSizeHints *size);
+void updatestackpriorityfocus(Desktop *desk);
 /* Updates Client tile if we find one;
  * if none found default to dwm.h BROKEN
  */
@@ -859,9 +853,6 @@ Monitor *wintomon(XCBWindow win);
  * 0 -> skip checks (window already destroyed)
  */
 void unmanage(Client *c, uint8_t destroyed);
-/* memsets the specified bar to all 0's thus unmanaging the bar
- */
-void unmanagebar(Bar *bar);
 /* unmaximizes a client if maxed, Sets flag. */
 void unmaximize(Client *c);
 /* unmaximizes a client horizontally if maxed horz, Sets flag. */
@@ -930,7 +921,7 @@ int HASWMTAKEFOCUS(Client *c);
 int HASWMSAVEYOURSELF(Client *c);
 int HASWMDELETEWINDOW(Client *c);
 
-enum BarSides GETBARSIDE(Monitor *m, Bar *bar);
+enum BarSides GETBARSIDE(Monitor *m, Client *bar);
 
 uint16_t OLDWIDTH(Client *c);
 uint16_t OLDHEIGHT(Client *c);
