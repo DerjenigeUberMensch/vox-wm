@@ -472,6 +472,32 @@ arrangedesktop(Desktop *desk)
                                                                     STRUCT->PREV = NULL;                                        \
                                                                 } while(0)
 */
+
+#define __attach_after(START, AFTER, NEXT, PREV, HEAD, LAST)        do                                  \
+                                                                    {                                   \
+                                                                        AFTER->NEXT = START->NEXT;      \
+                                                                        AFTER->PREV = START;            \
+                                                                        if(!START->NEXT)                \
+                                                                        {   LAST = START;               \
+                                                                        }                               \
+                                                                        else                            \
+                                                                        {   START->NEXT->PREV = AFTER;  \
+                                                                        }                               \
+                                                                        START->NEXT = AFTER;            \
+                                                                    } while(0)
+#define __attach_before(START, BEFORE, NEXT, PREV, HEAD, ATTACH)    do                                  \
+                                                                    {                                   \
+                                                                        if(!START->PREV)                \
+                                                                        {   ATTACH(BEFORE);             \
+                                                                        }                               \
+                                                                        else                            \
+                                                                        {                               \
+                                                                            BEFORE->PREV = START->PREV; \
+                                                                            BEFORE->NEXT = START;       \
+                                                                            START->PREV->NEXT = BEFORE; \
+                                                                            START->PREV = BEFORE;       \
+                                                                        }                               \
+                                                                    } while(0)
 void
 attach(Client *c)
 {
@@ -514,6 +540,23 @@ void
 attachrestack(Client *c)
 {
     __attach_helper(c, desktop->rstack, rnext, rprev, desktop->rlast);
+}
+
+
+void
+attachfocusafter(Client *start, Client *after)
+{
+    Desktop *desk = start->desktop;
+    detachfocus(after);
+    __attach_after(start, after, fnext, fprev, desk->focus, desk->slast);
+}
+
+void
+attachfocusbefore(Client *start, Client *after)
+{
+    Desktop *desk = start->desktop;
+    detachfocus(after);
+    __attach_before(start, after, fnext, fprev, desk->focus, attachfocus);
 }
 
 void

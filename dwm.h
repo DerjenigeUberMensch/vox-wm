@@ -374,6 +374,8 @@ void attachrestack(Client *c);
 /* Adds Client to focus linked list. 
  */
 void attachfocus(Client *c);
+void attachfocusafter(Client *start, Client *after);
+void attachfocusbefore(Client *start, Client *after);
 /* Removes Client from clients desktop linked list.
 */
 void detach(Client *c);
