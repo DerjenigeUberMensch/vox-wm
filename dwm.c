@@ -24,6 +24,7 @@
 
 #include "util.h"
 #include "dwm.h"
+#include "XCB-TRL/xcb_dnd.h"
 #include "parser.h"
 
 #include "keybinds.h"
@@ -40,6 +41,7 @@ UserSettings _cfg;
 
 XCBAtom netatom[NetLast];
 XCBAtom wmatom[WMLast];
+XCBAtom dndatom[XDNDLAST];
 XCBAtom motifatom;
 XCBCursor cursors[CurLast];
 
@@ -1157,7 +1159,7 @@ focus(Client *c)
     {   unfocus(desk->sel, 0);
     }
     if(c)
-    {  
+    {
         if(c->desktop->mon != _wm.selmon)
         {   _wm.selmon = c->desktop->mon;
         }
@@ -1171,7 +1173,6 @@ focus(Client *c)
 
         grabbuttons(c->win, 1);
         XCBSetWindowBorder(_wm.dpy, c->win, c->bcol);
-
         setfocus(c);
     }
     else
@@ -1619,6 +1620,8 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
         setoverrideredirect(c, 1);
         configure(c);
         c->desktop->mon->bar = c;
+        updatebargeom(c->desktop->mon);
+        updatebarpos(c->desktop->mon);
         c = NULL;
         DEBUG("Found a bar: [%d]", win);
         goto CLEANUP;
@@ -3005,10 +3008,14 @@ setup(void)
     XCBCookie motifcookie = XCBInternAtomCookie(_wm.dpy, "_MOTIF_WM_HINTS", False);
     XCBCookie wmcookie[WMLast];
     XCBCookie netcookie[NetLast];
+    XCBCookie dndcookie[XDNDLAST];
     XCBInitWMAtomsCookie(_wm.dpy, (XCBCookie *)wmcookie);
     XCBInitNetWMAtomsCookie(_wm.dpy, (XCBCookie *)netcookie);
+    XCBInitDNDAtomsCookie(_wm.dpy, (XCBCookie *)dndcookie);
+
     XCBInitWMAtomsReply(_wm.dpy, wmcookie, wmatom);
     XCBInitNetWMAtomsReply(_wm.dpy, netcookie, netatom);
+    XCBInitDNDAtomsReply(_wm.dpy, dndcookie, dndatom);
     motifatom = XCBInternAtomReply(_wm.dpy, motifcookie);
     /* supporting window for NetWMCheck */
     _wm.wmcheckwin = XCBCreateSimpleWindow(_wm.dpy, _wm.root, 0, 0, 1, 1, 0, 0, 0);
@@ -3790,11 +3797,11 @@ updatebargeom(Monitor *m)
 
     if(bar)
     {
-        const u16 bx = USGetBarX(settings);
-        const u16 by = USGetBarY(settings);
+        const i16 bx = USGetBarX(settings);
+        const i16 by = USGetBarY(settings);
         const u16 bw = USGetBarWidth(settings);
         const u16 bh = USGetBarHeight(settings);
-        resize(bar, bx, by, bw, bh, 0);
+        resize(bar, bar->x, bar->y, bw, bh, 0);
         DEBUG("%u %u", bw, bh);
     }
 }
