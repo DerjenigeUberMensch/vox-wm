@@ -24,7 +24,6 @@
 
 #include "util.h"
 #include "dwm.h"
-#include "XCB-TRL/xcb_dnd.h"
 #include "parser.h"
 
 #include "keybinds.h"
@@ -41,7 +40,6 @@ UserSettings _cfg;
 
 XCBAtom netatom[NetLast];
 XCBAtom wmatom[WMLast];
-XCBAtom dndatom[XDNDLAST];
 XCBAtom motifatom;
 XCBCursor cursors[CurLast];
 
@@ -56,6 +54,7 @@ int ISALWAYSONBOTTOM(Client *c) { return c->wstateflags & _STATE_BELOW; }
 int WASFLOATING(Client *c)      { return c->flags & _FSTATE_WASFLOATING; }
 int ISFLOATING(Client *c)       { return c->flags & _FSTATE_FLOATING; }
 int ISOVERRIDEREDIRECT(Client *c) { return c->flags & _FSTATE_OVERRIDE_REDIRECT; }
+int KEEPFOCUS(Client *c)        { return c->flags & _FSTATE_KEEP_FOCUS; }
 int ISFAKEFLOATING(Client *c)   { return c->flags & _FSTATE_FLOATING || c->desktop->layout == Floating; }
 
 int WASDOCKEDVERT(Client *c)    {   const i16 wy = c->desktop->mon->wy;
@@ -1153,7 +1152,7 @@ focus(Client *c)
     Monitor *selmon = _wm.selmon;
     Desktop *desk  = selmon->desksel;
     if(!c || !ISVISIBLE(c))
-    {   for(c = desk->focus; c && (!ISVISIBLE(c) || NEVERFOCUS(c)); c = nextfocus(c));
+    {   for(c = desk->focus; c && (!ISVISIBLE(c) || NEVERFOCUS(c)) && !KEEPFOCUS(c); c = nextfocus(c));
     }
     if(desk->sel && desk->sel != c)
     {   unfocus(desk->sel, 0);
@@ -2927,6 +2926,11 @@ sethidden(Client *c, uint8_t state)
     SETFLAG(c->wstateflags, _STATE_HIDDEN, !!state);
 }
 
+void 
+setkeepfocus(Client *c, uint8_t state)
+{
+    SETFLAG(c->flags, _FSTATE_KEEP_FOCUS, !!state);
+}
 void
 setmaximizedvert(Client *c, uint8_t state)
 {
@@ -3049,17 +3053,14 @@ setupatoms(void)
     XCBCookie motifcookie;
     XCBCookie wmcookie[WMLast];
     XCBCookie netcookie[NetLast];
-    XCBCookie dndcookie[XDNDLAST];
 
     motifcookie = XCBInternAtomCookie(_wm.dpy, "_MOTIF_WM_HINTS", False);
     XCBInitWMAtomsCookie(_wm.dpy, (XCBCookie *)wmcookie);
     XCBInitNetWMAtomsCookie(_wm.dpy, (XCBCookie *)netcookie);
-    XCBInitDNDAtomsCookie(_wm.dpy, (XCBCookie *)dndcookie);
 
     /* replies */
     XCBInitWMAtomsReply(_wm.dpy, wmcookie, wmatom);
     XCBInitNetWMAtomsReply(_wm.dpy, netcookie, netatom);
-    XCBInitDNDAtomsReply(_wm.dpy, dndcookie, dndatom);
     motifatom = XCBInternAtomReply(_wm.dpy, motifcookie);
 }
 
