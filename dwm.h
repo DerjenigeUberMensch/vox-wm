@@ -738,6 +738,8 @@ void setsticky(Client *c, uint8_t state);
 void startup(void);
 /* Sets up Variables, Checks, WM specific data, etc.. */
 void setup(void);
+/* Sets up Atoms ID's from the XServer */
+void setupatoms(void);
 /* Sets up the cursors used for the WM. */
 void setupcursors(void);
 /* Loads CFG data into Settings struct. */

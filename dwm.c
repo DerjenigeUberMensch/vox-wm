@@ -3002,21 +3002,12 @@ setup(void)
         cleanup();
         DIECAT("%s", "Could not establish connection with keyboard (OutOfMemory)");
     }
+    /* finds any monitor's */
     updategeom();
+
+    setupatoms();
     setupcursors();
     setupcfg();
-    XCBCookie motifcookie = XCBInternAtomCookie(_wm.dpy, "_MOTIF_WM_HINTS", False);
-    XCBCookie wmcookie[WMLast];
-    XCBCookie netcookie[NetLast];
-    XCBCookie dndcookie[XDNDLAST];
-    XCBInitWMAtomsCookie(_wm.dpy, (XCBCookie *)wmcookie);
-    XCBInitNetWMAtomsCookie(_wm.dpy, (XCBCookie *)netcookie);
-    XCBInitDNDAtomsCookie(_wm.dpy, (XCBCookie *)dndcookie);
-
-    XCBInitWMAtomsReply(_wm.dpy, wmcookie, wmatom);
-    XCBInitNetWMAtomsReply(_wm.dpy, netcookie, netatom);
-    XCBInitDNDAtomsReply(_wm.dpy, dndcookie, dndatom);
-    motifatom = XCBInternAtomReply(_wm.dpy, motifcookie);
     /* supporting window for NetWMCheck */
     _wm.wmcheckwin = XCBCreateSimpleWindow(_wm.dpy, _wm.root, 0, 0, 1, 1, 0, 0, 0);
     XCBSelectInput(_wm.dpy, _wm.wmcheckwin, XCB_NONE);
@@ -3050,6 +3041,26 @@ setup(void)
     updatenumlockmask();
     grabkeys();
     focus(NULL);
+}
+
+void
+setupatoms(void)
+{
+    XCBCookie motifcookie;
+    XCBCookie wmcookie[WMLast];
+    XCBCookie netcookie[NetLast];
+    XCBCookie dndcookie[XDNDLAST];
+
+    motifcookie = XCBInternAtomCookie(_wm.dpy, "_MOTIF_WM_HINTS", False);
+    XCBInitWMAtomsCookie(_wm.dpy, (XCBCookie *)wmcookie);
+    XCBInitNetWMAtomsCookie(_wm.dpy, (XCBCookie *)netcookie);
+    XCBInitDNDAtomsCookie(_wm.dpy, (XCBCookie *)dndcookie);
+
+    /* replies */
+    XCBInitWMAtomsReply(_wm.dpy, wmcookie, wmatom);
+    XCBInitNetWMAtomsReply(_wm.dpy, netcookie, netatom);
+    XCBInitDNDAtomsReply(_wm.dpy, dndcookie, dndatom);
+    motifatom = XCBInternAtomReply(_wm.dpy, motifcookie);
 }
 
 void
