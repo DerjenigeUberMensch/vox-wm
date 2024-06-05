@@ -220,8 +220,11 @@ buttonpress(XCBGenericEvent *event)
     Client *c;
     if((c = wintoclient(eventwin)))
     {   
-        focus(c);
-        arrange(c->desktop);
+        if(c->desktop->sel != c)
+        {   
+            focus(c);
+            arrange(c->desktop);
+        }
         XCBAllowEvents(_wm.dpy, XCB_ALLOW_REPLAY_POINTER, XCB_CURRENT_TIME);
         sync = 1;
     }
