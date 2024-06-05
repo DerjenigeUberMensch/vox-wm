@@ -53,6 +53,7 @@ int ISALWAYSONTOP(Client *c)    { return c->wstateflags & _STATE_ABOVE; }
 int ISALWAYSONBOTTOM(Client *c) { return c->wstateflags & _STATE_BELOW; }
 int WASFLOATING(Client *c)      { return c->flags & _FSTATE_WASFLOATING; }
 int ISFLOATING(Client *c)       { return c->flags & _FSTATE_FLOATING; }
+int ISOVERRIDEREDIRECT(Client *c) { return c->flags & _FSTATE_OVERRIDE_REDIRECT; }
 int ISFAKEFLOATING(Client *c)   { return c->flags & _FSTATE_FLOATING || c->desktop->layout == Floating; }
 
 int WASDOCKEDVERT(Client *c)    {   const i16 wy = c->desktop->mon->wy;
@@ -443,7 +444,8 @@ arrangedesktop(Desktop *desk)
 
 /* Macro helper */
 #define __attach_helper(STRUCT, HEAD, NEXT, PREV, LAST)     do                                      \
-                                                            {   STRUCT->NEXT = STRUCT->HEAD;        \
+                                                            {                                       \
+                                                                STRUCT->NEXT = STRUCT->HEAD;        \
                                                                 STRUCT->HEAD = STRUCT;              \
                                                                 if(STRUCT->NEXT)                    \
                                                                 {   STRUCT->NEXT->PREV = STRUCT;    \
@@ -505,6 +507,9 @@ arrangedesktop(Desktop *desk)
 void
 attach(Client *c)
 {
+    if(ISOVERRIDEREDIRECT(c))
+    {   return;
+    }
     __attach_helper(c, desktop->clients, next, prev, desktop->clast);
 }
 
@@ -537,24 +542,36 @@ attachdesktoplast(Monitor *m, Desktop *desk)
 void
 attachstack(Client *c)
 {
+    if(ISOVERRIDEREDIRECT(c))
+    {   return;
+    }
     __attach_helper(c, desktop->stack, snext, sprev, desktop->slast);
 }
 
 void
 attachrestack(Client *c)
 {
+    if(ISOVERRIDEREDIRECT(c))
+    {   return;
+    }
     __attach_helper(c, desktop->rstack, rnext, rprev, desktop->rlast);
 }
 
 void
 attachfocus(Client *c)
 {
+    if(ISOVERRIDEREDIRECT(c))
+    {   return;
+    }
     __attach_helper(c, desktop->focus, fnext, fprev, desktop->flast);
 }
 
 void
 attachfocusafter(Client *start, Client *after)
 {
+    if(ISOVERRIDEREDIRECT(after))
+    {   return;
+    }
     Desktop *desk = start->desktop;
     detachfocus(after);
     __attach_after(start, after, fnext, fprev, desk->focus, desk->slast);
@@ -563,6 +580,9 @@ attachfocusafter(Client *start, Client *after)
 void
 attachfocusbefore(Client *start, Client *after)
 {
+    if(ISOVERRIDEREDIRECT(after))
+    {   return;
+    }
     Desktop *desk = start->desktop;
     detachfocus(after);
     __attach_before(start, after, fnext, fprev, desk->focus, desk->slast, attachfocus);
@@ -1077,6 +1097,9 @@ createdecoration(void)
         decor->h = 0;
         decor->win = 0;
     }
+    /*
+    _NET_WM_FRAME_DRAWN, _NET_WM_FRAME_TIMINGS, _NET_WM_WINDOW_OPACITY, _NET_RESTACK_WINDOW, _GTK_FRAME_EXTENTS, _GTK_SHOW_WINDOW_MENU, _GTK_EDGE_CONSTRAINTS, _GTK_WORKAREAS
+    */
     return decor;
 }
 
@@ -1593,6 +1616,7 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     {
         detachcompletely(c);
         setborderwidth(c, 0);
+        setoverrideredirect(c, 1);
         configure(c);
         c->desktop->mon->bar = c;
         c = NULL;
@@ -1924,6 +1948,7 @@ restoresession(void)
             }
         }
     }
+    focus(NULL);
     arrangemons();
     /* No need to flush run() syncs for us */
     /* XCBFlush(_wm.dpy) */
@@ -2527,7 +2552,6 @@ scan(void)
     else
     {   DEBUG0("Failed to scan for clients.");
     }
-    focus(NULL);
     /* restore session covers this after */
     /* arrangemons(); */
 }
@@ -2931,6 +2955,11 @@ setmondesktop(Monitor *m, Desktop *desk)
 {   
     m->desksel = desk;
 }
+void
+setoverrideredirect(Client *c, uint8_t state)
+{
+    SETFLAG(c->flags, _FSTATE_OVERRIDE_REDIRECT, !!state);
+}
 
 void
 setsticky(Client *c, u8 state)
@@ -2974,7 +3003,12 @@ setup(void)
     setupcursors();
     setupcfg();
     XCBCookie motifcookie = XCBInternAtomCookie(_wm.dpy, "_MOTIF_WM_HINTS", False);
-    XCBInitAtoms(_wm.dpy, wmatom, netatom);
+    XCBCookie wmcookie[WMLast];
+    XCBCookie netcookie[NetLast];
+    XCBInitWMAtomsCookie(_wm.dpy, (XCBCookie *)wmcookie);
+    XCBInitNetWMAtomsCookie(_wm.dpy, (XCBCookie *)netcookie);
+    XCBInitWMAtomsReply(_wm.dpy, wmcookie, wmatom);
+    XCBInitNetWMAtomsReply(_wm.dpy, netcookie, netatom);
     motifatom = XCBInternAtomReply(_wm.dpy, motifcookie);
     /* supporting window for NetWMCheck */
     _wm.wmcheckwin = XCBCreateSimpleWindow(_wm.dpy, _wm.root, 0, 0, 1, 1, 0, 0, 0);
