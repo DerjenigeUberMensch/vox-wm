@@ -41,6 +41,7 @@
 #define _FSTATE_WASFLOATING         ((1 << 1))
 #define _FSTATE_SHOW_DECOR          ((1 << 2))
 #define _FSTATE_OVERRIDE_REDIRECT   ((1 << 3))
+#define _FSTATE_KEEP_FOCUS          ((1 << 4))
 /* EWMH window types */
 #define _TYPE_DESKTOP       ((1 << 0))
 #define _TYPE_DOCK          ((1 << 1))
@@ -718,6 +719,10 @@ void setfloating(Client *c, uint8_t state);
 void setfocus(Client *c);
 /* Sets the Windows Map State (Iconic/Normal), and IS hidden Flag. */
 void sethidden(Client *c, uint8_t state);
+/* Sets the keep focus state flag 
+ * NOTE: Client must already be in focus to work.
+ */
+void setkeepfocus(Client *c, uint8_t state);
 /* Sets the "Maximized Vert" Flag */
 void setmaximizedvert(Client *c, uint8_t state);
 /* Sets the "Maximized Horz" Flag */
@@ -876,6 +881,7 @@ int ISALWAYSONBOTTOM(Client *c);
 int WASFLOATING(Client *c);
 int ISFLOATING(Client *c);
 int ISOVERRIDEREDIRECT(Client *c);
+int KEEPFOCUS(Client *c);
 int ISFAKEFLOATING(Client *c);
 int DOCKEDVERT(Client *c);
 int DOCKEDHORZ(Client *c);
