@@ -411,8 +411,8 @@ arrange(Desktop *desk)
     updatebargeom(desk->mon);
     updatebarpos(desk->mon);
 
-    arrangeq(desk);
     reorder(desk);
+    arrangeq(desk);
     restack(desk);
 }
 
@@ -1098,9 +1098,6 @@ createdecoration(void)
         decor->h = 0;
         decor->win = 0;
     }
-    /*
-    _NET_WM_FRAME_DRAWN, _NET_WM_FRAME_TIMINGS, _NET_WM_WINDOW_OPACITY, _NET_RESTACK_WINDOW, _GTK_FRAME_EXTENTS, _GTK_SHOW_WINDOW_MENU, _GTK_EDGE_CONSTRAINTS, _GTK_WORKAREAS
-    */
     return decor;
 }
 
@@ -1161,6 +1158,9 @@ focus(Client *c)
     {
         if(c->desktop->mon != _wm.selmon)
         {   _wm.selmon = c->desktop->mon;
+        }
+        else if(c->desktop != _wm.selmon->desksel)
+        {   _wm.selmon->desksel = c->desktop;
         }
 
         if(ISURGENT(c))
@@ -1284,9 +1284,9 @@ grabbuttons(XCBWindow win, uint8_t focused)
     int modifiers[4] = { 0, XCB_MOD_MASK_LOCK, _wm.numlockmask, _wm.numlockmask|XCB_MOD_MASK_LOCK};
     XCBUngrabButton(_wm.dpy, XCB_BUTTON_INDEX_ANY, XCB_BUTTON_MASK_ANY, win);
     if (!focused)
-    {
-        XCBGrabButton(_wm.dpy, XCB_BUTTON_INDEX_ANY, XCB_MOD_MASK_ANY, win, True, BUTTONMASK, 
-                XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE, XCB_NONE);
+    {   
+        XCBGrabButton(_wm.dpy, XCB_BUTTON_INDEX_ANY, XCB_MOD_MASK_ANY, win, False, BUTTONMASK, 
+                XCB_GRAB_MODE_SYNC, XCB_GRAB_MODE_SYNC, XCB_NONE, XCB_NONE);
     }
     for (i = 0; i < LENGTH(buttons); i++)
     {
@@ -1294,10 +1294,9 @@ grabbuttons(XCBWindow win, uint8_t focused)
         {
             XCBGrabButton(_wm.dpy, buttons[i].button, 
                     buttons[i].mask | modifiers[j], 
-                    win, True, BUTTONMASK, 
-                    XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, 
+                    win, False, BUTTONMASK, 
+                    XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_SYNC, 
                     XCB_NONE, XCB_NONE);
-            //DEBUG("Grabbed button: [%d]", buttons[i].button);
         }
     }
 }
@@ -1324,7 +1323,7 @@ grabkeys(void)
                 {
                     XCBGrabKey(_wm.dpy, 
                             keycodes[i][j], keys[i].mod | modifiers[k], 
-                            _wm.root, 1, 
+                            _wm.root, True, 
                             XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
                 }
             }
