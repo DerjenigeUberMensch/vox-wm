@@ -210,7 +210,9 @@ buttonpress(XCBGenericEvent *event)
     {
         if(m != _wm.selmon)
         {
-            unfocus(_wm.selmon->desksel->sel, 1);
+            if(_wm.selmon->desksel->sel)
+            {   unfocus(_wm.selmon->desksel->sel, 1);
+            }
             _wm.selmon = m;
             focus(NULL);
             sync = 1;
@@ -219,14 +221,13 @@ buttonpress(XCBGenericEvent *event)
 
     Client *c;
     if((c = wintoclient(eventwin)))
-    {   
-        if(c->desktop->sel != c)
-        {   
+    {
+        if(c->desktop->sel != c)   
+        {
             focus(c);
-            arrange(c->desktop);
+            XCBAllowEvents(_wm.dpy, XCB_ALLOW_REPLAY_POINTER, XCB_CURRENT_TIME);
+            sync = 1;
         }
-        XCBAllowEvents(_wm.dpy, XCB_ALLOW_REPLAY_POINTER, XCB_CURRENT_TIME);
-        sync = 1;
     }
     else
     {   
