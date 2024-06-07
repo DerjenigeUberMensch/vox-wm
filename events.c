@@ -7,6 +7,7 @@
 extern WM _wm;
 extern XCBAtom netatom[NetLast];
 extern XCBAtom wmatom[WMLast];
+extern XCBAtom motifatom;
 
 extern void xerror(XCBDisplay *display, XCBGenericError *error);
 
@@ -1456,6 +1457,12 @@ propertynotify(XCBGenericEvent *event)
             case XCB_ATOM_WM_CLIENT_MACHINE:
                 break;
             default:
+                cookie = XCBGetWindowPropertyCookie(_wm.dpy, c->win, motifatom, 0L, 5L, False, motifatom);
+                prop1 = XCBGetWindowPropertyReply(_wm.dpy, cookie);
+                /* other atoms */
+                if(atom == motifatom)
+                {   updatemotifhints(c, prop1);
+                }
                 break;
         }
     }

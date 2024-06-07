@@ -27,9 +27,6 @@
 #include "parser.h"
 
 #include "keybinds.h"
-
-
-
 /* for HELP/DEBUGGING see under main() or the bottom */
 
 extern void (*handler[XCBLASTEvent]) (XCBGenericEvent *);
@@ -40,6 +37,7 @@ UserSettings _cfg;
 
 XCBAtom netatom[NetLast];
 XCBAtom wmatom[WMLast];
+XCBAtom gtkatom[GTKLAST];
 XCBAtom motifatom;
 XCBCursor cursors[CurLast];
 
@@ -55,6 +53,7 @@ int WASFLOATING(Client *c)      { return c->flags & _FSTATE_WASFLOATING; }
 int ISFLOATING(Client *c)       { return c->flags & _FSTATE_FLOATING; }
 int ISOVERRIDEREDIRECT(Client *c) { return c->flags & _FSTATE_OVERRIDE_REDIRECT; }
 int KEEPFOCUS(Client *c)        { return c->flags & _FSTATE_KEEP_FOCUS; }
+int DISABLEBORDER(Client *c)    { return c->flags & _FSTATE_DISABLE_BORDER; }
 int ISFAKEFLOATING(Client *c)   { return c->flags & _FSTATE_FLOATING || c->desktop->layout == Floating; }
 
 int WASDOCKEDVERT(Client *c)    {   const i16 wy = c->desktop->mon->wy;
@@ -304,6 +303,7 @@ applygravity(const u32 gravity, i16 *x, i16 *y, const u16 w, const u16 h, const 
         *x += w >> 1;
         *y += h >> 1;
     }
+
 }
 
 uint8_t
@@ -1453,6 +1453,7 @@ managerequest(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     const u8 STRUT_P_LENGTH = 12;
     const u8 STRUT_LENGTH = 4;
     const u8 NO_BYTE_OFFSET = 0;
+    const u8 MOTIF_WM_HINT_LENGTH = 5;
     XCBCookie wacookie = XCBGetWindowAttributesCookie(_wm.dpy, win);
     XCBCookie wgcookie = XCBGetWindowGeometryCookie(_wm.dpy, win);
     XCBCookie transcookie = XCBGetTransientForHintCookie(_wm.dpy, win);                        
@@ -1468,6 +1469,7 @@ managerequest(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     XCBCookie wmnamecookie = XCBGetWindowPropertyCookie(_wm.dpy, win, XCB_ATOM_WM_NAME, NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_STRING);
     XCBCookie pidcookie = XCBGetPidCookie(_wm.dpy, win, netatom[NetWMPid]);
     XCBCookie iconcookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMIcon], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_CARDINAL);
+    XCBCookie motifcookie = XCBGetWindowPropertyCookie(_wm.dpy, win, motifatom, NO_BYTE_OFFSET, MOTIF_WM_HINT_LENGTH, False, motifatom);
 
     /* Mostly to prevent needing to rewrite the numbers over and over again if we mess up */
     u8 i = 0;
@@ -1486,7 +1488,8 @@ managerequest(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     requests[i++] = wmnamecookie;
     requests[i++] = iconcookie;
     requests[i++] = pidcookie;
-    /* 15 elements in thing */
+    requests[i++] = motifcookie;
+    /* 16 elements in thing */
 }
 
 Client *
@@ -1534,6 +1537,7 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     char *wmname = NULL;
     XCBWindowProperty *iconreply = NULL;
     pid_t pid = 0;
+    XCBWindowProperty *motifreply = NULL;
 
     /* we do it here before, because we are waiting for replies and for more memory. */
     c = createclient();
@@ -1554,6 +1558,8 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     wmnamereply = XCBGetWindowPropertyReply(_wm.dpy, requests[12]);
     iconreply = XCBGetWindowPropertyReply(_wm.dpy, requests[13]);
     pid = XCBGetPidReply(_wm.dpy, requests[14]);
+    motifreply = XCBGetWindowPropertyReply(_wm.dpy, requests[15]);
+
     strutp = strutpreply ? XCBGetWindowPropertyValue(strutpreply) : NULL;
     strut = strutreply ? XCBGetWindowPropertyValue(strutpreply) : NULL;
 
@@ -1592,6 +1598,7 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     {   updateclass(c, &cls);
     }
     updatewmhints(c, wmh);
+    updatemotifhints(c, motifreply);
     updateicon(c, iconreply);
     XCBSelectInput(_wm.dpy, win, inputmask);
     grabbuttons(win, 0);
@@ -2628,9 +2635,12 @@ setbordercolor32(Client *c, uint32_t col)
 void
 setborderwidth(Client *c, uint16_t border_width)
 {
-    c->oldbw = c->bw;
-    c->bw = border_width;
-    XCBSetWindowBorderWidth(_wm.dpy, c->win, c->bw);
+    if(!DISABLEBORDER(c))
+    {
+        c->oldbw = c->bw;
+        c->bw = border_width;
+        XCBSetWindowBorderWidth(_wm.dpy, c->win, c->bw);
+    }
 }
 
 void
@@ -2710,6 +2720,12 @@ setdesktoplayout(Desktop *desk, uint8_t layout)
 {
     desk->olayout = desk->layout;
     desk->layout = layout;
+}
+
+void
+setdisableborder(Client *c, uint8_t state)
+{
+    SETFLAG(c->flags, _FSTATE_DISABLE_BORDER, !!state);
 }
 
 void
@@ -3019,6 +3035,10 @@ setup(void)
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupportingWMCheck], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&_wm.wmcheckwin, 1);
     /* EWMH support per view */
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&netatom, NetLast);
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&wmatom, WMLast);
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&gtkatom, GTKLAST);
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&motifatom, 1);
+
     XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetClientList]);
     
     updatedesktopnum();
@@ -3052,14 +3072,17 @@ setupatoms(void)
     XCBCookie motifcookie;
     XCBCookie wmcookie[WMLast];
     XCBCookie netcookie[NetLast];
+    XCBCookie gtkcookie[GTKLAST];
 
     motifcookie = XCBInternAtomCookie(_wm.dpy, "_MOTIF_WM_HINTS", False);
     XCBInitWMAtomsCookie(_wm.dpy, (XCBCookie *)wmcookie);
     XCBInitNetWMAtomsCookie(_wm.dpy, (XCBCookie *)netcookie);
+    XCBInitGTKAtomsCookie(_wm.dpy, (XCBCookie *)gtkcookie);
 
     /* replies */
     XCBInitWMAtomsReply(_wm.dpy, wmcookie, wmatom);
     XCBInitNetWMAtomsReply(_wm.dpy, netcookie, netatom);
+    XCBInitGTKAtomsReply(_wm.dpy, gtkcookie, gtkatom);
     motifatom = XCBInternAtomReply(_wm.dpy, motifcookie);
 }
 
@@ -3878,6 +3901,157 @@ updateclientlist(XCBWindow win, uint8_t type)
         default:
             DEBUG0("No type specified.");
             break;
+    }
+}
+
+
+static void 
+__update_motif_decor(Client *c, uint32_t hints)
+{
+    /* bit definitions for MwmHints.decorations */
+    const u32 DECOR_ALL = 1 << 0;
+    const u32 DECOR_BORDER = 1 << 1;
+    const u32 DECOR_RESIZEH = 1 << 2;
+    const u32 DECOR_TITLE = 1 << 3;
+    const u32 DECOR_MENU = 1 << 4;
+    const u32 DECOR_MINIMIZE = 1 << 5;
+    const u32 DECOR_MAXIMIZE = 1 << 6;
+    if(hints & DECOR_ALL)
+    {   hints |= (uint32_t)~0;
+    }
+
+    if(hints & DECOR_BORDER)
+    {   setborderwidth(c, c->oldbw);
+    }
+    else
+    {   
+        setdisableborder(c, 0);
+        setborderwidth(c, 0);
+        setdisableborder(c, 1);
+    }
+    if(hints & DECOR_RESIZEH)
+    {   
+        /* NOP */
+        ASSUME(0);
+    }
+    if(hints & DECOR_TITLE)
+    {   setshowdecor(c, 1);
+    }
+    else
+    {   setshowdecor(c, 0);
+    }
+    if(hints & DECOR_MENU)
+    {  
+        /* NOP */
+        ASSUME(0);
+    }
+    if(hints & DECOR_MINIMIZE || hints & DECOR_MAXIMIZE)
+    {   
+        /* NOP */
+        ASSUME(0);
+    }
+}
+
+static void __update_motif_func(Client *c, int32_t hints)
+{
+    /* bit definitions for MwmHints.functions */
+    const u32 FUNCS_ALL = 1 << 0;
+    const u32 FUNCS_RESIZE = 1 << 1;
+    const u32 FUNCS_MOVE = 1 << 2;
+    const u32 FUNCS_MINIMIZE = 1 << 3;
+    const u32 FUNCS_MAXIMIZE = 1 << 4;
+    const u32 FUNCS_CLOSE = 1 << 5;
+
+    if(hints & FUNCS_ALL)
+    {   hints |= (int32_t)~0;
+    }
+
+    if(hints & FUNCS_RESIZE)
+    {   /* NOP */
+    }
+    else
+    {   /* IDK set fixed or something */       
+    }
+    if(hints & FUNCS_MOVE)
+    {   /* IGNORE */   
+    }
+    if(hints & FUNCS_MINIMIZE)
+    {   /* IGNORE */
+    }
+    if(hints & FUNCS_MAXIMIZE)
+    {   /* IGNORE */
+    }
+    if(hints & FUNCS_CLOSE)
+    {   /* IGNORE */
+    }
+}
+
+static void __update_motif_input(Client *c, int32_t hints)
+{
+    /* values for MwmHints.input_mode */
+    enum ___input 
+    {
+        INPUT_MODELESS = 0,
+        INPUT_PRIMARY_MODAL = 1,
+        INPUT_SYSTEM_MODAL = 2,
+        INPUT_FULL_MODAL = 3,
+    };
+
+    switch(hints)
+    {   
+        case INPUT_PRIMARY_MODAL:
+        case INPUT_SYSTEM_MODAL:
+        case INPUT_FULL_MODAL:
+            /* FALLTHROUGH */
+            /* TODO: Add a hash to client "class" name attribute and just make it so 1 primary window is allowed 
+             * AKA just HASH the primary class name to be urgent/active window 
+             */
+            seturgent(c, 1);
+            break;
+
+        case INPUT_MODELESS:
+            /* FALLTHROUGH */
+        default: 
+            break;
+    }
+}
+
+static void __update_motif_status(Client *c, int32_t hints)
+{
+    /* bit definitions for MwmHints.status */
+    const u32 STATUS_TEAROFF_WIDOW = 1 << 0;
+    if(hints & STATUS_TEAROFF_WIDOW)
+    {   setmodal(c, 1);
+    }
+}
+void
+updatemotifhints(Client *c, XCBWindowProperty *motifprop)
+{
+    /* bit definitions for MwmHints.flags */
+    const u32 HINTS_FUNCTIONS = 1 << 0;
+    const u32 HINTS_DECORATION = 1 << 1;
+    const u32 HINTS_INPUT_MODE = 1 << 2;
+    const u32 HINTS_STATUS = 1 << 3;
+
+    if(motifprop)
+    {
+        MotifWmHints *hints = XCBGetPropertyValue(motifprop);
+        uint32_t len = XCBGetPropertyValueLength(motifprop, sizeof(MotifWmHints));
+        if(hints && len == 1)
+        {   
+            if(hints->flags & HINTS_DECORATION)
+            {   __update_motif_decor(c, hints->decorations);
+            }
+            if(hints->flags & HINTS_FUNCTIONS)
+            {   __update_motif_func(c, hints->functions);
+            }
+            if(hints->flags & HINTS_INPUT_MODE)
+            {   __update_motif_input(c, hints->input_mode);
+            }
+            if(hints->flags & HINTS_STATUS)
+            {   __update_motif_status(c, hints->status);
+            }
+        }
     }
 }
 
