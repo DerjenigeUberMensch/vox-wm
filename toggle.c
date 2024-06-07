@@ -556,24 +556,6 @@ ResizeWindow(const Arg *arg)
 }
 
 void
-SetBorderWidth(const Arg *arg)
-{
-    const u16 bw = 1;
-    if(bw + arg->i < 0)
-    {   return;
-    }
-    const u16 newbw = bw + arg->i;
-    Client *c;
-
-    for(c = _wm.selmon->desksel->clients; c; c = nextclient(c))
-    {   setborderwidth(c, newbw);
-    }
-    arrangedesktop(_wm.selmon->desksel);
-    XCBFlush(_wm.dpy);
-    DEBUG("Border width: [%d]", newbw);
-}
-
-void
 SetWindowLayout(const Arg *arg)
 {
     const Monitor *m = _wm.selmon;
@@ -581,11 +563,6 @@ SetWindowLayout(const Arg *arg)
     setdesktoplayout(m->desksel, arg->i);
     arrange(m->desksel);
     XCBFlush(_wm.dpy);
-}
-
-void
-SetMonitorFact(const Arg *arg)
-{
 }
 
 void
@@ -716,3 +693,5 @@ ToggleFullscreen(const Arg *arg)
     
     setfullscreen(c, !ISFULLSCREEN(c));
 }
+
+
