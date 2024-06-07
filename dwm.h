@@ -10,6 +10,7 @@
 #include "pannel.h"
 #include "XCB-TRL/xcb_trl.h"
 #include "XCB-TRL/xcb_winutil.h"
+#include "XCB-TRL/xcb_gtk.h"
 
 
 #ifndef VERSION
@@ -34,7 +35,7 @@
 #define SESSION_FILE            "/tmp/dwm-session"
 #define CONFIG_FILE             "/var/tmp/dwm-config"   /* todo make dir .config/dwm/config or someting like that */
 #define BORKED                  "NOT_SET"
-#define MANAGE_CLIENT_COOKIE_COUNT 16 + 1
+#define MANAGE_CLIENT_COOKIE_COUNT 16
 
 /* Client struct flags */
 #define _FSTATE_FLOATING            ((1 << 0))
@@ -42,6 +43,7 @@
 #define _FSTATE_SHOW_DECOR          ((1 << 2))
 #define _FSTATE_OVERRIDE_REDIRECT   ((1 << 3))
 #define _FSTATE_KEEP_FOCUS          ((1 << 4))
+#define _FSTATE_DISABLE_BORDER      ((1 << 5))
 /* EWMH window types */
 #define _TYPE_DESKTOP       ((1 << 0))
 #define _TYPE_DOCK          ((1 << 1))
@@ -143,6 +145,7 @@ typedef struct Stack Stack;
 typedef struct Layout Layout;
 typedef struct Desktop Desktop;
 typedef struct WM WM;
+typedef struct MotifWmHints MotifWmHints;
 
 union Arg
 {
@@ -325,6 +328,16 @@ struct WM
     Monitor *mons;                  /* Monitors             */
     XCBKeySymbols *syms;            /* keysym alloc         */
     char *wmname;                   /* WM_NAME              */
+};
+
+struct MotifWmHints
+{
+    /* These correspond to XmRInt resources. (VendorSE.c) */
+    uint32_t flags;
+    uint32_t functions;
+    uint32_t decorations;
+    uint32_t input_mode;
+    uint32_t status;
 };
 
 
@@ -663,6 +676,8 @@ void setdecorvisible(Client *c, uint8_t state);
 void setdesktopcount(Monitor *m, uint16_t desktops);
 /* Sets the desktops layouts, (not automatic arrange must be called after to apply changes.) */
 void setdesktoplayout(Desktop *desk, uint8_t layout);
+/* Sets the flag to disable border >>CHANGES<< for a client. */
+void setdisableborder(Client *c, uint8_t state);
 /* Sets the clients pid. */
 void setclientpid(Client *c, pid_t pid);
 /* Sets the Clients IS Desktop Flag. */
@@ -811,8 +826,8 @@ void updatedesktopnum(void);
 int  updategeom(void);
 /* Updates the Client icon if we find one */
 void updateicon(Client *c, XCBWindowProperty *iconprop);
-/* TODO */
-void updatemotifhints(void);
+/* updates motif hints if they are set */
+void updatemotifhints(Client *c, XCBWindowProperty *motifprop);
 /* checks and updates mask if numlock is active */
 void updatenumlockmask(void);
 /* Updates a Clients sizehints property using the provided hints pointer "size".
@@ -882,6 +897,7 @@ int WASFLOATING(Client *c);
 int ISFLOATING(Client *c);
 int ISOVERRIDEREDIRECT(Client *c);
 int KEEPFOCUS(Client *c);
+int DISABLEBORDER(Client *c);
 int ISFAKEFLOATING(Client *c);
 int DOCKEDVERT(Client *c);
 int DOCKEDHORZ(Client *c);
