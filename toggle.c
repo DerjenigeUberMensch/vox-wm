@@ -34,14 +34,15 @@ GET_BOOL(i64 x)
     }
 }
 
+static void *x(void *a)
+{
+    return NULL;
+}
+
 void
 UserStats(const Arg *arg)
 {
-    static Pannel *p = NULL;
-
-    if(!p)
-    {   p = PannelCreate(_wm.root, 0, 0, _wm.sw, _wm.sh);
-    }
+    PannelCreate(_wm.root, 0, 0, _wm.sw, _wm.sh);
     Client *c = _wm.selmon->desksel->sel;
     if(c)
     {   
@@ -64,6 +65,7 @@ UserStats(const Arg *arg)
         DEBUG("INCW:        %d", c->incw);
         DEBUG("INCH:        %d", c->inch);
         DEBUG("Icon:        (w: %u, h: %u)", c->icon ? c->icon[0] : 0, c->icon ? c->icon[1] : 0);
+        /*
         DEBUG0("STATES.");
         DEBUG("MODAL:               %s", GET_BOOL(ISMODAL(c)));
         DEBUG("STICKY:              %s", GET_BOOL(ISSTICKY(c)));
@@ -102,6 +104,7 @@ UserStats(const Arg *arg)
         DEBUG("MAP ICONIC:          %s", GET_BOOL(ISMAPICONIC(c)));
         DEBUG("FLOATING:            %s", GET_BOOL(ISFLOATING(c)));
         DEBUG("WASFLOATING:         %s", GET_BOOL(WASFLOATING(c)));
+        */
     }
     else
     {   DEBUG0("NULL");
