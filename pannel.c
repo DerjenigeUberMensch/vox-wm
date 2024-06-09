@@ -8,6 +8,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <pthread.h>
+#include <sys/time.h>
+
+#include "fonts.h"
 
 
 static int 
@@ -69,8 +72,6 @@ PannelGraphicsExpose(Pannel *p, XCBGenericEvent *_x)
     (void)majoropcode;
     (void)minoropcode;
 
-    //PannelDrawBuff(p, x, y, w, h);
-    //XCBFlush(p->dpy);
 }
 
 static void
@@ -84,27 +85,57 @@ PannelExpose(Pannel *p, XCBGenericEvent *_x)
     const u16 h             = ev->height;
     const u16 count         = ev->count;
 
-    if(!count && p->win == win)
-    {   
-        DEBUG("(x: %d, y: %d) -> (w: %u, h: %u)", x, y, w, h);
-        PannelRedraw(p);
-        //PannelDrawBuff(p, x, y, w, h);
-        XCBFlush(p->dpy);
-    }
-}
+    static i16 prevx = 0;
+    static i16 prevy = 0;
+    static u16 prevw = 0;
+    static u16 prevh = 0;
 
-static void
-PannelResizeRequest(Pannel *p, XCBGenericEvent *_x)
-{
-    XCBResizeRequestEvent *ev = (XCBResizeRequestEvent *)_x;
-    const XCBWindow win = ev->window;
-    const u16 w         = ev->width;
-    const u16 h         = ev->height;
+    static u8 set = 0;
 
-    if(win == p->win)
+    static long long int deltatime = 0;     /* miliseconds */
+
+
+    const u16 FPS = 60;
+    const u16 TIME_COVERSION_RATIO = 1000;
+    const u8 REDRAW_MIN_TIME_PASSED_MILLI_SECONDS = (TIME_COVERSION_RATIO / FPS);
+    const u8 REDRAW_MIN_COUNT = 1;
+
+    int curtime = 0;
+
+    if(p->win == win)
     {
-        PannelResizeBuff(p, w, h);
-        XCBFlush(p->dpy);
+        struct timeval _tim;
+        if(!set)
+        {   
+            prevx = x;
+            prevy = y;
+            prevw = w;
+            prevh = h;
+            /* reset deltatime */
+            gettimeofday(&_tim, NULL);
+            deltatime = _tim.tv_usec * TIME_COVERSION_RATIO;
+        }
+        else
+        {   
+            prevx = MIN(prevx, x);
+            prevy = MIN(prevy, y);
+            prevw = MAX(prevw, w);
+            prevh = MAX(prevh, h);
+        }
+
+        gettimeofday(&_tim, NULL);
+        curtime = _tim.tv_usec * TIME_COVERSION_RATIO;
+
+        int redraw = curtime - deltatime > REDRAW_MIN_TIME_PASSED_MILLI_SECONDS;
+
+        if(redraw || count <= REDRAW_MIN_COUNT)
+        {
+            DEBUG("(x: %d, y: %d) -> (w: %u, h: %u)", x, y, w, h);
+            PannelRedraw(p, prevx, prevy, prevw, prevh);
+            XCBFlush(p->dpy);
+            /* we drew stuff reset */
+            set = 0;
+        }
     }
 }
 
@@ -135,8 +166,6 @@ PannelConfigureNotify(Pannel *p, XCBGenericEvent *_x)
 
     if(ev->window == p->win)
     {
-        p->w = ev->width;
-        p->h = ev->height;
         PannelResizeBuff(p, ev->width, ev->height);
         XCBFlush(p->dpy);
     }
@@ -153,9 +182,9 @@ PannelCreateWindow(
         int32_t h
         )
 {
-    const uint8_t red = UINT8_MAX;
-    const uint8_t green = UINT8_MAX;
-    const uint8_t blue = UINT8_MAX;
+    const uint8_t red = 0;
+    const uint8_t green = 0;
+    const uint8_t blue = 0;
     const uint8_t alpha = 0;    /* transparency, 0 is opaque, 255 is fully transparent */
     const uint32_t bordercolor = blue + (green << 8) + (red << 16) + (alpha << 24);
     const uint32_t backgroundcolor = bordercolor;
@@ -163,13 +192,12 @@ PannelCreateWindow(
     const uint8_t depth = XCBDefaultDepth(display, screen);
     const uint32_t border_width = 0;
     const XCBVisual visual = XCBGetScreen(display)->root_visual;
-    const uint32_t winmask = XCB_CW_BACKING_STORE|XCB_CW_BACK_PIXEL|XCB_CW_BORDER_PIXEL;
+    const uint32_t winmask = XCB_CW_BACK_PIXEL|XCB_CW_BORDER_PIXEL;
 
     XCBCreateWindowValueList winval = 
     {   
         .background_pixel = backgroundcolor,
         .border_pixel = bordercolor,
-        .backing_store = XCB_BACKING_STORE_WHEN_MAPPED,
     };
     XCBWindow ret = XCBCreateWindow(display, parent, x, y, w, h, border_width, depth, XCB_WINDOW_CLASS_INPUT_OUTPUT, visual, winmask, &winval);
 
@@ -252,15 +280,12 @@ PannelInitLoop(
         |XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY
         |XCB_EVENT_MASK_STRUCTURE_NOTIFY;
 
+    XCBMapWindow(p->dpy, p->win);
     XCBSelectInput(p->dpy, p->win, mask);
-    PannelRedraw(p);
+    PannelRedraw(p, 0, 0, p->w, p->h);
     XCBFlush(p->dpy);
-    return NULL;
     while(p->running && !XCBNextEvent(p->dpy, &ev))
     {
-        DEBUG("%p", (void *)&ev);
-        free(ev);
-        continue;
         PannelLock(p);
         switch(XCB_EVENT_RESPONSE_TYPE(ev))
         {
@@ -270,16 +295,11 @@ PannelInitLoop(
             case XCB_GRAPHICS_EXPOSURE:
                 PannelGraphicsExpose(p, ev);
                 break;
-            case XCB_RESIZE_REQUEST:
-                PannelResizeRequest(p, ev);
-                break;
             case XCB_DESTROY_NOTIFY:
-                p->running = 0;
-                exit(1);
+                PannelDestroyNotify(p, ev);
                 break;
             case XCB_UNMAP_NOTIFY:
-                p->running = 0;
-                exit(1);
+                PannelUnmapNotify(p, ev);
                 break;
             case XCB_CONFIGURE_NOTIFY:
                 PannelConfigureNotify(p, ev);
@@ -288,7 +308,6 @@ PannelInitLoop(
                 xerror(p->dpy, (XCBGenericError *)ev);
                 break;
         }
-        DEBUG("%s", XCBGetEventNameFromEvent(ev));
         free(ev);
         PannelUnlock(p);
     }
@@ -306,21 +325,23 @@ PannelInit(void *p)
     {   return NULL;
     }
     Pannel *pannel = (Pannel *)p;
+    uint32_t x = (XCBDisplayWidth(display, screen) / 2) - (pannel->w / 2);
+    uint32_t y = (XCBDisplayHeight(display, screen) / 2) - (pannel->h / 2);
+    uint32_t sw = XCBDisplayWidth(display, screen);
+    uint32_t sh = XCBDisplayHeight(display, screen);
     if(pannel)
     {
         pannel->running = 1;
-        pannel->win = PannelCreateWindow(display, screen, pannel->win, pannel->x, pannel->y, pannel->w, pannel->h);
+        pannel->win = PannelCreateWindow(display, screen, pannel->win, x, y, pannel->w, pannel->h);
         pannel->gc = PannelCreateGC(display, screen);
-        pannel->pix = XCBCreatePixmap(display, XCBRootWindow(display, screen), pannel->w, pannel->h, XCBDefaultDepth(display, screen));
+        pannel->pix = XCBCreatePixmap(display, XCBRootWindow(display, screen), sw, sh, XCBDefaultDepth(display, screen));
         pannel->dpy = display;
         pannel->screen = screen;
-        pannel->pixw = pannel->w;
-        pannel->pixh = pannel->h;
+        pannel->pixw = sw;
+        pannel->pixh = sh;
         pannel->widgets = NULL;
         pannel->widgetslen = 0;
         XCBSetLineAttributes(display, pannel->gc, 1, XCB_LINE_STYLE_SOLID, XCB_CAP_STYLE_BUTT, XCB_JOIN_STYLE_MITER);
-        XCBMapWindow(pannel->dpy, pannel->win);
-        XCBFlush(pannel->dpy);
         return PannelInitLoop(pannel);
     }
     return pannel;
@@ -347,19 +368,19 @@ PannelDrawText(
         char *str
         )
 {
+    XFFont *font = XFFontCreate(pannel->dpy, pannel->win, "fixed");
+    XFFontDrawText(pannel->dpy, font, pannel->pix, x, y, strlen(str), (uint16_t *)str);
     return 10;
 }
 
 void
-PannelRedraw(Pannel *pannel)
+PannelRedraw(Pannel *pannel, int32_t x, int32_t y, uint32_t w, uint32_t h)
 {
     PannelLock(pannel);
-
     PannelDrawRectangle(pannel, 0, 0, pannel->w, pannel->h, 1, (uint32_t )255);
-    const char *txt = "mace";
+    const char *txt = "macedskladklasjdkldjasldjkldasjdklasjdklasjdaskldaskdasldjaslkdjkldasj\ndasjdkljdaskdaskldjaskldaskldasldlasj\msdajdklasdaskldjasldja";
     PannelDrawText(pannel, 0, 0, (char *)txt);
-
-    PannelDrawBuff(pannel, 0, 0, pannel->w, pannel->h);
+    PannelDrawBuff(pannel, x, y, w, h);
     PannelUnlock(pannel);
 }
 
@@ -380,6 +401,7 @@ PannelResizeBuff(
             pannel->pixw = w;
             pannel->pixh = h;
         }
+        DEBUG0("Resized Pixmap");
     }
     if(pannel->pix)
     {   
@@ -406,8 +428,6 @@ PannelCreate(
     )
 {
     Pannel *pannel = malloc(sizeof(Pannel));
-    pannel->x = x;
-    pannel->y = y;
     pannel->w = w;
     pannel->h = h;
     pannel->win = parent;
@@ -635,7 +655,7 @@ PannelDrawBuff(
     PannelLock(pannel);
     const i32 x = xoffset;
     const i32 y = yoffset;
-    XCBCookie ret = XCBCopyArea(pannel->dpy, pannel->pix, pannel->win, pannel->gc, x, y, w, h, 0, 0);
+    XCBCookie ret = XCBCopyArea(pannel->dpy, pannel->pix, pannel->win, pannel->gc, x, y, w, h, xoffset, yoffset);
     PannelUnlock(pannel);
     return ret;
 }

@@ -11,8 +11,6 @@ typedef struct PannelWidget PannelWidget;
 
 struct Pannel
 {
-    int16_t x;
-    int16_t y;
     uint16_t w;
     uint16_t h;
 
@@ -64,7 +62,11 @@ PannelResizeBuff(
 
 void
 PannelRedraw(
-        Pannel *p
+        Pannel *p,
+        int32_t x,
+        int32_t y,
+        uint32_t w,
+        uint32_t h
         );
 /* Builtin pannel Stuff */
 
