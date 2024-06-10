@@ -12,6 +12,7 @@
 
 #include "fonts.h"
 
+extern XCBAtom netatom[NetLast];
 
 static int 
 PannelLock(Pannel *p)
@@ -208,6 +209,8 @@ PannelCreateWindow(
     };
 
     XCBSetClassHint(display, ret, &classhint);
+    XCBChangeProperty(display, ret, netatom[NetWMWindowType], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_APPEND, (const char *)&netatom[NetWMWindowTypeDialog], 1);
+    XCBChangeProperty(display, ret, netatom[NetWMState], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_APPEND, (const char *)&netatom[NetWMStateModal], 1);
     return ret;
 }
 
@@ -329,6 +332,7 @@ PannelInit(void *p)
     uint32_t y = (XCBDisplayHeight(display, screen) / 2) - (pannel->h / 2);
     uint32_t sw = XCBDisplayWidth(display, screen);
     uint32_t sh = XCBDisplayHeight(display, screen);
+    char *const fontname = "fixed";
     if(pannel)
     {
         pannel->running = 1;
@@ -341,6 +345,7 @@ PannelInit(void *p)
         pannel->pixh = sh;
         pannel->widgets = NULL;
         pannel->widgetslen = 0;
+        pannel->font = XFFontCreate(pannel->dpy, pannel->win, fontname);
         XCBSetLineAttributes(display, pannel->gc, 1, XCB_LINE_STYLE_SOLID, XCB_CAP_STYLE_BUTT, XCB_JOIN_STYLE_MITER);
         return PannelInitLoop(pannel);
     }
@@ -360,26 +365,106 @@ PannelDestroyThreads(Pannel *pannel)
     free(pannel->cond);
 }
 
-int32_t
+void
 PannelDrawText(
         Pannel *pannel, 
-        i32 x, 
-        i32 y, 
+        int32_t x, 
+        int32_t y, 
+        uint32_t len,
         char *str
         )
 {
-    XFFont *font = XFFontCreate(pannel->dpy, pannel->win, "fixed");
-    XFFontDrawText(pannel->dpy, font, pannel->pix, x, y, strlen(str), (uint16_t *)str);
-    return 10;
+    PannelLock(pannel);
+    if(pannel->font)
+    {   XFFontDrawText(pannel->dpy, pannel->font, pannel->pix, x, y, len, (uint16_t *)str);
+    }
+    else
+    {   DEBUG0("Failed to load font");
+    }
+    PannelUnlock(pannel);
+}
+
+
+static void
+PannelDrawTitleScreen(Pannel *pannel)
+{
+    uint32_t red = 0xff0000;
+    PannelLock(pannel);
+    PannelDrawRectangle(pannel, 0, 0, pannel->w, pannel->h, 1, red);
+    PannelUnlock(pannel);
+}
+
+static void
+PannelDrawMoveButtons(Pannel *pannel)
+{
+    u32 red = 0xff0000;
+
+    const u8 SEGMENTS_WIDTH = 10;
+    const u8 SEGMENTS_HEIGHT = SEGMENTS_WIDTH * 2;
+    const u8 SEGMENTS_WIDTH_HEIGHT = SEGMENTS_WIDTH * SEGMENTS_HEIGHT;
+    const u8 NUM_BUTTONS = 3;
+
+    enum
+    {
+        ___left,
+        ___selected,
+        ___right,
+        __last,
+    };
+
+    const u8 NAME_LENS[__last] = 
+    { 
+        [___left] = sizeof("LEFT") - 1, 
+        [___selected] = sizeof("SELECTED") - 1, 
+        [___right] = sizeof("RIGHT") - 1
+    };
+    char *const NAMES[__last] = 
+    { 
+        [___left] = "LEFT", 
+        [___selected] = "SELECTED", 
+        [___right] = "RIGHT" 
+    };
+
+    const u32 ButtonW = pannel->w / SEGMENTS_WIDTH;
+    const u32 ButtonH = pannel->h / SEGMENTS_WIDTH;
+
+    const u32 heightpad = pannel->h / SEGMENTS_HEIGHT;
+    const u32 middlepad = pannel->w / SEGMENTS_WIDTH_HEIGHT;
+
+    const u32 GapsTotalWidth = (NUM_BUTTONS - 1) * middlepad;
+    const u32 ButtonsTotalWidth = (NUM_BUTTONS * ButtonW);
+    const u32 spacew = GapsTotalWidth + ButtonsTotalWidth;
+
+    /* this just centers the buttons */
+    const u32 leftpad = MAX((pannel->w - spacew) / 2, 0);
+
+    u32 x = leftpad;
+    /* make sure its at the bottom */
+    u32 y = MAX(pannel->h - heightpad - ButtonH, 0);
+
+    i32 i;
+    for(i = 0; i < NUM_BUTTONS; ++i)
+    {   
+        PannelDrawRectangle(pannel, x, y, ButtonW, ButtonH, 1, red);
+        PannelDrawText(pannel, x, y, strlen("SELECTED"), "SELECTED");
+        PannelDrawBuff(pannel, x, y, pannel->w, pannel->h);
+        XCBSync(pannel->dpy);
+        x += ButtonW + middlepad;
+    }
 }
 
 void
 PannelRedraw(Pannel *pannel, int32_t x, int32_t y, uint32_t w, uint32_t h)
 {
     PannelLock(pannel);
-    PannelDrawRectangle(pannel, 0, 0, pannel->w, pannel->h, 1, (uint32_t )255);
-    const char *txt = "macedskladklasjdkldjasldjkldasjdklasjdklasjdaskldaskdasldjaslkdjkldasj\ndasjdkljdaskdaskldjaskldaskldasldlasj\msdajdklasdaskldjasldja";
-    PannelDrawText(pannel, 0, 0, (char *)txt);
+
+    /* prevent artifacts from previous drawings */
+    PannelClear(pannel);
+
+    if(pannel->draw)
+    {   pannel->draw(pannel);
+    }
+    PannelDrawMoveButtons(pannel);
     PannelDrawBuff(pannel, x, y, w, h);
     PannelUnlock(pannel);
 }
@@ -431,6 +516,7 @@ PannelCreate(
     pannel->w = w;
     pannel->h = h;
     pannel->win = parent;
+    pannel->draw = NULL;
     if(PannelInitThreads(pannel))
     {
         free(pannel);
@@ -442,6 +528,16 @@ PannelCreate(
         pthread_create(&id, NULL, PannelInit, pannel);
     }
     return pannel;
+}
+
+void
+PannelClear(
+        Pannel *pannel
+        )
+{
+    PannelLock(pannel);
+    PannelDrawRectangle(pannel, 0, 0, pannel->w, pannel->h, 1, 0);
+    PannelUnlock(pannel);
 }
 
 void

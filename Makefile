@@ -9,7 +9,7 @@ SRC = $(wildcard *.c)
 SRC += $(foreach dir, $(SRCDIR), $(wildcard $(dir)/*.c))
 SRCH= $(foreach dir, $(SRCDIR), $(wildcard $(dir)/*.h))
 OBJ = $(patsubst %.c,${BIN}/%.o,$(SRC))
-VERSION = 2.1.0
+VERSION = 2.1.2
 EXE = dwm
 EXEPATH = ${BIN}/${EXE}
 CMACROS += -DVERSION=\"${VERSION}\" -DNAME=\"${EXE}\" 
