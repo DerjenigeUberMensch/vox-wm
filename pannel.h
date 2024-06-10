@@ -1,10 +1,13 @@
 #ifndef PANNEL_H_
 #define PANNEL_H_
 
-#include "XCB-TRL/xcb_trl.h" 
-#include "util.h"
+
 #include <stdint.h>
 #include <xcb/xcb_image.h>
+
+#include "XCB-TRL/xcb_trl.h" 
+#include "util.h"
+#include "fonts.h"
 
 typedef struct Pannel Pannel;
 typedef struct PannelWidget PannelWidget;
@@ -26,17 +29,20 @@ struct Pannel
     XCBDisplay *dpy;
     int screen;
 
-    PannelWidget *widgets;
     uint32_t widgetslen;
+    PannelWidget *widgets;
     pthread_mutex_t *mut;
     pthread_spinlock_t *qmut;
     pthread_cond_t *cond;
+    XFFont *font;
+    void (*draw)(Pannel *);
 };
 
 struct PannelWidget
 {
     int16_t x;
     int16_t y;
+
     uint16_t w;
     uint16_t h;
 
@@ -79,6 +85,11 @@ PannelCreate(
     int32_t h
     );
 
+void
+PannelClear(
+        Pannel *pannel
+        );
+
 /* Documentation Purposes.
  * Automatically destroyed on Unmap/destroy notify.
  * this function should not be used, aside from testing.
@@ -88,11 +99,12 @@ PannelDestroy(
     Pannel *pannel
         );
 
-int32_t
+void
 PannelDrawText(
         Pannel *pannel, 
-        i32 x, 
-        i32 y, 
+        int32_t x, 
+        int32_t y, 
+        uint32_t len,
         char *str
         );
 

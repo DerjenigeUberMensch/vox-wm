@@ -30,6 +30,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "util.h"
+
+//#include <X11/Xft/Xft.h>
 
 
 
@@ -136,11 +139,15 @@ XFFontHasGlyph(
         )
 {
     if(font->char_min > character || font->char_max < character)
-    {   return 0;
+    {   
+        DEBUG("Not found: %c %u", character, character);
+        return 0;
     }
     
     if(font->width_lut && font->width_lut[character - font->char_min].character_width == 0)
-    {   return 0;
+    {   
+        DEBUG("Not found: %c %u", character, character);
+        return 0;
     }
 
     return 1;
