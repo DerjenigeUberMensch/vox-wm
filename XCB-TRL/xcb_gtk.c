@@ -24,7 +24,7 @@ static const int GTK_ATOM_LEN[GTKLAST] =
 
 
 void
-XCBInitGTKAtoms(
+XCBInitGTKAtomsCookie(
         XCBDisplay *display,
         XCBCookie *gtk_cookie_return
         )
