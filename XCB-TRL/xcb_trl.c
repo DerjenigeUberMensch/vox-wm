@@ -1278,10 +1278,10 @@ XCBCreateFontCursor(XCBDisplay *display, int shape)
 
     const xcb_cursor_t id = xcb_generate_id(display);
 
-
-    XCBCookie ret =  xcb_create_glyph_cursor(display, id, font, font, shape, shape + 1,
-                            fgred, fggreen, fgblue,
-                            bgred, bggreen, bgblue);
+    XCBCookie ret = xcb_create_glyph_cursor(display, id, font, font, shape, shape + 1,
+                                            fgred, fggreen, fgblue,
+                                            bgred, bggreen, bgblue
+                                            );
 #ifdef DBG
     _xcb_push_func(ret, _fn);
 #endif
@@ -1310,6 +1310,13 @@ XCBDefineCursor(XCBDisplay *display, XCBWindow window, XCBCursor id)
     _xcb_push_func(ret, _fn);
 #endif
     return ret;
+}
+
+XCBCookie 
+XCBRecolorCursor(XCBDisplay *display, XCBCursor cursor, XCBColor *foreground, XCBColor *background)
+{
+    /* XCBCookie ret = xcb_recolor_cursor(display, cursor) */
+    return (XCBCookie) { .sequence = 0 };
 }
 
 XCBCookie
@@ -2651,7 +2658,7 @@ XCBSetClassHint(
     const uint8_t NULL_BYTE_COUNT = 2;
     uint32_t MAX_LEN = USHRT_MAX - NULL_BYTE_COUNT;
     char *mem = NULL;
-    XCBCookie ret = { .sequence = 0 };
+    XCBCookie ret;
     if(class_hint->instance_name)
     {   ilen = strnlen(class_hint->instance_name, MAX_LEN);
         MAX_LEN -= ilen;
@@ -2675,6 +2682,8 @@ XCBSetClassHint(
     }
 #ifdef DBG
     _xcb_push_func(ret, _fn);
+#else
+    (void)ret;
 #endif
     return !mem;
 }

@@ -378,12 +378,14 @@ typedef xcb_keycode_t XCBKeyCode;
 typedef xcb_visualid_t XCBVisual;
 
 
-typedef struct 
+typedef struct XCBClassHint XCBClassHint;
+typedef struct XCBColor XCBColor;
+
+struct XCBClassHint
 {
     char *instance_name;
     char *class_name;
-} XCBClassHint;
-
+};
 
 typedef xcb_configure_window_value_list_t XCBWindowChanges;
 typedef xcb_query_extension_reply_t XCBQueryExtension;
