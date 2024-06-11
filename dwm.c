@@ -1965,7 +1965,7 @@ restoresession(void)
 Client *
 restoreclientsession(Desktop *desk, char *buff, u16 len)
 {
-    const u8 SCANF_CHECK_SUM = 14;
+    const u8 SCANF_CHECK_SUM = 16;
     u8 check = 0;
 
     int x, y;
@@ -1976,6 +1976,8 @@ restoreclientsession(Desktop *desk, char *buff, u16 len)
     XCBWindow WindowIdFocus;
     XCBWindow WindowIdStack;
     u32 Flags;
+    u32 WTFlags;
+    u32 WSFlags;
     u32 BorderWidth;
     u32 BorderColor;
 
@@ -1990,6 +1992,8 @@ restoreclientsession(Desktop *desk, char *buff, u16 len)
                     "BorderWidth: %u" " "
                     "BorderColor: %u" " "
                     "Flags: %u" " "
+                    "WTFlags: %u" " "
+                    "WSFlags: %u" " "
                     ,
                     &x, &y, &w, &h,
                     &ox, &oy, &ow, &oh,
@@ -1998,12 +2002,15 @@ restoreclientsession(Desktop *desk, char *buff, u16 len)
                     &WindowIdStack,
                     &BorderWidth,
                     &BorderColor,
-                    &Flags
+                    &Flags,
+                    &WTFlags,
+                    &WSFlags
                     );
 
+    Client *cclient = NULL;
     if(check == SCANF_CHECK_SUM)
     {
-        Client *cclient = wintoclient(WindowId);
+        cclient = wintoclient(WindowId);
         Client *fclient = wintoclient(WindowIdFocus);
         Client *sclient = wintoclient(WindowIdStack);
         if(cclient)
@@ -2013,6 +2020,8 @@ restoreclientsession(Desktop *desk, char *buff, u16 len)
             resize(cclient, ox, oy, ow, oh, 0);
             resize(cclient, x, y, w, h, 0);
             cclient->flags = Flags;
+            cclient->wtypeflags = WTFlags;
+            cclient->wstateflags = WSFlags;
         }
         if(fclient)
         {
@@ -2020,16 +2029,25 @@ restoreclientsession(Desktop *desk, char *buff, u16 len)
             attachfocus(fclient);
         }
         if(sclient)
-        {   detachstack(sclient);
+        {   
+            detachstack(sclient);
             attachstack(sclient);
         }
-        DEBUG("Restored Client: [%d]", cclient ? cclient->win : 0);
-        return cclient;
     }
     else
+    {   DEBUG0("FAILED CHECKSUM");
+    }
+
+    if(cclient)
+    {   DEBUG("Restored Client: [%u]", cclient->win);
+    }
+    else if(check != SCANF_CHECK_SUM)
     {   DEBUG("Failed to parse Client str: \"%s\"", buff);
     }
-    return NULL;
+    else
+    {   DEBUG("Client Not Found: [%u]", WindowId);
+    }
+    return cclient;
 }
 
 Desktop *
@@ -2375,6 +2393,8 @@ saveclientsession(FILE *fw, Client *c)
             "BorderWidth: %u" " "
             "BorderColor: %u" " "
             "Flags: %u" " "
+            "WTFlags: %u" " "
+            "WSFlags: %u" " "
             "\n"
             ,
             IDENTIFIER,
@@ -2385,7 +2405,9 @@ saveclientsession(FILE *fw, Client *c)
             stack,
             c->bw,
             c->bcol,
-            c->flags
+            c->flags,
+            c->wtypeflags,
+            c->wstateflags
             );
 
     if(c1 && prevfocus(c1))
