@@ -629,32 +629,38 @@ configurerequest(XCBGenericEvent *event)
     Client *c;
     u8 sync = 0;
     u8 restack = 0;
+    u8 geom = 0;
     if((c = wintoclient(win)))
     {
         const Monitor *m = c->desktop->mon;
         if(mask & XCB_CONFIG_WINDOW_BORDER_WIDTH)
         {                           /* Border width should NEVER be bigger than the screen */
             setborderwidth(c, bw);
+            geom = 1;
         }
         if(mask & XCB_CONFIG_WINDOW_X)
         {
             c->oldx = c->x;
             c->x = m->mx + x;
+            geom = 1;
         }
         if(mask & XCB_CONFIG_WINDOW_Y)
         {
             c->oldy = c->y;
             c->y = m->my + y;
+            geom = 1;
         }
         if(mask & XCB_CONFIG_WINDOW_WIDTH)
         {
             c->oldw = c->w;
             c->w = w;
+            geom = 1;
         }
         if(mask & XCB_CONFIG_WINDOW_HEIGHT)
         {
             c->oldh = c->h;
             c->h = h;
+            geom = 1;
         }
         if(mask & XCB_CONFIG_WINDOW_STACK_MODE)
         {
@@ -769,20 +775,24 @@ configurerequest(XCBGenericEvent *event)
             }
             restack = 1;
         }
-        if((c->x + c->w) > m->mx + m->mw && ISFLOATING(c))
-        {   
-            c->oldx = c->x;
-            c->x = m->mx + ((m->mw >> 1) - (WIDTH(c) >> 1)); /* center in x direction */
-        }
-        if((c->y + c->h) > m->my + m->mh && ISFLOATING(c))
-        {   
-            c->oldy = c->y;
-            c->y = m->my + ((m->mh >> 1) - (HEIGHT(c) >> 1)); /* center in y direction */
-        }
-        /* these checks are so we maintain wasfloating correctly without messing everything up */
-        if(!ISFLOATING(c) && !DOCKED(c))
-        {   setfloating(c, 1);
-            restack = 1;
+        if(geom)
+        {
+            if((c->x + c->w) > m->mx + m->mw && ISFLOATING(c))
+            {   
+                c->oldx = c->x;
+                c->x = m->mx + ((m->mw >> 1) - (WIDTH(c) >> 1)); /* center in x direction */
+            }
+            if((c->y + c->h) > m->my + m->mh && ISFLOATING(c))
+            {   
+                c->oldy = c->y;
+                c->y = m->my + ((m->mh >> 1) - (HEIGHT(c) >> 1)); /* center in y direction */
+            }
+
+            /* these checks are so we maintain wasfloating correctly without messing everything up */
+            if(!ISFLOATING(c) && !DOCKED(c))
+            {   setfloating(c, 1);
+                restack = 1;
+            }
         }
 
         if(mask & (XCB_CONFIG_WINDOW_X|XCB_CONFIG_WINDOW_Y) && !(mask & (XCB_CONFIG_WINDOW_WIDTH|XCB_CONFIG_WINDOW_HEIGHT)))

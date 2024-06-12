@@ -2240,8 +2240,10 @@ void
 resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
 {
     u32 mask = 0;
+
     if(c->x != x)
-    {   c->oldx = c->x;
+    {   
+        c->oldx = c->x;
         c->x = x;
         mask |= XCB_CONFIG_WINDOW_X;
     }
@@ -2269,7 +2271,6 @@ resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
         .y = y,
         .width = width,
         .height = height,
-        .border_width = c->bw
     };
     XCBConfigureWindow(_wm.dpy, c->win, mask, &changes);
     configure(c);
@@ -2662,6 +2663,7 @@ setborderwidth(Client *c, uint16_t border_width)
         c->oldbw = c->bw;
         c->bw = border_width;
         XCBSetWindowBorderWidth(_wm.dpy, c->win, c->bw);
+        configure(c);
     }
 }
 
