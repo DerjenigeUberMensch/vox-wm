@@ -9,7 +9,7 @@ SRC = $(wildcard *.c)
 SRC += $(foreach dir, $(SRCDIR), $(wildcard $(dir)/*.c))
 SRCH= $(foreach dir, $(SRCDIR), $(wildcard $(dir)/*.h))
 OBJ = $(patsubst %.c,${BIN}/%.o,$(SRC))
-VERSION = 2.1.2
+VERSION = 2.2.0
 EXE = dwm
 EXEPATH = ${BIN}/${EXE}
 CMACROS += -DVERSION=\"${VERSION}\" -DNAME=\"${EXE}\" 
@@ -34,6 +34,7 @@ default: ${OBJ}
 	@echo "_Linking:" ${OBJ}
 	@${CC} -o ${BIN}/${EXE} ${OBJ} ${LDFLAGS}
 	@echo "Done."
+	@echo -e "Executable File: "${BIN}/"\033[0;32m"${EXE}'\033[0m'
 
 
 __CLEANARGS = ${RM} ${BIN}/*.o ${BIN}/${SRCDIR}/*.o ${EXEPATH}
@@ -52,8 +53,6 @@ clear: clean
 
 
 rebuild: clean default
-
-release:
 
 install: all
 	mkdir -p ${DESTDIR}${PREFIX}/bin
