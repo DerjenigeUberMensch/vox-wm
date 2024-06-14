@@ -67,6 +67,25 @@ git checkout origin/Experimental
 5. `sudo make install` to install or `make` to just compile.
 6. Done.
 
+## How to Run/Use
+1. Compile, See Above.
+2. Choose option(s) below.
+3. Locate binary 
+    - if installed should be **"dwm"**
+    - else should be located under **"binary"** folder as **"dwm"**
+
+### Normal Usage
+4. Put **"exec YOUR_BINARY_LOCATION"** in **~/.xinitrc** or similiar XServer configuration.
+    - if it doesnt work make sure that no window-manager/desktop manager is run before.
+
+### Xephyr (Debug/Testing Usage)
+4. Start a Xephyr server.
+    - Example: `Xephyr :1 -ac c 25 +xinerama -resizeable -screen 680x480 &`
+5. After locating the binary location make sure you are in the correct display server.
+    - Example: `export DISPLAY=:1`
+6. After setting the correct external xserver display variable simply run the binary file.
+    - Example: `./binary/dwm` or `dwm`
+
 ## Configuration
 
 ****Currently Configuration is not supported in this version of xcb-wswm****
