@@ -848,7 +848,7 @@ XCBWMHandlerClientMessage(
         int32_t y = data.data32[2];
         int32_t w = data.data32[3];
         int32_t h = data.data32[4];
-        int32_t bw = data.data32[5];
+        int32_t bw = 0;
 
         __apply_net_gravity(gravity, &x, &y, w, h, bw);
         __boundcheck_dimentions(&x, &y, &w, &h);
