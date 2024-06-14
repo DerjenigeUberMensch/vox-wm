@@ -23,7 +23,55 @@
 #define _USER_SETTINGS_N        ((1 << 15))
 
 
+typedef struct BarSettings BarSettings;
 typedef struct UserSettings UserSettings;
+
+struct BarSettings
+{
+    /* Holds Ratios of size(s) relative to the monitor 
+     * 0.0f -> 1.0f
+     */
+    struct
+    {
+        float x;    /* Ratio of Monitor x offset    */
+        float y;    /* Ratio of Monitor y offset    */
+        float w;    /* Ratio of Monitor w size      */
+        float h;    /* Ratio of Monitor h size      */
+    } left;
+
+    /* Holds Ratios of size(s) relative to the monitor 
+     * 0.0f -> 1.0f
+     */
+    struct
+    {
+        float x;    /* Ratio of Monitor x offset    */
+        float y;    /* Ratio of Monitor y offset    */
+        float w;    /* Ratio of Monitor w size      */
+        float h;    /* Ratio of Monitor h size      */
+    } right;
+
+    /* Holds Ratios of size(s) relative to the monitor 
+     * 0.0f -> 1.0f
+     */
+    struct
+    {
+        float x;    /* Ratio of Monitor x offset    */
+        float y;    /* Ratio of Monitor y offset    */
+        float w;    /* Ratio of Monitor w size      */
+        float h;    /* Ratio of Monitor h size      */
+    } top;
+    
+    /* Holds Ratios of size(s) relative to the monitor 
+     * 0.0f -> 1.0f
+     */
+    struct
+    {
+        float x;    /* Ratio of Monitor x offset    */
+        float y;    /* Ratio of Monitor y offset    */
+        float w;    /* Ratio of Monitor w size      */
+        float h;    /* Ratio of Monitor h size      */
+    } bottom;
+};
 
 struct UserSettings
 {
@@ -43,11 +91,9 @@ struct UserSettings
     uint16_t maxcc;
 
     /* bar stuff */
-    uint16_t barheight;
-    uint16_t barwidth;
-    int16_t barx;
-    int16_t bary;
+    BarSettings bar;
 };
+
 
 
 
@@ -141,40 +187,9 @@ uint16_t
 USGetMaxClientCount(
         UserSettings *settings
         );
-void
-USSetBarHeight(
-        UserSettings *settings,
-        uint16_t height
-        );
-uint16_t
-USGetBarHeight(
-        UserSettings *settings
-        );
-void
-USSetBarWidth(
-        UserSettings *settings,
-        uint16_t width 
-        );
-uint16_t
-USGetBarWidth(
-        UserSettings *settings
-        );
-void
-USSetBarX(
-        UserSettings *settings,
-        int16_t x
-        );
-uint16_t
-USGetBarX(
-        UserSettings *settings
-        );
-void
-USSetBarY(
-        UserSettings *settings,
-        int16_t y
-        );
-uint16_t
-USGetBarY(
+
+BarSettings *
+USGetBarSettings(
         UserSettings *settings
         );
 
