@@ -176,62 +176,10 @@ USGetMaxClientCount(
     return settings->maxcc;
 }
 
-void
-USSetBarHeight(
-        UserSettings *settings,
-        uint16_t height
-        )
-{
-    settings->barheight = height;
-}
-uint16_t
-USGetBarHeight(
-        UserSettings *settings
-        )
-{   
-    return settings->barheight;
-}
-void
-USSetBarWidth(
-        UserSettings *settings,
-        uint16_t width 
-        )
-{  
-    settings->barwidth = width;
-}
-uint16_t
-USGetBarWidth(
-        UserSettings *settings
-        )
-{   
-    return settings->barwidth;
-}
-void
-USSetBarX(
-        UserSettings *settings,
-        int16_t x
-        )
-{
-    settings->barx = x;
-}
-uint16_t
-USGetBarX(
-        UserSettings *settings
-        )
-{   return settings->barx;
-}
-void
-USSetBarY(
-        UserSettings *settings,
-        int16_t y
-        )
-{
-    settings->bary = y;
-}
-uint16_t
-USGetBarY(
+BarSettings *
+USGetBarSettings(
         UserSettings *settings
         )
 {
-    return settings->bary;
+    return &settings->bar;
 }
