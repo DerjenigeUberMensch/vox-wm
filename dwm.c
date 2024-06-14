@@ -141,30 +141,154 @@ int HASWMTAKEFOCUS(Client *c)   { return c->wstateflags & _STATE_SUPPORTED_WM_TA
 int HASWMSAVEYOURSELF(Client *c){ return c->wstateflags & _STATE_SUPPORTED_WM_SAVE_YOURSELF; }
 int HASWMDELETEWINDOW(Client *c){ return c->wstateflags & _STATE_SUPPORTED_WM_DELETE_WINDOW; }
 
-enum BarSides GETBARSIDE(Monitor *m, Client *bar) 
+static uint32_t 
+__intersect_area(
+        /* rect 1 */
+        int32_t x1, 
+        int32_t y1, 
+        int32_t x2, 
+        int32_t y2,
+        /* rect 2 */
+        int32_t x3,
+        int32_t y3,
+        int32_t x4,
+        int32_t y4
+        )
+{
+    const int32_t xoverlap = MAX(0, MIN(x2, x4) - MAX(x1, x3));
+    const int32_t yoverlap = MAX(0, MIN(y2, y4) - MAX(y1, y3));
+    const uint32_t area = xoverlap * yoverlap;
+    return area;
+}
+
+enum BarSides GETBARSIDE(Monitor *m, Client *bar, uint8_t get_prev)
                                 { 
-                                    const u8 sidebar = bar->w < bar->h;
-                                    const u8 left = bar->x + bar->w / 2 <= m->mx + m->mw / 2;
-                                    const u8 top = bar->y <= m->my + (m->mh / 2);
+                                    const float LEEWAY = .15f;
+                                    const float LEEWAY_SIDE = .35f;
+
+                                    /* top parametors */
+                                    const i32 TOP_MIN_X = m->mx;
+                                    const i32 TOP_MIN_Y = m->my;
+
+                                    const i32 TOP_MAX_X = m->mx + m->mw;
+                                    const i32 TOP_MAX_Y = m->my + (m->mh * LEEWAY);
+
+                                    /* bottom parametors */
+                                    const i32 BOTTOM_MIN_X = m->mx;
+                                    const i32 BOTTOM_MIN_Y = m->my + m->mh - (m->mh * LEEWAY);
+
+                                    const i32 BOTTOM_MAX_X = m->mx + m->mw;
+                                    const i32 BOTTOM_MAX_Y = m->my + m->mh;
+
+                                    /* sidebar left parametors */
+                                    const i32 LEFT_MIN_X = m->mx;
+                                    const i32 LEFT_MIN_Y = TOP_MAX_Y;
+
+                                    const i32 LEFT_MAX_X = m->mx + (m->mw * LEEWAY_SIDE);
+                                    const i32 LEFT_MAX_Y = BOTTOM_MIN_Y;
+
+                                    /* sidebar right parametors */
+                                    const i32 RIGHT_MIN_X = m->mx + m->mw - (m->mw * LEEWAY_SIDE);
+                                    const i32 RIGHT_MIN_Y = TOP_MAX_Y;
+
+                                    const i32 RIGHT_MAX_X = m->mx + m->mw;
+                                    const i32 RIGHT_MAX_Y = BOTTOM_MIN_Y;
+
                                     enum BarSides side;
-                                    if(sidebar)
-                                    {   
-                                        if(left)
-                                        {   side = BarSideLeft;
-                                        }
-                                        else
-                                        {   side = BarSideRight;
-                                        }
+                                    i32 bx1;
+                                    i32 by1;
+                                    i32 bx2;
+                                    i32 by2;
+
+                                    if(get_prev)
+                                    {
+                                        bx1 = bar->oldx + (bar->oldw / 2);
+                                        by1 = bar->oldy + (bar->oldh / 2);
+                                        bx2 = bx1 + bar->oldw;
+                                        by2 = by1 + bar->oldh;
                                     }
-                                    else 
-                                    {   
-                                        if(top)
-                                        {   side = BarSideTop;
-                                        }
-                                        else
-                                        {   side = BarSideBottom;
-                                        }
+                                    else
+                                    {
+                                        bx1 = bar->x + (bar->w / 2);
+                                        by1 = bar->y + (bar->h / 2);
+                                        bx2 = bx1 + bar->w;
+                                        by2 = by1 + bar->h;
                                     }
+
+                                    uint32_t toparea = __intersect_area(
+                                            TOP_MIN_X,
+                                            TOP_MIN_Y,
+                                            TOP_MAX_X,
+                                            TOP_MAX_Y,
+                                            bx1,
+                                            by1,
+                                            bx2,
+                                            by2
+                                            );
+                                    uint32_t bottomarea = __intersect_area(
+                                            BOTTOM_MIN_X,
+                                            BOTTOM_MIN_Y,
+                                            BOTTOM_MAX_X,
+                                            BOTTOM_MAX_Y,
+                                            bx1,
+                                            by1,
+                                            bx2,
+                                            by2
+                                            );
+                                    uint32_t leftarea = __intersect_area(
+                                            LEFT_MIN_X,
+                                            LEFT_MIN_Y,
+                                            LEFT_MAX_X,
+                                            LEFT_MAX_Y,
+                                            bx1,
+                                            by1,
+                                            bx2,
+                                            by2
+                                            );
+                                    uint32_t rightarea = __intersect_area(
+                                            RIGHT_MIN_X,
+                                            RIGHT_MIN_Y,
+                                            RIGHT_MAX_X,
+                                            RIGHT_MAX_Y,
+                                            bx1,
+                                            by1,
+                                            bx2,
+                                            by2
+                                            );
+
+                                    uint32_t biggest = toparea;
+
+                                    if(biggest < bottomarea)
+                                    {   biggest = bottomarea;
+                                    }
+
+                                    if(biggest < leftarea)
+                                    {   biggest = leftarea;
+                                    }
+
+                                    if(biggest < rightarea)
+                                    {   biggest = rightarea;
+                                    }
+
+                                    /* prob should handle the rare change that the area would be the same as another,
+                                     * But at that point we should just rework it to use buttonpress last pressed location.
+                                     */
+                                    if(biggest == toparea)
+                                    {   side = BarSideTop;
+                                    }
+                                    else if(biggest == bottomarea)
+                                    {   side = BarSideBottom;
+                                    }
+                                    else if(biggest == leftarea)
+                                    {   side = BarSideLeft;
+                                    }
+                                    else if(biggest == rightarea)
+                                    {   side = BarSideRight;
+                                    }
+                                    else    /* this is just for compiler ommiting warning */
+                                    {   side = BarSideTop;
+                                    }
+
                                     return side;
                                 }
 
@@ -776,6 +900,19 @@ detachfocus(Client *c)
 
     c->fprev = NULL;
     c->fnext = NULL;
+}
+
+uint8_t
+checknewbar(Monitor *m, Client *c, uint8_t has_strut_or_strutp)
+{
+    /* barwin checks */
+    u8 checkbar = !m->bar;
+    if(checkbar && COULDBEBAR(c, has_strut_or_strutp))
+    {   
+        setupbar(m, c);
+        return 0;
+    }
+    return 1;
 }
 
 void
@@ -1504,13 +1641,12 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     {   DEBUG("Window already managed????: [%u]", win);
         return NULL;
     } 
-    /* barwin checks */
-    u8 checkbar = !_wm.selmon->bar;
     
     const u16 bw = 0;
     const u32 bcol = 0;
     const u8 showdecor = 1;
 
+    Monitor *m = NULL;
     Client *c = NULL;
     XCBWindow trans = 0;
     u8 transstatus = 0;
@@ -1607,6 +1743,8 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     {   c->desktop = _wm.selmon->desksel;
     }
 
+    m = c->desktop->mon;
+
     attach(c);
     attachstack(c);
     attachfocus(c);
@@ -1614,25 +1752,10 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     updateclientlist(win, ClientListAdd);
     setclientstate(c, XCB_WINDOW_NORMAL_STATE);
 
-    if(c->desktop)
-    {   HASH_ADD_INT(c->desktop->mon->__hash, win, c);
-    }
+    HASH_ADD_INT(m->__hash, win, c);
 
-    if(checkbar && COULDBEBAR(c, strutp || strut))
-    {
-        detachcompletely(c);
-        setborderwidth(c, 0);
-        setoverrideredirect(c, 1);
-        configure(c);
-        c->desktop->mon->bar = c;
-        updatebargeom(c->desktop->mon);
-        updatebarpos(c->desktop->mon);
-        c = NULL;
-        DEBUG("Found a bar: [%d]", win);
-        goto CLEANUP;
-    }
     /* assume simple window, likely not using EWMH/ICCCM */
-    if(c->x == c->desktop->mon->wx && c->y == c->desktop->mon->wy)
+    if(c->x == m->wx && c->y == m->wy)
     {   /* for now this should cover windows like st which are minimal in protocol handling */
         if(WTYPENONE(c))
         {   setfloating(c, 0);
@@ -1645,6 +1768,11 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
 
     /* propagates border_width, if size doesn't change */
     configure(c);
+
+    /* if its a new bar we dont want to return it as the monitor now manages it */
+    if(!checknewbar(m, c, strut || strutp))
+    {   goto FAILURE;
+    }
     goto CLEANUP;
 FAILURE:
     free(c);
@@ -2184,7 +2312,7 @@ restoremonsession(char *buff, u16 len)
             Client *b = wintoclient(BarId);
             if(b)
             {   
-                if(pullm->bar)
+                if(pullm->bar && pullm->bar != b)
                 {   
                     XCBWindow win = pullm->bar->win;
                     unmanage(pullm->bar, 0);
@@ -2192,7 +2320,7 @@ restoremonsession(char *buff, u16 len)
                     managerequest(win, cookies);
                     managereply(win, cookies);
                 }
-                pullm->bar = b;
+                setupbar(pullm, b);
             }
             /* TODO */
             setdesktopcount(pullm, DeskCount);
@@ -2272,7 +2400,9 @@ resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
         .width = width,
         .height = height,
     };
-    XCBConfigureWindow(_wm.dpy, c->win, mask, &changes);
+    if(mask)
+    {   XCBConfigureWindow(_wm.dpy, c->win, mask, &changes);
+    }
     configure(c);
 }
 
@@ -3111,6 +3241,23 @@ setupatoms(void)
 }
 
 void
+setupbar(Monitor *m, Client *bar)
+{
+    detachcompletely(bar);
+    configure(bar);
+    m->bar = bar;
+    setoverrideredirect(bar, 1);
+    setborderwidth(bar, 0);
+    setdisableborder(bar, 1);
+    setfullscreen(bar, 0);
+    sethidden(bar, 0);
+    setsticky(bar, 1);
+    updatebargeom(m);
+    updatebarpos(m);
+    DEBUG("Found a bar: [%d]", bar->win);
+}
+
+void
 setupcursors(void)
 {
     cursors[CurNormal] = XCBCreateFontCursor(_wm.dpy, XC_left_ptr);
@@ -3129,6 +3276,7 @@ setupcfg(void)
 void
 setupcfgdefaults(void)
 {
+    /* Do note these settings are mostly arbitrary numbers that I (the creator) like */
     UserSettings *s = &_cfg;
     const u16 nmaster = 1;
     const u8 hoverfocus = 0;   /* bool */
@@ -3140,10 +3288,6 @@ setupcfgdefaults(void)
     const u16 winsnap = 10;
     const u16 maxcc = 256;
     const float mfact = 0.55f;
-    const u16 bw = _wm.selmon->ww;
-    const u16 bh = MAX(_wm.selmon->wh / 30, 15);
-    const i16 bx = _wm.selmon->wx;
-    const i16 by = _wm.selmon->wy + _wm.selmon->wh - bh;     /* because a window is a rectangle calculations start at the top left corner, so we need to add the height */
 
     USSetMCount(s, nmaster);
     USSetLayout(s, desktoplayout);
@@ -3155,10 +3299,28 @@ setupcfgdefaults(void)
     USSetSnap(s, winsnap);
     USSetMaxClientCount(s, maxcc);
     USSetMFact(s, mfact);
-    USSetBarWidth(s, bw);
-    USSetBarHeight(s, bh);
-    USSetBarX(s, bx);
-    USSetBarY(s, by);
+
+    BarSettings *bs = USGetBarSettings(&_cfg);
+    /* Left Stuff */
+    bs->left.w = .15f;
+    bs->left.h = 1.0f;
+    bs->left.x = 0.0f;
+    bs->left.y = 0.0f;
+    /* Right Stuff */
+    bs->right.w = .15f;
+    bs->right.h = 1.0f;
+    bs->right.x = 1.0f - bs->right.w;
+    bs->right.y = 0.0f;
+    /* Top Stuff */
+    bs->top.w = 1.0f;
+    bs->top.h = .15f;
+    bs->top.x = 0.0f;
+    bs->top.y = 0.0f;
+    /* Bottom Stuff */
+    bs->bottom.w = 1.0f;
+    bs->bottom.h = .15f;
+    bs->bottom.x = 0.0f;
+    bs->bottom.y = 1.0f - bs->bottom.h;
 }
 
 void
@@ -3727,7 +3889,6 @@ unmanage(Client *c, uint8_t destroyed)
      */
     HASH_DEL(desk->mon->__hash, c);
     detachcompletely(c);
-    focus(NULL);
     updateclientlist(win, ClientListRemove);
     /* no need to arrange fully cause client is not mapped anymore */
     arrange(desk);
@@ -3794,36 +3955,68 @@ updatebarpos(Monitor *m)
     m->ww = m->mw;
     m->wh = m->mh;
     m->wx = m->mx;
-    m->wy = m->wy;
+    m->wy = m->my;
     Client *bar = m->bar;
     if(!bar)
     {   return;
     }
-    enum BarSides side = GETBARSIDE(m, bar);
+    enum BarSides side = GETBARSIDE(m, bar, 0);
+    if(ISFIXED(bar))
+    {
+        if(bar->w > bar->h)
+        {   
+            /* is it top bar ? */
+            if(bar->y + bar->h / 2 <= m->my + m->mh / 2)
+            {   side = BarSideTop;
+            }
+            /* its bottom bar */
+            else
+            {   side = BarSideBottom;
+            }
+        }
+        else if(bar->w < bar->h)
+        {
+            /* is it left bar? */
+            if(bar->x + bar->w / 2 <= m->mx + m->mw / 2)
+            {   side = BarSideLeft;
+            }
+            /* its right bar */
+            else
+            {   side = BarSideRight;
+            }
+        }
+        else
+        {   DEBUG0("Detected bar is a square suprisingly.");
+        }
+    }
     if(!ISHIDDEN(bar))
     {
         switch(side)
         {
             case BarSideLeft:
-                bar->x = m->mx;
+                /* make sure its on the left side */
+                resize(bar, m->mx, m->my, bar->w, bar->h, 1);
                 m->wx += bar->w;
                 m->ww -= bar->w;
                 DEBUG0("Bar Placed Left.");
                 break;
             case BarSideRight:
+                /* make sure its on the right side */
+                resize(bar, m->mx + (m->mw - bar->w), m->my, bar->w, bar->h, 1);
                 m->ww -= bar->w;
-                bar->x = m->wx + m->ww;
                 DEBUG0("Bar Placed Right.");
                 break;
             case BarSideTop:
-                bar->y = m->wy;
+                /* make sure its on the top side */
+                resize(bar, m->mx, m->my, bar->w, bar->h, 1);
                 m->wy += bar->h;
                 m->wh -= bar->h;
                 DEBUG0("Bar Placed Top.");
                 break;
             case BarSideBottom:
+                /* make sure its on the bottom side */
+                resize(bar, m->mx, m->my + (m->mh - bar->h), bar->w, bar->h, 1);
                 m->wh -= bar->h;
-                bar->y = m->wy + m->wh;
                 DEBUG0("Bar Placed Bottom.");
                 break;
             default:
@@ -3853,23 +4046,91 @@ updatebarpos(Monitor *m)
                 break;
         }
     }
-    resize(bar, bar->x, bar->y, bar->w, bar->h, 0);
+    resize(bar, bar->x, bar->y, bar->w, bar->h, 1);
 }
 
 void
 updatebargeom(Monitor *m)
 {
-    UserSettings *settings = &_cfg;
     Client *bar = m->bar;
+    if(!bar || ISHIDDEN(bar))
+    {   return;
+    }
+    /* if the bar is fixed then the geom is impossible to update, also we dont want to update our current bar status cause of that also */
+    if(ISFIXED(bar))
+    {   return;
+    }
+    BarSettings *bs = USGetBarSettings(&_cfg);
 
-    if(bar)
+    f32 bxr;
+    f32 byr;
+    f32 bwr;
+    f32 bhr;
+    enum BarSides side = GETBARSIDE(m, bar, 0);
+    enum BarSides prev = GETBARSIDE(m, bar, 1);
+    if(prev != side)
     {
-        const i16 bx = USGetBarX(settings);
-        const i16 by = USGetBarY(settings);
-        const u16 bw = USGetBarWidth(settings);
-        const u16 bh = USGetBarHeight(settings);
-        resize(bar, bar->x, bar->y, bw, bh, 0);
-        DEBUG("%u %u", bw, bh);
+        switch(side)
+        {   
+            case BarSideLeft:
+                bxr = bs->left.x;
+                byr = bs->left.y;
+                bwr = bs->left.w;
+                bhr = bs->left.h;
+                resize(bar, m->mx + (m->mw * bxr), m->my + (m->mh * byr), m->mw * bwr, m->mh * bhr, 1);
+                break;
+            case BarSideRight:
+                bxr = bs->right.x;
+                byr = bs->right.y;
+                bwr = bs->right.w;
+                bhr = bs->right.h;
+                resize(bar, m->mx + (m->mw * bxr), m->my + (m->mh * byr), m->mw * bwr, m->mh * bhr, 1);
+                break;
+            case BarSideTop:
+                bxr = bs->top.x;
+                byr = bs->top.y;
+                bwr = bs->top.w;
+                bhr = bs->top.h;
+                resize(bar, m->mx + (m->mw * bxr), m->my + (m->mh * byr), m->mw * bwr, m->mh * bhr, 1);
+                break;
+            case BarSideBottom:
+                bxr = bs->bottom.x;
+                byr = bs->bottom.y;
+                bwr = bs->bottom.w;
+                bhr = bs->bottom.h;
+                resize(bar, m->mx + (m->mw * bxr), m->my + (m->mh * byr), m->mw * bwr, m->mh * bhr, 1);
+                break;
+        }
+    }
+    else
+    {
+        switch(side)
+        {
+            case BarSideLeft:
+                bs->left.x = bar->x;
+                bs->left.y = bar->y;
+                bs->left.w = bar->w;
+                bs->left.h = bar->h;
+                break;
+            case BarSideRight:
+                bs->right.x = bar->x;
+                bs->right.y = bar->y;
+                bs->right.w = bar->w;
+                bs->right.h = bar->h;
+                break;
+            case BarSideTop:
+                bs->top.x = bar->x;
+                bs->top.y = bar->y;
+                bs->top.w = bar->w;
+                bs->top.h = bar->h;
+                break;
+            case BarSideBottom:
+                bs->bottom.x = bar->x;
+                bs->bottom.y = bar->y;
+                bs->bottom.w = bar->w;
+                bs->bottom.h = bar->h;
+                break;
+        }
     }
 }
 

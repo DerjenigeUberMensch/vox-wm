@@ -272,7 +272,7 @@ struct Monitor
     Desktop *desklast;          /* Last Desktop                             */
     Desktop *desksel;           /* Selected Desktop                         */
     Monitor *next;              /* Next Monitor                             */
-    Client *bar;                /* The Associated Task-Bar                  */
+    Client *bar;                /* The Associated Task-Bar (can be NULL)    */
     Client *__hash;             /* Hashed clients                           */
 
     uint16_t deskcount;         /* Desktop Counter                          */
@@ -406,10 +406,11 @@ void detachrestack(Client *c);
 */
 void detachfocus(Client *c);
 /* Checks given the provided information if a window is eligible to be a new bar.
- * RETURN: 1 on True.
- * RETURN: 0 on False
+ * if it is then it becomes the new bar.
+ * RETURN: 0 on Success.
+ * RETURN: 1 on no new bar (Failure).
 */
-uint8_t checknewbar(Client *c, const uint8_t has_strut_or_strut_partial);
+uint8_t checknewbar(Monitor *m, Client *c, const uint8_t has_strut_or_strut_partial);
 /* Inital startup check if there is another window manager running.
 */
 void checkotherwm(void);
@@ -760,6 +761,8 @@ void startup(void);
 void setup(void);
 /* Sets up Atoms ID's from the XServer */
 void setupatoms(void);
+/* Sets up special data. */
+void setupbar(Monitor *m, Client *bar);
 /* Sets up the cursors used for the WM. */
 void setupcursors(void);
 /* Loads CFG data into Settings struct. */
@@ -952,7 +955,7 @@ int HASWMTAKEFOCUS(Client *c);
 int HASWMSAVEYOURSELF(Client *c);
 int HASWMDELETEWINDOW(Client *c);
 
-enum BarSides GETBARSIDE(Monitor *m, Client *bar);
+enum BarSides GETBARSIDE(Monitor *m, Client *bar, uint8_t get_prev_side);
 
 uint16_t OLDWIDTH(Client *c);
 uint16_t OLDHEIGHT(Client *c);
