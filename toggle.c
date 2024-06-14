@@ -42,7 +42,7 @@ static void *x(void *a)
 void
 UserStats(const Arg *arg)
 {
-    PannelCreate(_wm.root, 0, 0, _wm.sw, _wm.sh);
+    /* PannelCreate(_wm.root, 0, 0, _wm.sw, _wm.sh); */
     Client *c = _wm.selmon->desksel->sel;
     if(c)
     {   
@@ -318,6 +318,7 @@ DragWindow(
         {   setfloating(c, 0);
         }
     }
+
     arrange(_wm.selmon->desksel);
     XCBFlush(_wm.dpy);
 }

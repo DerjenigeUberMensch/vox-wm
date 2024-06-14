@@ -25,7 +25,10 @@ STATICLINK = -static
 DYNAMICLINK= -ldl
 SECTIONCODE= -ffunction-sections -fdata-sections
 MEMORYDEBUG= -lefence 
-DEBUGFLAGS = -ggdb -g -pg ${CCVERSION} ${WARNINGFLAGS} ${INCS} ${CPPFLAGS} ${BINARY} ${SECTIONCODE}
+
+LINKMODE = ${DYNAMICLINK}
+
+DEBUGFLAGS = -ggdb -g ${CCVERSION} ${WARNINGFLAGS} ${INCS} ${CPPFLAGS} ${BINARY} ${SECTIONCODE}
 
 
 WARNINGFLAGS = -pedantic -Wall -Wno-deprecated-declarations -Wshadow -Wuninitialized -Werror=format-security
@@ -36,11 +39,11 @@ ifeq ($(CC), clang)
 	LINKTIMEOPTIMIZATIONS = 
 endif
 
-PRELINKERFLAGS = -fstack-protector-strong -fstack-clash-protection -fpie ${LINKTIMEOPTIMIZATIONS} ${SECTIONCODE} 
+PRELINKERFLAGS = -fstack-protector-strong -fstack-clash-protection -fpie ${LINKTIMEOPTIMIZATIONS} ${SECTIONCODE} ${LINKMODE} 
 
 # can set higher but function overhead is pretty small so meh
 INLINELIMIT = 15
-LINKERFLAGS = ${DYNAMICLINK} -Wl,--gc-sections,--as-needed,--relax,--strip-all,-z,relro,-z,now,-z,noexecstack,-z,defs,-pie -finline-limit=${INLINELIMIT}  ${LINKTIMEOPTIMIZATIONS}
+LINKERFLAGS = ${LINKMODE} -Wl,--gc-sections,--as-needed,--relax,--strip-all,-z,relro,-z,now,-z,noexecstack,-z,defs,-pie -finline-limit=${INLINELIMIT}  ${LINKTIMEOPTIMIZATIONS} 
 
 BINARY = ${X64}
 CPPFLAGS = -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L ${XINERAMAFLAGS}
