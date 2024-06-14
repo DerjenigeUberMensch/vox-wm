@@ -18,6 +18,10 @@ typedef int16_t  i16;
 typedef int32_t  i32;
 typedef int64_t  i64;
 
+typedef float f32;
+typedef double f64;
+typedef long double f128;
+
 typedef union Generic Generic;
 typedef union ARGB ARGB;
 
@@ -62,6 +66,9 @@ union ARGB
 };
 
 
+
+#define M_STRINGIFY(x)  #x
+#define M_CONCAT(a, b)  a##b
 
 #define MAX(A, B)               ((A) > (B) ? (A) : (B))
 #define MIN(A, B)               ((A) < (B) ? (A) : (B))
