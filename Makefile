@@ -19,6 +19,7 @@ all: options default
 
 ${BIN}:
 	mkdir -p ${BIN}
+	mkdir -p ${BIN}/${SRCDIR}
 options:
 	@echo ${EXE} build options:
 	@echo "CFLAGS  = ${CFLAGS}"
@@ -35,7 +36,7 @@ default: ${OBJ}
 	@echo "Done."
 
 
-__CLEANARGS = ${RM} ${BIN}/*.o ${BIN}/XCB-TRL/*.o ${EXEPATH}
+__CLEANARGS = ${RM} ${BIN}/*.o ${BIN}/${SRCDIR}/*.o ${EXEPATH}
 
 clean:
 	${__CLEANARGS}
@@ -52,14 +53,7 @@ clear: clean
 
 rebuild: clean default
 
-
-
-
 release:
-	rm -rf -f -- ${EXE}-${VERSION}
-	cp -R . ${EXE}-${VERSION}
-#	tar -cf ${EXE}-${VERSION}.tar ${EXE}-${VERSION}
-#	gzip ${EXE}-${VERSION}.tar
 
 install: all
 	mkdir -p ${DESTDIR}${PREFIX}/bin
