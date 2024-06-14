@@ -18,6 +18,9 @@ typedef int16_t  i16;
 typedef int32_t  i32;
 typedef int64_t  i64;
 
+typedef int8_t byte;
+typedef uint8_t ubyte;
+
 typedef float f32;
 typedef double f64;
 typedef long double f128;
