@@ -1771,7 +1771,7 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
 
     /* if its a new bar we dont want to return it as the monitor now manages it */
     if(!checknewbar(m, c, strut || strutp))
-    {   goto FAILURE;
+    {   c = NULL;
     }
     goto CLEANUP;
 FAILURE:
