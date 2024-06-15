@@ -5,6 +5,11 @@
 #include <sys/wait.h>
 #include <sys/time.h>
 #include <string.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <string.h>
+#include <sysexits.h>
 
 #include <pthread.h>
 
@@ -65,7 +70,7 @@ UserStats(const Arg *arg)
         DEBUG("INCW:        %d", c->incw);
         DEBUG("INCH:        %d", c->inch);
         DEBUG("Icon:        (w: %u, h: %u)", c->icon ? c->icon[0] : 0, c->icon ? c->icon[1] : 0);
-        /*
+
         DEBUG0("STATES.");
         DEBUG("MODAL:               %s", GET_BOOL(ISMODAL(c)));
         DEBUG("STICKY:              %s", GET_BOOL(ISSTICKY(c)));
@@ -104,7 +109,6 @@ UserStats(const Arg *arg)
         DEBUG("MAP ICONIC:          %s", GET_BOOL(ISMAPICONIC(c)));
         DEBUG("FLOATING:            %s", GET_BOOL(ISFLOATING(c)));
         DEBUG("WASFLOATING:         %s", GET_BOOL(WASFLOATING(c)));
-        */
     }
     else
     {   DEBUG0("NULL");
@@ -572,23 +576,86 @@ SetWindowLayout(const Arg *arg)
 void
 SpawnWindow(const Arg *arg)
 {
-    /* TODO: trying to spawn lemonbar fails for some reason? */
-    if(!fork())
-    {
-        struct sigaction sa;
-        if (_wm.dpy)
-            close(XCBConnectionNumber(_wm.dpy));
-        setsid();
-        sigemptyset(&sa.sa_mask);
-        sa.sa_flags = 0;
-        sa.sa_handler = SIG_DFL;
-        sigaction(SIGCHLD, &sa, NULL);
-        execvp(((char **)arg->v)[0], (char **)arg->v);
-        /* UNREACHABLE */
-        DEBUG("%s", "execvp Failed");
+    int pipefds[2];
+    int count;
+    int err;
+
+    pid_t child;
+    if(pipe(pipefds))
+    {   
+        perror("pipe");
+        DEBUG0("pipe() failed.");
+        err = EX_OSERR;
+        return;
     }
-    else
-    {   DEBUG("Failed to fork current process. %d", XCBConnectionNumber(_wm.dpy));
+    if(fcntl(pipefds[1], F_SETFD, fcntl(pipefds[1], F_GETFD) | FD_CLOEXEC))
+    {
+        perror("fcntl");
+        DEBUG0("fcntl() failed.");
+        err = EX_OSERR;
+        return;
+    }
+    switch((child = fork()))
+    {
+        case -1:
+            perror("fork");
+            DEBUG0("fork() failed.");
+            err = EX_OSERR;
+            break;
+        case 0:
+            close(pipefds[0]);
+            struct sigaction sa;
+            if (_wm.dpy)
+                close(XCBConnectionNumber(_wm.dpy));
+            setsid();
+            sigemptyset(&sa.sa_mask);
+            sa.sa_flags = 0;
+            sa.sa_handler = SIG_DFL;
+            sigaction(SIGCHLD, &sa, NULL);
+
+            /* Some windows can cause us to enter a "Starvation/deadlock" if incorrectly handled, this should prevent that, hopefully */
+            /* Refer: https://stackoverflow.com/questions/8319484/regarding-background-processes-using-fork-and-child-processes-in-my-dummy-shel 
+            */
+            setpgid(0, 0);
+
+            execvp(((char **)arg->v)[0], (char **)arg->v);
+            DEBUG0("execvp() failed.");
+            write(pipefds[1], &errno, sizeof(int));
+            _exit(0);
+            break;
+        default:
+            close(pipefds[1]);
+            while ((count = read(pipefds[0], &err, sizeof(errno))) == -1)
+            {
+                if (errno != EAGAIN && errno != EINTR) 
+                {   break;
+                }
+            }
+            if (count) 
+            {
+                DEBUG("child's execvp(): %s", strerror(err));
+                err = EX_UNAVAILABLE;
+                return;
+            }
+            close(pipefds[0]);
+            DEBUG0("waiting for child...");
+            /* would do 0, over WNOHANG, but as the name implies we cant hang the window manager any time */
+            while (waitpid(child, &err, WNOHANG) == -1)
+            {
+                if (errno != EINTR) 
+                {
+                    perror("waitpid");
+                    DEBUG0("waitpid");
+                    err = EX_SOFTWARE;
+                    return;
+                }
+            }
+            if (WIFEXITED(err))
+            {   DEBUG("child exited with %d\n", WEXITSTATUS(err));
+            }
+            else if(WIFSIGNALED(err))
+            {   DEBUG("child killed by %d\n", WTERMSIG(err));
+            }
     }
 }
 
