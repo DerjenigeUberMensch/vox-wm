@@ -1307,7 +1307,7 @@ focus(Client *c)
         detachfocus(c);
         attachfocus(c);
 
-        grabbuttons(c->win, 1);
+        grabbuttons(c, 1);
         XCBSetWindowBorder(_wm.dpy, c->win, c->bcol);
         setfocus(c);
     }
@@ -1420,15 +1420,15 @@ getrootptr(i16 *x, i16 *y)
 }
 
 void
-grabbuttons(XCBWindow win, uint8_t focused)
+grabbuttons(Client *c, uint8_t focused)
 {
     u16 i, j;
     /* numlock is int */
     int modifiers[4] = { 0, XCB_MOD_MASK_LOCK, _wm.numlockmask, _wm.numlockmask|XCB_MOD_MASK_LOCK};
-    XCBUngrabButton(_wm.dpy, XCB_BUTTON_INDEX_ANY, XCB_BUTTON_MASK_ANY, win);
+    XCBUngrabButton(_wm.dpy, XCB_BUTTON_INDEX_ANY, XCB_BUTTON_MASK_ANY, c->win);
     if (!focused)
     {
-        XCBGrabButton(_wm.dpy, XCB_BUTTON_INDEX_ANY, XCB_MOD_MASK_ANY, win, False, BUTTONMASK, 
+        XCBGrabButton(_wm.dpy, XCB_BUTTON_INDEX_ANY, XCB_MOD_MASK_ANY, c->win, False, BUTTONMASK, 
                 XCB_GRAB_MODE_SYNC, XCB_GRAB_MODE_SYNC, XCB_NONE, XCB_NONE);
     }
     for (i = 0; i < LENGTH(buttons); i++)
@@ -1437,7 +1437,7 @@ grabbuttons(XCBWindow win, uint8_t focused)
         {
             XCBGrabButton(_wm.dpy, buttons[i].button, 
                     buttons[i].mask | modifiers[j], 
-                    win, False, BUTTONMASK, 
+                    c->win, False, BUTTONMASK, 
                     XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_SYNC, 
                     XCB_NONE, XCB_NONE);
         }
@@ -1756,7 +1756,7 @@ managereply(XCBWindow win, XCBCookie requests[ManageCookieLAST])
     updatemotifhints(c, motifreply);
     updateicon(c, iconreply);
     XCBSelectInput(_wm.dpy, win, inputmask);
-    grabbuttons(win, 0);
+    grabbuttons(c, 0);
 
     if(!c->desktop)
     {   c->desktop = _wm.selmon->desksel;
@@ -3732,7 +3732,7 @@ unfocus(Client *c, uint8_t setfocus)
     if(!c)   
     {   return;
     }
-    grabbuttons(c->win, 0);
+    grabbuttons(c, 0);
     XCBSetWindowBorder(_wm.dpy, c->win, c->bcol);
     if(setfocus)
     {   

@@ -524,7 +524,7 @@ uint32_t *geticonprop(XCBWindowProperty *iconreply);
 /* Grabs a win buttons. 
  * Basically this just allows us to receive button press/release events from windows.
  */
-void grabbuttons(XCBWindow win, uint8_t focused);
+void grabbuttons(Client *c, uint8_t focused);
 /* Grabs a windows keys.
  * Basically this just allows us to receive/intercept key press/release events.
  *
