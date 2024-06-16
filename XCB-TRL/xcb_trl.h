@@ -387,6 +387,29 @@ struct XCBClassHint
     char *class_name;
 };
 
+
+enum XCBColorFlags
+{
+    XCB_DO_RED = 1 << 0,
+    XCB_DO_GREEN = 1 << 2,
+    XCB_DO_BLUE = 1 << 3
+};
+
+struct XCBColor
+{
+    uint64_t pixel;
+
+    uint16_t red;
+    uint16_t green;
+
+    uint16_t blue;
+    uint8_t flags;      /* XCB_DO_RED.
+                         * XCB_DO_GREEN.
+                         * XCB_DO_BLUE.
+                         */
+    uint8_t pad;
+};
+
 typedef xcb_configure_window_value_list_t XCBWindowChanges;
 typedef xcb_query_extension_reply_t XCBQueryExtension;
 typedef xcb_query_tree_reply_t XCBQueryTree;
@@ -1891,19 +1914,35 @@ XCBCopyArea(
     int16_t DestinationStartPasteX,
     int16_t DestinationStartPasteY
     );
-/*
+
+/* 
+ * RETURN: Cookie to request.
  */
 XCBCookie
 XCBFreePixmap(
         XCBDisplay *display, 
         XCBPixmap pixmap
         );
-/*
+/* Creates a default white/black cursor "font" cursor resembling Xlib's cursor.
+ * Coloured Cursors are possible and must be set using XCBCreateGlyphCursor() instead.
+ *
+ * RETURN: XCBCursor
  */
 XCBCursor 
 XCBCreateFontCursor(
         XCBDisplay *display, 
-        int shape);
+        XCBFont shape
+        );
+
+/*
+ */
+XCBCursor
+XCBCreateGlyphCursor(
+        XCBDisplay *display,
+        XCBFont shape,
+        XCBColor *foreground,
+        XCBColor *background
+        );
 
 /*
  */
@@ -1911,6 +1950,16 @@ XCBCookie
 XCBDefineCursor(
         XCBDisplay *display, 
         XCBWindow window, XCBCursor id);
+/*
+ * NOTE: foreground/background flags must be set, "pixel" property is always ignored.
+ */
+XCBCookie 
+XCBRecolorCursor(
+        XCBDisplay *display, 
+        XCBCursor cursor, 
+        XCBColor *foreground, 
+        XCBColor *background
+        );
 
 /*
  */
