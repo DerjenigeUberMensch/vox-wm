@@ -1286,7 +1286,7 @@ focus(Client *c)
     Monitor *selmon = _wm.selmon;
     Desktop *desk  = selmon->desksel;
     if(!c || !ISVISIBLE(c))
-    {   for(c = desk->focus; c && (!ISVISIBLE(c) || NEVERFOCUS(c)) && !KEEPFOCUS(c); c = nextfocus(c));
+    {   for(c = desk->focus; c && !ISVISIBLE(c) && !KEEPFOCUS(c); c = nextfocus(c));
     }
     if(desk->sel && desk->sel != c)
     {   unfocus(desk->sel, 0);
