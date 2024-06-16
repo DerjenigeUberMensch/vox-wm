@@ -18,8 +18,14 @@
 #define LMB         XCBButton1
 #define MMB         XCBButton2
 #define RMB         XCBButton3
-#define BUTTON4     XCBButton4
-#define BUTTON5     XCBButton5
+#define ScrollUp    XCBButton4
+#define ScrollDown  XCBButton5
+
+/* taken from i3 */
+#define ScrollLeft  6
+#define ScrollRight 7
+
+
 #define ENTER       XK_Return
 #define RETURN      XK_Return
 /* F1 - F12 */
