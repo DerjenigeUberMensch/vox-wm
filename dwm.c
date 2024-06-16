@@ -1356,7 +1356,13 @@ geticonprop(XCBWindowProperty *iconreply)
     if(iconreply)
     {
         if(iconreply->format == 0)
-        {   DEBUG0("Icon has no format, icon may be corrupt.");
+        {   
+            if(XCBGetPropertyValueSize(iconreply))
+            {   DEBUG0("Icon has no format, icon may be corrupt.");
+            }
+            else
+            {   DEBUG0("No icon.");
+            }
             return ret;
         }
         if(iconreply->format != 32)
@@ -1421,7 +1427,7 @@ grabbuttons(XCBWindow win, uint8_t focused)
     int modifiers[4] = { 0, XCB_MOD_MASK_LOCK, _wm.numlockmask, _wm.numlockmask|XCB_MOD_MASK_LOCK};
     XCBUngrabButton(_wm.dpy, XCB_BUTTON_INDEX_ANY, XCB_BUTTON_MASK_ANY, win);
     if (!focused)
-    {   
+    {
         XCBGrabButton(_wm.dpy, XCB_BUTTON_INDEX_ANY, XCB_MOD_MASK_ANY, win, False, BUTTONMASK, 
                 XCB_GRAB_MODE_SYNC, XCB_GRAB_MODE_SYNC, XCB_NONE, XCB_NONE);
     }
@@ -1584,53 +1590,66 @@ killclient(Client *c, enum KillType type)
 }
 
 void
-managerequest(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
+managerequest(XCBWindow win, XCBCookie requests[ManageCookieLAST])
 {
     const u32 REQUEST_MAX_NEEDED_ITEMS = UINT32_MAX;
     const u8 STRUT_P_LENGTH = 12;
     const u8 STRUT_LENGTH = 4;
     const u8 NO_BYTE_OFFSET = 0;
     const u8 MOTIF_WM_HINT_LENGTH = 5;
-    XCBCookie wacookie = XCBGetWindowAttributesCookie(_wm.dpy, win);
-    XCBCookie wgcookie = XCBGetWindowGeometryCookie(_wm.dpy, win);
-    XCBCookie transcookie = XCBGetTransientForHintCookie(_wm.dpy, win);                        
-    XCBCookie wtypecookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMWindowType], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_ATOM);
-    XCBCookie statecookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMState], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_ATOM);
-    XCBCookie sizehcookie = XCBGetWMNormalHintsCookie(_wm.dpy, win);
-    XCBCookie wmhcookie = XCBGetWMHintsCookie(_wm.dpy, win);
-    XCBCookie classcookie = XCBGetWMClassCookie(_wm.dpy, win);
-    XCBCookie wmprotocookie = XCBGetWMProtocolsCookie(_wm.dpy, win, wmatom[WMProtocols]);
-    XCBCookie strutpcookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMStrutPartial], NO_BYTE_OFFSET, STRUT_P_LENGTH, False, XCB_ATOM_CARDINAL);
-    XCBCookie strutcookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMStrut], NO_BYTE_OFFSET, STRUT_LENGTH, False, XCB_ATOM_CARDINAL);
-    XCBCookie netwmnamecookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMName], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, netatom[NetUtf8String]);
-    XCBCookie wmnamecookie = XCBGetWindowPropertyCookie(_wm.dpy, win, XCB_ATOM_WM_NAME, NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_STRING);
-    XCBCookie pidcookie = XCBGetPidCookie(_wm.dpy, win, netatom[NetWMPid]);
-    XCBCookie iconcookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMIcon], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_CARDINAL);
-    XCBCookie motifcookie = XCBGetWindowPropertyCookie(_wm.dpy, win, motifatom, NO_BYTE_OFFSET, MOTIF_WM_HINT_LENGTH, False, motifatom);
 
-    /* Mostly to prevent needing to rewrite the numbers over and over again if we mess up */
-    u8 i = 0;
-    requests[i++] = wacookie;
-    requests[i++] = wgcookie;
-    requests[i++] = transcookie;
-    requests[i++] = wtypecookie;
-    requests[i++] = statecookie;
-    requests[i++] = sizehcookie;
-    requests[i++] = wmhcookie;
-    requests[i++] = classcookie;
-    requests[i++] = wmprotocookie;
-    requests[i++] = strutpcookie;
-    requests[i++] = strutcookie;
-    requests[i++] = netwmnamecookie;
-    requests[i++] = wmnamecookie;
-    requests[i++] = iconcookie;
-    requests[i++] = pidcookie;
-    requests[i++] = motifcookie;
-    /* 16 elements in thing */
+    /* Window Attributes */
+    requests[ManageCookieAttributes] = 
+        XCBGetWindowAttributesCookie(_wm.dpy, win);
+    /* Window Geometry */
+    requests[ManageCookieGeometry] = 
+        XCBGetWindowGeometryCookie(_wm.dpy, win);
+    /* Window Transient */
+    requests[ManageCookieTransient] = 
+        XCBGetTransientForHintCookie(_wm.dpy, win);
+    /* Window Type(s) */
+    requests[ManageCookieWType] = 
+        XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMWindowType], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_ATOM);
+    /* Window State(s) */
+    requests[ManageCookieWState] = 
+        XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMState], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_ATOM);
+    /* Window Size Hints */
+    requests[ManageCookieSizeHint] = 
+        XCBGetWMNormalHintsCookie(_wm.dpy, win);
+    /* Window WM Hints */
+    requests[ManageCookieWMHints] = 
+        XCBGetWMHintsCookie(_wm.dpy, win);
+    /* Window Class/Instance */
+    requests[ManageCookieClass] = 
+        XCBGetWMClassCookie(_wm.dpy, win);
+    /* Window WM Protocol(s) */
+    requests[ManageCookieWMProtocol] = 
+        XCBGetWMProtocolsCookie(_wm.dpy, win, wmatom[WMProtocols]);
+    /* Window Strut */
+    requests[ManageCookieStrut] = 
+        XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMStrut], NO_BYTE_OFFSET, STRUT_LENGTH, False, XCB_ATOM_CARDINAL);
+    /* Window StrutP */
+    requests[ManageCookieStrutP] = 
+        XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMStrutPartial], NO_BYTE_OFFSET, STRUT_P_LENGTH, False, XCB_ATOM_CARDINAL);
+    /* Window NetWMName */
+    requests[ManageCookieNetWMName] = 
+        XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMName], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, netatom[NetUtf8String]);
+    /* Window WMName */
+    requests[ManageCookieWMName] = 
+        XCBGetWindowPropertyCookie(_wm.dpy, win, XCB_ATOM_WM_NAME, NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_STRING);
+    /* Window Pid */
+    requests[ManageCookiePid] = 
+        XCBGetPidCookie(_wm.dpy, win, netatom[NetWMPid]);
+    /* Window Icon */
+    requests[ManageCookieIcon] = 
+        XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMIcon], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_CARDINAL);
+    /* Window Motif */
+    requests[ManageCookieMotif] = 
+        XCBGetWindowPropertyCookie(_wm.dpy, win, motifatom, NO_BYTE_OFFSET, MOTIF_WM_HINT_LENGTH, False, motifatom);
 }
 
 Client *
-managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
+managereply(XCBWindow win, XCBCookie requests[ManageCookieLAST])
 {
     /* checks */
     if(win == _wm.root)
@@ -1679,22 +1698,22 @@ managereply(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT])
     c = createclient();
 
     /* wait for replies */
-    waattributes = XCBGetWindowAttributesReply(_wm.dpy, requests[0]);
-    wg = XCBGetWindowGeometryReply(_wm.dpy, requests[1]);
-    transstatus = XCBGetTransientForHintReply(_wm.dpy, requests[2], &trans); trans *= !!transstatus;
-    wtypeunused = XCBGetWindowPropertyReply(_wm.dpy, requests[3]);
-    stateunused = XCBGetWindowPropertyReply(_wm.dpy, requests[4]);
-    hintstatus = XCBGetWMNormalHintsReply(_wm.dpy, requests[5], &hints);
-    wmh = XCBGetWMHintsReply(_wm.dpy, requests[6]);
-    clsstatus = XCBGetWMClassReply(_wm.dpy, requests[7], &cls);
-    wmprotocolsstatus = XCBGetWMProtocolsReply(_wm.dpy, requests[8], &wmprotocols);
-    strutpreply = XCBGetWindowPropertyReply(_wm.dpy, requests[9]);
-    strutreply = XCBGetWindowPropertyReply(_wm.dpy, requests[10]);
-    netwmnamereply = XCBGetWindowPropertyReply(_wm.dpy, requests[11]);
-    wmnamereply = XCBGetWindowPropertyReply(_wm.dpy, requests[12]);
-    iconreply = XCBGetWindowPropertyReply(_wm.dpy, requests[13]);
-    pid = XCBGetPidReply(_wm.dpy, requests[14]);
-    motifreply = XCBGetWindowPropertyReply(_wm.dpy, requests[15]);
+    waattributes = XCBGetWindowAttributesReply(_wm.dpy, requests[ManageCookieAttributes]);
+    wg = XCBGetWindowGeometryReply(_wm.dpy, requests[ManageCookieGeometry]);
+    transstatus = XCBGetTransientForHintReply(_wm.dpy, requests[ManageCookieTransient], &trans); trans *= !!transstatus;
+    wtypeunused = XCBGetWindowPropertyReply(_wm.dpy, requests[ManageCookieWType]);
+    stateunused = XCBGetWindowPropertyReply(_wm.dpy, requests[ManageCookieWState]);
+    hintstatus = XCBGetWMNormalHintsReply(_wm.dpy, requests[ManageCookieSizeHint], &hints);
+    wmh = XCBGetWMHintsReply(_wm.dpy, requests[ManageCookieWMHints]);
+    clsstatus = XCBGetWMClassReply(_wm.dpy, requests[ManageCookieClass], &cls);
+    wmprotocolsstatus = XCBGetWMProtocolsReply(_wm.dpy, requests[ManageCookieWMProtocol], &wmprotocols);
+    strutreply = XCBGetWindowPropertyReply(_wm.dpy, requests[ManageCookieStrut]);
+    strutpreply = XCBGetWindowPropertyReply(_wm.dpy, requests[ManageCookieStrutP]);
+    netwmnamereply = XCBGetWindowPropertyReply(_wm.dpy, requests[ManageCookieNetWMName]);
+    wmnamereply = XCBGetWindowPropertyReply(_wm.dpy, requests[ManageCookieWMName]);
+    iconreply = XCBGetWindowPropertyReply(_wm.dpy, requests[ManageCookieIcon]);
+    pid = XCBGetPidReply(_wm.dpy, requests[ManageCookiePid]);
+    motifreply = XCBGetWindowPropertyReply(_wm.dpy, requests[ManageCookieMotif]);
 
     strutp = strutpreply ? XCBGetWindowPropertyValue(strutpreply) : NULL;
     strut = strutreply ? XCBGetWindowPropertyValue(strutpreply) : NULL;
@@ -2316,7 +2335,7 @@ restoremonsession(char *buff, u16 len)
                 {   
                     XCBWindow win = pullm->bar->win;
                     unmanage(pullm->bar, 0);
-                    XCBCookie cookies[MANAGE_CLIENT_COOKIE_COUNT];
+                    XCBCookie cookies[ManageCookieLAST];
                     managerequest(win, cookies);
                     managereply(win, cookies);
                 }
@@ -2626,7 +2645,7 @@ scan(void)
         if(wins)
         {
             const size_t countsz = sizeof(XCBCookie ) * num;
-            const size_t managecookiesz = sizeof(XCBCookie) * MANAGE_CLIENT_COOKIE_COUNT;
+            const size_t managecookiesz = sizeof(XCBCookie) * ManageCookieLAST;
             XCBCookie *wa = malloc(countsz);
             XCBCookie *wastates = malloc(countsz);
             XCBCookie *tfh = malloc(countsz);
@@ -2635,7 +2654,7 @@ scan(void)
             XCBGetWindowAttributes **replystates = malloc(sizeof(XCBGetWindowAttributes *) * num);
             XCBWindow *trans = malloc(sizeof(XCBWindow) * num);
 
-            if(!wa || !wastates || !tfh || !managecookies)
+            if(!wa || !wastates || !tfh || !managecookies || !replies || !replystates || !trans)
             {   
                 free(wa);
                 free(wastates);
@@ -2653,7 +2672,7 @@ scan(void)
                 /* this specifically queries for the state which wa[i] might fail to provide */
                 wastates[i] = XCBGetWindowPropertyCookie(_wm.dpy, wins[i], wmatom[WMState], 0L, 2L, False, wmatom[WMState]);
                 tfh[i] = XCBGetTransientForHintCookie(_wm.dpy, wins[i]);
-                managerequest(wins[i], &managecookies[i * MANAGE_CLIENT_COOKIE_COUNT]);
+                managerequest(wins[i], &managecookies[i * ManageCookieLAST]);
             }
             
             uint8_t hastrans = 0;
@@ -2673,10 +2692,10 @@ scan(void)
                 {   continue;
                 }
                 if(replies[i] && replies[i]->map_state == XCB_MAP_STATE_VIEWABLE)
-                {   managereply(wins[i], &managecookies[i * MANAGE_CLIENT_COOKIE_COUNT]);
+                {   managereply(wins[i], &managecookies[i * ManageCookieLAST]);
                 }
                 else if(replystates[i] && replystates[i]->map_state == XCB_WINDOW_ICONIC_STATE)
-                {   managereply(wins[i], &managecookies[i * MANAGE_CLIENT_COOKIE_COUNT]);
+                {   managereply(wins[i], &managecookies[i * ManageCookieLAST]);
                 }
             }
 
@@ -2689,7 +2708,7 @@ scan(void)
                     {
                         /* technically we shouldnt have to do this but just in case */
                         if(!wintoclient(wins[i]))
-                        {   managereply(wins[i], &managecookies[i * MANAGE_CLIENT_COOKIE_COUNT]);
+                        {   managereply(wins[i], &managecookies[i * ManageCookieLAST]);
                         }
                     }
                 }
@@ -3204,11 +3223,13 @@ setup(void)
     /* xcb_event_mask_t */
     /* ~0 causes event errors because some event masks override others, for some reason... */
     wa.cursor = cursors[CurNormal];
-    wa.event_mask = 
-                    XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT|XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY
-                    |XCB_EVENT_MASK_BUTTON_PRESS|XCB_EVENT_MASK_BUTTON_RELEASE
-                    |XCB_EVENT_MASK_POINTER_MOTION|
-                    XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_LEAVE_WINDOW
+    wa.event_mask =  XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT
+                    |XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY
+                    |XCB_EVENT_MASK_BUTTON_PRESS
+                    |XCB_EVENT_MASK_BUTTON_RELEASE
+                    |XCB_EVENT_MASK_POINTER_MOTION
+                    |XCB_EVENT_MASK_ENTER_WINDOW
+                    |XCB_EVENT_MASK_LEAVE_WINDOW
                     |XCB_EVENT_MASK_STRUCTURE_NOTIFY
                     |XCB_EVENT_MASK_PROPERTY_CHANGE
                     ;   /* the ; is here just so its out of the way */
@@ -5037,10 +5058,18 @@ wintomon(XCBWindow win)
     i16 x, y;
     Client *c;
     Monitor *m;
-    if(win == _wm.root && getrootptr(&x, &y)) return recttomon(x, y, 1, 1);
+    if(win == _wm.root && getrootptr(&x, &y)) 
+    {   return recttomon(x, y, 1, 1);
+    }
     for (m = _wm.mons; m; m = m->next)
-        if (win == m->bar->win) return m;
-    if ((c = wintoclient(win))) return c->desktop->mon;
+    {   
+        if (win == m->bar->win) 
+        {   return m;
+        }
+    }
+    if ((c = wintoclient(win))) 
+    {   return c->desktop->mon;
+    }
     return _wm.selmon;
 }
 

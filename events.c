@@ -201,7 +201,6 @@ buttonpress(XCBGenericEvent *event)
     (void)samescreen;
     (void)tim;
 
-
     const i32 cleanstate = CLEANMASK(state);
 
     u8 sync = 0;
@@ -294,7 +293,6 @@ buttonrelease(XCBGenericEvent *event)
     (void)tim;
 
     const i32 cleanstate = CLEANMASK(state);
-
     u8 sync = 0;
 
     i16 i;
@@ -849,7 +847,7 @@ maprequest(XCBGenericEvent *event)
     if(!wintoclient(win))
     {
         /* only sync if we successfully managed the window */   
-        XCBCookie cookies[MANAGE_CLIENT_COOKIE_COUNT];
+        XCBCookie cookies[ManageCookieLAST];
         managerequest(win, cookies);
         c = managereply(win, cookies);
         sync = 1;

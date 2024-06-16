@@ -35,8 +35,6 @@
 #define SESSION_FILE            "/tmp/dwm-session"
 #define CONFIG_FILE             "/var/tmp/dwm-config"   /* todo make dir .config/dwm/config or someting like that */
 #define BORKED                  "NOT_SET"
-#define MANAGE_CLIENT_COOKIE_COUNT 16
-
 /* Client struct flags */
 #define _FSTATE_FLOATING            ((1 << 0))
 #define _FSTATE_WASFLOATING         ((1 << 1))
@@ -133,6 +131,30 @@ enum ClientListModes
 enum BarSides
 {
     BarSideLeft, BarSideRight, BarSideTop, BarSideBottom
+};
+
+/* Manage cookies */
+enum ManageCookies
+{
+    ManageCookieAttributes,
+    ManageCookieGeometry,
+    ManageCookieTransient,
+    ManageCookieWType,
+    ManageCookieWState,
+    ManageCookieSizeHint,
+    ManageCookieWMHints,
+    ManageCookieClass,
+    ManageCookieWMProtocol,
+    ManageCookieStrutP,
+    ManageCookieStrut,
+    ManageCookieNetWMName,
+    ManageCookieWMName,
+    ManageCookiePid,
+    ManageCookieIcon,
+    ManageCookieMotif,
+    
+
+    ManageCookieLAST
 };
 
 typedef union  Arg Arg;
@@ -246,7 +268,7 @@ struct Client
 
     UT_hash_handle hh;  /* hash handle              */
     uint16_t rstacknum; /* Used in calculating pos  */
-    uint8_t pad0[6];
+    uint8_t pad[6];
 };
 
 struct Decoration
@@ -499,10 +521,10 @@ int32_t getstate(XCBWindow win, XCBGetWindowAttributes *state);
 void getnamefromreply(XCBWindowProperty *namerep, char **str_return);
 /* Gets the icon property from the specified XCBWindowProperty. */
 uint32_t *geticonprop(XCBWindowProperty *iconreply);
-/* Grabs a windows buttons. 
+/* Grabs a win buttons. 
  * Basically this just allows us to receive button press/release events from windows.
  */
-void grabbuttons(XCBWindow window, uint8_t focused);
+void grabbuttons(XCBWindow win, uint8_t focused);
 /* Grabs a windows keys.
  * Basically this just allows us to receive/intercept key press/release events.
  *
@@ -519,14 +541,14 @@ void grid(Desktop *desk);
  */
 void killclient(Client *c, enum KillType type);
 /* requests for clients cookies. */
-void managerequest(XCBWindow win, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT]);
+void managerequest(XCBWindow win, XCBCookie requests[ManageCookieLAST]);
 /* Part of main event loop "run()"
  * Manages AKA adds the window to our current or windows specified desktop.
  * Applies size checks, bounds, layout, etc...
  * RETURN: Client * on Success.
  * RETURN: NULL on Failure.
  */
-Client *managereply(XCBWindow window, XCBCookie requests[MANAGE_CLIENT_COOKIE_COUNT]);
+Client *managereply(XCBWindow window, XCBCookie requests[ManageCookieLAST]);
 /* Maximizes a client if unmaxed, Sets flag.
  */
 void maximize(Client *c);
