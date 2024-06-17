@@ -222,12 +222,9 @@ buttonpress(XCBGenericEvent *event)
     Client *c;
     if((c = wintoclient(eventwin)))
     {
-        if(c->desktop->sel != c)   
-        {
-            focus(c);
-            XCBAllowEvents(_wm.dpy, XCB_ALLOW_REPLAY_POINTER, XCB_CURRENT_TIME);
-            sync = 1;
-        }
+        focus(c);
+        XCBAllowEvents(_wm.dpy, XCB_ALLOW_REPLAY_POINTER, XCB_CURRENT_TIME);
+        sync = 1;
     }
     else
     {   
