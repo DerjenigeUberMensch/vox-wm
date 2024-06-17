@@ -1422,26 +1422,46 @@ getrootptr(i16 *x, i16 *y)
 void
 grabbuttons(Client *c, uint8_t focused)
 {
+    /* make sure no other client steals our grab */
+    xcb_grab_server(_wm.dpy);
     u16 i, j;
     /* numlock is int */
     int modifiers[4] = { 0, XCB_MOD_MASK_LOCK, _wm.numlockmask, _wm.numlockmask|XCB_MOD_MASK_LOCK};
-    XCBUngrabButton(_wm.dpy, XCB_BUTTON_INDEX_ANY, XCB_BUTTON_MASK_ANY, c->win);
+    /* Always grab these to allow for replay pointer when focusing by mouse click */
+    u8 gbuttons[3] = { LMB, MMB, RMB };
+
+    /* ungrab any previously grabbed buttons that are ours */
+    for(i = 0; i < LENGTH(modifiers); ++i)
+    {
+        for(j = 0; j < LENGTH(gbuttons); ++j)
+        {   XCBUngrabButton(_wm.dpy, gbuttons[j], modifiers[i], c->win);
+        }
+        for(j = 0; j < LENGTH(buttons); ++j)
+        {   XCBUngrabButton(_wm.dpy, buttons[j].button, modifiers[i], c->win);
+        }
+    }
     if (!focused)
     {
-        XCBGrabButton(_wm.dpy, XCB_BUTTON_INDEX_ANY, XCB_MOD_MASK_ANY, c->win, False, BUTTONMASK, 
-                XCB_GRAB_MODE_SYNC, XCB_GRAB_MODE_SYNC, XCB_NONE, XCB_NONE);
+        /* grab focus buttons */
+        for (i = 0; i < LENGTH(gbuttons); ++i)
+        {
+            for (j = 0; j < LENGTH(modifiers); ++j)
+            {   XCBGrabButton(_wm.dpy, gbuttons[i], modifiers[j], c->win, False, BUTTONMASK, XCB_GRAB_MODE_SYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE, XCB_NONE);
+            }
+        }
     }
-    for (i = 0; i < LENGTH(buttons); i++)
+    for (i = 0; i < LENGTH(buttons); ++i)
     {
-        for (j = 0; j < LENGTH(modifiers); j++)
+        for (j = 0; j < LENGTH(modifiers); ++j)
         {
             XCBGrabButton(_wm.dpy, buttons[i].button, 
                     buttons[i].mask | modifiers[j], 
                     c->win, False, BUTTONMASK, 
-                    XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_SYNC, 
+                    XCB_GRAB_MODE_SYNC, XCB_GRAB_MODE_ASYNC, 
                     XCB_NONE, XCB_NONE);
         }
     }
+    xcb_ungrab_server(_wm.dpy);
 }
 
 void
