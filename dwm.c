@@ -2851,8 +2851,151 @@ setclientdesktop(Client *c, Desktop *desk)
 void
 setclientstate(Client *c, u8 state)
 {
+    /* Due to windows only having 1 map state we can set this without needing to replace other data */
     const i32 data[2] = { state, XCB_NONE };
     XCBChangeProperty(_wm.dpy, c->win, wmatom[WMState], wmatom[WMState], 32, XCB_PROP_MODE_REPLACE, (unsigned char *)data, 2);
+}
+
+void
+setclientwtype(Client *c, XCBAtom atom, u8 state)
+{
+    /* TODO manage race conditions without needing to lock the server */
+    const u8 _delete = !state;
+    const XCBWindow win = c->win;
+    const u32 NO_BYTE_OFFSET = 0L;
+    const u32 REQUEST_MAX_NEEDED_ITEMS = UINT32_MAX;
+
+    XCBCookie cookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMState], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_ATOM);
+    XCBWindowProperty *prop = XCBGetWindowPropertyReply(_wm.dpy, cookie);
+    void *data = NULL;
+    u32 len = 0;
+    u32 propmode = XCB_PROP_MODE_REPLACE;
+    if(prop)
+    {
+        XCBAtom *atoms = XCBGetPropertyValue(prop);
+        const uint32_t ATOM_LENGTH = XCBGetPropertyValueLength(prop, sizeof(XCBAtom));
+
+        u32 i;
+        u32 offset = 0;
+        u8 set = 0;
+        for(i = 0; i < ATOM_LENGTH; ++i)
+        {
+            if(atoms[i] == atom)
+            {   
+                offset = i;
+                set = 1;
+                break;
+            }
+        }
+
+        if(set)
+        {
+            if(_delete)
+            {
+                for(i = offset; i < ATOM_LENGTH - 1; ++i)
+                {   atoms[i] = atoms[i + 1];
+                }
+                data = atoms;
+                len = ATOM_LENGTH - 1;
+            }
+            else  /* atom already exists do nothing */
+            {   
+                free(prop);
+                return;
+            }
+        }
+        else
+        {
+            if(_delete)     /* prop not found mark as already deleted */
+            {   
+                free(prop);
+                return;
+            }
+            else    /* set propmode to append cause we didnt find it */
+            {   
+                propmode = XCB_PROP_MODE_APPEND;
+                len = 1;
+                data = &atom;
+            }
+        }
+    }
+    else
+    {   
+        len = 1;
+        data = &atom;
+    }
+    XCBChangeProperty(_wm.dpy, win, netatom[NetWMWindowType], XCB_ATOM_ATOM, 32, propmode, (const char *)data, len);
+}
+
+void
+setclientnetstate(Client *c, XCBAtom atom, u8 state)
+{
+    /* TODO manage race conditions without needing to lock the server */
+    const u8 _delete = !state;
+    const XCBWindow win = c->win;
+    const u32 NO_BYTE_OFFSET = 0L;
+    const u32 REQUEST_MAX_NEEDED_ITEMS = UINT32_MAX;
+
+    XCBCookie cookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMWindowType], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_ATOM);
+    XCBWindowProperty *prop = XCBGetWindowPropertyReply(_wm.dpy, cookie);
+    void *data = NULL;
+    u32 len = 0;
+    u32 propmode = XCB_PROP_MODE_REPLACE;
+    if(prop)
+    {
+        XCBAtom *atoms = XCBGetPropertyValue(prop);
+        const uint32_t ATOM_LENGTH = XCBGetPropertyValueLength(prop, sizeof(XCBAtom));
+
+        u32 i;
+        u32 offset = 0;
+        u8 set = 0;
+        for(i = 0; i < ATOM_LENGTH; ++i)
+        {
+            if(atoms[i] == atom)
+            {   
+                offset = i;
+                set = 1;
+                break;
+            }
+        }
+
+        if(set)
+        {
+            if(_delete)
+            {
+                for(i = offset; i < ATOM_LENGTH - 1; ++i)
+                {   atoms[i] = atoms[i + 1];
+                }
+                data = atoms;
+                len = ATOM_LENGTH - 1;
+            }
+            else  /* atom already exists do nothing */
+            {   
+                free(prop);
+                return;
+            }
+        }
+        else
+        {
+            if(_delete)     /* prop not found mark as already deleted */
+            {   
+                free(prop);
+                return;
+            }
+            else    /* set propmode to append cause we didnt find it */
+            {   
+                propmode = XCB_PROP_MODE_APPEND;
+                len = 1;
+                data = &atom;
+            }
+        }
+    }
+    else
+    {   
+        len = 1;
+        data = &atom;
+    }
+    XCBChangeProperty(_wm.dpy, win, netatom[NetWMWindowType], XCB_ATOM_ATOM, 32, propmode, (const char *)data, len);
 }
 
 void 
@@ -3086,7 +3229,7 @@ setfullscreen(Client *c, u8 state)
     Monitor *m = c->desktop->mon;
     if(state && !ISFULLSCREEN(c))
     {
-        XCBChangeProperty(_wm.dpy, c->win, netatom[NetWMState], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&netatom[NetWMStateFullscreen], 1);
+        setclientnetstate(c, netatom[NetWMStateFullscreen], 1);
         setborderwidth(c, c->bw);
         setborderwidth(c, 0);
         resizeclient(c, m->mx, m->wy, m->mw, m->mh);
@@ -3094,7 +3237,7 @@ setfullscreen(Client *c, u8 state)
     }
     else if(!state && ISFULLSCREEN(c))
     {
-        XCBChangeProperty(_wm.dpy, c->win, netatom[NetWMState], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)0, 0);
+        setclientnetstate(c, netatom[NetWMStateFullscreen], 0);
         setborderwidth(c, c->oldbw);
         resizeclient(c, c->oldx, c->oldy, c->oldw, c->oldh);
     }
@@ -3126,11 +3269,13 @@ void
 sethidden(Client *c, uint8_t state)
 {
     if(state)
-    {   winsetstate(c->win, XCB_WINDOW_ICONIC_STATE);
+    {   
+        setclientstate(c, XCB_WINDOW_ICONIC_STATE);
         setwtypemapiconic(c, 1);
     }
     else
-    {   winsetstate(c->win, XCB_WINDOW_NORMAL_STATE);
+    {   
+        setclientstate(c, XCB_WINDOW_NORMAL_STATE);
         setwtypemapnormal(c, 1);
     }
     SETFLAG(c->wstateflags, _STATE_HIDDEN, !!state);
@@ -3181,11 +3326,6 @@ setoverrideredirect(Client *c, uint8_t state)
 void
 setsticky(Client *c, u8 state)
 {
-    const XCBWindow win = c->win;
-    const XCBAtom replace = !!state * netatom[NetWMStateSticky];
-    const u8 length = !!state;
-    XCBChangeProperty(_wm.dpy, win, netatom[NetWMState], XCB_ATOM_ATOM, 32, 
-            XCB_PROP_MODE_REPLACE, (unsigned char *)&replace, length);
     SETFLAG(c->wstateflags, _STATE_STICKY, !!state);
 }
 
@@ -5028,13 +5168,6 @@ wakeupconnection(XCBDisplay *display, int screen)
     XCBSendEvent(display, XCBRootWindow(display, screen), False, XCB_EVENT_MASK_STRUCTURE_NOTIFY, (const char *)&ev);
     /* make sure display gets the event (duh) */
     XCBFlush(_wm.dpy);
-}
-
-void
-winsetstate(XCBWindow win, i32 state)
-{
-    i32 data[2] = { state, XCB_NONE };
-    XCBChangeProperty(_wm.dpy, win, wmatom[WMState], wmatom[WMState], 32, XCB_PROP_MODE_REPLACE, (unsigned char *)data, 2);
 }
 
 void *
