@@ -880,8 +880,6 @@ void updatewindowtypes(Client *c, XCBAtom wtype[], uint32_t atomslength);
 void updatewmhints(Client *c, XCBWMHints *hints);
 /* Wakups the current X connection by sending a event to it */
 void wakeupconnection(XCBDisplay *display, int screen);
-/* Sets the window _WM_STATE based on state specified */
-void winsetstate(XCBWindow win, int32_t state);
 /* Returns the bar or the monitor depending on if is_return_mon is true.
  * RETURN: Bar * on Success and is_return_mon is set to False.
  * RETURN: Monitor * on Success and is_return_mon is set to True.
