@@ -2449,9 +2449,6 @@ resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
 void
 restack(Desktop *desk)
 {
-    Client *c;
-    u8 config = 0;
-    u8 instack = 0;
     XCBWindowChanges wc;
 
     wc.stack_mode = XCB_STACK_MODE_BELOW;
@@ -2464,8 +2461,14 @@ restack(Desktop *desk)
         wc.sibling = _wm.wmcheckwin;
     }
 
-    /* The following works good enough at most ussually 1-5 windows but we could probably bring it down a bit */
-    for(c = desk->stack; c; c = nextstack(c))
+    Client *c;
+    Client *cprev;
+    u8 config = 0;
+    u8 instack = 0;
+
+    c = desk->stack;
+    cprev = NULL;
+    while(c)
     {
         instack = c->rprev || c->rnext;
         /* Client holds both lists so we just check if the next's are the same if not configure it */
@@ -2476,15 +2479,14 @@ restack(Desktop *desk)
             DEBUG("Configured window: %s", c->netwmname);
         }
         wc.sibling = c->win;
-        DEBUG("%d", c->rstacknum);
+        /* apply reorder without detaching/attaching */
+        cprev = c;
+        c = nextstack(c);
+        cprev->rprev = cprev->sprev;
+        cprev->rnext = cprev->snext;
     }
-    /* TODO find a better way todo this without causing infinite loop issues FIXME */
-    while(desk->rstack)
-    {   detachrestack(desk->rstack);
-    }
-    for(c = desk->slast; c; c = prevstack(c))
-    {   attachrestack(c);
-    }
+    desk->rstack = desk->stack;
+    desk->rlast = cprev;
 }
 
 void
