@@ -2865,7 +2865,7 @@ setclientwtype(Client *c, XCBAtom atom, u8 state)
     const u32 NO_BYTE_OFFSET = 0L;
     const u32 REQUEST_MAX_NEEDED_ITEMS = UINT32_MAX;
 
-    XCBCookie cookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMState], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_ATOM);
+    XCBCookie cookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMWindowType], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_ATOM);
     XCBWindowProperty *prop = XCBGetWindowPropertyReply(_wm.dpy, cookie);
     void *data = NULL;
     u32 len = 0;
@@ -2936,7 +2936,7 @@ setclientnetstate(Client *c, XCBAtom atom, u8 state)
     const u32 NO_BYTE_OFFSET = 0L;
     const u32 REQUEST_MAX_NEEDED_ITEMS = UINT32_MAX;
 
-    XCBCookie cookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMWindowType], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_ATOM);
+    XCBCookie cookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMState], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_ATOM);
     XCBWindowProperty *prop = XCBGetWindowPropertyReply(_wm.dpy, cookie);
     void *data = NULL;
     u32 len = 0;
@@ -2970,7 +2970,7 @@ setclientnetstate(Client *c, XCBAtom atom, u8 state)
                 len = ATOM_LENGTH - 1;
             }
             else  /* atom already exists do nothing */
-            {   
+            {
                 free(prop);
                 return;
             }
@@ -2995,7 +2995,7 @@ setclientnetstate(Client *c, XCBAtom atom, u8 state)
         len = 1;
         data = &atom;
     }
-    XCBChangeProperty(_wm.dpy, win, netatom[NetWMWindowType], XCB_ATOM_ATOM, 32, propmode, (const char *)data, len);
+    XCBChangeProperty(_wm.dpy, win, netatom[NetWMState], XCB_ATOM_ATOM, 32, propmode, (const char *)data, len);
 }
 
 void 
