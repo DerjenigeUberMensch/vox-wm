@@ -1783,10 +1783,12 @@ managereply(XCBWindow win, XCBCookie requests[ManageCookieLAST])
         goto FAILURE;
     }
 
+    /* this sets up the desktop which is quite important for some operations */
+    clientinittrans(c, trans);
+
     clientinitgeom(c, wg);
     clientinitwtype(c, wtypeunused);
     clientinitwstate(c, stateunused);
-    clientinittrans(c, trans);
     updatewindowprotocol(c, wmprotocolsstatus ? &wmprotocols : NULL);
     getnamefromreply(netwmnamereply, &netwmname);
     getnamefromreply(wmnamereply, &wmname);
@@ -1806,10 +1808,6 @@ managereply(XCBWindow win, XCBCookie requests[ManageCookieLAST])
     updateicon(c, iconreply);
     XCBSelectInput(_wm.dpy, win, inputmask);
     grabbuttons(c, 0);
-
-    if(!c->desktop)
-    {   c->desktop = _wm.selmon->desksel;
-    }
 
     m = c->desktop->mon;
 
