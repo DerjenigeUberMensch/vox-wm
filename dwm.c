@@ -85,6 +85,36 @@ int DOCKEDHORZ(Client *c)       {   const i16 wx = c->desktop->mon->wx;
                                     return (wx == x) && (ww == w);
                                 }
 int DOCKED(Client *c)           { return DOCKEDVERT(c) & DOCKEDHORZ(c); }
+
+/* used in manage */
+int DOCKEDINITIAL(Client *c)    {   Monitor *m = c->desktop->mon;
+                                    const i16 wx = m->wx;
+                                    const i16 wy = m->my;
+                                    const i16 mx = m->mx;
+                                    const i16 my = m->my;
+
+                                    const u16 ww = m->ww;
+                                    const u16 wh = m->wh;
+                                    const u16 mw = m->mw;
+                                    const u16 mh = m->mh;
+
+                                    const i16 x = c->x;
+                                    const i16 y = c->y;
+                                    const u16 w = c->w;
+                                    const u16 h = c->h;
+                                    const u16 w1 = WIDTH(c);
+                                    const u16 h1 = HEIGHT(c);
+
+                                    return
+                                        ((wx == x) && (wy == y) && (ww == w) && (wh == h))
+                                        ||
+                                        ((wx == x) && (wy == y) && (ww == w1) && (wh == h1))
+                                        ||
+                                        ((mx == x) && (my == y) && (mh == h) && (mw == w))
+                                        ||
+                                        ((mx == x) && (my == y) && (mh == h1) && (mw == w1))
+                                        ;
+                                }
 int ISFIXED(Client *c)          { return (c->minw != 0) && (c->minh != 0) && (c->minw == c->maxw) && (c->minh == c->maxh); }
 int ISURGENT(Client *c)         { return c->wstateflags & _STATE_DEMANDS_ATTENTION; }
 int NEVERFOCUS(Client *c)       { return c->wtypeflags & _TYPE_NEVERFOCUS; }
@@ -1576,6 +1606,7 @@ killclient(Client *c, enum KillType type)
     }
     else
     {
+        Monitor *m = c->desktop->mon;
         XCBWindow win = c->win;
         XCBUnmapNotifyEvent ev;
         XCBCookie seq;
@@ -1759,9 +1790,7 @@ managereply(XCBWindow win, XCBCookie requests[ManageCookieLAST])
     updatewindowprotocol(c, wmprotocolsstatus ? &wmprotocols : NULL);
     getnamefromreply(netwmnamereply, &netwmname);
     getnamefromreply(wmnamereply, &wmname);
-    if(trans || !DOCKED(c))
-    {   setfloating(c, 1);
-    }
+    setfloating(c, !!trans);
     /* Custom stuff */
     setclientpid(c, pid);
     setborderwidth(c, bw);
@@ -1793,10 +1822,10 @@ managereply(XCBWindow win, XCBCookie requests[ManageCookieLAST])
 
     HASH_ADD_INT(m->__hash, win, c);
 
-    /* assume simple window, likely not using EWMH/ICCCM */
-    if(c->x == m->wx && c->y == m->wy)
-    {   /* for now this should cover windows like st which are minimal in protocol handling */
-        if(WTYPENONE(c))
+    /* for now this should cover windows like st which are minimal in protocol handling */
+    if(WTYPENONE(c) || DOCKEDINITIAL(c))
+    {
+        if(ISFLOATING(c))
         {   setfloating(c, 0);
         }
     }
