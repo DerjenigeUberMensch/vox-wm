@@ -1476,7 +1476,7 @@ grabbuttons(Client *c, uint8_t focused)
         for (i = 0; i < LENGTH(gbuttons); ++i)
         {
             for (j = 0; j < LENGTH(modifiers); ++j)
-            {   XCBGrabButton(_wm.dpy, gbuttons[i], modifiers[j], c->win, False, BUTTONMASK, XCB_GRAB_MODE_SYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE, XCB_NONE);
+            {   XCBGrabButton(_wm.dpy, gbuttons[i], modifiers[j], c->win, False, BUTTONMASK, XCB_GRAB_MODE_SYNC, XCB_GRAB_MODE_SYNC, XCB_NONE, XCB_NONE);
             }
         }
     }
@@ -1487,7 +1487,7 @@ grabbuttons(Client *c, uint8_t focused)
             XCBGrabButton(_wm.dpy, buttons[i].button, 
                     buttons[i].mask | modifiers[j], 
                     c->win, False, BUTTONMASK, 
-                    XCB_GRAB_MODE_SYNC, XCB_GRAB_MODE_ASYNC, 
+                    XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_SYNC, 
                     XCB_NONE, XCB_NONE);
         }
     }
