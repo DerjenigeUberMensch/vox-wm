@@ -765,4 +765,26 @@ ToggleFullscreen(const Arg *arg)
     setfullscreen(c, !ISFULLSCREEN(c));
 }
 
+void
+ToggleDesktop(const Arg *arg)
+{
+    if(!_wm.selmon || !_wm.selmon->desktops)
+    {   return;
+    }
+    u32 index = arg->ui;
+    Desktop *desk;
+    for(desk = _wm.selmon->desktops; desk; desk = nextdesktop(desk))
+    {   
+        if(desk->num == index)
+        {   
+            setdesktopsel(_wm.selmon, desk);
+            focus(NULL);
+            /* shouldnt need to as clients probably still retained order unless they got corrupted but just in case */
+            arrange(desk);
+            XCBFlush(_wm.dpy);
+            break;
+        }
+    }
+}
+
 

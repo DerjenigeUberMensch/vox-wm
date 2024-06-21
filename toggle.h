@@ -39,4 +39,6 @@ void AltTab(const Arg *arg);
 void ToggleStatusBar(const Arg *arg);
 /* Toggles fullscreen mode for all windows in current tag */
 void ToggleFullscreen(const Arg *arg);
+/* Toggles desktop based on arg->ui, index starts at 0 */
+void ToggleDesktop(const Arg *arg);
 #endif
