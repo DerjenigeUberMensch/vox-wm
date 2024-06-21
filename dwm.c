@@ -1808,7 +1808,6 @@ managereply(XCBWindow win, XCBCookie requests[ManageCookieLAST])
 
     HASH_ADD_INT(m->__hash, win, c);
 
-    /* for now this should cover windows like st which are minimal in protocol handling */
     if(DOCKEDINITIAL(c))
     {
         if(ISFLOATING(c))
@@ -1816,9 +1815,22 @@ managereply(XCBWindow win, XCBCookie requests[ManageCookieLAST])
         }
     }
     else
-    {   
-        if(!ISFLOATING(c))
-        {   setfloating(c, 1);
+    {
+        /* some windows (like st) dont mean to be "floating" but rather are a side effect of their own calculation(s),
+         * So we check if its in the corner, and assume its not meant to be floating.
+         */
+        if((c->x == m->wx && c->y == m->wy) || (c->x == m->mx && c->y == m->my))
+        {   
+            if(ISFLOATING(c))   
+            {   setfloating(c, 0);
+            }
+        }
+        /* else its some sort of popup and just leave floating */
+        else
+        {
+            if(!ISFLOATING(c))
+            {   setfloating(c, 1);
+            }
         }
     }
     /* inherit previous client state */
