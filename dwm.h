@@ -699,6 +699,8 @@ void setdecorvisible(Client *c, uint8_t state);
 void setdesktopcount(Monitor *m, uint16_t desktops);
 /* Sets the desktops layouts, (not automatic arrange must be called after to apply changes.) */
 void setdesktoplayout(Desktop *desk, uint8_t layout);
+/* Sets the currently selected desktop */
+void setdesktopsel(Monitor *mon, Desktop *desksel);
 /* Sets the flag to disable border >>CHANGES<< for a client. */
 void setdisableborder(Client *c, uint8_t state);
 /* Sets the clients pid. */
@@ -793,10 +795,11 @@ void setupcfg(void);
 void setupcfgdefaults(void);
 /* Updates a Clients state to Urgent, and sets the Urgent Flag. (Updates window border to urgen color.) */
 void seturgent(Client *c, uint8_t isurgent);
-/* Moves Client offscreen if not VISIBLE;
- * Moves Client onscreen if VISIBLE;
+/* Moves Client offscreen if "show" is true
+ * Moves Client onscreen if "false" is false;
+ * Should be used when changing desktop ONLY.
  */
-void showhide(Client *c);
+void showhide(Client *c, const int show);
 /* waits for childs (zombies) to die */
 void sigchld(int signo);
 /* Handles Signals and how we use them */

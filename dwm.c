@@ -120,7 +120,7 @@ int ISURGENT(Client *c)         { return c->wstateflags & _STATE_DEMANDS_ATTENTI
 int NEVERFOCUS(Client *c)       { return c->wtypeflags & _TYPE_NEVERFOCUS; }
 int ISMAXHORZ(Client *c)        { return WIDTH(c) == c->desktop->mon->wh; }
 int ISMAXVERT(Client *c)        { return HEIGHT(c) == c->desktop->mon->wh; }
-int ISVISIBLE(Client *c)        { return (!!(c->desktop->mon->desksel == c->desktop) || (!!ISSTICKY(c))) && !ISHIDDEN(c); }
+int ISVISIBLE(Client *c)        { return (c->desktop->mon->desksel == c->desktop || ISSTICKY(c)) && !ISHIDDEN(c); }
 int SHOWDECOR(Client *c)        { return c->flags & _FSTATE_SHOW_DECOR; }
 int ISSELECTED(Client *c)       { return c->desktop->sel == c; }
         
@@ -543,18 +543,6 @@ applysizehints(Client *c, i32 *x, i32 *y, i32 *width, i32 *height, uint8_t inter
 void 
 arrangeq(Desktop *desk)
 {
-    Client *c;
-    static Desktop *workingdesk = NULL;
-
-    /* skip sending configure request if we are in the same desktop */
-    if(workingdesk != desk)
-    {
-        for(c = desk->stack; c; c = nextstack(c))
-        {   /* configuring windows is suprisingly expensive */
-            showhide(c);
-        }
-        workingdesk = desk;
-    }
     arrangedesktop(desk);
 }
 
@@ -1326,8 +1314,8 @@ focus(Client *c)
         if(c->desktop->mon != _wm.selmon)
         {   _wm.selmon = c->desktop->mon;
         }
-        else if(c->desktop != _wm.selmon->desksel)
-        {   _wm.selmon->desksel = c->desktop;
+        if(c->desktop != _wm.selmon->desksel)
+        {   setdesktopsel(_wm.selmon, c->desktop);
         }
 
         if(ISURGENT(c))
@@ -2395,7 +2383,7 @@ restoremonsession(char *buff, u16 len)
                 Desktop *desk;
                 for(desk = pullm->desktops; desk && desk->num != DeskSelNum; desk = nextdesktop(desk));
                 if(desk)
-                {   setmondesktop(pullm, desk);
+                {   setdesktopsel(pullm, desk);
                 }
             }
             DEBUG("Restored Monitor: [%p]", (void *)pullm);
@@ -2459,6 +2447,7 @@ resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
         c->h = height;
         mask |= XCB_CONFIG_WINDOW_HEIGHT;
     }
+
     XCBWindowChanges changes =
     {   
         .x = x,
@@ -2466,10 +2455,20 @@ resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
         .width = width,
         .height = height,
     };
-    if(mask)
-    {   XCBConfigureWindow(_wm.dpy, c->win, mask, &changes);
+
+    /* Process resize requests only to visible clients as to.
+     * 1.) Save resources, no need to handle non visible windows.
+     * 2.) Incase that the window does get visible make it not appear to be movable (different desktop).
+     * 3.) Prevent the window from moving itself back into view, when it should be hidden.
+     * 4.) Incase a window does want focus, we switch to that desktop respectively and let showhide() do the work.
+     */
+    if(ISVISIBLE(c))
+    {
+        if(mask)
+        {   XCBConfigureWindow(_wm.dpy, c->win, mask, &changes);
+        }
+        configure(c);
     }
-    configure(c);
 }
 
 
@@ -2990,6 +2989,9 @@ setclientnetstate(Client *c, XCBAtom atom, u8 state)
         {
             if(_delete)
             {
+                /* this gets optimized to memmove, cool!
+                 * GCC v14.1.1 -Ou
+                 */
                 for(i = offset; i < ATOM_LENGTH - 1; ++i)
                 {   atoms[i] = atoms[i + 1];
                 }
@@ -3085,6 +3087,34 @@ setdesktoplayout(Desktop *desk, uint8_t layout)
 {
     desk->olayout = desk->layout;
     desk->layout = layout;
+}
+
+void 
+setdesktopsel(Monitor *mon, Desktop *desksel)
+{
+    if(desksel->mon != mon)
+    {   /* TODO maybe add functionality to detach desktop or something? */
+        DEBUG0("Cant set desktop of different monitor, FIXME");
+        return;
+    }
+    if(mon->desksel != desksel)
+    {
+        mon->desksel = desksel;
+        Desktop *desk;
+        Client *c;
+        int samedesk = 0;
+        for(desk = mon->desktops; desk; desk = nextdesktop(desk))
+        {
+            samedesk = desk == desksel;
+            for(c = desk->stack; c; c = nextstack(c))
+            {   showhide(c, samedesk || ISSTICKY(c));
+            }
+        }
+        updatedesktop();
+    }
+    else
+    {   DEBUG0("Same desktop, no change.");
+    }
 }
 
 void
@@ -3339,11 +3369,6 @@ setmodal(Client *c, uint8_t state)
     SETFLAG(c->wstateflags, _STATE_MODAL, !!state);
 }
 
-void 
-setmondesktop(Monitor *m, Desktop *desk)
-{   
-    m->desksel = desk;
-}
 void
 setoverrideredirect(Client *c, uint8_t state)
 {
@@ -3583,18 +3608,17 @@ updateviewport(void)
 }
 
 
-void
-showhide(Client *c)
+inline void
+showhide(Client *c, const int show)
 {
     const Monitor *m = c->desktop->mon;
-    if(ISVISIBLE(c))
+    if(show)
     {   XCBMoveWindow(_wm.dpy, c->win, c->x, c->y);
     }
     else
     {   
-        const i16 x = (m->mx - (WIDTH(c) / 2));
+        const i16 x = -c->w - m->mx;
         XCBMoveWindow(_wm.dpy, c->win, x, c->y);
-        DEBUG("Not Visible: [%u] -> [%u] vs [%u]", c->win, c->desktop->num, m->desksel->num);
     }
 }
 
