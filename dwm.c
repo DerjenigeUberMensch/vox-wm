@@ -1809,10 +1809,16 @@ managereply(XCBWindow win, XCBCookie requests[ManageCookieLAST])
     HASH_ADD_INT(m->__hash, win, c);
 
     /* for now this should cover windows like st which are minimal in protocol handling */
-    if(WTYPENONE(c) || DOCKEDINITIAL(c))
+    if(DOCKEDINITIAL(c))
     {
         if(ISFLOATING(c))
         {   setfloating(c, 0);
+        }
+    }
+    else
+    {   
+        if(!ISFLOATING(c))
+        {   setfloating(c, 1);
         }
     }
     /* inherit previous client state */
@@ -2456,8 +2462,7 @@ resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
         .height = height,
     };
 
-    /* Process resize requests only to visible clients as to.
-     * 1.) Save resources, no need to handle non visible windows.
+    /* Process resize requests only to visible clients as to. 1.) Save resources, no need to handle non visible windows.
      * 2.) Incase that the window does get visible make it not appear to be movable (different desktop).
      * 3.) Prevent the window from moving itself back into view, when it should be hidden.
      * 4.) Incase a window does want focus, we switch to that desktop respectively and let showhide() do the work.
@@ -2467,8 +2472,8 @@ resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
         if(mask)
         {   XCBConfigureWindow(_wm.dpy, c->win, mask, &changes);
         }
-        configure(c);
     }
+    configure(c);
 }
 
 
@@ -3613,12 +3618,12 @@ showhide(Client *c, const int show)
 {
     const Monitor *m = c->desktop->mon;
     if(show)
-    {   XCBMoveWindow(_wm.dpy, c->win, c->x, c->y);
+    {   XCBMoveResizeWindow(_wm.dpy, c->win, c->x, c->y, c->w, c->h);
     }
     else
     {   
         const i16 x = -c->w - m->mx;
-        XCBMoveWindow(_wm.dpy, c->win, x, c->y);
+        XCBMoveResizeWindow(_wm.dpy, c->win, x, c->y, c->w, c->h);
     }
 }
 
