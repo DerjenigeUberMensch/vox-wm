@@ -111,6 +111,19 @@ static const Key keys[] =
     { XCBKeyPress,         SUPER,                   XK_g,                   SetWindowLayout,    {Grid} },
     { XCBKeyPress,         0,                       XF11,                   ToggleFullscreen,   {0} },
 
+    /* desktop switching */
+    { XCBKeyPress,          SUPER,                  XK_1,                   ToggleDesktop,      {.ui = 0} },
+    { XCBKeyPress,          SUPER,                  XK_2,                   ToggleDesktop,      {.ui = 1} },
+    { XCBKeyPress,          SUPER,                  XK_3,                   ToggleDesktop,      {.ui = 2} },
+    { XCBKeyPress,          SUPER,                  XK_4,                   ToggleDesktop,      {.ui = 3} },
+    { XCBKeyPress,          SUPER,                  XK_5,                   ToggleDesktop,      {.ui = 4} },
+    { XCBKeyPress,          SUPER,                  XK_6,                   ToggleDesktop,      {.ui = 5} },
+    { XCBKeyPress,          SUPER,                  XK_7,                   ToggleDesktop,      {.ui = 6} },
+    { XCBKeyPress,          SUPER,                  XK_8,                   ToggleDesktop,      {.ui = 7} },
+    { XCBKeyPress,          SUPER,                  XK_9,                   ToggleDesktop,      {.ui = 8} },
+    /* due to keyboard layouts starting at 1 we assume this is the "tenth" */
+    { XCBKeyPress,          SUPER,                  XK_0,                   ToggleDesktop,      {.ui = 9} },
+
     /* multimedia keys */
     { XCBKeyPress,         0,                       XAudioMute,             SpawnWindow,        {.v = mute_vol } },
     { XCBKeyPress,         0,                       XAudioLowerVolume,      SpawnWindow,        {.v = down_vol } },
@@ -121,6 +134,7 @@ static const Key keys[] =
     { XCBKeyPress,         0,                       XAudioPause,            SpawnWindow,        {.v = pause_vol } },
     { XCBKeyPress,         0,                       XAudioNext,             SpawnWindow,        {.v = next_vol } },
     { XCBKeyPress,         0,                       XAudioPrev,             SpawnWindow,        {.v = prev_vol } },
+
 };
 
 static const Button buttons[] = 
