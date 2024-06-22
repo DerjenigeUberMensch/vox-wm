@@ -1432,14 +1432,11 @@ setfullscreen(Client *c, u8 state)
         setclientnetstate(c, netatom[NetWMStateFullscreen], 1);
         setborderwidth(c, c->bw);
         setborderwidth(c, 0);
-        resizeclient(c, m->mx, m->wy, m->mw, m->mh);
-        XCBRaiseWindow(_wm.dpy, c->win);
     }
     else if(!state && ISFULLSCREEN(c))
     {
         setclientnetstate(c, netatom[NetWMStateFullscreen], 0);
         setborderwidth(c, c->oldbw);
-        resizeclient(c, c->oldx, c->oldy, c->oldw, c->oldh);
     }
     SETFLAG(c->wstateflags, _STATE_FULLSCREEN, !!state);
 }
