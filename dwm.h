@@ -9,6 +9,7 @@
 #include "settings.h"
 #include "pannel.h"
 #include "client.h"
+#include "desktop.h"
 #include "XCB-TRL/xcb_trl.h"
 #include "XCB-TRL/xcb_winutil.h"
 #include "XCB-TRL/xcb_gtk.h"
@@ -52,6 +53,7 @@ enum SchemeType
     SchemeNorm, 
     SchemeSel 
 };
+
 /* clicks */
 enum ClkType 
 { 
@@ -62,12 +64,6 @@ enum ClkType
     ClkClientWin, 
     ClkRootWin, 
     ClkLast 
-};
-
-/* layout(s) */
-enum LayoutType
-{
-    Tiled, Floating, Monocle, Grid, LayoutTypeLAST
 };
 
 enum ClientListModes
@@ -85,10 +81,6 @@ typedef union  Arg Arg;
 typedef struct Key Key;
 typedef struct Button Button;
 typedef struct Monitor Monitor;
-typedef struct Decoration Decoration;
-typedef struct Stack Stack;
-typedef struct Layout Layout;
-typedef struct Desktop Desktop;
 typedef struct WM WM;
 typedef struct MotifWmHints MotifWmHints;
 
@@ -122,15 +114,6 @@ struct Button
     Arg arg;                        /* Argument                     */
 };
 
-
-struct Decoration
-{
-    /* TODO */
-    uint16_t w;
-    uint16_t h;
-    XCBWindow win;
-};
-
 struct Monitor
 {
     int16_t mx;                 /* Monitor X (Screen Area)                  */
@@ -151,33 +134,6 @@ struct Monitor
 
     uint16_t deskcount;         /* Desktop Counter                          */
     uint8_t pad0[6];
-};
-
-struct Layout
-{   
-    void (*arrange)(Desktop *);
-};
-
-struct Desktop
-{
-    int16_t num;                /* The Desktop Number           */
-    
-    uint8_t layout;             /* The Layout Index             */
-    uint8_t olayout;            /* The Previous Layout Index    */
-
-    Monitor *mon;               /* Desktop Monitor              */
-    Client *clients;            /* First Client in linked list  */
-    Client *clast;              /* Last Client in linked list   */
-    Client *stack;              /* Client Stack Order           */
-    Client *slast;              /* Last Client in Stack         */
-    Client *rstack;             /* restack Client order         */
-    Client *rlast;              /* Last restack Client          */
-    Client *focus;              /* Client Focus Order           */
-    Client *flast;              /* Client Last Focus            */
-    Client *sel;                /* Selected Client              */
-    Desktop *next;              /* Next Client in linked list   */
-    Desktop *prev;              /* Previous Client in list      */
-    UserSettings *settings;     /* User settings data           */
 };
 
 struct WM
@@ -217,58 +173,18 @@ struct MotifWmHints
 
 /* Handles the main(int argc, char **argv) arguments. */
 void argcvhandler(int argc, char *argv[]);
-/* quickly calculate arrange stuff */
-void arrangeq(Desktop *desk);
-/* Arranges and restacks the windows in the specified desktop.
-*/
-void arrange(Desktop *desk);
 /* Arranges and restacks all the windows for every deskop in the specified monitor.
 */
 void arrangemon(Monitor *m);
 /* Arrange and restacks every window on all monitors.
 */
 void arrangemons(void);
-/* Arranges the windows in the specified desktop.
- *
- * NOTE: Does not restack windows.
- */
-void arrangedesktop(Desktop *desk);
 /* Adds desktop to specified monitor linked list.
 */
 void attachdesktop(Monitor *m, Desktop *desk);
 /* Removes desktop fromt specified monitor linked list.
 */
 void detachdesktop(Monitor *m, Desktop *desk);
-/* Adds Client to clients desktop linked list.
-*/
-void attach(Client *c);
-/* Adds Client to rendering stack order in desktop linked list.
-*/
-void attachstack(Client *c);
-/* Adds Client to previous rendering stack order.
- */
-void attachrestack(Client *c);
-/* Adds Client to focus linked list. 
- */
-void attachfocus(Client *c);
-void attachfocusafter(Client *start, Client *after);
-void attachfocusbefore(Client *start, Client *after);
-/* Removes Client from clients desktop linked list.
-*/
-void detach(Client *c);
-/* Removes all connections from clients desktop linked list
- * Analagous to detachstack(c) and detach(c);
-*/
-void detachcompletely(Client *c);
-/* Removes Client from desktop rendering stack order.
-*/
-void detachstack(Client *c);
-/* Removes Client from previous restack order. (rstack);
- */
-void detachrestack(Client *c);
-/* Removes Client from desktop focus order.
-*/
-void detachfocus(Client *c);
 /* Checks given the provided information if a window is eligible to be a new bar.
  * if it is then it becomes the new bar.
  * RETURN: 0 on Success.
@@ -289,20 +205,12 @@ void cleanup(void);
 /* Frees allocated cursors.
  */
 void cleanupcursors(void);
-/* Frees desktop and allocated desktop properties.
-*/
-void cleanupdesktop(Desktop *desk);
 /* Frees Monitor and allocated Monitor properties.
 */
 void cleanupmon(Monitor *m);
 /* Frees all monitors and allocated Monitor properties.
 */
 void cleanupmons(void);
-/* Allocates a desktop and desktop properties with all data set to 0 or to the adress of any newly allocated data.
- * RETURN: Desktop * on Success.
- * RETURN: NULL on Failure.
- */
-Desktop *createdeskop(void);
 /* Allocates a Monitor and Monitor properties with all data set to 0 or to the adress of any newly allocated data.
  * RETURN: Monitor * on Success.
  * RETURN: exit(1) on Failure.
@@ -324,38 +232,15 @@ void eventhandler(XCBGenericEvent *ev);
 /* handles atexit.
 */
 void exithandler(void);
-/* Sets the "floating" layout for the specified desktop.
- * Floating -> Windows overlap each other AKA default win10 window behaviour.
- */
-void floating(Desktop *desk);
 /* Allocates memory and resturns the pointer in **str_return from the specified XCBWindowProperty. */
 void getnamefromreply(XCBWindowProperty *namerep, char **str_return);
 /* Gets the icon property from the specified XCBWindowProperty. */
 uint32_t *geticonprop(XCBWindowProperty *iconreply);
-/* Sets the "grid" layout for the specified desktop.
- * grid -> windows are sorted in a grid like formation, like those ones in hacker movies.
- */
-void grid(Desktop *desk);
-/* Sets the "monocle" layout for the specified desktop.
- * monocle -> Windows are maximized to the screen avaible area, 
- * while floating windows are always raised above all others.
- */
-void monocle(Desktop *desk);
-/* Returns the next Desktop avaible.
- * RETURN: Desktop* on Success.
- * RETURN: NULL on Failure.
- */
-Desktop *nextdesktop(Desktop *desktop);
 /* Returns the next Monitor avaible.
  * RETURN: Monitor* on Success.
  * RETURN: NULL on Failure.
  */
 Monitor *nextmonitor(Monitor *monitor);
-/* Returns the previous desktop avaible. 
- * RETURN: Desktop * on Success.
- * RETURN: NULL on Failure.
- */
-Desktop *prevdesktop(Desktop *desk);
 /* Sends a event to the main event loop to stop running.
  */
 void quit(void);
@@ -369,10 +254,6 @@ Desktop *restoredesktopsession(Monitor *m, char *buff, uint16_t len);
 Monitor *restoremonsession(char *buff, uint16_t len);
 /* Searches through every monitor for a possible big enough size to fit rectangle parametors specified */
 Monitor *recttomon(int16_t x, int16_t y, uint16_t width, uint16_t height);
-/* Reorders(restacks) clients in current desk->stack */
-void restack(Desktop *desk);
-/* "Restacks" clients on from linked list no effect unless restack called*/
-void reorder(Desktop *desk);
 /* Flags RESTART and sets running to 0;
  * results in execvp(self) and "restarts"
  */
@@ -417,21 +298,10 @@ void sigterm(int signo);
  * NOTE: This is only checked when the program is about to exit.
  */
 void specialconds(int argc, char *argcv[]);
-/*      reference point is c1.
- *      so if c1 has higher priority return 1.
- *      RETURN: 1 on higher priority.
- *      RETURN: 0 on lesser priority.
- */
-int stackpriority(Client *c1, Client *c2);
 /* Setups most vital data for the context. 
  * Calls exit(1) on Failure.
  */
 void startup(void);
-/* Sets the "Tiled" layout for the specified desktop.
- * Tiled -> Windows tile in a grid like patter where there is 1 Big window to the left,
- *          and "stacking" on top of each other smaller windows on the right.
- */
-void tile(Desktop *desk);
 /* updates the Status Bar Position from given monitor */
 void updatebarpos(Monitor *m);
 /* updates the bar geometry from the given monitor */
@@ -442,19 +312,10 @@ void updatebargeom(Monitor *m);
  *                  2       Reloads the entire list.
  * _NET_WM_CLIENT_LIST */
 void updateclientlist(XCBWindow win, uint8_t type);
-/* Updates the XServer to the Current destop */
-void updatedesktop(void);
-/* Updates the desktop names if they have changed */
-void updatedesktopnames(void);
-/* Updates the current desktop count AKA how many desktops we got to the XServer */
-void updatedesktopnum(void);
 /* Updates Geometry for external monitors based on if they have different geometry */
 int  updategeom(void);
 /* checks and updates mask if numlock is active */
 void updatenumlockmask(void);
-void updatestackpriorityfocus(Desktop *desk);
-/* updates the viewport property to the XServer */
-void updateviewport(void);
 /* Wakups the current X connection by sending a event to it */
 void wakeupconnection(XCBDisplay *display, int screen);
 /* Returns the Monitor if found from the specified window 
@@ -469,15 +330,5 @@ void xerror(XCBDisplay *display, XCBGenericError *error);
 int COULDBEBAR(Client *c, uint8_t strut);
 
 enum BarSides GETBARSIDE(Monitor *m, Client *bar, uint8_t get_prev_side);
-
-
-static const Layout layouts[LayoutTypeLAST] =
-{
-    /* Name             arrange     */
-    [Tiled]     = {     tile        },
-    [Floating]  = {     floating    },
-    [Monocle]   = {     monocle     },
-    [Grid]      = {     grid        },
-};
 
 #endif 
