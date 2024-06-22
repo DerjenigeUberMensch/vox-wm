@@ -2,6 +2,9 @@
 #include "util.h"
 #include "keybinds.h"
 #include "dwm.h"
+#include "monitor.h"
+#include "client.h"
+#include "desktop.h"
 
 
 extern WM _wm;
