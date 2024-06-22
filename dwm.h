@@ -11,6 +11,7 @@
 #include "client.h"
 #include "desktop.h"
 #include "monitor.h"
+#include "x.h"
 #include "XCB-TRL/xcb_trl.h"
 #include "XCB-TRL/xcb_winutil.h"
 #include "XCB-TRL/xcb_gtk.h"
@@ -146,11 +147,6 @@ uint8_t checknewbar(Monitor *m, Client *c, const uint8_t has_strut_or_strut_part
 /* Inital startup check if there is another window manager running.
 */
 void checkotherwm(void);
-/* Checks if a given number would be sticky in the wm-spec.
- * RETURN: NonZero on True.
- * RETURN: 0 on False.
- */
-uint8_t checksticky(int64_t x);
 /* Cleanups and frees any data previously allocated.
 */
 void cleanup(void);
@@ -165,10 +161,7 @@ void eventhandler(XCBGenericEvent *ev);
 /* handles atexit.
 */
 void exithandler(void);
-/* Allocates memory and resturns the pointer in **str_return from the specified XCBWindowProperty. */
-void getnamefromreply(XCBWindowProperty *namerep, char **str_return);
-/* Gets the icon property from the specified XCBWindowProperty. */
-uint32_t *geticonprop(XCBWindowProperty *iconreply);
+/* Gets the root ptr location if possible, */
 int8_t getrootptr(int16_t *x, int16_t *y);
 /* Sends a event to the main event loop to stop running.
  */
