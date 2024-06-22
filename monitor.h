@@ -3,7 +3,6 @@
 
 #include <stdint.h>
 #include "desktop.h"
-#include "client.h"
 
 /* cursor */
 enum CurType 
@@ -20,7 +19,6 @@ enum ClientListModes
     ClientListAdd, ClientListRemove, ClientListReload,
 };
 
-/* color schemes */
 typedef struct Monitor Monitor;
 
 struct Monitor
@@ -83,6 +81,10 @@ Monitor *dirtomon(uint8_t dir);
  * RETURN: NULL on Failure.
  */
 Monitor *nextmonitor(Monitor *monitor);
+/* Sets the desktop count rolling back any clients to previous desktops. */
+void setdesktopcount(Monitor *m, uint16_t desktops);
+/* Sets the currently selected desktop */
+void setdesktopsel(Monitor *mon, Desktop *desksel);
 /* Sets up the cursors used for the WM. */
 void setupcursors(void);
 /* Updates 

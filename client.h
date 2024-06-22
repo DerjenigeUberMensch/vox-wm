@@ -7,8 +7,6 @@
 
 #include <stdint.h>
 
-typedef struct Desktop Desktop;
-
 /* kill client type */
 enum KillType 
 { 
@@ -43,7 +41,9 @@ enum ManageCookies
 
 typedef struct Client Client;
 typedef struct Decoration Decoration;
-typedef struct Monitor Monitor;
+
+/* extern structs */
+struct Desktop;
 
 struct Decoration
 {
@@ -111,7 +111,7 @@ struct Client
     Client *rprev;      /* Restack Prev             */
     Client *fnext;      /* The next focused client  */
     Client *fprev;      /* THe previous focused clnt*/
-    Desktop *desktop;   /* Client Associated Desktop*/
+    struct Desktop *desktop;   /* Client Associated Desktop*/
     Decoration *decor;  /* Decoration AKA title bar.*/
 
     char *netwmname;    /* Client Name              */
@@ -276,15 +276,11 @@ void setborderwidth(Client *c, uint16_t border_width);
 /* Sets the clients desktop to the specified desktop, 
  * and cleanups any data that may have been left from the previous desktop. 
  */
-void setclientdesktop(Client *c, Desktop *desktop);
+void setclientdesktop(Client *c, struct Desktop *desktop);
 /* Sets the clients wmatom[WMState] property. */
 void setclientstate(Client *c, uint8_t state);
 /* Sets the decor visibility. */
 void setdecorvisible(Client *c, uint8_t state);
-/* Sets the desktop count rolling back any clients to previous desktops. */
-void setdesktopcount(Monitor *m, uint16_t desktops);
-/* Sets the currently selected desktop */
-void setdesktopsel(Monitor *mon, Desktop *desksel);
 /* Sets the flag to disable border >>CHANGES<< for a client. */
 void setdisableborder(Client *c, uint8_t state);
 /* Sets the clients pid. */
