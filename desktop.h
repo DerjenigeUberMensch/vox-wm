@@ -2,6 +2,8 @@
 #define _WM_DESKTOP_H
 
 #include "client.h"
+#include "settings.h"
+
 /* layout(s) */
 enum LayoutType
 {
@@ -10,7 +12,8 @@ enum LayoutType
 
 typedef struct Desktop Desktop;
 typedef struct Layout Layout;
-typedef struct UserSettings UserSettings;
+/* extern structs */
+struct Monitor;
 
 struct Desktop
 {
@@ -19,7 +22,7 @@ struct Desktop
     uint8_t layout;             /* The Layout Index             */
     uint8_t olayout;            /* The Previous Layout Index    */
 
-    Monitor *mon;               /* Desktop Monitor              */
+    struct Monitor *mon;        /* Desktop Monitor              */
     Client *clients;            /* First Client in linked list  */
     Client *clast;              /* Last Client in linked list   */
     Client *stack;              /* Client Stack Order           */
