@@ -7,6 +7,8 @@
 
 #include <stdint.h>
 
+typedef struct Desktop Desktop;
+
 /* kill client type */
 enum KillType 
 { 
@@ -40,9 +42,16 @@ enum ManageCookies
 };
 
 typedef struct Client Client;
-typedef struct Monitor Monitor;
-typedef struct Desktop Desktop;
 typedef struct Decoration Decoration;
+typedef struct Monitor Monitor;
+
+struct Decoration
+{
+    /* TODO */
+    uint16_t w;
+    uint16_t h;
+    XCBWindow win;
+};
 
 struct Client
 {
@@ -274,8 +283,6 @@ void setclientstate(Client *c, uint8_t state);
 void setdecorvisible(Client *c, uint8_t state);
 /* Sets the desktop count rolling back any clients to previous desktops. */
 void setdesktopcount(Monitor *m, uint16_t desktops);
-/* Sets the desktops layouts, (not automatic arrange must be called after to apply changes.) */
-void setdesktoplayout(Desktop *desk, uint8_t layout);
 /* Sets the currently selected desktop */
 void setdesktopsel(Monitor *mon, Desktop *desksel);
 /* Sets the flag to disable border >>CHANGES<< for a client. */
