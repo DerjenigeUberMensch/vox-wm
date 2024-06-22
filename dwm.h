@@ -9,6 +9,7 @@
 #include "settings.h"
 #include "pannel.h"
 #include "client.h"
+#include "monitor.h"
 #include "desktop.h"
 #include "XCB-TRL/xcb_trl.h"
 #include "XCB-TRL/xcb_winutil.h"
@@ -38,16 +39,6 @@
 #define CONFIG_FILE             "/var/tmp/dwm-config"   /* todo make dir .config/dwm/config or someting like that */
 #define BORKED                  "NOT_SET"
 
-/* cursor */
-enum CurType 
-{ 
-    CurNormal, 
-    CurResizeTopL, 
-    CurResizeTopR, 
-    CurMove, 
-    CurLast 
-}; 
-/* color schemes */
 enum SchemeType 
 { 
     SchemeNorm, 
@@ -66,10 +57,6 @@ enum ClkType
     ClkLast 
 };
 
-enum ClientListModes
-{
-    ClientListAdd, ClientListRemove, ClientListReload,
-};
 
 enum BarSides
 {
@@ -80,7 +67,6 @@ enum BarSides
 typedef union  Arg Arg;
 typedef struct Key Key;
 typedef struct Button Button;
-typedef struct Monitor Monitor;
 typedef struct WM WM;
 typedef struct MotifWmHints MotifWmHints;
 
@@ -112,28 +98,6 @@ struct Button
     uint16_t mask;                  /* Modifier                     */
     void (*func)(const Arg *arg);   /* Function                     */
     Arg arg;                        /* Argument                     */
-};
-
-struct Monitor
-{
-    int16_t mx;                 /* Monitor X (Screen Area)                  */
-    int16_t my;                 /* Monitor Y (Screen Area)                  */
-    uint16_t mw;                /* Monitor Width (Screen Area)              */
-    uint16_t mh;                /* Monitor Height (Screen Area)             */
-    int16_t wx;                 /* Monitor X (Window Area)                  */
-    int16_t wy;                 /* Monitor Y (Window Area)                  */
-    uint16_t ww;                /* Monitor Width (Window Area)              */
-    uint16_t wh;                /* Monitor Height (Window Area)             */
-
-    Desktop *desktops;          /* First Desktop in linked list             */
-    Desktop *desklast;          /* Last Desktop                             */
-    Desktop *desksel;           /* Selected Desktop                         */
-    Monitor *next;              /* Next Monitor                             */
-    Client *bar;                /* The Associated Task-Bar (can be NULL)    */
-    Client *__hash;             /* Hashed clients                           */
-
-    uint16_t deskcount;         /* Desktop Counter                          */
-    uint8_t pad0[6];
 };
 
 struct WM
@@ -173,18 +137,6 @@ struct MotifWmHints
 
 /* Handles the main(int argc, char **argv) arguments. */
 void argcvhandler(int argc, char *argv[]);
-/* Arranges and restacks all the windows for every deskop in the specified monitor.
-*/
-void arrangemon(Monitor *m);
-/* Arrange and restacks every window on all monitors.
-*/
-void arrangemons(void);
-/* Adds desktop to specified monitor linked list.
-*/
-void attachdesktop(Monitor *m, Desktop *desk);
-/* Removes desktop fromt specified monitor linked list.
-*/
-void detachdesktop(Monitor *m, Desktop *desk);
 /* Checks given the provided information if a window is eligible to be a new bar.
  * if it is then it becomes the new bar.
  * RETURN: 0 on Success.
@@ -202,30 +154,11 @@ uint8_t checksticky(int64_t x);
 /* Cleanups and frees any data previously allocated.
 */
 void cleanup(void);
-/* Frees allocated cursors.
- */
-void cleanupcursors(void);
-/* Frees Monitor and allocated Monitor properties.
-*/
-void cleanupmon(Monitor *m);
-/* Frees all monitors and allocated Monitor properties.
-*/
-void cleanupmons(void);
-/* Allocates a Monitor and Monitor properties with all data set to 0 or to the adress of any newly allocated data.
- * RETURN: Monitor * on Success.
- * RETURN: exit(1) on Failure.
- */
-Monitor *createmon(void);
 /* Allocates a decoration with all properties set to 0 or NULL. 
  * RETURN: Decoration * on Success.
  * RETURN: NULL on Failure.
  */
 Decoration *createdecoration(void);
-/* Finds the next monitor based on "dir" AKA Direction. 
- * RETURN: Monitor * on Success.
- * RETURN: NULL on Failure.
- */
-Monitor *dirtomon(uint8_t dir);
 /* Jumps to the specified function handler for the provided event.
 */
 void eventhandler(XCBGenericEvent *ev);
@@ -236,11 +169,7 @@ void exithandler(void);
 void getnamefromreply(XCBWindowProperty *namerep, char **str_return);
 /* Gets the icon property from the specified XCBWindowProperty. */
 uint32_t *geticonprop(XCBWindowProperty *iconreply);
-/* Returns the next Monitor avaible.
- * RETURN: Monitor* on Success.
- * RETURN: NULL on Failure.
- */
-Monitor *nextmonitor(Monitor *monitor);
+int8_t getrootptr(int16_t *x, int16_t *y);
 /* Sends a event to the main event loop to stop running.
  */
 void quit(void);
@@ -280,8 +209,6 @@ void setup(void);
 void setupatoms(void);
 /* Sets up special data. */
 void setupbar(Monitor *m, Client *bar);
-/* Sets up the cursors used for the WM. */
-void setupcursors(void);
 /* Loads CFG data into Settings struct. */
 void setupcfg(void);
 /* Loads default if CFG data failed to read. */
@@ -306,23 +233,8 @@ void startup(void);
 void updatebarpos(Monitor *m);
 /* updates the bar geometry from the given monitor */
 void updatebargeom(Monitor *m);
-/* Updates 
- * type:            0       Adds the client win .
- *                  1       Removes the specified win.
- *                  2       Reloads the entire list.
- * _NET_WM_CLIENT_LIST */
-void updateclientlist(XCBWindow win, uint8_t type);
-/* Updates Geometry for external monitors based on if they have different geometry */
-int  updategeom(void);
-/* checks and updates mask if numlock is active */
-void updatenumlockmask(void);
 /* Wakups the current X connection by sending a event to it */
 void wakeupconnection(XCBDisplay *display, int screen);
-/* Returns the Monitor if found from the specified window 
- * RETURN: Monitor* on Success.
- * RETURN: NULL on Failure.
- */
-Monitor *wintomon(XCBWindow win);
 /* Error handler */
 void xerror(XCBDisplay *display, XCBGenericError *error);
 
