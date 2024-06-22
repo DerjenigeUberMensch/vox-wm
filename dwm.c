@@ -118,7 +118,7 @@ int DOCKEDINITIAL(Client *c)    {   Monitor *m = c->desktop->mon;
 int ISFIXED(Client *c)          { return (c->minw != 0) && (c->minh != 0) && (c->minw == c->maxw) && (c->minh == c->maxh); }
 int ISURGENT(Client *c)         { return c->wstateflags & _STATE_DEMANDS_ATTENTION; }
 int NEVERFOCUS(Client *c)       { return c->wtypeflags & _TYPE_NEVERFOCUS; }
-int ISMAXHORZ(Client *c)        { return WIDTH(c) == c->desktop->mon->wh; }
+int ISMAXHORZ(Client *c)        { return WIDTH(c) == c->desktop->mon->ww; }
 int ISMAXVERT(Client *c)        { return HEIGHT(c) == c->desktop->mon->wh; }
 int ISVISIBLE(Client *c)        { return (c->desktop->mon->desksel == c->desktop || ISSTICKY(c)) && !ISHIDDEN(c); }
 int SHOWDECOR(Client *c)        { return c->flags & _FSTATE_SHOW_DECOR; }
@@ -1279,8 +1279,8 @@ eventhandler(XCBGenericEvent *ev)
 {
     /* int for speed */
     const int cleanev = XCB_EVENT_RESPONSE_TYPE(ev);
-    //DEBUG("%s", XCBGetEventName(cleanev));
-    if(handler[cleanev])
+    /* DEBUG("%s", XCBGetEventName(cleanev)); */
+    if(LENGTH(handler) > cleanev)
     {   handler[cleanev](ev);
     }
 }
