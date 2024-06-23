@@ -601,7 +601,6 @@ killclient(Client *c, enum KillType type)
     }
     else
     {
-        Monitor *m = c->desktop->mon;
         XCBWindow win = c->win;
         XCBUnmapNotifyEvent ev;
         XCBCookie seq;
@@ -1428,7 +1427,6 @@ setshowdecor(Client *c, uint8_t state)
 void
 setfullscreen(Client *c, u8 state)
 {
-    Monitor *m = c->desktop->mon;
     if(state && !ISFULLSCREEN(c))
     {
         setclientnetstate(c, netatom[NetWMStateFullscreen], 1);
