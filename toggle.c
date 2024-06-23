@@ -39,11 +39,6 @@ GET_BOOL(i64 x)
     }
 }
 
-static void *x(void *a)
-{
-    return NULL;
-}
-
 void
 UserStats(const Arg *arg)
 {
