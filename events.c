@@ -1224,6 +1224,7 @@ clientmessage(XCBGenericEvent *event)
         else if(atom == netatom[NetCloseWindow])
         {   
             killclient(c, Graceful);
+            focus(NULL);
             sync = 1;
         }
         else if(atom == netatom[NetMoveResize])
