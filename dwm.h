@@ -11,6 +11,7 @@
 #include "desktop.h"
 #include "monitor.h"
 #include "x.h"
+#include "util.h"
 #include "XCB-TRL/xcb_trl.h"
 #include "XCB-TRL/xcb_winutil.h"
 #include "XCB-TRL/xcb_gtk.h"
