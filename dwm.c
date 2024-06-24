@@ -459,7 +459,6 @@ restoresession(void)
     u8 isdesk = 0;
     u8 isclient = 0;
     u8 isclients = 0;
-    u8 isclientsend = 0;
 
     if(!fr)
     {   return;
@@ -499,7 +498,7 @@ restoresession(void)
             if(!desk)
             {   continue;
             }
-            if(!isclientsend)
+            if(strcmp(str, "ClientsEnd."))
             {
                 const u8 SSCANF_CHECK_SUM = 1;
                 XCBWindow win = 0;
@@ -521,6 +520,9 @@ restoresession(void)
                     DEBUG0("Failed to pass move checksum for client.");
                 }
             }
+            else /* end stream */
+            {   isclients = 0;
+            }
         }
         if(isdesk)
         {   
@@ -541,7 +543,7 @@ restoresession(void)
         isdesk += !strcmp(str, "Desktop.");
         isclient += !strcmp(str, "Client.");
         isclients += !strcmp(str, "Clients.");
-        isclientsend += !strcmp(str, "ClientsEnd.");
+        
     }
     fclose(fr);
     /* map all the windows again */
