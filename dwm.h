@@ -110,6 +110,7 @@ struct WM
 
     uint8_t restart;                /* Restart flag         */
     uint8_t has_error;              /* Error flag           */
+
     uint8_t pad[2];                 /* Pad                  */
 
     uint16_t sw;                    /* Screen Height u16    */
