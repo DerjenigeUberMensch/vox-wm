@@ -10,8 +10,6 @@ extern XCBCursor cursors[];
 extern XCBAtom netatom[];
 
 
-
-
 void
 arrangemon(Monitor *m)
 {
@@ -255,12 +253,10 @@ setdesktopsel(Monitor *mon, Desktop *desksel)
         mon->desksel = desksel;
         Desktop *desk;
         Client *c;
-        int samedesk = 0;
         for(desk = mon->desktops; desk; desk = nextdesktop(desk))
         {
-            samedesk = desk == desksel;
             for(c = desk->stack; c; c = nextstack(c))
-            {   showhide(c, samedesk || ISSTICKY(c));
+            {   showhide(c);
             }
         }
         updatedesktop();

@@ -359,11 +359,10 @@ void setoverrideredirect(Client *c, uint8_t state);
 void setsticky(Client *c, uint8_t state);
 /* Updates a Clients state to Urgent, and sets the Urgent Flag. (Updates window border to urgen color.) */
 void seturgent(Client *c, uint8_t isurgent);
-/* Moves Client offscreen if "show" is true
- * Moves Client onscreen if "false" is false;
- * Should be used when changing desktop ONLY.
+/* Shows client if ISVISIBLE(c);
+ * else hides client.
  */
-void showhide(Client *c, const int show);
+void showhide(Client *c);
 /* Unfocuses specified client and sets to focus to root if setfocus is true */
 void unfocus(Client *c, uint8_t setfocus);
 /* updates a clients classname from XCBWMClass *_class 

@@ -1543,10 +1543,10 @@ seturgent(Client *c, uint8_t state)
 }
 
 void
-showhide(Client *c, const int show)
+showhide(Client *c)
 {
     const Monitor *m = c->desktop->mon;
-    if(show)
+    if(ISVISIBLE(c))
     {   XCBMoveResizeWindow(_wm.dpy, c->win, c->x, c->y, c->w, c->h);
     }
     else
