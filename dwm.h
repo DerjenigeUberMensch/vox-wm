@@ -7,7 +7,6 @@
 
 #include "uthash.h"
 #include "settings.h"
-#include "pannel.h"
 #include "client.h"
 #include "desktop.h"
 #include "monitor.h"
