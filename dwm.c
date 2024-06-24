@@ -546,6 +546,7 @@ restoresession(void)
         
     }
     fclose(fr);
+    arrangemons();
     /* map all the windows again */
     Client *c;
     for(m = _wm.mons; m; m = nextmonitor(m))
@@ -553,12 +554,12 @@ restoresession(void)
         for(desk = m->desktops; desk; desk = nextdesktop(desk))
         {
             for(c = desk->clients; c; c = nextclient(c))
-            {   XCBMapWindow(_wm.dpy, c->win);
+            {   
+                XCBMapWindow(_wm.dpy, c->win);
             }
         }
     }
     focus(NULL);
-    arrangemons();
     /* No need to flush run() syncs for us */
     /* XCBFlush(_wm.dpy) */
 }
@@ -569,10 +570,10 @@ restoreclientsession(Desktop *desk, char *buff, u16 len)
     const u8 SCANF_CHECK_SUM = 16;
     u8 check = 0;
 
-    int x, y;
-    int ox, oy;
-    unsigned int w, h;
-    unsigned int ow, oh;
+    i32 x, y;
+    i32 ox, oy;
+    u32 w, h;
+    u32 ow, oh;
     XCBWindow WindowId;
     XCBWindow WindowIdFocus;
     XCBWindow WindowIdStack;
@@ -618,11 +619,20 @@ restoreclientsession(Desktop *desk, char *buff, u16 len)
         {
             setborderwidth(cclient, BorderWidth);
             setbordercolor32(cclient, BorderColor);
-            resize(cclient, ox, oy, ow, oh, 0);
+            /* some clients break on their output if we resize them (like st),
+             * So we dont want to resize its old size
+             */
+            applysizehints(cclient, &ox, &oy, (i32 *)&ow, (i32 *)&oh, 0);
+            cclient->oldx = ox;
+            cclient->oldy = oy;
+            cclient->oldw = ow;
+            cclient->oldh = oh;
             resize(cclient, x, y, w, h, 0);
             cclient->flags = Flags;
             cclient->wtypeflags = WTFlags;
             cclient->wstateflags = WSFlags;
+            /* FIXME: For some reason size isnt propagated correctly requiring this line */
+            showhide(cclient);
         }
         if(fclient)
         {
@@ -1074,7 +1084,6 @@ scan(void)
     {   DEBUG0("Failed to scan for clients.");
     }
     /* restore session covers this after */
-    /* arrangemons(); */
 }
 
 void

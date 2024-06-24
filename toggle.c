@@ -773,9 +773,9 @@ ToggleDesktop(const Arg *arg)
         if(desk->num == index)
         {   
             setdesktopsel(_wm.selmon, desk);
-            focus(NULL);
             /* shouldnt need to as clients probably still retained order unless they got corrupted but just in case */
             arrange(desk);
+            focus(NULL);
             XCBFlush(_wm.dpy);
             break;
         }
