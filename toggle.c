@@ -154,6 +154,7 @@ KillWindow(const Arg *arg)
     if(c)
     {
         killclient(c, Graceful);
+        focus(NULL);
         XCBFlush(_wm.dpy);
     }
 }
@@ -164,6 +165,7 @@ TerminateWindow(const Arg *arg)
     if(_wm.selmon->desksel->sel)
     {
         killclient(_wm.selmon->desksel->sel, Destroy);
+        focus(NULL);
         XCBFlush(_wm.dpy);
     }
 }
