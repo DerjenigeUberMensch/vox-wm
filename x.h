@@ -16,7 +16,6 @@
  * RETURN: 0 on False.
  */
 uint8_t checksticky(int64_t x);
-
 /* Allocates memory and resturns the pointer in **str_return from the specified XCBWindowProperty. */
 void getnamefromreply(XCBWindowProperty *namerep, char **str_return);
 /* Gets the icon property from the specified XCBWindowProperty. */

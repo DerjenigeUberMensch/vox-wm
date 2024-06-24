@@ -5,6 +5,17 @@
 
 
 
+uint8_t
+checksticky(int64_t x)
+{
+    /* _NET_WM_DESKTOP
+     * https://specifications.freedesktop.org/wm-spec/latest/
+     */
+    return (x & 0xFFFFFFFF) | ((uint32_t)x == UINT32_MAX) | ((unsigned int)x == ~0)
+        /* probably not but failsafe's */
+    | ((uint32_t)x == (uint32_t)~0) | ((int32_t)x == -1) | ((uint32_t)x == (uint32_t) -1);
+}
+
 void
 getnamefromreply(XCBWindowProperty *namerep, char **str_return)
 {
