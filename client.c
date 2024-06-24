@@ -409,25 +409,19 @@ clientinittrans(Client *c, XCBWindow trans)
 void
 configure(Client *c)
 {
-    const XCBConfigureNotifyEvent ce = 
-    {
-        .response_type = XCB_CONFIGURE_NOTIFY,
-        .event = c->win,
-        .window = c->win,
-        .x = c->x,
-        .y = c->y,
-        .width = c->w,
-        .height = c->h,
-        .border_width = c->bw,
-        .above_sibling = XCB_NONE,
-        .override_redirect = False,
-        /* valgrind complains about "uninitialized bytes" */
-        .pad0 = 0,
-        .pad1 = 0,
-        .sequence = 0
-    };
-    /* valgrind says that this generates some stack allocation error in writev(vector[1]) but it seems to be a xcb issue */
-    XCBSendEvent(_wm.dpy, c->win, False, XCB_EVENT_MASK_STRUCTURE_NOTIFY, (const char *)&ce);
+    XCBGenericEvent ev;
+    memset(&ev, 0, sizeof(XCBGenericEvent));
+    XCBConfigureNotifyEvent *ce = (XCBConfigureNotifyEvent *)&ev;
+    ce->response_type = XCB_CONFIGURE_NOTIFY;
+    ce->event = _wm.root;
+    ce->window = c->win;
+    ce->x = c->x;
+    ce->y = c->y;
+    ce->width = c->w;
+    ce->height = c->h;
+    ce->border_width = c->bw;
+    ce->override_redirect = False;
+    XCBSendEvent(_wm.dpy, c->win, False, XCB_EVENT_MASK_STRUCTURE_NOTIFY, (const char *)&ev);
 }
 
 Client *
@@ -602,34 +596,30 @@ killclient(Client *c, enum KillType type)
     else
     {
         XCBWindow win = c->win;
-        XCBUnmapNotifyEvent ev;
-        XCBCookie seq;
         switch(type)
         {
             case Graceful:
-                seq = XCBKillClient(_wm.dpy, win);
+                XCBKillClient(_wm.dpy, win);
                 break;
             case Safedestroy:
                 /* TODO */
-                seq = XCBKillClient(_wm.dpy, win);
+                XCBKillClient(_wm.dpy, win);
                 break;
             case Destroy:
-                seq = XCBDestroyWindow(_wm.dpy, win);
+                XCBDestroyWindow(_wm.dpy, win);
                 break;
             default:
-                seq = XCBKillClient(_wm.dpy, win);
+                XCBKillClient(_wm.dpy, win);
                 break;
         }
+        XCBGenericEvent ev;
+        memset(&ev, 0, sizeof(XCBGenericEvent));
+        XCBUnmapNotifyEvent *unev = (XCBUnmapNotifyEvent *)&ev;
         /* let event handler handle this */
-        ev.from_configure = 0;
-        ev.response_type = XCB_UNMAP_NOTIFY;
-        ev.event = _wm.root;
-        ev.window = win;
-        ev.sequence = seq.sequence + 1;
-        ev.pad0 = 0;
-        ev.pad1[0] = 0;
-        ev.pad1[1] = 0;
-        ev.pad1[2] = 0;
+        unev->from_configure = 0;
+        unev->response_type = XCB_UNMAP_NOTIFY;
+        unev->event = _wm.root;
+        unev->window = win;
         XCBSendEvent(_wm.dpy, _wm.root, 0, XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY, (const char *)&ev);
     }
 }
@@ -859,18 +849,18 @@ FAILURE:
 CLEANUP:
     /* reply cleanup */
     free(waattributes);
-    free(wmh);
-    free(stateunused);
-    free(wtypeunused);
     free(wg);
+    free(wtypeunused);
+    free(stateunused);
+    free(wmh);
     XCBWipeGetWMClass(&cls);
     XCBWipeGetWMProtocols(&wmprotocols);
-    free(strutpreply);
     free(strutreply);
+    free(strutpreply);
     free(netwmnamereply);
     free(wmnamereply);
-    /* maybe no or just memcpy the first icon into a buffer and keep the thing just there. */
     free(iconreply);
+    free(motifreply);
     return c;
 }
 
@@ -1038,13 +1028,15 @@ resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
 void
 sendprotocolevent(Client *c, XCBAtom proto)
 {
-    XCBClientMessageEvent ev;
-    ev.type = wmatom[WMProtocols];
-    ev.response_type = XCB_CLIENT_MESSAGE;
-    ev.window = c->win;
-    ev.format = 32;
-    ev.data.data32[0] = proto;
-    ev.data.data32[1] = XCB_CURRENT_TIME;
+    XCBGenericEvent ev;
+    memset(&ev, 0, sizeof(XCBGenericEvent));
+    XCBClientMessageEvent *cev = (XCBClientMessageEvent *)&ev;
+    cev->type = wmatom[WMProtocols];
+    cev->response_type = XCB_CLIENT_MESSAGE;
+    cev->window = c->win;
+    cev->format = 32;
+    cev->data.data32[0] = proto;
+    cev->data.data32[1] = XCB_CURRENT_TIME;
     XCBSendEvent(_wm.dpy, c->win, False, XCB_NONE, (const char *)&ev);
 }
 
@@ -1547,11 +1539,16 @@ showhide(Client *c)
 {
     const Monitor *m = c->desktop->mon;
     if(ISVISIBLE(c))
-    {   XCBMoveResizeWindow(_wm.dpy, c->win, c->x, c->y, c->w, c->h);
+    {   
+        XCBMoveResizeWindow(_wm.dpy, c->win, c->x, c->y, c->w, c->h);
+        setclientstate(c, XCB_WINDOW_NORMAL_STATE);
+        setwtypemapiconic(c, 0);
     }
     else
-    {   
+    {
         const i16 x = -c->w - m->mx;
+        setclientstate(c, XCB_WINDOW_ICONIC_STATE);
+        setwtypemapiconic(c, 1);
         XCBMoveResizeWindow(_wm.dpy, c->win, x, c->y, c->w, c->h);
     }
 }
