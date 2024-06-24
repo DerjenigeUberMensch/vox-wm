@@ -1410,16 +1410,16 @@ propertynotify(XCBGenericEvent *event)
     {   return;
     }
 
+    XCBCookie cookie;
+    XCBCookie cookie2;
+    XCBWindowProperty *prop1;
+    XCBWindowProperty *prop2;
+    XCBWMHints *wmh;
+    XCBWindow trans;
+    uint8_t transstatus = 0;
+    Client *tmp = NULL;
     if((c = wintoclient(win)))
     {   
-        XCBCookie cookie;
-        XCBCookie cookie2;
-        XCBWindowProperty *prop1;
-        XCBWindowProperty *prop2;
-        XCBWMHints *wmh;
-        XCBWindow trans;
-        uint8_t transstatus = 0;
-        Client *tmp = NULL;
         switch(atom)
         {
             case XCB_ATOM_WM_TRANSIENT_FOR:
@@ -1443,20 +1443,10 @@ propertynotify(XCBGenericEvent *event)
                 sync = 1;
                 break;
             case XCB_ATOM_WM_NORMAL_HINTS:
+                /* updatewmhints */
                 break;
             case XCB_ATOM_WM_NAME:
-                cookie = XCBGetWindowPropertyCookie(_wm.dpy, c->win, netatom[NetWMName], 0L, UINT32_MAX, False, netatom[NetUtf8String]);
-                cookie2 = XCBGetWindowPropertyCookie(_wm.dpy, c->win, XCB_ATOM_WM_NAME, 0L, UINT32_MAX, False, XCB_ATOM_STRING);
-                prop1 = XCBGetWindowPropertyReply(_wm.dpy, cookie);
-                prop2 = XCBGetWindowPropertyReply(_wm.dpy, cookie2);
-                char *netwmname = NULL;
-                char *wmname = NULL;
-                getnamefromreply(prop1, &netwmname);
-                getnamefromreply(prop2, &wmname);
-                updatetitle(c, netwmname, wmname);
-                free(prop1);
-                free(prop2);
-                sync = 1;
+                goto TITLE;
                 break;
             case XCB_ATOM_WM_ICON_NAME:
                 break;
@@ -1465,15 +1455,41 @@ propertynotify(XCBGenericEvent *event)
             case XCB_ATOM_WM_CLIENT_MACHINE:
                 break;
             default:
-                cookie = XCBGetWindowPropertyCookie(_wm.dpy, c->win, motifatom, 0L, 5L, False, motifatom);
-                prop1 = XCBGetWindowPropertyReply(_wm.dpy, cookie);
                 /* other atoms */
                 if(atom == motifatom)
-                {   updatemotifhints(c, prop1);
+                {   
+                    cookie = XCBGetWindowPropertyCookie(_wm.dpy, c->win, motifatom, 0L, 5L, False, motifatom);
+                    prop1 = XCBGetWindowPropertyReply(_wm.dpy, cookie);
+                    updatemotifhints(c, prop1);
+                    free(prop1);
+                }
+                else if(atom == netatom[NetWMName])
+                {   goto TITLE;
+                }
+                else if(atom == netatom[NetWMWindowType])
+                {   /* TODO */
+                }
+                else if(atom == netatom[NetWMState])
+                {   /* TODO */
                 }
                 break;
         }
     }
+    goto END;
+TITLE:
+    cookie = XCBGetWindowPropertyCookie(_wm.dpy, c->win, netatom[NetWMName], 0L, UINT32_MAX, False, netatom[NetUtf8String]);
+    cookie2 = XCBGetWindowPropertyCookie(_wm.dpy, c->win, XCB_ATOM_WM_NAME, 0L, UINT32_MAX, False, XCB_ATOM_STRING);
+    prop1 = XCBGetWindowPropertyReply(_wm.dpy, cookie);
+    prop2 = XCBGetWindowPropertyReply(_wm.dpy, cookie2);
+    char *netwmname = NULL;
+    char *wmname = NULL;
+    getnamefromreply(prop1, &netwmname);
+    getnamefromreply(prop2, &wmname);
+    updatetitle(c, netwmname, wmname);
+    free(prop1);
+    free(prop2);
+    sync = 1;
+END:
     if(sync)
     {   XCBFlush(_wm.dpy);
     }
