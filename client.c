@@ -39,7 +39,7 @@ extern XCBAtom motifatom;
 /* custom types (using spare bits )*/
 #define _TYPE_NEVERFOCUS    ((1 << 14))
 /* Window map states, Widthdrawn, Iconic, Normal. */
-#define _TYPE_MAP_ICONIC        ((1 << 15))
+#define _TYPE_MAP_ICONIC    ((1 << 15))
 
 /* EWMH Window states */
 #define _STATE_MODAL                        ((1 << 0))
