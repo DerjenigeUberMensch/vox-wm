@@ -347,6 +347,29 @@ cleanupclient(Client *c)
     c = NULL;
 }
 
+void
+clientinitdecor(Client *c)
+{
+    Decoration *decor = c->decor;
+
+    decor->h = 15;
+    decor->w = 10;
+
+    const u8 depth = XCB_COPY_FROM_PARENT;
+    const XCBVisual visual = XCBGetScreen(_wm.dpy)->root_visual;
+    const u8  class = XCB_WINDOW_CLASS_INPUT_OUTPUT;
+    const u32 mask = XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL;
+
+    XCBCreateWindowValueList va =
+    {
+        .background_pixel = ~0,
+        .border_pixel = 0,
+        .override_redirect = 1,
+    };
+
+    decor->win = XCBCreateWindow(_wm.dpy, _wm.root, 0, 0, c->w, c->h, 0, depth, class, visual, mask, &va);
+}
+
 void 
 clientinitgeom(Client *c, XCBWindowGeometry *wg)
 {
@@ -460,6 +483,13 @@ createclient(void)
     c->classname = NULL;
     c->instancename = NULL;
     return c;
+}
+
+Decoration *
+createdecoration(void)
+{                       /* replace with malloc later... */
+    Decoration *decor = calloc(1, sizeof(Decoration));
+    return decor;
 }
 
 void
@@ -769,7 +799,6 @@ managereply(XCBWindow win, XCBCookie requests[ManageCookieLAST])
 
     /* this sets up the desktop which is quite important for some operations */
     clientinittrans(c, trans);
-
     clientinitgeom(c, wg);
     clientinitwtype(c, wtypeunused);
     clientinitwstate(c, stateunused);

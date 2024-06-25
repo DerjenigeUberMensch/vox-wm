@@ -151,11 +151,6 @@ void checkotherwm(void);
 /* Cleanups and frees any data previously allocated.
 */
 void cleanup(void);
-/* Allocates a decoration with all properties set to 0 or NULL. 
- * RETURN: Decoration * on Success.
- * RETURN: NULL on Failure.
- */
-Decoration *createdecoration(void);
 /* Jumps to the specified function handler for the provided event.
 */
 void eventhandler(XCBGenericEvent *ev);
