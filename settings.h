@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#include "parser.h"
+
 /* User Settings Flags */
 
 #define _USER_SETTINGS_HOVER_FOCUS          ((1 << 0))
@@ -92,10 +94,22 @@ struct UserSettings
 
     /* bar stuff */
     BarSettings bar;
+    CFG *cfg;
 };
 
-
-
+void
+USInit(
+        UserSettings *settings_init,
+        char *CONFIG_FILE
+        );
+void
+USSave(
+        UserSettings *settings
+        );
+void
+USWipe(
+        UserSettings *settings
+        );
 
 void
 USSetHoverFocus(

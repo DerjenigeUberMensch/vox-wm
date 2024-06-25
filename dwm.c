@@ -323,6 +323,8 @@ cleanup(void)
         }
         return;
     }
+    /* cleanup cfg */
+    USWipe(&_cfg);
     XCBCookie cookie = XCBDestroyWindow(_wm.dpy, _wm.wmcheckwin);
     cleanupcursors();
     XCBDiscardReply(_wm.dpy, cookie);
@@ -825,7 +827,7 @@ run(void)
 void
 savesession(void)
 {
-    /* user settings */
+    /* save client data. */
     const char *filename = SESSION_FILE;
     Monitor *m;
     FILE *fw = fopen(filename, "w");
@@ -838,6 +840,9 @@ savesession(void)
     {   savemonsession(fw, m);
     }
     fclose(fw);
+
+    /* save setting data. */
+    USSave(&_cfg);
 }
 
 void
@@ -1192,59 +1197,8 @@ setupbar(Monitor *m, Client *bar)
 
 void
 setupcfg(void)
-{
-    /* TODO */
-    setupcfgdefaults();
-}
-
-void
-setupcfgdefaults(void)
-{
-    /* Do note these settings are mostly arbitrary numbers that I (the creator) like */
-    UserSettings *s = &_cfg;
-    const u16 nmaster = 1;
-    const u8 hoverfocus = 0;   /* bool */
-    const u8 desktoplayout = Monocle;
-    const u8 odesktoplayout = Tiled;
-    const u8 defaultdesktop = 0;
-    const u16 refreshrate = 60;
-    const float bgw = 0.95f;
-    const u16 winsnap = 10;
-    const u16 maxcc = 256;
-    const float mfact = 0.55f;
-
-    USSetMCount(s, nmaster);
-    USSetLayout(s, desktoplayout);
-    USSetOLayout(s, odesktoplayout);
-    USSetDefaultDesk(s, defaultdesktop);
-    USSetHoverFocus(s, hoverfocus);
-    USSetRefreshRate(s, refreshrate);
-    USSetGapRatio(s, bgw);
-    USSetSnap(s, winsnap);
-    USSetMaxClientCount(s, maxcc);
-    USSetMFact(s, mfact);
-
-    BarSettings *bs = USGetBarSettings(&_cfg);
-    /* Left Stuff */
-    bs->left.w = .15f;
-    bs->left.h = 1.0f;
-    bs->left.x = 0.0f;
-    bs->left.y = 0.0f;
-    /* Right Stuff */
-    bs->right.w = .15f;
-    bs->right.h = 1.0f;
-    bs->right.x = 1.0f - bs->right.w;
-    bs->right.y = 0.0f;
-    /* Top Stuff */
-    bs->top.w = 1.0f;
-    bs->top.h = .15f;
-    bs->top.x = 0.0f;
-    bs->top.y = 0.0f;
-    /* Bottom Stuff */
-    bs->bottom.w = 1.0f;
-    bs->bottom.h = .15f;
-    bs->bottom.x = 0.0f;
-    bs->bottom.y = 1.0f - bs->bottom.h;
+{   
+    USInit(&_cfg, CONFIG_FILE);
 }
 
 void
