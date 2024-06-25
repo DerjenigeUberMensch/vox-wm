@@ -316,6 +316,9 @@ CFGCreateVar(
         char *VarName, 
         int CFGType)
 {
+    if(!cfg)
+    {   return 1;
+    }
     CFGItem *item = CFGCreateItem();
 
     if(item)
@@ -370,6 +373,9 @@ CFGSaveVar(
         void *data
         )
 {
+    if(!cfg)
+    {   return 1;
+    }
     CFGItem *item;
     __Generic *gen;
     if((item = __CFG_GET_VAR_FROM_STRING(cfg, VarName)))
@@ -475,6 +481,9 @@ CFGLoad(
         CFG *OldCfg
         )
 {
+    if(!OldCfg)
+    {   return 1;
+    }
     const int standardbufflimit = 1024 << 2;
     int running = 1;
     char buff[standardbufflimit];

@@ -134,11 +134,17 @@ CFGSaveVar(
         void *data
         );
 
+/* Writes current data to file.
+ */
 int
 CFGWrite(
         CFG *cfg
         );
 
+/* Loads CFG to names if possible,
+ * RETURN: NonZero on Failure.
+ * RETURN: 0 on Success.
+ */
 int
 CFGLoad(
         CFG *OldCfg
