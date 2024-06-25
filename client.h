@@ -139,6 +139,8 @@ uint8_t applysizehints(Client *c, int32_t *x, int32_t *y, int32_t *width, int32_
 /* Frees Client and allocated client properties. 
 */
 void cleanupclient(Client *c);
+/* Initializes the Client decoration */
+void clientinitdecor(Client *c);
 /* Initializes the Client geometry from the specified XCBWindowGeometry struct. 
  */
 void clientinitgeom(Client *c, XCBWindowGeometry *geometry);
@@ -158,6 +160,11 @@ void configure(Client *c);
  * RETURN: NULL on Failure.
 */
 Client *createclient(void);
+/* Allocates a decoration with all properties set to 0 or NULL. 
+ * RETURN: Decoration * on Success.
+ * RETURN: NULL on Failure.
+ */
+Decoration *createdecoration(void);
 /* Sets focus to the specified client.
  * NOTE: if NULL provided first visible client in stack is choosen as focus specifier.
  */

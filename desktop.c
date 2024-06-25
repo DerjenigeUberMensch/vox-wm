@@ -14,7 +14,8 @@ extern XCBAtom netatom[];
 void 
 arrangeq(Desktop *desk)
 {
-    arrangedesktop(desk);
+    reorder(desk);
+    restack(desk);
 }
 
 void
@@ -25,7 +26,7 @@ arrange(Desktop *desk)
     updatebarpos(desk->mon);
 
     reorder(desk);
-    arrangeq(desk);
+    arrangedesktop(desk);
     restack(desk);
 }
 
@@ -393,7 +394,7 @@ grid(Desktop *desk)
 	for(cols = 0; cols <= n/2; cols++)
     {   
         if(cols*cols >= n)
-        {   break;
+        {    break;
         }
     }
     /* set layout against the general calculation: not 1:2:2, but 2:3 */
@@ -610,9 +611,7 @@ tile(Desktop *desk)
     Monitor *m = desk->mon;
 
     n = 0;
-    for(c = desk->stack; c; c = nextstack(c))
-    {   n += !ISFLOATING(c);
-    }
+    for(c = desk->stack; c; c = nexttiled(c), ++n);
 
     if(!n) 
     {   return;
@@ -626,11 +625,8 @@ tile(Desktop *desk)
     }
 
     i = my = ty = 0;
-    for (c = desk->stack; c; c = nextstack(c))
+    for (c = desk->stack; c; c = nexttiled(c))
     {
-        if(ISFLOATING(c))
-        {   continue;
-        }
         if (i < nmaster)
         {
             h = (m->wh - my) / (MIN(n, nmaster) - i);

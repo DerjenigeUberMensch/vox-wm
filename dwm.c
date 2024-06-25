@@ -343,20 +343,6 @@ cleanup(void)
     }
 }
 
-Decoration *
-createdecoration(void)
-{                       /* replace with malloc later... */
-    Decoration *decor = calloc(1, sizeof(Decoration));
-    /* TODO */
-    if(decor)
-    {
-        decor->w = 0;
-        decor->h = 0;
-        decor->win = 0;
-    }
-    return decor;
-}
-
 void
 eventhandler(XCBGenericEvent *ev)
 {
