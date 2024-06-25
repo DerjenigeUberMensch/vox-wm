@@ -608,6 +608,7 @@ restoreclientsession(Desktop *desk, char *buff, u16 len)
         {
             setborderwidth(cclient, BorderWidth);
             setbordercolor32(cclient, BorderColor);
+            updateborder(cclient);
             /* some clients break on their output if we resize them (like st),
              * So we dont want to resize its old size
              */
@@ -1193,6 +1194,7 @@ setupbar(Monitor *m, Client *bar)
     m->bar = bar;
     setoverrideredirect(bar, 1);
     setborderwidth(bar, 0);
+    updateborder(bar);
     setdisableborder(bar, 1);
     setfullscreen(bar, 0);
     sethidden(bar, 0);

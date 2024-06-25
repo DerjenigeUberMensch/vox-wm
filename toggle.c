@@ -562,7 +562,9 @@ void
 SetWindowLayout(const Arg *arg)
 {
     const Monitor *m = _wm.selmon;
-    if(!m) return;
+    if(!m) 
+    {   return;
+    }
     setdesktoplayout(m->desksel, arg->i);
     arrange(m->desksel);
     XCBFlush(_wm.dpy);

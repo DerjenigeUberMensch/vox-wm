@@ -783,6 +783,7 @@ managereply(XCBWindow win, XCBCookie requests[ManageCookieLAST])
     setbordercolor32(c, bcol);
     setshowdecor(c, showdecor);
     updatetitle(c, netwmname, wmname);
+    updateborder(c);
     updatesizehints(c, &hints);
     if(clsstatus)
     {   updateclass(c, &cls);
@@ -1022,7 +1023,10 @@ resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
         {   XCBConfigureWindow(_wm.dpy, c->win, mask, &changes);
         }
     }
-    configure(c);
+    /* only send config if changed */
+    if(mask)
+    {   configure(c);
+    }
 }
 
 void
@@ -1037,7 +1041,7 @@ sendprotocolevent(Client *c, XCBAtom proto)
     cev->format = 32;
     cev->data.data32[0] = proto;
     cev->data.data32[1] = XCB_CURRENT_TIME;
-    XCBSendEvent(_wm.dpy, c->win, False, XCB_NONE, (const char *)&ev);
+    XCBSendEvent(_wm.dpy, c->win, False, XCB_EVENT_MASK_STRUCTURE_NOTIFY, (const char *)&ev);
 }
 
 void
@@ -1075,8 +1079,7 @@ setbordercolor(Client *c, uint8_t red, uint8_t green, uint8_t blue)
 void
 setbordercolor32(Client *c, uint32_t col)
 {   
-    c->bcol = col;
-    XCBSetWindowBorder(_wm.dpy, c->win, c->bcol);
+    c->bcol = col & ~(UINT8_MAX << 24);
 }
 
 void
@@ -1086,8 +1089,6 @@ setborderwidth(Client *c, uint16_t border_width)
     {
         c->oldbw = c->bw;
         c->bw = border_width;
-        XCBSetWindowBorderWidth(_wm.dpy, c->win, c->bw);
-        configure(c);
     }
 }
 
@@ -1430,6 +1431,7 @@ setfullscreen(Client *c, u8 state)
         setclientnetstate(c, netatom[NetWMStateFullscreen], 0);
         setborderwidth(c, c->oldbw);
     }
+    updateborderwidth(c);
     SETFLAG(c->wstateflags, _STATE_FULLSCREEN, !!state);
 }
 
@@ -1577,6 +1579,26 @@ updateicon(Client *c, XCBWindowProperty *iconprop)
 }
 
 void
+updateborder(Client *c)
+{
+    updateborderwidth(c);
+    updatebordercol(c);
+}
+
+void
+updatebordercol(Client *c)
+{
+    XCBSetWindowBorder(_wm.dpy, c->win, c->bcol);
+}
+
+void
+updateborderwidth(Client *c)
+{
+    XCBSetWindowBorderWidth(_wm.dpy, c->win, c->bw);
+}
+
+
+void
 unmanage(Client *c, uint8_t destroyed)
 {
     if(!c)
@@ -1708,12 +1730,15 @@ __update_motif_decor(Client *c, uint32_t hints)
     }
 
     if(hints & DECOR_BORDER)
-    {   setborderwidth(c, c->oldbw);
+    {   
+        setborderwidth(c, c->oldbw);
+        updateborderwidth(c);
     }
     else
     {   
         setdisableborder(c, 0);
         setborderwidth(c, 0);
+        updateborderwidth(c);
         setdisableborder(c, 1);
     }
     if(hints & DECOR_RESIZEH)

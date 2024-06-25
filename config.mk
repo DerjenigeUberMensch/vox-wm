@@ -59,9 +59,9 @@ SIZEONLY= ${RELEASEFLAGS} -Oz -fno-ident -fno-asynchronous-unwind-tables
 # Release Stable (-O2)
 RELEASE = ${RELEASEFLAGS} -O2 
 # Release Speed (-O3)
-RELEASES= ${RELEASEFLAGS} -O3 
+#RELEASES= ${RELEASEFLAGS} -O3 
 # Release Speed (-O3) (debug)
-#RELEASES = ${RELEASEFLAGS} -O3 ${DEBUGFLAGS} -fno-inline -DENABLE_DEBUG -DXCB_TRL_ENABLE_DEBUG
+RELEASES = ${RELEASEFLAGS} -O3 ${DEBUGFLAGS} -fno-inline -DENABLE_DEBUG -DXCB_TRL_ENABLE_DEBUG
 
 # Build using cpu specific instruction set for more performance (Optional)
 BUILDSELF = ${RELEASEFLAGS} ${XNATIVE} -O3
