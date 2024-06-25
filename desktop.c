@@ -527,8 +527,8 @@ reorder(Desktop *desk)
  *
  * sort order is 1,2,3,4,5,6
  */
-static int
-__stack_priority_helper_above(unsigned int x1, unsigned int x2)
+static inline int
+__stack_priority_helper_above(const unsigned int x1, const unsigned int x2)
 {
     return x1 < x2;
 }
@@ -537,8 +537,8 @@ __stack_priority_helper_above(unsigned int x1, unsigned int x2)
  *
  * sort order is 6,5,4,3,2,1
  */
-static int 
-__stack_priority_helper_below(unsigned int x1, unsigned int x2)
+static inline int 
+__stack_priority_helper_below(const unsigned int x1, const unsigned int x2)
 {
     return x1 > x2;
 }
@@ -571,32 +571,25 @@ stackpriority(Client *c1, Client *c2)
     /* Bottom Restacking */
     if(below1 ^ below2)
     {   
-        DEBUG0("BELOW");
         return __stack_priority_helper_below(below1, below2);
     }
     else if(hidden1 ^ hidden2)
     {   
-        DEBUG0("HIDDEN");
         return __stack_priority_helper_below(hidden1, hidden2);
     }
     /* Regular restacking */
     else if(dock1 ^ dock2)
     {   
-        DEBUG0("DOCK");
         return __stack_priority_helper_above(dock1, dock2);
     }
     else if(above1 ^ above2)
     {   
-        DEBUG0("ABOVE");
         return __stack_priority_helper_above(above1, above2);
     }
     else if(float1 ^ float2)
     {   
-        DEBUG0("FLOAT");
         return __stack_priority_helper_above(float1, float2);
     }
-
-    DEBUG0("FOCUS");
     /* focus is forward order so, we must calculate reversely */
     return __stack_priority_helper_above(c2->rstacknum, c1->rstacknum);
 }

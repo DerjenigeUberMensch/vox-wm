@@ -488,7 +488,6 @@ focusin(XCBGenericEvent *event)
         setfocus(sel);
         sync = 1;
     }
-
     if(sync)
     {   XCBFlush(_wm.dpy);
     }

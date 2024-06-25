@@ -372,6 +372,12 @@ void updateclass(Client *c, XCBWMClass *_class);
 void updatedecor(Client *c);
 /* Updates the Client icon if we find one */
 void updateicon(Client *c, XCBWindowProperty *iconprop);
+/* Updates the Clients border properties to the XServer */
+void updateborder(Client *c);
+/* Updates the Clients border colour to the XServer */
+void updatebordercol(Client *c);
+/* Updates the Clients border width to the XServer */
+void updateborderwidth(Client *c);
 /* updates motif hints if they are set */
 void updatemotifhints(Client *c, XCBWindowProperty *motifprop);
 /* Updates a Clients sizehints property using the provided hints pointer "size".
