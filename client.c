@@ -1431,6 +1431,7 @@ setskiptaskbar(Client *c, uint8_t state)
 void
 setshowdecor(Client *c, uint8_t state)
 {
+    return;
     if(state)
     {   
         if(c->decor->win)
