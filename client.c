@@ -612,7 +612,15 @@ killclient(Client *c, enum KillType type)
                 XCBKillClient(_wm.dpy, win);
                 break;
         }
-        unmanage(c, 1);
+        XCBGenericEvent ev;
+        memset(&ev, 0, sizeof(XCBGenericEvent));
+        XCBUnmapNotifyEvent *unev = (XCBUnmapNotifyEvent *)&ev;
+        /* let event handler handle this */
+        unev->from_configure = 0;
+        unev->response_type = XCB_UNMAP_NOTIFY;
+        unev->event = _wm.root;
+        unev->window = win;
+        XCBSendEvent(_wm.dpy, _wm.root, 0, XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY, (const char *)&ev);
     }
 }
 
