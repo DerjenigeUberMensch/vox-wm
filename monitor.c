@@ -424,8 +424,13 @@ updateclientlist(XCBWindow win, uint8_t type)
     {
         case ClientListAdd:
             XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientList], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&(win), 1);
+            /* This allows for restart() to keep windows mapped on exit, basically it reduces flicker greatly. */
+            XCBAddToSaveSet(_wm.dpy, win);
             break;
-        case ClientListRemove: case ClientListReload:
+        case ClientListRemove:
+            XCBRemoveFromSaveSet(_wm.dpy, win);
+            /* FALLTHROUGH */
+        case ClientListReload:
             XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetClientList]);
             for(m = _wm.mons; m; m = nextmonitor(m))
             {
