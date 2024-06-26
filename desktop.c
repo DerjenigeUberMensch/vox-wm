@@ -611,7 +611,7 @@ tile(Desktop *desk)
     Monitor *m = desk->mon;
 
     n = 0;
-    for(c = desk->stack; c; c = nexttiled(c->snext), ++n);
+    for(c = nexttiled(desk->stack); c; c = nexttiled(c->snext), ++n);
 
     if(!n) 
     {   return;
@@ -625,7 +625,7 @@ tile(Desktop *desk)
     }
 
     i = my = ty = 0;
-    for (c = desk->stack; c; c = nexttiled(c->snext))
+    for (c = nexttiled(desk->stack); c; c = nexttiled(c->snext))
     {
         if (i < nmaster)
         {
