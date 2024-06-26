@@ -428,7 +428,10 @@ updateclientlist(XCBWindow win, uint8_t type)
             XCBAddToSaveSet(_wm.dpy, win);
             break;
         case ClientListRemove:
-            XCBRemoveFromSaveSet(_wm.dpy, win);
+            /* Destroyed windows are auto removed from saveset */
+            if(wintoclient(win))
+            {   XCBRemoveFromSaveSet(_wm.dpy, win);
+            }
             /* FALLTHROUGH */
         case ClientListReload:
             XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetClientList]);
