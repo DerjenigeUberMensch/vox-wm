@@ -251,7 +251,6 @@ applygravity(const u32 gravity, i16 *x, i16 *y, const u16 w, const u16 h, const 
         *x += w >> 1;
         *y += h >> 1;
     }
-
 }
 
 uint8_t
@@ -803,8 +802,8 @@ managereply(XCBWindow win, XCBCookie requests[ManageCookieLAST])
     clientinitwtype(c, wtypeunused);
     clientinitwstate(c, stateunused);
     updatewindowprotocol(c, wmprotocolsstatus ? &wmprotocols : NULL);
-    getnamefromreply(netwmnamereply, &netwmname);
-    getnamefromreply(wmnamereply, &wmname);
+    netwmname = getnamefromreply(netwmnamereply);
+    wmname = getnamefromreply(wmnamereply);
     setfloating(c, !!trans);
     /* Custom stuff */
     setclientpid(c, pid);

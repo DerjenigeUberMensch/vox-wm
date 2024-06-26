@@ -16,24 +16,25 @@ checksticky(int64_t x)
     | ((uint32_t)x == (uint32_t)~0) | ((int32_t)x == -1) | ((uint32_t)x == (uint32_t) -1);
 }
 
-void
-getnamefromreply(XCBWindowProperty *namerep, char **str_return)
+char *
+getnamefromreply(XCBWindowProperty *namerep)
 {
+    char *nstr = NULL;
     if(namerep)
     {
         if(namerep->type && namerep->length > 0)
         {
             const size_t offset = XCBGetPropertyValueSize(namerep);
             char *str = XCBGetPropertyValue(namerep);
-            char *nstr = malloc(sizeof(char) * offset + sizeof(char));
+            nstr = malloc(sizeof(char) * offset + sizeof(char));
             if(nstr)
             {   
                 memcpy(nstr, str, offset);
                 memcpy(nstr + offset, "\0", sizeof(char));
             }
-            *str_return = nstr;
         }
     }
+    return nstr;
 }
 
 uint32_t *
