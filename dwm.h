@@ -37,6 +37,7 @@
 #define TAGMASK                 ((1 << LENGTH(tags)) - 1)
 #define TAGSLENGTH              (LENGTH(tags))
 #define SESSION_FILE            "/tmp/dwm-session"
+#define SESSION_COLD_FILE       "/var/tmp/dwm-cold-session"
 #define CONFIG_FILE             "/var/tmp/dwm-config"   /* todo make dir .config/dwm/config or someting like that */
 #define BORKED                  "NOT_SET"
 
