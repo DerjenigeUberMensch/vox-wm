@@ -1481,10 +1481,8 @@ TITLE:
     cookie2 = XCBGetWindowPropertyCookie(_wm.dpy, c->win, XCB_ATOM_WM_NAME, 0L, UINT32_MAX, False, XCB_ATOM_STRING);
     prop1 = XCBGetWindowPropertyReply(_wm.dpy, cookie);
     prop2 = XCBGetWindowPropertyReply(_wm.dpy, cookie2);
-    char *netwmname = NULL;
-    char *wmname = NULL;
-    getnamefromreply(prop1, &netwmname);
-    getnamefromreply(prop2, &wmname);
+    char *netwmname = getnamefromreply(prop1);
+    char *wmname = getnamefromreply(prop2);
     updatetitle(c, netwmname, wmname);
     free(prop1);
     free(prop2);
