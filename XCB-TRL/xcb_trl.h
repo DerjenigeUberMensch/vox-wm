@@ -1666,7 +1666,8 @@ XCBCookie
 XCBSetWindowBorderWidth(
         XCBDisplay *display, 
         XCBWindow window, 
-        uint16_t border_width);
+        uint16_t border_width
+        );
 
 /* Sets the specified window to be sibling of the specified other window.
  *
@@ -1676,7 +1677,30 @@ XCBCookie
 XCBSetSibling(
         XCBDisplay *display, 
         XCBWindow window, 
-        XCBWindow sibling);
+        XCBWindow sibling
+        );
+
+XCBCookie
+XCBAddToSaveSet(
+        XCBDisplay *display,
+        XCBWindow win
+        );
+/*
+ * change_mode:         XCB_SET_MODE_INSERT     Same as XCBAddToSaveSet().
+ *                      XCB_SET_MODE_DELETE     Same as XCBRemoveFromSaveSet().
+ */
+XCBCookie
+XCBChangeSaveSet(
+        XCBDisplay *display,
+        XCBWindow win,
+        uint8_t change_mode
+        );
+
+XCBCookie
+XCBRemoveFromSaveSet(
+        XCBDisplay *display,
+        XCBWindow win
+        );
 
 /* Attempts to grab the XCBAtom ID number for the specified "name" value.
  *
@@ -1689,7 +1713,8 @@ XCBCookie
 XCBInternAtomCookie(
         XCBDisplay *display, 
         const char *name, 
-        uint8_t only_if_exists);
+        uint8_t only_if_exists
+        );
 
 /* Returns the XCBAtom from the provided cookie.
  *
@@ -1699,7 +1724,8 @@ XCBInternAtomCookie(
 XCBAtom 
 XCBInternAtomReply(
         XCBDisplay *display, 
-        XCBCookie cookie);
+        XCBCookie cookie
+        );
 
 
 /* Attemps to grab the "TransientFor Hint" from the specified window. 
@@ -1709,7 +1735,8 @@ XCBInternAtomReply(
 XCBCookie
 XCBGetTransientForHintCookie(
         XCBDisplay *display, 
-        XCBWindow win);
+        XCBWindow win
+        );
 
 /* Returns the transient window in "trans_return" on Sucesss, else the window queried doesnt have a transient.
  *
