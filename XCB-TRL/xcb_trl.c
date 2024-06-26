@@ -1042,6 +1042,47 @@ XCBSetSibling(
 }
 
 XCBCookie
+XCBAddToSaveSet(
+        XCBDisplay *display,
+        XCBWindow win
+        )
+{
+    XCBCookie ret = xcb_change_save_set(display, XCB_SET_MODE_INSERT, win);
+#ifdef DBG
+    _xcb_push_func(ret, _fn);
+#endif
+    return ret;
+}
+
+XCBCookie
+XCBChangeSaveSet(
+        XCBDisplay *display,
+        XCBWindow win,
+        uint8_t change_mode
+        )
+{
+    XCBCookie ret = xcb_change_save_set(display, change_mode, win);
+#ifdef DBG
+    _xcb_push_func(ret, _fn);
+#endif
+    return ret;
+}
+
+XCBCookie
+XCBRemoveFromSaveSet(
+        XCBDisplay *display,
+        XCBWindow win
+        )
+{
+    XCBCookie ret = xcb_change_save_set(display, XCB_SET_MODE_DELETE, win);
+#ifdef DBG
+    _xcb_push_func(ret, _fn);
+#endif
+    return ret;
+}
+
+
+XCBCookie
 XCBGetWindowAttributesCookie(
         XCBDisplay *display, 
         XCBWindow window
