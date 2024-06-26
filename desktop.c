@@ -611,7 +611,7 @@ tile(Desktop *desk)
     Monitor *m = desk->mon;
 
     n = 0;
-    for(c = desk->stack; c; c = nexttiled(c), ++n);
+    for(c = desk->stack; c; c = nexttiled(c->snext), ++n);
 
     if(!n) 
     {   return;
@@ -625,7 +625,7 @@ tile(Desktop *desk)
     }
 
     i = my = ty = 0;
-    for (c = desk->stack; c; c = nexttiled(c))
+    for (c = desk->stack; c; c = nexttiled(c->snext))
     {
         if (i < nmaster)
         {
@@ -707,17 +707,5 @@ updateviewport(void)
     i32 data[2] = { 0, 0 };
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetDesktopViewport], XCB_ATOM_CARDINAL, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)data, 2);
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 
