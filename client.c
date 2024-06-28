@@ -1652,8 +1652,6 @@ unmanage(Client *c, uint8_t destroyed)
     HASH_DEL(desk->mon->__hash, c);
     detachcompletely(c);
     updateclientlist(win, ClientListRemove);
-    /* no need to arrange fully cause client is not mapped anymore */
-    arrange(desk);
     cleanupclient(c);
     DEBUG("Unmanaged: [%u]", win);
 }
