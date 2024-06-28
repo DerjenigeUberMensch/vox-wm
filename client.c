@@ -905,10 +905,10 @@ void
 maximizehorz(Client *c)
 {
     const Monitor *m = c->desktop->mon;
-    const i16 x = m->wx;
-    const i16 y = c->y;
-    const u16 w = m->ww - (WIDTH(c) - c->w);
-    const u16 h = c->h;
+    i32 x = m->wx;
+    i32 y = c->y;
+    i32 w = m->ww - (WIDTH(c) - c->w);
+    i32 h = c->h;
     resize(c, x, y, w, h, 0);
 }
 
@@ -916,10 +916,10 @@ void
 maximizevert(Client *c)
 {
     const Monitor *m = c->desktop->mon;
-    const i16 x = c->x;
-    const i16 y = m->my;
-    const u16 w = c->w;
-    const u16 h = m->wh - (HEIGHT(c) - c->h);
+    i32 x = c->x;
+    i32 y = m->my;
+    i32 w = c->w;
+    i32 h = m->wh - (HEIGHT(c) - c->h);
     resize(c, x, y, w, h, 0);
 }
 
