@@ -19,7 +19,9 @@
 enum NETWMPROTOCOLS
 {
     /* Root window properties */
-    NetSupported, NetClientList, 
+    NetSupported, 
+    NetClientList, 
+    NetClientListStacking,
     NetNumberOfDesktops, NetDesktopGeometry,
     NetDesktopViewport, NetCurrentDesktop,
     NetDesktopNames, NetActiveWindow,

@@ -49,6 +49,7 @@ static const char *const NET_WM_ATOM_NAMES[NetLast] =
 {
     [NetSupported]               = "_NET_SUPPORTED",
     [NetClientList]              = "_NET_CLIENT_LIST",
+    [NetClientListStacking]      = "_NET_CLIENT_LIST_STACKING",
     [NetNumberOfDesktops]        = "_NET_NUMBER_OF_DESKTOPS",
     [NetDesktopGeometry]         = "_NET_DESKTOP_GEOMETRY",
     [NetDesktopViewport]         = "_NET_DESKTOP_VIEWPORT",
@@ -134,6 +135,7 @@ static const unsigned int NET_WM_ATOM_LEN[NetLast] =
 {
     [NetSupported]               = sizeof("_NET_SUPPORTED") - 1,
     [NetClientList]              = sizeof("_NET_CLIENT_LIST") - 1,
+    [NetClientListStacking]      = sizeof("_NET_CLIENT_LIST_STACKING") - 1,
     [NetNumberOfDesktops]        = sizeof("_NET_NUMBER_OF_DESKTOPS") - 1,
     [NetDesktopGeometry]         = sizeof("_NET_DESKTOP_GEOMETRY") - 1,
     [NetDesktopViewport]         = sizeof("_NET_DESKTOP_VIEWPORT") - 1,
