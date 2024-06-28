@@ -1304,10 +1304,12 @@ clientmessage(XCBGenericEvent *event)
             u8 detail = l2;
             /* todo figure out what this does */
             (void)detail;
-            XCBConfigureRequestEvent config;
-            config.window = sibling;
-            config.parent = c->win;
-            config.value_mask = XCB_CONFIG_WINDOW_SIBLING | XCB_CONFIG_WINDOW_STACK_MODE;
+            XCBGenericEvent ev;
+            memset(&ev, 0, sizeof(XCBGenericEvent));
+            XCBConfigureRequestEvent *config = (XCBConfigureRequestEvent *)&ev;
+            config->window = sibling;
+            config->parent = c->win;
+            config->value_mask = XCB_CONFIG_WINDOW_SIBLING | XCB_CONFIG_WINDOW_STACK_MODE;
             configurerequest((XCBGenericEvent *)&config);
             sync = 1;
         }
