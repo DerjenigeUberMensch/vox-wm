@@ -477,9 +477,14 @@ updatenumlockmask(void)
 	free(temp);
 
 	for(i = 0; i < 8; i++)
+    {
 		for(j = 0; j < reply->keycodes_per_modifier; j++)
-			if(codes[i * reply->keycodes_per_modifier + j] == target)
-				_wm.numlockmask = (1 << i);
+        {   
+            if(codes[i * reply->keycodes_per_modifier + j] == target)
+            {   _wm.numlockmask = (1 << i);
+            }
+        }
+    }
     free(reply);
 }
 
