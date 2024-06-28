@@ -106,7 +106,51 @@ int DOCKEDHORZ(Client *c)       {   const i16 wx = c->desktop->mon->wx;
                                     return (wx == x) && (ww == w);
                                 }
 int DOCKED(Client *c)           { return DOCKEDVERT(c) & DOCKEDHORZ(c); }
+/* This covers some apps being able to DragWindow/ResizeWindow, in toggle.c
+ * (semi-frequently) a user might "accidentally" click on them (me) and basically we dont want that window to be floating because of that user error.
+ * So this is a leeway sort function.
+ */
+int SHOULDMAXIMIZE(Client *c)   {
+                                    if(DOCKED(c))
+                                    {   return 0;
+                                    }
+                                    Monitor *m = c->desktop->mon;
+                                    const i16 wx = m->wx;
+                                    const i16 wy = m->my;
+                                    const i16 mx = m->mx;
+                                    const i16 my = m->my;
 
+                                    const u16 ww = m->ww;
+                                    const u16 wh = m->wh;
+                                    const u16 mw = m->mw;
+                                    const u16 mh = m->mh;
+
+                                    const i16 x = c->x;
+                                    const i16 y = c->y;
+                                    const u16 w = c->w;
+                                    const u16 h = c->h;
+                                    const u16 w1 = WIDTH(c);
+                                    const u16 h1 = HEIGHT(c);
+
+
+                                    /* leeway, pixels */
+                                    const u8 LWY = 2;
+                                    const u8 iww = (BETWEEN(w, ww + LWY, ww - LWY)) && (BETWEEN(h, wh + LWY, wh - LWY));
+                                    const u8 iwb = (BETWEEN(w1, ww + LWY, ww - LWY)) && (BETWEEN(h1, wh + LWY, wh - LWY));
+                                    const u8 imw = (BETWEEN(h, mh + LWY, mh - LWY)) && (BETWEEN(w, mw + LWY, mw - LWY));
+                                    const u8 imb = (BETWEEN(h1, mh + LWY, mh - LWY)) && (BETWEEN(h1, mw + LWY, mh + LWY));
+
+                                    /* leeway, pixels */
+                                    const u8 LWYC = 15;
+                                    const u8 iwx = (BETWEEN(x, wx + LWYC, wx - LWYC)) && (BETWEEN(y, wy + LWYC, wy - LWYC));
+                                    const u8 imx = (BETWEEN(x, mx + LWYC, mx - LWYC)) && (BETWEEN(y, my + LWYC, my - LWYC));
+
+                                    return
+                                        (iwx && (iww || iwb))
+                                        ||
+                                        (imx && (imw || imb))
+                                    ;
+                                }
 
 /* used in manage */
 int DOCKEDINITIAL(Client *c)    {   Monitor *m = c->desktop->mon;
