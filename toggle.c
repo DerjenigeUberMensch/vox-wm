@@ -13,6 +13,8 @@
 
 #include <pthread.h>
 
+#include "XCB-TRL/xcb_image.h"
+#include "XCB-TRL/xcb_imgutil.h"
 #include "util.h"
 #include "dwm.h"
 #include "toggle.h"
@@ -44,9 +46,9 @@ UserStats(const Arg *arg)
 {
     /* PannelCreate(_wm.root, 0, 0, _wm.sw, _wm.sh); */
     Client *c = _wm.selmon->desksel->sel;
+    XCBARGB argb;
     if(c)
     {   
-        XCBARGB argb;
         argb.argb = c->bcol;
         DEBUG("(x: %d, y: %d, w: %u, h: %u)", c->x, c->y, c->w, c->h);
         DEBUG("(ox: %d, oy: %d, ow: %u, oh: %u)", c->oldx, c->oldy, c->oldw, c->oldh);
@@ -104,6 +106,30 @@ UserStats(const Arg *arg)
         DEBUG("MAP ICONIC:          %s", GET_BOOL(ISMAPICONIC(c)));
         DEBUG("FLOATING:            %s", GET_BOOL(ISFLOATING(c)));
         DEBUG("WASFLOATING:         %s", GET_BOOL(WASFLOATING(c)));
+        if(c->icon)
+        {
+            u32 *icon = c->icon;
+            u32 i;
+            u32 j;
+            static XCBWindow win = 0;
+            if(win)
+            {   XCBDestroyWindow(_wm.dpy, win);
+            }
+            win = XCBCreateSimpleWindow(_wm.dpy, _wm.root, 0, 0, icon[1] + 5, icon[0] + 5, 0, 0, 0);
+            XCBMapWindow(_wm.dpy, win);
+            XCBGC gc = XCBCreateGC(_wm.dpy, win, 0, NULL);
+            for(i = 0; i < icon[0]; ++i)
+            {
+                for(j = 0; j < icon[1]; ++j)
+                {
+                    if(icon[icon[1] * j + i])
+                    {
+                        XCBSetForeground(_wm.dpy, gc, icon[icon[1] * j + i] & ~(UINT8_MAX << 24));
+                        XCBDrawPoint(_wm.dpy, XCB_COORD_MODE_ORIGIN, win, gc, i, j);
+                    }
+                }
+            }
+        }
     }
     else
     {   DEBUG0("NULL");
