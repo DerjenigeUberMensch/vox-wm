@@ -369,6 +369,75 @@ clientinitdecor(Client *c)
     decor->win = XCBCreateWindow(_wm.dpy, _wm.root, 0, 0, c->w, c->h, 0, depth, class, visual, mask, &va);
 }
 
+void
+clientinitfloat(Client *c)
+{
+    const Monitor *m = c->desktop->mon;
+    /* This check is mostly for (some) popup windows 
+     * Mainly those which dont matter, like steams startup display, but are nice to have's.
+     */
+    if( 
+        /* _NET_WM_STATE */
+        ISMODAL(c) |
+        /* _NET_WM_WINDOW_TYPE */
+        ISSPLASH(c) | ISDIALOG(c) | ISPOPUPMENU(c) | ISNOTIFICATION(c)
+        )
+    {
+        const u32 bw = WIDTH(c) - c->w;
+        const u32 bh = HEIGHT(c) - c->h;
+        /* If the window is docked for whatever reason, center it and shrink it down */
+        if(DOCKEDINITIAL(c))
+        {
+            i32 w = m->ww / 2 - bw;
+            i32 h = m->wh / 2 - bh;
+            i32 x = m->wx + (w / 2) + bw;
+            i32 y = m->my + (h / 2) + bh;
+            resize(c, x, y, w, h, 0);
+        }
+        /* if its in the corner move it to center */
+        else if(
+                /* No border */
+                (
+                    (
+                        BETWEEN(c->x, m->wx + 1, m->wx - 1)
+                        &&
+                        BETWEEN(c->y, m->wy + 1, m->wy - 1)
+                    )
+                    &&
+                    (
+                        BETWEEN(c->x, m->mx + 1, m->mx - 1)
+                        &&
+                        BETWEEN(c->y, m->my + 1, m->my - 1)
+                    )
+                )
+                ||
+                /* border */
+                (
+                    (
+                        BETWEEN(c->x - bw, m->wx + 1, m->wx - 1)
+                        &&
+                        BETWEEN(c->y - bh, m->wy + 1, m->wy - 1)
+                    )
+                    &&
+                    (
+                        BETWEEN(c->x - bw, m->mx + 1, m->mx - 1)
+                        &&
+                        BETWEEN(c->y - bh, m->my + 1, m->my - 1)
+                    )
+                )
+               )
+        {
+            i32 x = m->wx + ((m->ww - WIDTH(c)) / 2);
+            i32 y = m->wy + ((m->wh - HEIGHT(c)) / 2);
+            resize(c, x, y, c->w, c->h, 0);
+        }
+        if(!ISFLOATING(c))
+        {   setfloating(c, 1);
+        }
+    }
+}
+
+
 void 
 clientinitgeom(Client *c, XCBWindowGeometry *wg)
 {
@@ -819,6 +888,8 @@ managereply(XCBWindow win, XCBCookie requests[ManageCookieLAST])
     updatewmhints(c, wmh);
     updatemotifhints(c, motifreply);
     updateicon(c, iconreply);
+    /* check if should be floating after, all size hints and other things are set. */
+    clientinitfloat(c);
     XCBSelectInput(_wm.dpy, win, inputmask);
     grabbuttons(c, 0);
 
