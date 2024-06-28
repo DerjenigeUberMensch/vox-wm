@@ -1004,7 +1004,13 @@ destroynotify(XCBGenericEvent *event)
     /* destroyed windows no longer need to be managed */
     if((c = wintoclient(win)))
     {   
+        Desktop *desk = c->desktop;
         unmanage(c, 1);
+        if(desk->mon->desksel == desk)
+        {
+            focus(NULL);
+            arrange(desk);
+        }
         sync = 1;
     }
     if(sync)
@@ -1078,7 +1084,13 @@ unmapnotify(XCBGenericEvent *event)
     u8 sync = 0;
     if((c = wintoclient(win)))
     {   
+        Desktop *desk = c->desktop;
         unmanage(c, 0);
+        if(desk->mon->desksel == desk)
+        {
+            focus(NULL);
+            arrange(desk);
+        }
         sync = 1;
     }
 
