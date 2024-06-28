@@ -1304,13 +1304,13 @@ clientmessage(XCBGenericEvent *event)
             u8 detail = l2;
             /* todo figure out what this does */
             (void)detail;
-            XCBGenericEvent ev;
-            memset(&ev, 0, sizeof(XCBGenericEvent));
-            XCBConfigureRequestEvent *config = (XCBConfigureRequestEvent *)&ev;
+            XCBGenericEvent gev;
+            memset(&gev, 0, sizeof(XCBGenericEvent));
+            XCBConfigureRequestEvent *config = (XCBConfigureRequestEvent *)&gev;
             config->window = sibling;
             config->parent = c->win;
             config->value_mask = XCB_CONFIG_WINDOW_SIBLING | XCB_CONFIG_WINDOW_STACK_MODE;
-            configurerequest((XCBGenericEvent *)&config);
+            configurerequest((XCBGenericEvent *)&gev);
             sync = 1;
         }
         else if(atom == netatom[NetRequestFrameExtents])
