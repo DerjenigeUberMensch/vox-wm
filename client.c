@@ -1306,6 +1306,7 @@ setclientwtype(Client *c, XCBAtom atom, u8 state)
                 data = &atom;
             }
         }
+        free(prop);
     }
     else
     {   
@@ -1352,7 +1353,7 @@ setclientnetstate(Client *c, XCBAtom atom, u8 state)
             if(_delete)
             {
                 /* this gets optimized to memmove, cool!
-                 * GCC v14.1.1 -Ou
+                 * GCC v14.1.1 -O3
                  */
                 for(i = offset; i < ATOM_LENGTH - 1; ++i)
                 {   atoms[i] = atoms[i + 1];
@@ -1380,6 +1381,7 @@ setclientnetstate(Client *c, XCBAtom atom, u8 state)
                 data = &atom;
             }
         }
+        free(prop);
     }
     else
     {   
