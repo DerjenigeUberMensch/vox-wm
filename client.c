@@ -455,42 +455,12 @@ clientinitfloat(Client *c)
         resize(c, x, y, w, h, 0);
     }
     /* if its in the corner move it to center */
-    else if(
-            /* No border */
-            (
-                (
-                    BETWEEN(c->x, m->wx + 1, m->wx - 1)
-                    &&
-                    BETWEEN(c->y, m->wy + 1, m->wy - 1)
-                )
-                &&
-                (
-                    BETWEEN(c->x, m->mx + 1, m->mx - 1)
-                    &&
-                    BETWEEN(c->y, m->my + 1, m->my - 1)
-                )
-            )
-            ||
-            /* border */
-            (
-                (
-                    BETWEEN(c->x - bw, m->wx + 1, m->wx - 1)
-                    &&
-                    BETWEEN(c->y - bh, m->wy + 1, m->wy - 1)
-                )
-                &&
-                (
-                    BETWEEN(c->x - bw, m->mx + 1, m->mx - 1)
-                    &&
-                    BETWEEN(c->y - bh, m->my + 1, m->my - 1)
-                )
-            )
-                )
-                {
-                    i32 x = m->wx + ((m->ww - WIDTH(c)) / 2);
-                    i32 y = m->wy + ((m->wh - HEIGHT(c)) / 2);
-                    resize(c, x, y, c->w, c->h, 0);
-                }
+    else if((c->x == m->wx && c->y == m->wy) || (c->x == m->mx && c->y == m->my))
+    {
+        i32 x = m->wx + ((m->ww - WIDTH(c)) / 2);
+        i32 y = m->wy + ((m->wh - HEIGHT(c)) / 2);
+        resize(c, x, y, c->w, c->h, 0);
+    }
     if(!ISFLOATING(c))
     {   setfloating(c, 1);
     }
