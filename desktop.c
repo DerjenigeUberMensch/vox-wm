@@ -495,6 +495,9 @@ restack(Desktop *desk)
 
     c = desk->stack;
     cprev = NULL;
+    
+    /* reset client list */
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&wc.sibling, 1);
     while(c)
     {
         instack = c->rprev || c->rnext;
@@ -505,6 +508,7 @@ restack(Desktop *desk)
             XCBConfigureWindow(_wm.dpy, c->win, XCB_CONFIG_WINDOW_SIBLING|XCB_CONFIG_WINDOW_STACK_MODE, &wc);
             DEBUG("Configured window: %s", c->netwmname);
         }
+        XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_PREPEND, (unsigned char *)&c->win, 1);
         wc.sibling = c->win;
         /* apply reorder without detaching/attaching */
         cprev = c;
