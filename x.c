@@ -3,6 +3,7 @@
 
 #include "x.h"
 
+#include "util.h"
 
 
 uint8_t
@@ -44,8 +45,6 @@ geticonprop(XCBWindowProperty *iconreply)
     const uint8_t HEIGHT_INDEX = 1;
     const uint8_t MIN_WIDTH = 1;
     const uint8_t MIN_HEIGHT = 1;
-    const uint8_t MAX_WIDTH = 255;
-    const uint8_t MAX_HEIGHT = 255;
     const uint8_t MIN_ICON_DATA_SIZE = (MIN_WIDTH + MIN_HEIGHT) * 2;     /* times 2 cause the first and second index are the size */
 
     uint32_t *ret = NULL;
@@ -62,11 +61,13 @@ geticonprop(XCBWindowProperty *iconreply)
             }
             return ret;
         }
+        if(iconreply->type != XCB_ATOM_CARDINAL)
+        {   /* DEBUG0("Icon has wierd atom format"); */
+        }
         if(iconreply->format != 32)
         {   /* DEBUG("Icon format is not standard, icon may be corrupt. %d", iconreply->format); */
         }
         uint32_t *icon = XCBGetPropertyValue(iconreply);
-        size_t size = XCBGetPropertyValueSize(iconreply);
         uint32_t length = XCBGetPropertyValueLength(iconreply, sizeof(uint32_t));
         if(length >= MIN_ICON_DATA_SIZE)
         {   
@@ -74,26 +75,33 @@ geticonprop(XCBWindowProperty *iconreply)
             uint64_t wi = WIDTH_INDEX;
             uint32_t hi = HEIGHT_INDEX;
             /* get the biggest size */
+            uint8_t bigger = 0;
+            uint8_t inrange = 0;
             while(i + 2 < length)
-            {                                               /* bounds check */
-                if(icon[i + WIDTH_INDEX] > icon[wi] && icon[i + WIDTH_INDEX] <= MAX_WIDTH && length - i >= icon[i])
-                {   wi = i;
+            {        
+                /* bounds check */
+                bigger = icon[i + WIDTH_INDEX] >= icon[wi];
+                inrange = length - i >= icon[i + WIDTH_INDEX];
+
+                if(bigger && inrange)
+                {   wi = i + WIDTH_INDEX;
                 }
-                                                                            /* bounds check */
-                if(icon[i + HEIGHT_INDEX] > icon[hi] && icon[i + HEIGHT_INDEX] <= MAX_HEIGHT && length - i >= icon[i + 1])
+
+                bigger = icon[i + HEIGHT_INDEX] >= icon[hi];
+                inrange = length - i >= icon[i + HEIGHT_INDEX];
+
+                if(bigger && inrange)
                 {   hi = i + HEIGHT_INDEX;
                 }
-                i += icon[i] + icon[i + 1];
-                /* this covers use fucking up and the +plus 2 for width and height offset */
+                /* jmp to next size(s) */
+                i += icon[i + WIDTH_INDEX] * icon[i + HEIGHT_INDEX];
+                /* jmp to next WIDTH_INDEX/HEIGHT_INDEX */
                 i += 2;
             }
             size_t sz = sizeof(uint32_t) * icon[wi] * icon[hi] + sizeof(uint32_t) * 2;
-            if(sz <= size)
-            {   size = sz;
-            }
-            ret = malloc(size);
+            ret = malloc(sz);
             if(ret)
-            {   memcpy(ret, &icon[wi], size);
+            {   memcpy(ret, &icon[wi], sz);
             }
         }
     }
