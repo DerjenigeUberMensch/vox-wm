@@ -485,7 +485,7 @@ restack(Desktop *desk)
     }
     else
     {   /* TODO: Maybe use wc.sibling = _wm.root? That causes error to be generated though. */
-        wc.sibling = _wm.wmcheckwin;
+        wc.sibling = 0;
     }
 
     Client *c;
@@ -497,18 +497,21 @@ restack(Desktop *desk)
     cprev = NULL;
     
     /* reset client list */
-    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&wc.sibling, 1);
+    XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking]);
     while(c)
     {
         instack = c->rprev || c->rnext;
         /* Client holds both lists so we just check if the next's are the same if not configure it */
         config = c->rnext != c->snext || !instack;
-        if(config)
-        {   
-            XCBConfigureWindow(_wm.dpy, c->win, XCB_CONFIG_WINDOW_SIBLING|XCB_CONFIG_WINDOW_STACK_MODE, &wc);
-            DEBUG("Configured window: %s", c->netwmname);
+        if(wc.sibling)
+        {
+            if(config)
+            {   
+                XCBConfigureWindow(_wm.dpy, c->win, XCB_CONFIG_WINDOW_SIBLING|XCB_CONFIG_WINDOW_STACK_MODE, &wc);
+                DEBUG("Configured window: %s", c->netwmname);
+            }
+            XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_PREPEND, (unsigned char *)&c->win, 1);
         }
-        XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_PREPEND, (unsigned char *)&c->win, 1);
         wc.sibling = c->win;
         /* apply reorder without detaching/attaching */
         cprev = c;
