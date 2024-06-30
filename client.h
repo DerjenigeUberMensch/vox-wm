@@ -440,12 +440,16 @@ int ISFAKEFLOATING(Client *c);
 int DOCKEDVERT(Client *c);
 int DOCKEDHORZ(Client *c);
 int DOCKED(Client *c);
+int SHOULDMAXIMIZE(Client *c);
 int WASDOCKEDVERT(Client *c);
 int WASDOCKEDHORZ(Client *c);
 int WASDOCKED(Client *c);
 int ISFIXED(Client *c);
 int ISURGENT(Client *c);
+/* flag */
 int NEVERFOCUS(Client *c);
+/* client state */
+int NEVERHOLDFOCUS(Client *c);
 int ISVISIBLE(Client *c);
 int SHOWDECOR(Client *c);
 int ISSELECTED(Client *c);

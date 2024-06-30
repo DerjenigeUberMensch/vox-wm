@@ -184,7 +184,16 @@ int DOCKEDINITIAL(Client *c)    {   Monitor *m = c->desktop->mon;
 
 int ISFIXED(Client *c)          { return (c->minw != 0) && (c->minh != 0) && (c->minw == c->maxw) && (c->minh == c->maxh); }
 int ISURGENT(Client *c)         { return c->wstateflags & _STATE_DEMANDS_ATTENTION; }
+/* flag */
 int NEVERFOCUS(Client *c)       { return c->wtypeflags & _TYPE_NEVERFOCUS; }
+/* client state 
+ * taken from i3, 
+ * polybar kinda sucks at us grabbing their buttons, so we choose to never focus "dock" (generally statusbars) type windows.
+ * What does polybar do?:
+ * It used to break the whole WM, but that was mitagated from another i3 feature of replay pointing only the main button(s).
+ * Now its only unusable if grabbuttons(), twice, basically the "focus" part of grabbuttons(), which is undisireable.
+ */
+int NEVERHOLDFOCUS(Client *c)   { return NEVERFOCUS(c) || ISDOCK(c);}
 int ISMAXHORZ(Client *c)        { return WIDTH(c) == c->desktop->mon->ww; }
 int ISMAXVERT(Client *c)        { return HEIGHT(c) == c->desktop->mon->wh; }
 int ISVISIBLE(Client *c)        { return (c->desktop->mon->desksel == c->desktop || ISSTICKY(c)) && !ISHIDDEN(c); }
@@ -637,14 +646,18 @@ grabbuttons(Client *c, uint8_t focused)
     u16 i, j;
     /* numlock is int */
     int modifiers[4] = { 0, XCB_MOD_MASK_LOCK, _wm.numlockmask, _wm.numlockmask|XCB_MOD_MASK_LOCK};
+    /* somewhat taken from i3 */
     /* Always grab these to allow for replay pointer when focusing by mouse click */
     u8 gbuttons[3] = { LMB, MMB, RMB };
 
     /* ungrab any previously grabbed buttons that are ours */
     for(i = 0; i < LENGTH(modifiers); ++i)
     {
-        for(j = 0; j < LENGTH(gbuttons); ++j)
-        {   XCBUngrabButton(_wm.dpy, gbuttons[j], modifiers[i], c->win);
+        if(!NEVERHOLDFOCUS(c))
+        {
+            for(j = 0; j < LENGTH(gbuttons); ++j)
+            {   XCBUngrabButton(_wm.dpy, gbuttons[j], modifiers[i], c->win);
+            }
         }
         for(j = 0; j < LENGTH(buttons); ++j)
         {   XCBUngrabButton(_wm.dpy, buttons[j].button, modifiers[i], c->win);
@@ -653,10 +666,13 @@ grabbuttons(Client *c, uint8_t focused)
     if (!focused)
     {
         /* grab focus buttons */
-        for (i = 0; i < LENGTH(gbuttons); ++i)
+        if(!NEVERHOLDFOCUS(c))
         {
-            for (j = 0; j < LENGTH(modifiers); ++j)
-            {   XCBGrabButton(_wm.dpy, gbuttons[i], modifiers[j], c->win, False, BUTTONMASK, XCB_GRAB_MODE_SYNC, XCB_GRAB_MODE_SYNC, XCB_NONE, XCB_NONE);
+            for (i = 0; i < LENGTH(gbuttons); ++i)
+            {
+                for (j = 0; j < LENGTH(modifiers); ++j)
+                {   XCBGrabButton(_wm.dpy, gbuttons[i], modifiers[j], c->win, False, BUTTONMASK, XCB_GRAB_MODE_SYNC, XCB_GRAB_MODE_SYNC, XCB_NONE, XCB_NONE);
+                }
             }
         }
     }
@@ -1552,7 +1568,7 @@ setfloating(Client *c, uint8_t state)
 void
 setfocus(Client *c)
 {
-    if(!NEVERFOCUS(c))
+    if(!NEVERHOLDFOCUS(c))
     {
         XCBSetInputFocus(_wm.dpy, c->win, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
         XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&(c->win), 1);
