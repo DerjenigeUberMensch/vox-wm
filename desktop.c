@@ -485,42 +485,41 @@ restack(Desktop *desk)
     }
     else
     {   /* TODO: Maybe use wc.sibling = _wm.root? That causes error to be generated though. */
-        wc.sibling = 0;
+        wc.sibling = _wm.wmcheckwin;
     }
 
-    Client *c;
-    Client *cprev;
+    Client *c = NULL;
     u8 config = 0;
     u8 instack = 0;
-
-    c = desk->stack;
-    cprev = NULL;
     
+    c = desk->stack;
     /* reset client list */
-    XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking]);
-    while(c)
+    if(c)
+    {   
+        XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&c->win, 1);
+    }
+    for(c = desk->stack; c; c = nextstack(c))
     {
         instack = c->rprev || c->rnext;
         /* Client holds both lists so we just check if the next's are the same if not configure it */
         config = c->rnext != c->snext || !instack;
-        if(wc.sibling)
-        {
-            if(config)
-            {   
-                XCBConfigureWindow(_wm.dpy, c->win, XCB_CONFIG_WINDOW_SIBLING|XCB_CONFIG_WINDOW_STACK_MODE, &wc);
-                DEBUG("Configured window: %s", c->netwmname);
-            }
-            XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_PREPEND, (unsigned char *)&c->win, 1);
+        if(config)
+        {   
+            XCBConfigureWindow(_wm.dpy, c->win, XCB_CONFIG_WINDOW_SIBLING|XCB_CONFIG_WINDOW_STACK_MODE, &wc);
+            DEBUG("Configured window: %s", c->netwmname);
+        }
+        /* add clients to Stack list (some apps use this) */
+        if(nextstack(c))
+        {   
+            XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], XCB_ATOM_WINDOW, 32, 
+                    XCB_PROP_MODE_PREPEND, (unsigned char *)&(nextstack(c))->win, 1);
         }
         wc.sibling = c->win;
-        /* apply reorder without detaching/attaching */
-        cprev = c;
-        c = nextstack(c);
-        cprev->rprev = cprev->sprev;
-        cprev->rnext = cprev->snext;
+        c->rprev = c->sprev;
+        c->rnext = c->snext;
     }
     desk->rstack = desk->stack;
-    desk->rlast = cprev;
+    desk->rlast = desk->slast;
 }
 
 void
