@@ -1333,7 +1333,13 @@ specialconds(int argc, char *argv[])
     }
 
     if(_wm.restart)
-    {   execvp(argv[0], argv);
+    {   
+        if(argv)
+        {   execvp(argv[0], argv);
+        }
+        else
+        {   DEBUG0("No argv?");
+        }
         /* UNREACHABLE */
         DEBUG("%s", "Failed to restart " NAME);
     }
