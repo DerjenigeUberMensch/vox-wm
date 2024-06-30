@@ -631,34 +631,26 @@ configurerequest(XCBGenericEvent *event)
     if((c = wintoclient(win)))
     {
         const Monitor *m = c->desktop->mon;
+        i32 rx = c->x;
+        i32 ry = c->y;
+        i32 rw = c->w;
+        i32 rh = c->h;
         if(mask & XCB_CONFIG_WINDOW_BORDER_WIDTH)
         {                           /* Border width should NEVER be bigger than the screen */
             setborderwidth(c, bw);
-            geom = 1;
+            updateborderwidth(c);
         }
         if(mask & XCB_CONFIG_WINDOW_X)
-        {
-            c->oldx = c->x;
-            c->x = m->mx + x;
-            geom = 1;
+        {   rx = m->mx + x;
         }
         if(mask & XCB_CONFIG_WINDOW_Y)
-        {
-            c->oldy = c->y;
-            c->y = m->my + y;
-            geom = 1;
+        {   ry = m->my + y;
         }
         if(mask & XCB_CONFIG_WINDOW_WIDTH)
-        {
-            c->oldw = c->w;
-            c->w = w;
-            geom = 1;
+        {   rw = w;
         }
         if(mask & XCB_CONFIG_WINDOW_HEIGHT)
-        {
-            c->oldh = c->h;
-            c->h = h;
-            geom = 1;
+        {   rh = h;
         }
         if(mask & XCB_CONFIG_WINDOW_STACK_MODE)
         {
@@ -775,29 +767,27 @@ configurerequest(XCBGenericEvent *event)
         }
         if(geom)
         {
-            if((c->x + c->w) > m->mx + m->mw && ISFLOATING(c))
-            {   
-                c->oldx = c->x;
-                c->x = m->mx + ((m->mw >> 1) - (WIDTH(c) >> 1)); /* center in x direction */
-            }
-            if((c->y + c->h) > m->my + m->mh && ISFLOATING(c))
-            {   
-                c->oldy = c->y;
-                c->y = m->my + ((m->mh >> 1) - (HEIGHT(c) >> 1)); /* center in y direction */
-            }
-
+            resizeclient(c, rx, ry, rw, rh);
             /* these checks are so we maintain wasfloating correctly without messing everything up */
             if(!ISFLOATING(c) && !DOCKED(c))
-            {   setfloating(c, 1);
+            {   
+                setfloating(c, 1);
                 restack = 1;
             }
         }
 
-        if(mask & (XCB_CONFIG_WINDOW_X|XCB_CONFIG_WINDOW_Y) && !(mask & (XCB_CONFIG_WINDOW_WIDTH|XCB_CONFIG_WINDOW_HEIGHT)))
-        {    configure(c);
-        }
-        if(ISVISIBLE(c))
-        {   XCBMoveResizeWindow(_wm.dpy, c->win, c->x, c->y, c->w, c->h);
+        if(restack)
+        {
+            if(c)
+            {   
+                /* this fixes windows not maintaing focus order correctly for some applications that use configure requests.
+                 * Basically while we did reattach focus we never set focus, so the stack order is correct but the focus order isnt.
+                 * AKA altttab.
+                 */
+                focus(NULL);
+                /* rearrange the stuff duh */
+                arrange(c->desktop);
+            }
         }
         sync = 1;
     }
@@ -813,19 +803,6 @@ configurerequest(XCBGenericEvent *event)
         wc.stack_mode = stack;
         XCBConfigureWindow(_wm.dpy, win, mask, &wc);
         sync = 1;
-    }
-    if(restack)
-    {
-        if(c)
-        {   
-            /* this fixes windows not maintaing focus order correctly for some applications that use configure requests.
-             * Basically while we did reattach focus we never set focus, so the stack order is correct but the focus order isnt.
-             * AKA altttab.
-             */
-            focus(NULL);
-            /* rearrange the stuff duh */
-            arrange(c->desktop);
-        }
     }
     if(sync)
     {   XCBFlush(_wm.dpy);
