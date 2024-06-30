@@ -819,8 +819,8 @@ managerequest(XCBWindow win, XCBCookie requests[ManageCookieLAST])
     requests[ManageCookiePid] = 
         XCBGetPidCookie(_wm.dpy, win, netatom[NetWMPid]);
     /* Window Icon */
-    requests[ManageCookieIcon] = 
-        XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMIcon], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_CARDINAL);
+    requests[ManageCookieIcon] =                                                                /* Some icons are cardinal, even though they should be :/ */
+        XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMIcon], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_ANY);
     /* Window Motif */
     requests[ManageCookieMotif] = 
         XCBGetWindowPropertyCookie(_wm.dpy, win, motifatom, NO_BYTE_OFFSET, MOTIF_WM_HINT_LENGTH, False, motifatom);
@@ -1760,10 +1760,10 @@ unmaximize(Client *c)
 void 
 unmaximizehorz(Client *c)
 {
-    const i16 x = c->oldx;
-    const i16 y = c->y;
-    const u16 w = c->oldw;
-    const u16 h = c->h;
+    i32 x = c->oldx;
+    i32 y = c->y;
+    i32 w = c->oldw;
+    i32 h = c->h;
 
     if(DOCKEDHORZ(c))
     {   
@@ -1783,10 +1783,10 @@ unmaximizehorz(Client *c)
 void 
 unmaximizevert(Client *c)
 {
-    const i16 x = c->x;
-    const i16 y = c->oldy;
-    const u16 w = c->w;
-    const u16 h = c->oldh;
+    i32 x = c->x;
+    i32 y = c->oldy;
+    i32 w = c->w;
+    i32 h = c->oldh;
     if(DOCKEDVERT(c))
     {
         if(WASDOCKEDVERT(c))
