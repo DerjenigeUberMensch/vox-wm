@@ -25,7 +25,8 @@ getnamefromreply(XCBWindowProperty *namerep)
     {
         if(namerep->type && namerep->length > 0)
         {
-            const size_t offset = XCBGetPropertyValueSize(namerep);
+            uint32_t offset = 0;
+            XCBGetPropertyValueSize(namerep, &offset);
             char *str = XCBGetPropertyValue(namerep);
             nstr = malloc(sizeof(char) * offset + sizeof(char));
             if(nstr)
@@ -50,35 +51,26 @@ geticonprop(XCBWindowProperty *iconreply)
     uint32_t *ret = NULL;
     if(iconreply)
     {
-        if(iconreply->format == 0)
-        {   
-            if(XCBGetPropertyValueSize(iconreply))
-            {   /* DEBUG0("Icon has no format, icon may be corrupt."); */
-            }
-            else
-            {   
-                /* DEBUG0("No icon."); */
-            }
-            return ret;
-        }
-        if(iconreply->type != XCB_ATOM_CARDINAL)
-        {   /* DEBUG0("Icon has wierd atom format"); */
-        }
-        if(iconreply->format != 32)
-        {   /* DEBUG("Icon format is not standard, icon may be corrupt. %d", iconreply->format); */
-        }
         uint32_t *icon = XCBGetPropertyValue(iconreply);
-        uint32_t length = XCBGetPropertyValueLength(iconreply, sizeof(uint32_t));
+        uint32_t length = 0;
+        XCBGetPropertyValueLength(iconreply, sizeof(uint32_t), &length);
         if(length >= MIN_ICON_DATA_SIZE)
         {   
             uint64_t i = 0;
             uint64_t wi = WIDTH_INDEX;
-            uint32_t hi = HEIGHT_INDEX;
+            uint64_t hi = HEIGHT_INDEX;
             /* get the biggest size */
             uint8_t bigger = 0;
             uint8_t inrange = 0;
+
+            /* some icons dont work really that well with what they are told */
             while(i + 2 < length)
             {        
+                /* assume icon broken */
+                if(!icon[wi] || !icon[hi])
+                {   break;
+                }
+                /* jmp to next size(s) */
                 /* bounds check */
                 bigger = icon[i + WIDTH_INDEX] >= icon[wi];
                 inrange = length - i >= icon[i + WIDTH_INDEX];
@@ -93,7 +85,7 @@ geticonprop(XCBWindowProperty *iconreply)
                 if(bigger && inrange)
                 {   hi = i + HEIGHT_INDEX;
                 }
-                /* jmp to next size(s) */
+
                 i += icon[i + WIDTH_INDEX] * icon[i + HEIGHT_INDEX];
                 /* jmp to next WIDTH_INDEX/HEIGHT_INDEX */
                 i += 2;

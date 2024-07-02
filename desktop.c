@@ -495,8 +495,10 @@ restack(Desktop *desk)
     c = desk->stack;
     /* reset client list */
     if(c)
-    {   
-        XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&c->win, 1);
+    {   XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&c->win, 1);
+    }
+    else
+    {   XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking]);
     }
     for(c = desk->stack; c; c = nextstack(c))
     {
@@ -683,7 +685,7 @@ updatedesktop(void)
 void
 updatedesktopnames(void)
 {
-    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetDesktopNames], XCB_ATOM_STRING, 8, XCB_PROP_MODE_REPLACE, "~0", _wm.selmon->deskcount);
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetDesktopNames], XCB_ATOM_STRING, 8, XCB_PROP_MODE_REPLACE, "~0", 3);
 }
 
 void

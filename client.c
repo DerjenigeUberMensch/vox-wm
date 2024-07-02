@@ -11,6 +11,7 @@
 extern WM _wm;
 extern XCBAtom netatom[];
 extern XCBAtom wmatom[];
+extern XCBAtom gtkatom[];
 extern XCBAtom motifatom;
 
 /* Client struct flags */
@@ -507,7 +508,8 @@ clientinitwtype(Client *c, XCBWindowProperty *windowtypereply)
     if(windowtypereply)
     {
         XCBAtom *data = XCBGetPropertyValue(windowtypereply);
-        const uint32_t ATOM_LENGTH = XCBGetPropertyValueLength(windowtypereply, sizeof(XCBAtom));
+        uint32_t ATOM_LENGTH = 0;
+        XCBGetPropertyValueLength(windowtypereply, sizeof(XCBAtom), &ATOM_LENGTH);
         updatewindowtypes(c, data, ATOM_LENGTH);
     }
 }
@@ -517,8 +519,9 @@ clientinitwstate(Client *c, XCBWindowProperty *windowstatereply)
 {
     if(windowstatereply)
     {
-        const uint32_t ATOM_LENGTH = XCBGetPropertyValueLength(windowstatereply, sizeof(XCBAtom));
         XCBAtom *data = XCBGetPropertyValue(windowstatereply);
+        uint32_t ATOM_LENGTH = 0;
+        XCBGetPropertyValueLength(windowstatereply, sizeof(XCBAtom), &ATOM_LENGTH);
         updatewindowstates(c, data, ATOM_LENGTH);
     }
 }
@@ -956,7 +959,6 @@ managereply(XCBWindow win, XCBCookie requests[ManageCookieLAST])
 
     /* propagates border_width, if size doesn't change */
     configure(c);
-
     /* if its a new bar we dont want to return it as the monitor now manages it */
     if(!checknewbar(m, c, strut || strutp))
     {   c = NULL;
@@ -1247,7 +1249,8 @@ setclientwtype(Client *c, XCBAtom atom, u8 state)
     if(prop)
     {
         XCBAtom *atoms = XCBGetPropertyValue(prop);
-        const uint32_t ATOM_LENGTH = XCBGetPropertyValueLength(prop, sizeof(XCBAtom));
+        uint32_t ATOM_LENGTH = 0;
+        XCBGetPropertyValueLength(prop, sizeof(XCBAtom), &ATOM_LENGTH);
 
         u32 i;
         u32 offset = 0;
@@ -1319,7 +1322,8 @@ setclientnetstate(Client *c, XCBAtom atom, u8 state)
     if(prop)
     {
         XCBAtom *atoms = XCBGetPropertyValue(prop);
-        const uint32_t ATOM_LENGTH = XCBGetPropertyValueLength(prop, sizeof(XCBAtom));
+        uint32_t ATOM_LENGTH = 0;
+        XCBGetPropertyValueLength(prop, sizeof(XCBAtom), &ATOM_LENGTH);
 
         u32 i;
         u32 offset = 0;
@@ -1572,6 +1576,7 @@ setfocus(Client *c)
     {
         XCBSetInputFocus(_wm.dpy, c->win, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
         XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&(c->win), 1);
+        setclientnetstate(c, netatom[NetWMStateFocused], 1);
         SETFLAG(c->wstateflags, _STATE_FOCUSED, 1);
     }
     if(HASWMTAKEFOCUS(c))
@@ -1687,6 +1692,7 @@ unfocus(Client *c, uint8_t setfocus)
     }
     grabbuttons(c, 0);
     XCBSetWindowBorder(_wm.dpy, c->win, c->bcol);
+    setclientnetstate(c, netatom[NetWMStateFocused], 0);
     if(setfocus)
     {   
         XCBSetInputFocus(_wm.dpy, _wm.root, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
@@ -1972,7 +1978,8 @@ updatemotifhints(Client *c, XCBWindowProperty *motifprop)
     if(motifprop)
     {
         MotifWmHints *hints = XCBGetPropertyValue(motifprop);
-        uint32_t len = XCBGetPropertyValueLength(motifprop, sizeof(MotifWmHints));
+        uint32_t len = 0;
+        XCBGetPropertyValueLength(motifprop, sizeof(MotifWmHints), &len);
         if(hints && len == 1)
         {   
             if(hints->flags & HINTS_DECORATION)

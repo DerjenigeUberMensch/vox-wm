@@ -39,6 +39,7 @@ XCBAtom netatom[NetLast];
 XCBAtom wmatom[WMLast];
 XCBAtom gtkatom[GTKLAST];
 XCBAtom motifatom;
+XCBAtom xembedatom[XEMBEDLAST];
 XCBCursor cursors[CurLast];
 
 
@@ -386,6 +387,7 @@ quit(void)
 {
     _wm.running = 0;
     wakeupconnection(_wm.dpy, _wm.screen);
+    DEBUG0("Exiting...");
 }
 
 static u8
@@ -807,6 +809,7 @@ void
 restart(void)
 {
     _wm.restart = 1;
+    DEBUG0("Restarting...");
     quit();
 }
 
@@ -1127,9 +1130,9 @@ setup(void)
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&wmatom, WMLast);
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&gtkatom, GTKLAST);
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&motifatom, 1);
-
     XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetClientList]);
-    
+    XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking]);
+
     updatedesktopnum();
     updatedesktop();
     updatedesktopnames();
@@ -1164,17 +1167,20 @@ setupatoms(void)
     XCBCookie wmcookie[WMLast];
     XCBCookie netcookie[NetLast];
     XCBCookie gtkcookie[GTKLAST];
+    XCBCookie xembedcookie[XEMBEDLAST];
 
     motifcookie = XCBInternAtomCookie(_wm.dpy, "_MOTIF_WM_HINTS", False);
     XCBInitWMAtomsCookie(_wm.dpy, (XCBCookie *)wmcookie);
     XCBInitNetWMAtomsCookie(_wm.dpy, (XCBCookie *)netcookie);
     XCBInitGTKAtomsCookie(_wm.dpy, (XCBCookie *)gtkcookie);
+    XCBInitXembedAtomsCookie(_wm.dpy, (XCBCookie *)xembedcookie);
 
     /* replies */
+    motifatom = XCBInternAtomReply(_wm.dpy, motifcookie);
     XCBInitWMAtomsReply(_wm.dpy, wmcookie, wmatom);
     XCBInitNetWMAtomsReply(_wm.dpy, netcookie, netatom);
     XCBInitGTKAtomsReply(_wm.dpy, gtkcookie, gtkatom);
-    motifatom = XCBInternAtomReply(_wm.dpy, motifcookie);
+    XCBInitXembedAtomsReply(_wm.dpy, xembedcookie, xembedatom);
 }
 
 void
