@@ -1801,17 +1801,48 @@ XCBGetPropertyValue(
 
 
 /*
+ * NOTE: Returning 1 only means the request had no specified format size, and is exactly: sizeof(ThePropertyValue) / _size.
+ *
+ * PROPSIZE = sizeof(ThePropertyValue);
+ * FORMAT;
+ * FORMAT8 = sizeof(int8_t);    # bytes: 1;
+ * FORMAT16 = sizeof(int16_t);  # bytes: 2;
+ * FORMAT32 = sizeof(int32_t);  # bytes: 4;
+ *
+ * FORMULA: (PROPSIZE / FORMAT) / _size;
+ *
+ * NOTE: Format (if exists) is used from the reply, reply->format;
+ *
+ * RETURN: 0 on Success.
+ * RETURN: 1 on No Format.
  */
-uint32_t
+uint8_t 
 XCBGetPropertyValueLength(
-        XCBWindowProperty *reply, size_t size
+        XCBWindowProperty *reply, 
+        size_t _size,
+        uint32_t *ret
         );
 
 /*
+ * NOTE: Returning 1 only means the request had no specified format size, and is exactly: sizeof(ThePropertyValue);
+ *
+ * PROPSIZE = sizeof(ThePropertyValue);
+ * FORMAT;
+ * FORMAT8 = sizeof(int8_t);    # bytes: 1;
+ * FORMAT16 = sizeof(int16_t);  # bytes: 2;
+ * FORMAT32 = sizeof(int32_t);  # bytes: 4;
+ *
+ * FORMULA: (PROPSIZE / FORMAT);
+ *
+ * NOTE: Format (if exists) is used from the reply, reply->format;
+ *
+ * RETURN: 0 on Success.
+ * RETURN: 1 on No Format.
  */
-uint32_t
+uint8_t
 XCBGetPropertyValueSize(
-        XCBWindowProperty *reply
+        XCBWindowProperty *reply,
+        uint32_t *ret
         );
 
 /*
@@ -1847,17 +1878,49 @@ XCBGetWindowPropertyValue(
         XCBWindowProperty *reply);
 
 /*
+ * NOTE: Returning 1 only means the request had no specified format size, and is exactly: sizeof(ThePropertyValue);
+ *
+ *
+ * PROPSIZE = sizeof(ThePropertyValue);
+ * FORMAT;
+ * FORMAT8 = sizeof(int8_t);    # bytes: 1;
+ * FORMAT16 = sizeof(int16_t);  # bytes: 2;
+ * FORMAT32 = sizeof(int32_t);  # bytes: 4;
+ *
+ * FORMULA: PROPSIZE / FORMAT;
+ *
+ * NOTE: Format (if exists) is used from the reply, reply->format;
+ *
+ * RETURN: 0 on Success.
+ * RETURN: 1 on No Format.
  */
-uint32_t
+uint8_t
 XCBGetWindowPropertyValueSize(
-        XCBWindowProperty *reply
+        XCBWindowProperty *reply,
+        uint32_t *size_return
         );
 
 /*
+ * NOTE: Returning 1 only means the request had no specified format size, and is exactly: sizeof(ThePropertyValue) / _size.
+ *
+ * PROPSIZE = sizeof(ThePropertyValue);
+ * FORMAT;
+ * FORMAT8 = sizeof(int8_t);    # bytes: 1;
+ * FORMAT16 = sizeof(int16_t);  # bytes: 2;
+ * FORMAT32 = sizeof(int32_t);  # bytes: 4;
+ *
+ * FORMULA: (PROPSIZE / FORMAT) / _size;
+ *
+ * NOTE: Format (if exists) is used from the reply, reply->format;
+ *
+ * RETURN: 0 on Success.
+ * RETURN: 1 on No Format.
  */
-uint32_t
+uint8_t
 XCBGetWindowPropertyValueLength(
-        XCBWindowProperty *reply, size_t size
+        XCBWindowProperty *reply, 
+        size_t _size,
+        uint32_t *size_return
         );
 
 /*

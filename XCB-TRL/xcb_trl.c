@@ -1364,29 +1364,73 @@ XCBGetWindowPropertyValue(
     return xcb_get_property_value(reply);
 }
 
-u32
+u8
 XCBGetWindowPropertyValueSize(
-        XCBWindowProperty *reply
+        XCBWindowProperty *reply,
+        uint32_t *_ret
         )
 {
 #ifdef DBG
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret, _fn);
 #endif
-    return xcb_get_property_value_length(reply);
+    enum 
+    {
+        __XCB__FORMAT__8 = 8,
+        __XCB__FORMAT__16 = 16,
+        __XCB__FORMAT__32 = 32,
+    };
+    /* XCB malforms some requests for some reason :/ so go back to failsafe of reply->value_len. 
+     * Which?: Some icons are malformed as to say size "0" when they do have a actual size.
+     */
+    switch(reply->format)
+    {
+        case __XCB__FORMAT__8:
+        case __XCB__FORMAT__16:
+        case __XCB__FORMAT__32:
+            *_ret = xcb_get_property_value_length(reply);
+            return 0;
+        default:
+            *_ret = reply->value_len;
+            return 1;
+            break;
+    }
 }
 
-u32
-XCBGetWindowPropertyValueLength(
+u8
+XCBGetWindowPropertyValueLength
+(
         XCBWindowProperty *reply, 
-        size_t size
+        size_t size,
+        uint32_t *_ret
         )
 {
 #ifdef DBG
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret, _fn);
 #endif
-    return xcb_get_property_value_length(reply) / (size);
+    const size_t safesize = size + !size;
+    enum 
+    {
+        __XCB__FORMAT__8 = 8,
+        __XCB__FORMAT__16 = 16,
+        __XCB__FORMAT__32 = 32,
+    };
+    /* XCB malforms some requests for some reason :/ so go back to failsafe of reply->value_len. 
+     * Which?: Some icons are malformed as to say size "0" when they do have a actual size.
+     */
+    switch(reply->format)
+    {
+        case __XCB__FORMAT__8:
+        case __XCB__FORMAT__16:
+        case __XCB__FORMAT__32:
+            *_ret = xcb_get_property_value_length(reply) / safesize;
+            return 0;
+        default:
+            *_ret = reply->value_len / safesize;
+            return 1;
+            break;
+    }
 }
 
 XCBWindowProperty *
@@ -1425,29 +1469,31 @@ XCBGetPropertyValue(
     return xcb_get_property_value(reply);
 }
 
-u32
+uint8_t 
 XCBGetPropertyValueSize(
-        XCBWindowProperty *reply
+        XCBWindowProperty *reply,
+        u32 *_ret
         )
 {
 #ifdef DBG
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret, _fn);
 #endif
-    return xcb_get_property_value_length(reply); 
+    return XCBGetWindowPropertyValueSize(reply, _ret);
 }
 
-u32
+uint8_t 
 XCBGetPropertyValueLength(
         XCBWindowProperty *reply,
-        size_t size
+        size_t size,
+        uint32_t *_ret
         )
 {
 #ifdef DBG
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret, _fn);
 #endif
-    return xcb_get_property_value_length(reply) / size;
+    return XCBGetWindowPropertyValueLength(reply, size, _ret);
 }
 
 
@@ -1713,17 +1759,17 @@ XCBGetTextPropertyReply(
 #endif
     xcb_get_property_reply_t *reply = xcb_get_property_reply(display, cookie1, &err);
     
-    if(!reply || reply->type == XCB_NONE)
-    {
-        status = 0;
+    if(!reply)
+    {   status = 0;
     }
     else
     {
         reply_return->_reply = reply;
         reply_return->encoding = reply_return->_reply->type;
         reply_return->format = reply_return->_reply->format;
-        reply_return->name_len = xcb_get_property_value_length(reply_return->_reply);
         reply_return->name = xcb_get_property_value(reply_return->_reply);
+        /* char so doesnt matter */
+        XCBGetWindowPropertyValueLength(reply_return->_reply, sizeof(char), &reply_return->name_len);
     }
 
     if(err)
@@ -3449,6 +3495,7 @@ XCBGetWMHintsReply(
     {   goto FAILURE;
     }
 
+    /* doesnt use our(s) cause we check for format != 32 */
     u32 length = xcb_get_property_value_length(reply);
     u32 num_elem = length / (reply->format / 8);
     
