@@ -5,6 +5,8 @@
 
 #include "dwm.h"
 
+#include <string.h>
+
 extern WM _wm;
 extern XCBCursor cursors[];
 extern XCBAtom netatom[];
@@ -110,7 +112,6 @@ cleanupmon(Monitor *m)
         cleanupdesktop(desk);
         desk = desknext;
     }
-    HASH_CLEAR(hh, m->__hash);
     free(m);
     m = NULL;
 }
@@ -149,7 +150,6 @@ createmon(void)
     setdesktopcount(m, 10);
     m->desksel = m->desktops;
     m->bar = NULL;
-    m->__hash = NULL;
     return m;
 }
 

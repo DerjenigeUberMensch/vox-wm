@@ -7,6 +7,9 @@
 #include "dwm.h"
 #include "keybinds.h"
 #include "util.h"
+#include "hashing.h"
+
+#include <string.h>
 
 extern WM _wm;
 extern XCBAtom netatom[];
@@ -198,6 +201,7 @@ int NEVERHOLDFOCUS(Client *c)   { return NEVERFOCUS(c) || ISDOCK(c);}
 int ISMAXHORZ(Client *c)        { return WIDTH(c) == c->desktop->mon->ww; }
 int ISMAXVERT(Client *c)        { return HEIGHT(c) == c->desktop->mon->wh; }
 int ISVISIBLE(Client *c)        { return (c->desktop->mon->desksel == c->desktop || ISSTICKY(c)) && !ISHIDDEN(c); }
+/* int ISVISIBLEGEOM(Client *c) */
 int SHOWDECOR(Client *c)        { return c->flags & _FSTATE_SHOW_DECOR; }
 int ISSELECTED(Client *c)       { return c->desktop->sel == c; }
         
@@ -502,6 +506,7 @@ clientinitgeom(Client *c, XCBWindowGeometry *wg)
         }
     }
 }
+
 void 
 clientinitwtype(Client *c, XCBWindowProperty *windowtypereply)
 {
@@ -950,7 +955,8 @@ managereply(XCBWindow win, XCBCookie requests[ManageCookieLAST])
     updateclientlist(win, ClientListAdd);
     setclientstate(c, XCB_WINDOW_NORMAL_STATE);
 
-    HASH_ADD_INT(m->__hash, win, c);
+    /* add to hash */
+    addclienthash(c);
 
     /* inherit previous client state */
     if(c->desktop && c->desktop->sel)
@@ -1748,7 +1754,7 @@ unmanage(Client *c, uint8_t destroyed)
      * Memory leak if a client is unmaped and maped again
      * (cause we would get the same input focus twice)
      */
-    HASH_DEL(desk->mon->__hash, c);
+    delclienthash(c);
     detachcompletely(c);
     updateclientlist(win, ClientListRemove);
     cleanupclient(c);
@@ -2571,15 +2577,30 @@ updatewmhints(Client *c, XCBWMHints *wmh)
 Client *
 wintoclient(XCBWindow win)
 {
-    Client *c = NULL;
-    Monitor *m = NULL;
+    Client *c = getclienthash(win);
 
-    /* check sel first */
-    for(m = _wm.selmon; m; m = nextmonitor(m))
-    {   
-        HASH_FIND_INT(m->__hash, &win, c);
-        if(c)
-        {   return c;
+    if(c)
+    {   return c;
+    }
+
+    /* malloc can fail some times so linear prob for client (unlikely), or it just doesnt exist. */
+    Monitor *m;
+    Desktop *desk;
+    for(m = _wm.mons; m; m = nextmonitor(m))
+    {
+        for(desk = m->desktops; desk; desk = nextdesktop(desk))
+        {
+            for(c = desk->clients; c; c = nextclient(c))
+            {
+                if(c->win == win)
+                {   
+                    DEBUG0("Found non hashed client.");
+                    DEBUG0("Hashing...");
+                    /* try and re-add it to the hasmap */
+                    addclienthash(c);
+                    return c;
+                }
+            }
         }
     }
     return NULL;
