@@ -22,7 +22,7 @@ static const char *const DND_ATOM_NAMES[XDNDLAST] =
 };
 
 
-static const int DND_ATOM_LEN[XDNDLAST] = 
+static const unsigned int DND_ATOM_LEN[XDNDLAST] = 
 {
     [XDNDActionAsk] = sizeof("XdndActionAsk") - 1,
     [XDNDActionCopy] = sizeof("XdndActionCopy") - 1,

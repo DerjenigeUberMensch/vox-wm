@@ -393,27 +393,12 @@ XCBGetPidReply(
     if(prop)
     {   
         void *data = XCBGetWindowPropertyValue(prop);
-        uint32_t len = XCBGetPropertyValueLength(prop, sizeof(int8_t));
+        uint32_t len = 0;
+        XCBGetPropertyValueLength(prop, sizeof(int32_t), &len);
         if(data)
         {   
-            const uint8_t SIZE_CONVERSION_MULT = 8;
-            /* pid is always just 1 int32_t */
-            if(len * SIZE_CONVERSION_MULT  == prop->format)
-            {   
-                switch(prop->format)
-                {   
-                    case 32:
-                        pid = *(int32_t *)data;
-                        break;
-                    case 16:
-                        pid = *(int16_t *)data;
-                        break;
-                    case 8:
-                        pid = *(int8_t *)data;
-                        break;
-                    default:
-                        break;
-                }
+            if(len >= 1)
+            {   pid = *(uint32_t *)data;
             }
         }
         free(prop);
