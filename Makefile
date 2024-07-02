@@ -12,7 +12,7 @@ OBJ = $(patsubst %.c,${BIN}/%.o,$(SRC))
 VERSION = 2.2.0
 EXE = dwm
 EXEPATH = ${BIN}/${EXE}
-CMACROS += -DVERSION=\"${VERSION}\" -DNAME=\"${EXE}\" 
+CMACROS += -DVERSION=\"${VERSION}\" -DMARK=\"${EXE}\" 
 CFLAGS += ${CMACROS}
 
 all: options default

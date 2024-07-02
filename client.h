@@ -3,7 +3,6 @@
 
 
 #include "XCB-TRL/xcb_trl.h"
-#include "uthash.h"
 
 #include <stdint.h>
 
@@ -120,7 +119,6 @@ struct Client
     char *instancename; /* Instance Name            */
     uint32_t *icon;     /* Array of icon values     */
 
-    UT_hash_handle hh;  /* hash handle              */
     uint16_t rstacknum; /* Used in calculating pos  */
     uint8_t pad[6];
 };

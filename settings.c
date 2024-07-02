@@ -4,6 +4,7 @@
 #include "parser.h"
 #include "util.h"
 #include "desktop.h"
+#include <string.h>
 
 
 

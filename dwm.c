@@ -25,7 +25,7 @@
 #include "util.h"
 #include "dwm.h"
 #include "parser.h"
-
+#include "hashing.h"
 #include "keybinds.h"
 /* for HELP/DEBUGGING see under main() or the bottom */
 
@@ -41,8 +41,6 @@ XCBAtom gtkatom[GTKLAST];
 XCBAtom motifatom;
 XCBAtom xembedatom[XEMBEDLAST];
 XCBCursor cursors[CurLast];
-
-
 
 static uint32_t 
 __intersect_area(
@@ -244,7 +242,7 @@ argcvhandler(int argc, char *argv[])
                     __BYTE_ORDER__,
                     __SIZEOF_POINTER__,
                     VERSION,
-                    NAME
+                    MARK
                     );
             exit(EXIT_SUCCESS);
         }
@@ -339,6 +337,8 @@ cleanup(void)
     }
     cleanupmons();
     XCBFlush(_wm.dpy);
+    /* Free hashmap */
+    cleanupclienthash();
     if(_wm.dpy)
     {
         XCBCloseDisplay(_wm.dpy);
@@ -1157,6 +1157,8 @@ setup(void)
     /* init numlock */
     updatenumlockmask();
     grabkeys();
+    /* init hash */
+    setupclienthash();
     focus(NULL);
 }
 
@@ -1347,7 +1349,7 @@ specialconds(int argc, char *argv[])
         {   DEBUG0("No argv?");
         }
         /* UNREACHABLE */
-        DEBUG("%s", "Failed to restart " NAME);
+        DEBUG("%s", "Failed to restart " MARK);
     }
 }
 

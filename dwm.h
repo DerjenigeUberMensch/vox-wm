@@ -5,7 +5,6 @@
 #include <xcb/xcb_keysyms.h>
 #include <stdio.h>
 
-#include "uthash.h"
 #include "settings.h"
 #include "client.h"
 #include "desktop.h"
@@ -22,9 +21,11 @@
 #define VERSION     "NOT_SET.NOT_SET.NOT_SET"
 #endif
 
-#ifndef NAME
-#define NAME        "NOT_SET"
+#ifndef MARK
+#define MARK    "NOT_SET"
 #endif
+
+#define __CLIENTS__ __CLIENTS__
 
 /* CONSTANTS */
 #define BUTTONMASK              (XCB_EVENT_MASK_BUTTON_PRESS|XCB_EVENT_MASK_BUTTON_RELEASE)
@@ -91,7 +92,6 @@ struct Key
     XCBKeysym keysym;           /* Key symbol           */
     void (*func)(const Arg *);  /* Function             */
     Arg arg;                    /* Argument             */
-    UT_hash_handle hh;          /* Hash                 */
 };
 
 struct Button
@@ -202,8 +202,6 @@ void setupatoms(void);
 void setupbar(Monitor *m, Client *bar);
 /* Loads CFG data into Settings struct. */
 void setupcfg(void);
-/* Loads default if CFG data failed to read. */
-void setupcfgdefaults(void);
 /* waits for childs (zombies) to die */
 void sigchld(int signo);
 /* Handles Signals and how we use them */

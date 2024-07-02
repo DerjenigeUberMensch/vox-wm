@@ -2,8 +2,6 @@
 #ifndef UTIL_H_
 #define UTIL_H_
 
-#include "uthash.h"
-
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>

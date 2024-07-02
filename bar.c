@@ -11,6 +11,7 @@
 
 #include <stdio.h>
 #include <stdarg.h>
+#include <string.h>
 
 
 #include "dwm.h"
@@ -18,6 +19,7 @@ extern WM _wm;
 
 #include "bar.h"
 #include "util.h"
+
 
 void
 writebar(char *fmt, ...)

@@ -37,7 +37,6 @@ struct Monitor
     Desktop *desksel;           /* Selected Desktop                         */
     Monitor *next;              /* Next Monitor                             */
     Client *bar;                /* The Associated Task-Bar (can be NULL)    */
-    Client *__hash;             /* Hashed clients                           */
 
     uint16_t deskcount;         /* Desktop Counter                          */
     uint8_t pad0[6];
