@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "events.h"
 #include "util.h"
 #include "keybinds.h"
