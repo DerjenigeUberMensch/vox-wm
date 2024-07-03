@@ -1589,14 +1589,15 @@ wakeupconnection(XCBDisplay *display, int screen)
     {   DEBUG0("No connection avaible");
         return;
     }
-    XCBClientMessageEvent ev;
-    memset(&ev, 0, sizeof(XCBClientMessageEvent));
-    ev.type = wmatom[WMProtocols];
-    ev.response_type = XCB_CLIENT_MESSAGE;
-    ev.window = _wm.root;
-    ev.format = 32;
-    ev.data.data32[0] = wmatom[WMDeleteWindow];
-    ev.data.data32[1] = XCB_CURRENT_TIME;
+    XCBGenericEvent ev;
+    XCBClientMessageEvent *cev = (XCBClientMessageEvent *)&ev;
+    memset(&ev, 0, sizeof(XCBGenericEvent));
+    cev->type = wmatom[WMProtocols];
+    cev->response_type = XCB_CLIENT_MESSAGE;
+    cev->window = _wm.root;
+    cev->format = 32;
+    cev->data.data32[0] = wmatom[WMDeleteWindow];
+    cev->data.data32[1] = XCB_CURRENT_TIME;
                                         /* XCB_EVENT_MASK_NO_EVENT legit does nothing lol */
     XCBSendEvent(display, XCBRootWindow(display, screen), False, XCB_EVENT_MASK_STRUCTURE_NOTIFY, (const char *)&ev);
     /* make sure display gets the event (duh) */
