@@ -77,8 +77,6 @@ git checkout origin/Experimental
 
 ****Currently Configuration is not supported in this version of xcb-wswm****
 
-For help open an **[issue](https://github.com/DerjenigeUberMensch/xcb-wswm/issues)** about it.
-
 ## Troubleshoot
 This is an **_experimental_** build and may contain bugs,
 Screen tearing can be mitigated by using a compositor or by enabling it in your driver setting
