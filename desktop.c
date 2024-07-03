@@ -80,29 +80,29 @@ arrangedesktop(Desktop *desk)
                                                                             }                               \
                                                                         } while(0)
 
-/* Too hard to implement */
-/*
-#define __detach_helper(TYPE, STRUCT, HEAD, NEXT, PREV, LAST)   do                                                              \
+#define __detach_helper(NAME, TYPE, STRUCT, HEAD, NEXT, PREV, LAST)   do                                                        \
                                                                 {                                                               \
+                                                                    if(!STRUCT)                                                 \
+                                                                    {   DEBUG0("No " #TYPE " to detach, undefined FIXME");      \
+                                                                        return;                                                 \
+                                                                    }                                                           \
                                                                     TYPE **tc;                                                  \
-                                                                    for(tc = &STRUCT->HEAD; *tc && *tc != STRUCT; tc = &(*tc)->NEXT);   \
+                                                                    for(tc = &HEAD; *tc && *tc != STRUCT; tc = &(*tc)->NEXT);   \
                                                                     *tc = STRUCT->NEXT;                                         \
                                                                     if(!(*tc))                                                  \
-                                                                    {   STRUCT->LAST = STRUCT->PREV;                            \
+                                                                    {   LAST = STRUCT->PREV;                                    \
                                                                     }                                                           \
                                                                     else if(STRUCT->NEXT)                                       \
                                                                     {   STRUCT->NEXT->PREV = STRUCT->PREV;                      \
                                                                     }                                                           \
                                                                     else if(STRUCT->PREV)                                       \
                                                                     {                                                           \
-                                                                        STRUCT->LAST = STRUCT->PREV;                            \
+                                                                        LAST = STRUCT->PREV;                                    \
                                                                         STRUCT->PREV->NEXT = NULL;                              \
                                                                     }                                                           \
                                                                     STRUCT->NEXT = NULL;                                        \
                                                                     STRUCT->PREV = NULL;                                        \
                                                                 } while(0)
-*/
-
 void
 attach(Client *c)
 {
@@ -164,35 +164,7 @@ attachfocusbefore(Client *start, Client *after)
 void
 detach(Client *c)
 {
-    if(!c)
-    {   DEBUG0("No client to detach FIXME");
-        return;
-    }
-    if(!c->desktop)
-    {   DEBUG0("No desktop in client FIXME");
-        return;
-    }
-    if(!c->desktop->clients)
-    {   DEBUG0("No clients in desktop FIXME");
-        return;
-    }
-    Client **tc;
-    for (tc = &c->desktop->clients; *tc && *tc != c; tc = &(*tc)->next);
-    *tc = c->next;
-    if(!(*tc)) 
-    {
-        c->desktop->clast = c->prev;
-    }
-    else if(c->next) 
-    {   c->next->prev = c->prev;
-    }
-    else if(c->prev) 
-    {   /* This should be UNREACHABLE but in case we do reach it then this should suffice*/
-        c->desktop->clast = c->prev;
-        c->prev->next = NULL;
-    }
-    c->next = NULL;
-    c->prev = NULL;
+    __detach_helper(client, Client, c, c->desktop->clients, next, prev, c->desktop->clast);
 }
 
 void
@@ -207,121 +179,32 @@ detachcompletely(Client *c)
 void
 detachstack(Client *c)
 {
-    if(!c)
-    {   DEBUG0("No client to detach FIXME");
-        return;
-    }
-    if(!c->desktop)
-    {   DEBUG0("No desktop in client FIXME");
-        return;
-    }
-    if(!c->desktop->stack)
-    {   DEBUG0("No clients in desktop FIXME");
-        return;
-    }
-    Desktop *desk = c->desktop;
-    Client **tc;
-
-    for(tc = &desk->stack; *tc && *tc != c; tc = &(*tc)->snext);
-    *tc = c->snext;
-    if(!(*tc))
-    {
-        desk->slast = c->sprev;
-    }
-    else if(c->snext)
-    {   
-        c->snext->sprev = c->sprev;
-    }
-    else if(c->sprev)
-    {   /* this should be UNREACHABLE but if it does this should suffice */
-        desk->slast = c->sprev;
-        c->sprev->snext = NULL;
-    }
-    c->sprev = NULL;
-    c->snext = NULL;
+    __detach_helper(stack, Client, c, c->desktop->stack, snext, sprev, c->desktop->slast);
 }
 
 void
 detachrestack(Client *c)
 {
-    if(!c)
-    {   DEBUG0("No client to detach FIXME");
-        return;
-    }
-    if(!c->desktop)
-    {   DEBUG0("No desktop in client FIXME");
-        return;
-    }
-    if(!c->desktop->rstack)
-    {   DEBUG0("No clients in desktop FIXME");
-        return;
-    }
-    Desktop *desk = c->desktop;
-    Client **tc;
-
-    for(tc = &desk->rstack; *tc && *tc != c; tc = &(*tc)->rnext);
-    *tc = c->rnext;
-    if(!(*tc))
-    {
-        desk->rlast = c->rprev;
-    }
-    else if(c->rnext)
-    {   
-        c->rnext->rprev = c->rprev;
-    }
-    else if(c->rprev)
-    {   /* this should be UNREACHABLE but if it does this should suffice */
-        desk->rlast = c->rprev;
-        c->rprev->rnext = NULL;
-    }
-
-    c->rprev = NULL;
-    c->rnext = NULL;
+    __detach_helper(rstack, Client, c, c->desktop->rstack, rnext, rprev, c->desktop->rlast);
 }
 
 void
 detachfocus(Client *c)
 {
-    if(!c)
-    {   DEBUG0("No client to detach FIXME");
-        return;
-    }
-    if(!c->desktop)
-    {   DEBUG0("No desktop in client FIXME");
-        return;
-    }
-    if(!c->desktop->focus)
-    {   DEBUG0("No clients in desktop FIXME");
-        return;
-    }
+    __detach_helper(focus, Client, c, c->desktop->focus, fnext, fprev, c->desktop->flast);
+
     Desktop *desk = c->desktop;
-    Client **tc, *t;
-
-    for(tc = &desk->focus; *tc && *tc != c; tc = &(*tc)->fnext);
-    *tc = c->fnext;
-    if(!(*tc))
-    {
-        desk->flast = c->fprev;
-    }
-    else if(c->fnext)
-    {   
-        c->fnext->fprev = c->fprev;
-    }
-    else if(c->fprev)
-    {   /* this should be UNREACHABLE but if it does this should suffice */
-        desk->flast = c->fprev;
-        c->fprev->fnext = NULL;
-    }
-
-    /* this just updates desktop->sel */
-    if (c == c->desktop->sel)
-    {
-        for (t = c->desktop->focus; t && !ISVISIBLE(t); t = t->fnext);
-        c->desktop->sel = t;
-    }
-
+    /* "detach" */
     c->fprev = NULL;
     c->fnext = NULL;
+    /* this just updates desktop->sel */
+    if (c == desk->sel)
+    {
+        for (c = startfocus(desk); c && !ISVISIBLE(c); c = nextfocus(c));
+        if(c)
+        {   c->desktop->sel = c;
+        }
+    }
 }
 
 void
