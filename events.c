@@ -834,10 +834,17 @@ maprequest(XCBGenericEvent *event)
     /* map window before input focus is set cause we just get errors other wise. */
     XCBMapWindow(_wm.dpy, win);
     if(c)
-    {
+    {   
         focus(c);
         arrange(c->desktop);
     }
+    /* check if we managed a new bar */
+    else if(_wm.selmon->bar && _wm.selmon->bar->win == win)
+    {   
+        focus(NULL);
+        arrange(_wm.selmon->desksel);
+    }
+    sync = 1;
     if(sync)
     {   XCBFlush(_wm.dpy);
     }

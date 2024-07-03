@@ -112,6 +112,9 @@ cleanupmon(Monitor *m)
         cleanupdesktop(desk);
         desk = desknext;
     }
+    if(m->bar)
+    {   cleanupclient(m->bar);
+    }
     free(m);
     m = NULL;
 }
@@ -499,7 +502,7 @@ wintomon(XCBWindow win)
     }
     for (m = _wm.mons; m; m = m->next)
     {   
-        if (win == m->bar->win) 
+        if (m->bar && win == m->bar->win) 
         {   return m;
         }
     }
