@@ -1306,17 +1306,13 @@ setclientwtype(Client *c, XCBAtom atom, u8 state)
                 len = ATOM_LENGTH - 1;
             }
             else  /* atom already exists do nothing */
-            {   
-                free(prop);
-                return;
+            {   goto CLEANUP;   
             }
         }
         else
         {
             if(_delete)     /* prop not found mark as already deleted */
-            {   
-                free(prop);
-                return;
+            {   goto CLEANUP;   
             }
             else    /* set propmode to append cause we didnt find it */
             {   
@@ -1325,7 +1321,6 @@ setclientwtype(Client *c, XCBAtom atom, u8 state)
                 data = &atom;
             }
         }
-        free(prop);
     }
     else
     {   
@@ -1333,6 +1328,9 @@ setclientwtype(Client *c, XCBAtom atom, u8 state)
         data = &atom;
     }
     XCBChangeProperty(_wm.dpy, win, netatom[NetWMWindowType], XCB_ATOM_ATOM, 32, propmode, (const char *)data, len);
+    goto CLEANUP;
+CLEANUP:
+    free(prop);
 }
 
 void
@@ -1382,17 +1380,13 @@ setclientnetstate(Client *c, XCBAtom atom, u8 state)
                 len = ATOM_LENGTH - 1;
             }
             else  /* atom already exists do nothing */
-            {
-                free(prop);
-                return;
+            {   goto CLEANUP;
             }
         }
         else
         {
             if(_delete)     /* prop not found mark as already deleted */
-            {   
-                free(prop);
-                return;
+            {   goto CLEANUP;   
             }
             else    /* set propmode to append cause we didnt find it */
             {   
@@ -1401,7 +1395,6 @@ setclientnetstate(Client *c, XCBAtom atom, u8 state)
                 data = &atom;
             }
         }
-        free(prop);
     }
     else
     {   
@@ -1409,6 +1402,9 @@ setclientnetstate(Client *c, XCBAtom atom, u8 state)
         data = &atom;
     }
     XCBChangeProperty(_wm.dpy, win, netatom[NetWMState], XCB_ATOM_ATOM, 32, propmode, (const char *)data, len);
+    goto CLEANUP;
+CLEANUP:
+    free(prop);
 }
 
 void
