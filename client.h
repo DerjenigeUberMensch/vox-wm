@@ -109,7 +109,7 @@ struct Client
     Client *rnext;      /* Restack Next             */
     Client *rprev;      /* Restack Prev             */
     Client *fnext;      /* The next focused client  */
-    Client *fprev;      /* THe previous focused clnt*/
+    Client *fprev;      /* The previous focused clnt*/
     struct Desktop *desktop;   /* Client Associated Desktop*/
     Decoration *decor;  /* Decoration AKA title bar.*/
 
@@ -120,7 +120,7 @@ struct Client
     uint32_t *icon;     /* Array of icon values     */
 
     uint16_t rstacknum; /* Used in calculating pos  */
-    uint8_t pad[6];
+    uint8_t pad0[6];
 };
 
 
@@ -183,6 +183,26 @@ void grabkeys(void);
  *                  Destroy             Destroys a window without sending any message for the window to response (Nuclear option.)
  */
 void killclient(Client *c, enum KillType type);
+/* Returns the last client in desktop.
+ * RETURN: Client * on Success.
+ * RETURN: NULL on Failure. (no clients)
+ */
+Client *lastclient(struct Desktop *desk);
+/* Returns the last client in desktop.
+ * RETURN: Client * on Success.
+ * RETURN: NULL on Failure. (no clients)
+ */
+Client *lastfocus(struct Desktop *desk);
+/* Returns the last client in desktop.
+ * RETURN: Client * on Success.
+ * RETURN: NULL on Failure. (no clients)
+ */
+Client *laststack(struct Desktop *desk);
+/* Returns the last client in desktop.
+ * RETURN: Client * on Success.
+ * RETURN: NULL on Failure. (no clients)
+ */
+Client *lastrstack(struct Desktop *desk);
 /* requests for clients cookies. */
 void managerequest(XCBWindow win, XCBCookie requests[ManageCookieLAST]);
 /* Part of main event loop "run()"
@@ -370,6 +390,26 @@ void seturgent(Client *c, uint8_t isurgent);
  * else hides client.
  */
 void showhide(Client *c);
+/* Returns the first client in desktop.
+ * RETURN: Client * on Success.
+ * RETURN: NULL on Failure. (no clients)
+ */
+Client *startclient(struct Desktop *desk);
+/* Returns the first client in desktop.
+ * RETURN: Client * on Success.
+ * RETURN: NULL on Failure. (no clients)
+ */
+Client *startfocus(struct Desktop *desk);
+/* Returns the first client in desktop stack.
+ * RETURN: Client * on Success.
+ * RETURN: NULL on Failure. (no clients)
+ */
+Client *startstack(struct Desktop *desk);
+/* Returns the first client in desktop rstack.
+ * RETURN: Client * on Success.
+ * RETURN: NULL on Failure. (no clients)
+ */
+Client *startrstack(struct Desktop *desk);
 /* Unfocuses specified client and sets to focus to root if setfocus is true */
 void unfocus(Client *c, uint8_t setfocus);
 /* updates a clients classname from XCBWMClass *_class 

@@ -741,28 +741,6 @@ MaximizeWindowHorizontal(const Arg *arg)
 void
 AltTab(const Arg *arg)
 {
-    static Client *next = NULL;
-    if(!_wm.selmon->desksel->clients)
-    {   next = NULL;
-        return;
-    }
-
-    for(Client *c = _wm.selmon->desksel->clients; c; c = nextclient(c))
-    {
-        DEBUG("%p->", (void *)c);
-    }
-
-    if(nextclient(next))
-    {   next = nextclient(next);
-    }
-    else
-    {   next = _wm.selmon->desksel->clients;
-    }
-
-    Client *tmp = next;
-
-    focus(next);
-    next = tmp;
 }
 
 void
