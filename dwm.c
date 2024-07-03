@@ -830,6 +830,20 @@ run(void)
 void
 savesession(void)
 {
+    /* assuming the server is still alive process next ~MAX_EVENT_PROCESS events to see if we should make any final changes before saving */
+    if(!_wm.has_error)
+    {
+        /* This should be enough that any broken clients are ignored for event processing */
+        const u16 MAX_EVENT_PROCESS = 1000;
+        u8 i = 0;
+        XCBGenericEvent *ev = NULL;
+        while((ev = XCBPollForEvent(_wm.dpy)) && ++i < MAX_EVENT_PROCESS)
+        {
+            eventhandler(ev);
+            free(ev);
+            ev = NULL;
+        }
+    }
     /* save client data. */
     const char *filename = SESSION_FILE;
     Monitor *m;
