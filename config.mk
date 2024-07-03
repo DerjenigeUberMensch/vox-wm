@@ -28,7 +28,7 @@ MEMORYDEBUG= -lefence
 
 LINKMODE = ${DYNAMICLINK}
 
-DEBUGFLAGS = -ggdb -g ${CCVERSION} ${WARNINGFLAGS} ${INCS} ${CPPFLAGS} ${BINARY} ${SECTIONCODE}
+DEBUGFLAGS = -fsanitize=address -fno-omit-frame-pointer -ggdb -g ${CCVERSION} ${WARNINGFLAGS} ${INCS} ${CPPFLAGS} ${BINARY} ${SECTIONCODE}
 
 
 WARNINGFLAGS = -pedantic -Wall -Wno-deprecated-declarations -Wshadow -Wuninitialized -Werror=format-security
@@ -85,6 +85,7 @@ endif
 ifeq ($(CFLAGS), $(DEBUG)) 
 	CMACROS += -DENABLE_DEBUG 
 	CMACROS += -DXCB_TRL_ENABLE_DEBUG
+	LINKERFLAGS += ${DEBUGFLAGS}
 endif
 
 # Linker flags
