@@ -1794,14 +1794,14 @@ unmanage(Client *c, uint8_t destroyed)
     if(desk->mon->bar == c)
     {   desk->mon->bar = NULL;
     }
+    /* prevent dangling pointer here woops */
+    if(desk->sel == c)
+    {   desk->sel = NULL;
+    }
     if(!destroyed)
     {   
         /* TODO causes alot of errors for some reason even if its not "destroyed" */
     }
-    /* TODO
-     * Memory leak if a client is unmaped and maped again
-     * (cause we would get the same input focus twice)
-     */
     delclienthash(c);
     detachcompletely(c);
     updateclientlist(win, ClientListRemove);
