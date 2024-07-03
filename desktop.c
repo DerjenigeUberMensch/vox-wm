@@ -329,10 +329,10 @@ cleanupdesktop(Desktop *desk)
 {
     Client *c = NULL;
     Client *next = NULL;
-    c = desk->clients;
+    c = startclient(desk);
     while(c)
-    {   
-        next = c->next;
+    {
+        next = nextclient(c);
         cleanupclient(c);
         c = next;
     }
@@ -385,7 +385,7 @@ grid(Desktop *desk)
 	Client *c;
     Monitor *m = desk->mon;
 
-	for(n = 0, c = nexttiled(desk->stack); c; c = nexttiled(c->snext), n++);
+	for(n = 0, c = nexttiled(startstack(desk)); c; c = nexttiled(nextstack(c)), n++);
 	if(n == 0)
     {   return;
     }
@@ -409,7 +409,7 @@ grid(Desktop *desk)
 	cn = 0;
     /* current row number */
 	rn = 0; 
-	for(i = 0, c = nexttiled(desk->stack); c; i++, c = nexttiled(c->snext)) 
+	for(i = 0, c = nexttiled(startstack(desk)); c; i++, c = nexttiled(nextstack(c))) 
     {
 		if((i / rows) + 1 > cols - (n % cols))
         {   rows = n/cols + 1;
@@ -447,7 +447,7 @@ monocle(Desktop *desk)
     const i32 nx = m->wx;
     const i32 ny = m->wy;
 
-    for(c = nexttiled(desk->stack); c; c = nexttiled(c->snext))
+    for(c = nexttiled(startstack(desk)); c; c = nexttiled(nextstack(c)))
     {
         nw = m->ww - (c->bw * 2);
         nh = m->wh - (c->bw * 2);
@@ -492,7 +492,7 @@ restack(Desktop *desk)
     u8 config = 0;
     u8 instack = 0;
     
-    c = desk->stack;
+    c = startstack(desk);
     /* reset client list */
     if(c)
     {   XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&c->win, 1);
@@ -500,11 +500,11 @@ restack(Desktop *desk)
     else
     {   XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking]);
     }
-    for(c = desk->stack; c; c = nextstack(c))
+    for(; c; c = nextstack(c))
     {
-        instack = c->rprev || c->rnext;
+        instack = nextrstack(c) || prevrstack(c);
         /* Client holds both lists so we just check if the next's are the same if not configure it */
-        config = c->rnext != c->snext || !instack;
+        config = nextrstack(c) != nextstack(c) || !instack;
         if(config)
         {   
             XCBConfigureWindow(_wm.dpy, c->win, XCB_CONFIG_WINDOW_SIBLING|XCB_CONFIG_WINDOW_STACK_MODE, &wc);
@@ -619,7 +619,7 @@ tile(Desktop *desk)
     Monitor *m = desk->mon;
 
     n = 0;
-    for(c = nexttiled(desk->stack); c; c = nexttiled(c->snext), ++n);
+    for(c = nexttiled(startstack(desk)); c; c = nexttiled(nextstack(c)), ++n);
 
     if(!n) 
     {   return;
@@ -633,7 +633,7 @@ tile(Desktop *desk)
     }
 
     i = my = ty = 0;
-    for (c = nexttiled(desk->stack); c; c = nexttiled(c->snext))
+    for (c = nexttiled(startstack(desk)); c; c = nexttiled(nextstack(c)))
     {
         if (i < nmaster)
         {
@@ -700,7 +700,7 @@ updatestackpriorityfocus(Desktop *desk)
 {
     Client *c;
     int i = 0;
-    for(c = desk->focus; c; c = nextfocus(c))
+    for(c = startfocus(desk); c; c = nextfocus(c))
     {
         c->rstacknum = ++i;
         if(ISFLOATING(c) && DOCKED(c))

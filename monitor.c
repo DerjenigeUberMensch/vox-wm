@@ -208,7 +208,7 @@ setdesktopcount(Monitor *m, uint16_t desktops)
         {
             if(desk && prevdesktop(desk))
             {   
-                for(c = desk->clients; c; c = nextclient(c))
+                for(c = startclient(desk); c; c = nextclient(c))
                 {   
                     setclientdesktop(c, prevdesktop(desk));
                 } 
@@ -255,7 +255,7 @@ setdesktopsel(Monitor *mon, Desktop *desksel)
         Client *c;
         for(desk = mon->desktops; desk; desk = nextdesktop(desk))
         {
-            for(c = desk->stack; c; c = nextstack(c))
+            for(c = startstack(desk); c; c = nextstack(c))
             {   showhide(c);
             }
         }
@@ -439,7 +439,7 @@ updateclientlist(XCBWindow win, uint8_t type)
             {
                 for(desk = m->desktops; desk; desk = nextdesktop(desk))
                 {
-                    for(c = desk->clients; c; c = nextclient(c))
+                    for(c = startclient(desk); c; c = nextclient(c))
                     {   XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientList], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&(c->win), 1);
                     }
                 }

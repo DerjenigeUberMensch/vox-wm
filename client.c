@@ -612,7 +612,7 @@ focus(Client *c)
     Monitor *selmon = _wm.selmon;
     Desktop *desk  = selmon->desksel;
     if(!c || !ISVISIBLE(c))
-    {   for(c = desk->focus; c && !ISVISIBLE(c) && !KEEPFOCUS(c); c = nextfocus(c));
+    {   for(c = startfocus(desk); c && !ISVISIBLE(c) && !KEEPFOCUS(c); c = nextfocus(c));
     }
     if(desk->sel && desk->sel != c)
     {   unfocus(desk->sel, 0);
@@ -773,6 +773,30 @@ killclient(Client *c, enum KillType type)
         unev->window = win;
         XCBSendEvent(_wm.dpy, _wm.root, 0, XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY, (const char *)&ev);
     }
+}
+
+Client *
+lastclient(Desktop *desk)
+{
+    return desk->clast;
+}
+
+Client *
+lastfocus(Desktop *desk)
+{
+    return desk->flast;
+}
+
+Client *
+laststack(Desktop *desk)
+{
+    return desk->slast;
+}
+
+Client *
+lastrstack(Desktop *desk)
+{
+    return desk->rlast;
 }
 
 void
@@ -1690,6 +1714,30 @@ showhide(Client *c)
     XCBMoveResizeWindow(_wm.dpy, c->win, x, c->y, c->w, c->h);
 }
 
+Client *
+startclient(Desktop *desk)
+{
+    return desk->clients;
+}
+
+Client *
+startfocus(Desktop *desk)
+{
+    return desk->focus;
+}
+
+Client *
+startstack(Desktop *desk)
+{
+    return desk->stack;
+}
+
+Client *
+startrstack(Desktop *desk)
+{
+    return desk->rstack;
+}
+
 void
 unfocus(Client *c, uint8_t setfocus)
 {
@@ -2590,7 +2638,7 @@ wintoclient(XCBWindow win)
     {
         for(desk = m->desktops; desk; desk = nextdesktop(desk))
         {
-            for(c = desk->clients; c; c = nextclient(c))
+            for(c = startclient(desk); c; c = nextclient(c))
             {
                 if(c->win == win)
                 {   
