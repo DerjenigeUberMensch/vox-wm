@@ -105,15 +105,9 @@ struct Button
 
 struct WM
 {
-    int screen;                     /* Screen id            */
-    int numlockmask;                /* numlockmask          */
-
     int running;                    /* Running flag         */
-
-    uint8_t restart;                /* Restart flag         */
-    uint8_t has_error;              /* Error flag           */
-
-    uint8_t pad[2];                 /* Pad                  */
+    int numlockmask;                /* numlockmask          */
+    int screen;                     /* Screen id            */
 
     uint16_t sw;                    /* Screen Height u16    */
     uint16_t sh;                    /* Screen Width  u16    */
@@ -126,6 +120,12 @@ struct WM
     Monitor *mons;                  /* Monitors             */
     XCBKeySymbols *syms;            /* keysym alloc         */
     char *wmname;                   /* WM_NAME              */
+
+    pthread_mutex_t mutex;          /* Mutex for main thread */
+    uint8_t restart;                /* Restart flag         */
+    uint8_t has_error;              /* Error flag           */
+    uint8_t use_threads;            /* Use thread Flag      */
+    uint8_t pad0[5];
 };
 
 struct MotifWmHints
