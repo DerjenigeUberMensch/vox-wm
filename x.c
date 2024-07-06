@@ -23,17 +23,14 @@ getnamefromreply(XCBWindowProperty *namerep)
     char *nstr = NULL;
     if(namerep)
     {
-        if(namerep->type && namerep->length > 0)
-        {
-            uint32_t offset = 0;
-            XCBGetPropertyValueSize(namerep, &offset);
-            char *str = XCBGetPropertyValue(namerep);
-            nstr = malloc(sizeof(char) * offset + sizeof(char));
-            if(nstr)
-            {   
-                memcpy(nstr, str, offset);
-                memcpy(nstr + offset, "\0", sizeof(char));
-            }
+        uint32_t offset = 0;
+        XCBGetPropertyValueSize(namerep, &offset);
+        char *str = XCBGetPropertyValue(namerep);
+        nstr = malloc(sizeof(char) * offset + sizeof(char));
+        if(nstr)
+        {   
+            memcpy(nstr, str, offset);
+            memcpy(nstr + offset, "\0", sizeof(char));
         }
     }
     return nstr;
