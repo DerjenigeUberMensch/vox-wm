@@ -141,6 +141,9 @@ UpdateTrans(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_CO
             if(!ISFLOATING(c))
             {   setfloating(c, 1);
             }
+            setwtypedialog(c, 1);
+            arrange(c->desktop);
+            XCBFlush(_wm.dpy);
         }
         UnlockMainThread();
     }
@@ -155,7 +158,10 @@ UpdateWindowState(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _
         LockMainThread();
         Client *c = wintoclient(cookie->win);
         if(c)
-        {   clientinitwtype(c, prop);
+        {   
+            clientinitwtype(c, prop);
+            arrange(c->desktop);
+            XCBFlush(_wm.dpy);
         }
         UnlockMainThread();
     }
@@ -171,7 +177,10 @@ UpdateWindowType(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _X
         LockMainThread();
         Client *c = wintoclient(cookie->win);
         if(c)
-        {   clientinitwstate(c, prop);
+        {   
+            clientinitwstate(c, prop);
+            arrange(c->desktop);
+            XCBFlush(_wm.dpy);
         }
         UnlockMainThread();
     }
@@ -188,7 +197,10 @@ UpdateSizeHints(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XC
         LockMainThread();
         Client *c = wintoclient(cookie->win);
         if(c)
-        {   updatesizehints(c, &hints);
+        {   
+            updatesizehints(c, &hints);
+            arrange(c->desktop);
+            XCBFlush(_wm.dpy);
         }
         UnlockMainThread();
     }
@@ -203,7 +215,10 @@ UpdateWMHints(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_
         LockMainThread();
         Client *c = wintoclient(cookie->win);
         if(c)
-        {   updatewmhints(c, prop);
+        {   
+            updatewmhints(c, prop);
+            arrange(c->desktop);
+            XCBFlush(_wm.dpy);
         }
         UnlockMainThread();
     }
@@ -343,7 +358,10 @@ UpdateMotifHints(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _X
         LockMainThread();
         Client *c = wintoclient(cookie->win);
         if(c)
-        {   updatemotifhints(c, prop);
+        {   
+            updatemotifhints(c, prop);
+            arrange(c->desktop);
+            XCBFlush(_wm.dpy);
         }
         UnlockMainThread();
     }
