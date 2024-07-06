@@ -136,8 +136,14 @@ UpdateTrans(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_CO
     {   
         LockMainThread();
         Client *c = wintoclient(cookie->win);
+        Client *ctrans = wintoclient(trans);
         if(c)
         {   
+            /* move to right desktop */
+            if(ctrans && ctrans->desktop != c->desktop)
+            {   setclientdesktop(c, ctrans->desktop);
+            }
+            /* set dialog flag(s) */
             if(!ISFLOATING(c))
             {   setfloating(c, 1);
             }
@@ -158,7 +164,7 @@ UpdateWindowState(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _
         LockMainThread();
         Client *c = wintoclient(cookie->win);
         if(c)
-        {   
+        {
             clientinitwtype(c, prop);
             arrange(c->desktop);
             XCBFlush(_wm.dpy);
@@ -440,34 +446,35 @@ GrabQueuedItemWorker(__Property__Cookie__ *cookie_return)
     }
 }
 
-static void *
+void *
 Worker(void *x)
 {
     int screen;
     XCBDisplay *display = XCBOpenDisplay(NULL, &screen);
     __Property__Cookie__ cookie = { .win = 0, .type = 0 };
     if(!display)
-    {   return NULL;
+    {   
+        DEBUG0("Failed to open display for worker");
+        return NULL;
     }
     while(cookie.type != PropExitThread)
     {
         /* wait for stuff to happen */
         pthread_mutex_lock(&__queue.mutex);
         pthread_cond_wait(&__queue.cond, &__queue.mutex);
-
+        pthread_mutex_unlock(&__queue.mutex);
         /* grab if any item */
         GrabQueuedItemWorker(&cookie);
 
-        pthread_mutex_unlock(&__queue.mutex);
         if(cookie.win)
         {   
             UpdateProperty(display, &cookie);
             cookie.win = 0;
         }
     }
+    XCBCloseDisplay(display);
     return NULL;
 }
-
 
 /*
  * RETURN: pthread_create() return values.
@@ -522,15 +529,22 @@ PropDestroyWorkers(uint32_t threads)
 {
     uint32_t i;
     for(i = 0; i < threads; ++i)
-    {
-        PropListen(NULL, 0, PropExitThread);
-        pthread_join(__threads[i], NULL);
+    {   PropListen(NULL, 0, PropExitThread);
+    }
+    volatile uint32_t j;
+    for(j = 0; j < threads; ++j)
+    {   pthread_join(__threads[j], NULL);
     }
 }
 
 void 
 PropInit(void)
 {
+    if(!_wm.use_threads)
+    {   
+        USING_THREADS = 0;
+        return;
+    }
     uint8_t ret = CQueueCreate((void **)&__queue__data, QUEUE_SIZE, sizeof(__Property__Cookie__), &__queue);
     if(ret)
     {   USING_THREADS = 0;
@@ -543,7 +557,9 @@ PropInit(void)
 void
 PropDestroy(void)
 {
-    PropDestroyWorkers(PropGetThreadCount());
+    if(USING_THREADS)
+    {   PropDestroyWorkers(PropGetThreadCount());
+    }
 }
 
 void 
