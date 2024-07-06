@@ -1092,8 +1092,20 @@ visibilitynotify(XCBGenericEvent *event)
     const XCBWindow win         = ev->window;
     const u8 state              = ev->state;
 
-    (void)win;
-    (void)state;
+    switch(state)
+    {
+        case XCB_VISIBILITY_UNOBSCURED:
+            DEBUG("Viewable [%u]", win);
+            break;
+        case XCB_VISIBILITY_FULLY_OBSCURED:
+            DEBUG("Obscured [%u]", win);
+            break;
+        case XCB_VISIBILITY_PARTIALLY_OBSCURED:
+            DEBUG("Visible. [%u]", win);
+            break;
+        default:
+            DEBUG0("Invalid visiblity.");
+    }
 }
 
 void
