@@ -8,7 +8,7 @@
 
 #include "XCB-TRL/xcb_winutil.h"
 #include "queue.h"
-#include "propertynotify.h"
+#include "getprop.h"
 #include "dwm.h"
 
 #define QUEUE_SIZE 1024
