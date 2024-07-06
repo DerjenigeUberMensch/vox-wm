@@ -25,6 +25,7 @@
 #include "util.h"
 #include "dwm.h"
 #include "hashing.h"
+#include "getprop.h"
 #include "keybinds.h"
 /* for HELP/DEBUGGING see under main() or the bottom */
 
@@ -312,6 +313,7 @@ void
 cleanup(void)
 {
     savesession();
+    PropDestroy();
     if(!_wm.dpy)
     {
         /* sometimes due to our own lack of competence we can call quit twice and segfault here */
@@ -1390,8 +1392,15 @@ startup(void)
     {   fputs("WARN: NO_LOCALE_SUPPORT\n", stderr);
     }
     /* init threading */
-    if(pthread_mutex_init(&_wm.mutex, NULL))
-    {   _wm.use_threads = 0;
+    pthread_mutexattr_t attr;
+    /* TODO: Just make toggle functions use a seperate thread isntead of high jacking the main thread #DontBeStupid */
+    _wm.use_threads = 0;
+    if(!pthread_mutexattr_init(&attr))
+    {
+        if(!pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE))
+        {   _wm.use_threads = !pthread_mutex_init(&_wm.mutex, &attr);
+        }
+        pthread_mutexattr_destroy(&attr);
     }
     char *display = NULL;
     _wm.dpy = XCBOpenDisplay(display, &_wm.screen);
@@ -1405,6 +1414,7 @@ startup(void)
     if(display)
     {   setenv("DISPLAY", display, 1);
     }
+    PropInit();
     atexit(exithandler);
 #ifndef DEBUG
     XCBSetErrorHandler(xerror);
