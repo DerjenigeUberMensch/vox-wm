@@ -24,7 +24,6 @@
 
 #include "util.h"
 #include "dwm.h"
-#include "parser.h"
 #include "hashing.h"
 #include "keybinds.h"
 /* for HELP/DEBUGGING see under main() or the bottom */
@@ -342,6 +341,9 @@ cleanup(void)
     if(_wm.dpy)
     {
         XCBCloseDisplay(_wm.dpy);
+        if(_wm.use_threads)
+        {   pthread_mutex_destroy(&_wm.mutex);
+        }
         _wm.dpy = NULL;
     }
 }
@@ -1220,7 +1222,7 @@ setupbar(Monitor *m, Client *bar)
 void
 setupcfg(void)
 {   
-    USInit(&_cfg, CONFIG_FILE);
+    USInit(&_cfg);
 }
 
 void
@@ -1378,6 +1380,10 @@ startup(void)
     if(!setlocale(LC_CTYPE, ""))
     {   fputs("WARN: NO_LOCALE_SUPPORT\n", stderr);
     }
+    /* init threading */
+    if(pthread_mutex_init(&_wm.mutex, NULL))
+    {   _wm.use_threads = 0;
+    }
     char *display = NULL;
     _wm.dpy = XCBOpenDisplay(display, &_wm.screen);
     display = display ? display : getenv("DISPLAY");
@@ -1508,7 +1514,7 @@ updatebargeom(Monitor *m)
     if(ISFIXED(bar))
     {   return;
     }
-    BarSettings *bs = USGetBarSettings(&_cfg);
+    BarSettings *bs = &_cfg.bar;
 
     f32 bxr;
     f32 byr;
@@ -1521,31 +1527,31 @@ updatebargeom(Monitor *m)
         switch(side)
         {   
             case BarSideLeft:
-                bxr = bs->left.x;
-                byr = bs->left.y;
-                bwr = bs->left.w;
-                bhr = bs->left.h;
+                bxr = bs->lx;
+                byr = bs->ly;
+                bwr = bs->lw;
+                bhr = bs->lh;
                 resize(bar, m->mx + (m->mw * bxr), m->my + (m->mh * byr), m->mw * bwr, m->mh * bhr, 1);
                 break;
             case BarSideRight:
-                bxr = bs->right.x;
-                byr = bs->right.y;
-                bwr = bs->right.w;
-                bhr = bs->right.h;
+                bxr = bs->rx;
+                byr = bs->ry;
+                bwr = bs->rw;
+                bhr = bs->rh;
                 resize(bar, m->mx + (m->mw * bxr), m->my + (m->mh * byr), m->mw * bwr, m->mh * bhr, 1);
                 break;
             case BarSideTop:
-                bxr = bs->top.x;
-                byr = bs->top.y;
-                bwr = bs->top.w;
-                bhr = bs->top.h;
+                bxr = bs->tx;
+                byr = bs->ty;
+                bwr = bs->tw;
+                bhr = bs->th;
                 resize(bar, m->mx + (m->mw * bxr), m->my + (m->mh * byr), m->mw * bwr, m->mh * bhr, 1);
                 break;
             case BarSideBottom:
-                bxr = bs->bottom.x;
-                byr = bs->bottom.y;
-                bwr = bs->bottom.w;
-                bhr = bs->bottom.h;
+                bxr = bs->bx;
+                byr = bs->by;
+                bwr = bs->bw;
+                bhr = bs->bh;
                 resize(bar, m->mx + (m->mw * bxr), m->my + (m->mh * byr), m->mw * bwr, m->mh * bhr, 1);
                 break;
         }
@@ -1555,28 +1561,28 @@ updatebargeom(Monitor *m)
         switch(side)
         {
             case BarSideLeft:
-                bs->left.x = bar->x;
-                bs->left.y = bar->y;
-                bs->left.w = bar->w;
-                bs->left.h = bar->h;
+                bs->lx = bar->x;
+                bs->ly = bar->y;
+                bs->lw = bar->w;
+                bs->lh = bar->h;
                 break;
             case BarSideRight:
-                bs->right.x = bar->x;
-                bs->right.y = bar->y;
-                bs->right.w = bar->w;
-                bs->right.h = bar->h;
+                bs->rx = bar->x;
+                bs->ry = bar->y;
+                bs->rw = bar->w;
+                bs->rh = bar->h;
                 break;
             case BarSideTop:
-                bs->top.x = bar->x;
-                bs->top.y = bar->y;
-                bs->top.w = bar->w;
-                bs->top.h = bar->h;
+                bs->tx = bar->x;
+                bs->ty = bar->y;
+                bs->tw = bar->w;
+                bs->th = bar->h;
                 break;
             case BarSideBottom:
-                bs->bottom.x = bar->x;
-                bs->bottom.y = bar->y;
-                bs->bottom.w = bar->w;
-                bs->bottom.h = bar->h;
+                bs->bx = bar->x;
+                bs->by = bar->y;
+                bs->bw = bar->w;
+                bs->bh = bar->h;
                 break;
         }
     }
