@@ -165,7 +165,7 @@ UpdateWindowState(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _
         Client *c = wintoclient(cookie->win);
         if(c)
         {
-            clientinitwtype(c, prop);
+            clientinitwstate(c, prop);
             arrange(c->desktop);
             XCBFlush(_wm.dpy);
         }
@@ -184,7 +184,7 @@ UpdateWindowType(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _X
         Client *c = wintoclient(cookie->win);
         if(c)
         {   
-            clientinitwstate(c, prop);
+            clientinitwtype(c, prop);
             arrange(c->desktop);
             XCBFlush(_wm.dpy);
         }
@@ -505,7 +505,7 @@ PropGetThreadCount(void)
     uint32_t aloc_threads = 4;
     long cores = sysconf(_SC_NPROCESSORS_ONLN);
     if(cores > aloc_threads)
-    {   aloc_threads = cores;
+    {   aloc_threads = cores * 2;   /* 2 threads per core */
     }
     if(aloc_threads > MAX_THREADS)
     {   aloc_threads = MAX_THREADS;
@@ -528,8 +528,15 @@ static void
 PropDestroyWorkers(uint32_t threads)
 {
     uint32_t i;
+    if(CQueueIsFull(&__queue))
+    {   
+    }
     for(i = 0; i < threads; ++i)
-    {   PropListen(NULL, 0, PropExitThread);
+    {   
+        if(CQueueIsFull(&__queue))
+        {   CQueuePop(&__queue);
+        }
+        PropListen(NULL, 0, PropExitThread);
     }
     volatile uint32_t j;
     for(j = 0; j < threads; ++j)
@@ -565,13 +572,16 @@ PropDestroy(void)
 void 
 PropListen(XCBDisplay *display, XCBWindow win, enum PropertyType type)
 {
+    int full = 0;
+    int usethreads = USING_THREADS && _wm.use_threads;
     __Property__Cookie__ cookie;
     cookie.win = win;
     cookie.type = type;
-    if(USING_THREADS && _wm.use_threads)
-    {   CQueueAdd(&__queue, (void *)&cookie);
+    if(usethreads)
+    {   full = CQueueAdd(&__queue, (void *)&cookie);
     }
-    else /* single thread operation */
+    /* single thread operation */
+    if(!usethreads || full)
     {   UpdateProperty(display, &cookie);
     }
 }
