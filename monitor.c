@@ -256,10 +256,16 @@ setdesktopsel(Monitor *mon, Desktop *desksel)
         mon->desksel = desksel;
         Desktop *desk;
         Client *c;
+        for(c = startstack(desksel); c; c = nextstack(c))
+        {   showhide(c);
+        }
         for(desk = mon->desktops; desk; desk = nextdesktop(desk))
         {
-            for(c = startstack(desk); c; c = nextstack(c))
-            {   showhide(c);
+            if(desk != desksel)
+            {
+                for(c = startstack(desk); c; c = nextstack(c))
+                {   showhide(c);
+                }
             }
         }
         updatedesktop();
