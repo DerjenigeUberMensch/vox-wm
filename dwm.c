@@ -351,11 +351,20 @@ cleanup(void)
 void
 eventhandler(XCBGenericEvent *ev)
 {
+    /* TODO: Remove references to other clients, and move _wm.use_threads to run() instead. */
+    if(_wm.use_threads)
+    {   pthread_mutex_lock(&_wm.mutex);
+    }
     /* int for speed */
     const int cleanev = XCB_EVENT_RESPONSE_TYPE(ev);
     /* DEBUG("%s", XCBGetEventName(cleanev)); */
     if(LENGTH(handler) > cleanev)
     {   handler[cleanev](ev);
+    }
+
+    /* TODO: Remove references to other clients, and move _wm.use_threads to run() instead. */
+    if(_wm.use_threads)
+    {   pthread_mutex_unlock(&_wm.mutex);
     }
 }
 
@@ -822,7 +831,7 @@ run(void)
     XCBSync(_wm.dpy);
     while(_wm.running && !XCBNextEvent(_wm.dpy, &ev))
     {
-        eventhandler(ev);
+        eventhandler(ev); 
         free(ev);
         ev = NULL;
     }
