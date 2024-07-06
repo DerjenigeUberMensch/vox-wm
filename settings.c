@@ -1,12 +1,234 @@
-
 #include <stdint.h>
-#include "settings.h"
-#include "parser.h"
-#include "util.h"
-#include "desktop.h"
 #include <string.h>
+#include <stddef.h>
+
+#include "settings.h"
+#include "util.h"
+
+#define CONFIG_FILE             "/var/tmp/dwm-config"   /* todo make dir .config/dwm/config or someting like that */
+
+#define _USER_SETTINGS_HOVER_FOCUS                  ((1 << 0))
+#define _USER_SETTINGS_ENABLE_SERVER_DECORATIONS    ((1 << 1))
+#define _USER_SETTINGS_ENABLE_CLIENT_DECORATIONS    ((1 << 2))
+#define _USER_SETTINGS_PREFER_CLIENT_DECORATIONS    ((1 << 3))
+#define _USER_SETTINGS_C        ((1 << 4))
+#define _USER_SETTINGS_D        ((1 << 5))
+#define _USER_SETTINGS_E        ((1 << 6))
+#define _USER_SETTINGS_F        ((1 << 7))
+#define _USER_SETTINGS_G        ((1 << 8))
+#define _USER_SETTINGS_H        ((1 << 9))
+#define _USER_SETTINGS_I        ((1 << 10))
+#define _USER_SETTINGS_J        ((1 << 11))
+#define _USER_SETTINGS_K        ((1 << 12))
+#define _USER_SETTINGS_L        ((1 << 13))
+#define _USER_SETTINGS_M        ((1 << 14))
+#define _USER_SETTINGS_N        ((1 << 15))
 
 
+/* helper */
+#ifndef FIELD_SIZEOF
+#define FIELD_SIZEOF(t, f) (sizeof(((t*)0)->f))
+#endif
+
+enum
+{
+    Mfact,
+    GapRatio,
+    MCount,
+    Snap,
+    RefreshRate,
+    Flags,
+    MaxCC,
+
+
+    BarLX,
+    BarLY,
+    BarLW,
+    BarLH,
+
+    BarRX,
+    BarRY,
+    BarRW,
+    BarRH,
+
+    BarTX,
+    BarTY,
+    BarTW,
+    BarTH,
+
+    BarBX,
+    BarBY,
+    BarBW,
+    BarBH,
+
+    UserSettingsLAST,
+};
+
+
+static char *const _DATA_ENTRY_NAME[UserSettingsLAST] = 
+{
+    [Mfact] = "Mfact",
+    [GapRatio] = "GapRatio",
+    [MCount] = "MCount",
+    [Snap] = "Snap",
+    [RefreshRate] = "RefreshRate",
+    [Flags] = "Flags",
+    [MaxCC] = "MaxCC",
+
+    [BarLX] = "BarLX",
+    [BarLY] = "BarLY",
+    [BarLW] = "BarLW",
+    [BarLH] = "BarLH",
+
+    [BarRX] = "BarRX",
+    [BarRY] = "BarRY",
+    [BarRW] = "BarRW",
+    [BarRH] = "BarRH",
+
+    [BarTX] = "BarTX",
+    [BarTY] = "BarTY",
+    [BarTW] = "BarTW",
+    [BarTH] = "BarTH",
+
+    [BarBX] = "BarBX",
+    [BarBY] = "BarBY",
+    [BarBW] = "BarBW",
+    [BarBH] = "BarBH",
+};
+
+static unsigned int _DATA_ENTRY_NAME_LEN[UserSettingsLAST] = 
+{
+    /* make all of these sizeof */
+    [Mfact] = sizeof("Mfact"),
+    [GapRatio] = sizeof("GapRatio"),
+    [MCount] = sizeof("MCount"),
+    [Snap] = sizeof("Snap"),
+    [RefreshRate] = sizeof("RefreshRate"),
+    [Flags] = sizeof("Flags"),
+    [MaxCC] = sizeof("MaxCC"),
+
+    [BarLX] = sizeof("BarLX"),
+    [BarLY] = sizeof("BarLY"),
+    [BarLW] = sizeof("BarLW"),
+    [BarLH] = sizeof("BarLH"),
+
+    [BarRX] = sizeof("BarRX"),
+    [BarRY] = sizeof("BarRY"),
+    [BarRW] = sizeof("BarRW"),
+    [BarRH] = sizeof("BarRH"),
+
+    [BarTX] = sizeof("BarTX"),
+    [BarTY] = sizeof("BarTY"),
+    [BarTW] = sizeof("BarTW"),
+    [BarTH] = sizeof("BarTH"),
+
+    [BarBX] = sizeof("BarBX"),
+    [BarBY] = sizeof("BarBY"),
+    [BarBW] = sizeof("BarBW"),
+    [BarBH] = sizeof("BarBH")
+};
+
+static const unsigned int _DATA_ENTRY_SIZE[UserSettingsLAST] = 
+{
+    [Mfact] = FIELD_SIZEOF(UserSettings, mfact),
+    [GapRatio] = FIELD_SIZEOF(UserSettings, gapratio),
+    [MCount] = FIELD_SIZEOF(UserSettings, mcount),
+    [Snap] = FIELD_SIZEOF(UserSettings, snap),
+    [RefreshRate] = FIELD_SIZEOF(UserSettings, refreshrate),
+    [Flags] = FIELD_SIZEOF(UserSettings, flags),
+    [MaxCC] = FIELD_SIZEOF(UserSettings, maxcc),
+
+    /* TODO */
+    [BarLX] = FIELD_SIZEOF(BarSettings, lx),
+    [BarLY] = FIELD_SIZEOF(BarSettings, ly),
+    [BarLW] = FIELD_SIZEOF(BarSettings, lw),
+    [BarLH] = FIELD_SIZEOF(BarSettings, lh),
+
+    [BarRX] = FIELD_SIZEOF(BarSettings, rx),
+    [BarRY] = FIELD_SIZEOF(BarSettings, ry),
+    [BarRW] = FIELD_SIZEOF(BarSettings, rw),
+    [BarRH] = FIELD_SIZEOF(BarSettings, rh),
+
+    [BarTX] = FIELD_SIZEOF(BarSettings, tx),
+    [BarTY] = FIELD_SIZEOF(BarSettings, ty),
+    [BarTW] = FIELD_SIZEOF(BarSettings, tw),
+    [BarTH] = FIELD_SIZEOF(BarSettings, th),
+
+    [BarBX] = FIELD_SIZEOF(BarSettings, bx),
+    [BarBY] = FIELD_SIZEOF(BarSettings, by),
+    [BarBW] = FIELD_SIZEOF(BarSettings, bw),
+    [BarBH] = FIELD_SIZEOF(BarSettings, bh),
+
+};
+
+#define __BAR_OFFSET  (offsetof(UserSettings, bar))
+#define __BAR_OFFSET_INNER(NAME)  (offsetof(BarSettings, NAME))
+
+#define BAR_OFFSET(ITEM_NAME) (__BAR_OFFSET + (__BAR_OFFSET_INNER(ITEM_NAME)))
+
+static const unsigned int _DATA_ENTRY_OFFSET[UserSettingsLAST] = 
+{
+    [Mfact] = offsetof(UserSettings, mfact),
+    [GapRatio] = offsetof(UserSettings, gapratio),
+    [MCount] = offsetof(UserSettings, mcount),
+    [Snap] = offsetof(UserSettings, snap),
+    [RefreshRate] = offsetof(UserSettings, refreshrate),
+    [Flags] = offsetof(UserSettings, flags),
+    [MaxCC] = offsetof(UserSettings, maxcc),
+
+    /* TODO */
+    [BarLX] = BAR_OFFSET(lx),
+    [BarLY] = BAR_OFFSET(ly),
+    [BarLW] = BAR_OFFSET(lw),
+    [BarLH] = BAR_OFFSET(lh),
+
+    [BarRX] = BAR_OFFSET(rx),
+    [BarRY] = BAR_OFFSET(ry),
+    [BarRW] = BAR_OFFSET(rw),
+    [BarRH] = BAR_OFFSET(rh),
+
+    [BarTX] = BAR_OFFSET(tx),
+    [BarTY] = BAR_OFFSET(ty),
+    [BarTW] = BAR_OFFSET(tw),
+    [BarTH] = BAR_OFFSET(th),
+
+    [BarBX] = BAR_OFFSET(bx),
+    [BarBY] = BAR_OFFSET(by),
+    [BarBW] = BAR_OFFSET(bw),
+    [BarBH] = BAR_OFFSET(bh),
+};
+
+static const enum SCType _DATA_ENTRY_TYPE[UserSettingsLAST] = 
+{
+    [Mfact] = SCTypeFLOAT,
+    [GapRatio] = SCTypeFLOAT,
+    [MCount] = SCTypeUSHORT,
+    [Snap] = SCTypeUSHORT,
+    [RefreshRate] = SCTypeUSHORT,
+    [Flags] = SCTypeUSHORT,
+    [MaxCC] = SCTypeUSHORT,
+
+    /* TODO */
+    [BarLX] = SCTypeFLOAT,
+    [BarLY] = SCTypeFLOAT,
+    [BarLW] = SCTypeFLOAT,
+    [BarLH] = SCTypeFLOAT,
+
+    [BarRX] = SCTypeFLOAT,
+    [BarRY] = SCTypeFLOAT,
+    [BarRW] = SCTypeFLOAT,
+    [BarRH] = SCTypeFLOAT,
+
+    [BarTX] = SCTypeFLOAT,
+    [BarTY] = SCTypeFLOAT,
+    [BarTW] = SCTypeFLOAT,
+    [BarTH] = SCTypeFLOAT,
+
+    [BarBX] = SCTypeFLOAT,
+    [BarBY] = SCTypeFLOAT,
+    [BarBW] = SCTypeFLOAT,
+    [BarBH] = SCTypeFLOAT
+};
 
 void
 USSetupCFGVars(
@@ -17,37 +239,18 @@ USSetupCFGVars(
     {   return;
     }
 
-    CFG *cfg = us->cfg;
-    CFGCreateVar(cfg, "MCount", USHORT);
-    CFGCreateVar(cfg, "Layout", UCHAR);
-    CFGCreateVar(cfg, "OLayout", UCHAR);
-    CFGCreateVar(cfg, "DefaultDesk", USHORT);
-    CFGCreateVar(cfg, "HoverFocus", UCHAR);
-    CFGCreateVar(cfg, "RefreshRate", USHORT);
-    CFGCreateVar(cfg, "GapRatio", FLOAT);
-    CFGCreateVar(cfg, "Snap", USHORT);
-    CFGCreateVar(cfg, "MaxClientCount", USHORT);
-    CFGCreateVar(cfg, "MFact", FLOAT);
-    /* Left */
-    CFGCreateVar(cfg, "BarLW", FLOAT);
-    CFGCreateVar(cfg, "BarLH", FLOAT);
-    CFGCreateVar(cfg, "BarLX", FLOAT);
-    CFGCreateVar(cfg, "BarLY", FLOAT);
-    /* Right */
-    CFGCreateVar(cfg, "BarRW", FLOAT);
-    CFGCreateVar(cfg, "BarRH", FLOAT);
-    CFGCreateVar(cfg, "BarRX", FLOAT);
-    CFGCreateVar(cfg, "BarRY", FLOAT);
-    /* Top */
-    CFGCreateVar(cfg, "BarTW", FLOAT);
-    CFGCreateVar(cfg, "BarTH", FLOAT);
-    CFGCreateVar(cfg, "BarTX", FLOAT);
-    CFGCreateVar(cfg, "BarTY", FLOAT);
-    /* Bottom */
-    CFGCreateVar(cfg, "BarBW", FLOAT);
-    CFGCreateVar(cfg, "BarBH", FLOAT);
-    CFGCreateVar(cfg, "BarBX", FLOAT);
-    CFGCreateVar(cfg, "BarBY", FLOAT);
+    SCParser *cfg = us->cfg;
+
+    i32 i;
+    u8 err = 0;
+    const int READONLY = 1;
+    for(i = 0; i < UserSettingsLAST; ++i)
+    {   
+        err = SCParserNewVar(cfg, _DATA_ENTRY_NAME[i], _DATA_ENTRY_NAME_LEN[i], READONLY, _DATA_ENTRY_SIZE[i], _DATA_ENTRY_TYPE[i]);
+        if(err)
+        {   DEBUG("Failed to create: \"%s\"", _DATA_ENTRY_NAME[i]);
+        }
+    }
 }
 
 void
@@ -62,70 +265,103 @@ USSetupCFGDefaults(
     /* Do note these settings are mostly arbitrary numbers that I (the creator) like */
     UserSettings *s = us;
     const u16 nmaster = 1;
-    const u8 hoverfocus = 0;   /* bool */
-    const u8 desktoplayout = Monocle;
-    const u8 odesktoplayout = Tiled;
-    const u16 defaultdesktop = 0;
+
+    const u8 hoverfocus = 0;            /* bool */
+    const u8 serverdecor = 1;           /* bool */
+    const u8 clientdecor = 1;           /* bool */
+    const u8 preferclientdecor = 1;     /* bool */
+
     const u16 refreshrate = 60;
     const float bgw = 0.95f;
     const u16 winsnap = 10;
     const u16 maxcc = 256;      /* Xorg default is 255 or 256, I dont remember */
     const float mfact = 0.55f;
 
-    USSetMCount(s, nmaster);
-    USSetLayout(s, desktoplayout);
-    USSetOLayout(s, odesktoplayout);
-    USSetDefaultDesk(s, defaultdesktop);
-    USSetHoverFocus(s, hoverfocus);
-    USSetRefreshRate(s, refreshrate);
-    USSetGapRatio(s, bgw);
-    USSetSnap(s, winsnap);
-    USSetMaxClientCount(s, maxcc);
-    USSetMFact(s, mfact);
+    s->mcount = nmaster;
+    s->mfact = mfact;
+    s->refreshrate = refreshrate;
+    s->gapratio = bgw;
+    s->snap = winsnap;
+    s->maxcc = maxcc;
 
-    BarSettings *bs = USGetBarSettings(us);
+    /* flags */
+    SETFLAG(s->flags, _USER_SETTINGS_HOVER_FOCUS, hoverfocus);
+    SETFLAG(s->flags, _USER_SETTINGS_ENABLE_SERVER_DECORATIONS, serverdecor);
+    SETFLAG(s->flags, _USER_SETTINGS_ENABLE_CLIENT_DECORATIONS, clientdecor);
+    SETFLAG(s->flags, _USER_SETTINGS_PREFER_CLIENT_DECORATIONS, preferclientdecor);
+
+    BarSettings *bs = &us->bar;
     /* Left Stuff */
-    bs->left.w = .15f;
-    bs->left.h = 1.0f;
-    bs->left.x = 0.0f;
-    bs->left.y = 0.0f;
+    bs->lw = 0.15f;
+    bs->lh = 1.0f;
+    bs->lx = 0.0f;
+    bs->ly = 0.0f;
     /* Right Stuff */
-    bs->right.w = .15f;
-    bs->right.h = 1.0f;
-    bs->right.x = 1.0f - bs->right.w;
-    bs->right.y = 0.0f;
+    bs->rw = 0.15f;
+    bs->rh = 1.0f;
+    bs->rx = 1.0f - bs->rw;
+    bs->ry = 0.0f;
     /* Top Stuff */
-    bs->top.w = 1.0f;
-    bs->top.h = .15f;
-    bs->top.x = 0.0f;
-    bs->top.y = 0.0f;
+    bs->tw = 1.0f;
+    bs->th = 0.15f;
+    bs->tx = 0.0f;
+    bs->ty = 0.0f;
     /* Bottom Stuff */
-    bs->bottom.w = 1.0f;
-    bs->bottom.h = .15f;
-    bs->bottom.x = 0.0f;
-    bs->bottom.y = 1.0f - bs->bottom.h;
+    bs->bw = 1.0f;
+    bs->bh = 0.15f;
+    bs->bx = 0.0f;
+    bs->by = 1.0f - bs->bh;
 }
 
 void
 USInit(
-        UserSettings *settings_init,
-        char *CONFIG_FILE
+        UserSettings *settings_init
         )
 {
     if(!settings_init)
     {   return;
     }
     memset(settings_init, 0, sizeof(UserSettings));
-    settings_init->cfg = CFGCreate(CONFIG_FILE);
+    settings_init->cfg = SCPParserCreate(UserSettingsLAST);
     if(settings_init->cfg)
     {
         USSetupCFGVars(settings_init);
         USSetupCFGDefaults(settings_init);
-        if(CFGLoad(settings_init->cfg))
-        {   
-            /* kinda a lie since we setup defaults before as a failsafe incase we get wack numbers, mostly just for debug purposes though */
-            DEBUG0("Failed to load previous data, loading default settings...");
-            USSave(settings_init);
+        USLoad(settings_init);
+    }
+}
+
+void
+USLoad(
+        UserSettings *settings
+        )
+{
+    if(!settings || !settings->cfg)
+    {   return;
+    }
+
+    SCParser *cfg = settings->cfg;
+    SCItem *item;
+    u8 status = SCParserReadFile(cfg, CONFIG_FILE);
+    if(status)
+    {   
+        DEBUG0("Failed to load previous data, loading defaults...");
+        return;
+    }
+    i32 i;
+    void *data;
+    for(i = 0; i < UserSettingsLAST; ++i)
+    {
+        data = ((uint8_t *)settings) + _DATA_ENTRY_OFFSET[i];
+        item = SCParserSearch(cfg, _DATA_ENTRY_NAME[i]);
+        if(!item)
+        {   item = SCParserSearchSlow(cfg, _DATA_ENTRY_NAME[i]);
+        }
+        if(item)
+        {   SCParserLoad(item, data, _DATA_ENTRY_SIZE[i], _DATA_ENTRY_TYPE[i]);
+        }
+        else
+        {   DEBUG("Failed to load, \"%s\"", _DATA_ENTRY_NAME[i]);
         }
     }
 }
@@ -138,41 +374,13 @@ USSave(
     if(!settings || !settings->cfg)
     {   return;
     }
-    CFG *cfg = settings->cfg;
+    SCParser *cfg = settings->cfg;
     UserSettings *s = settings;
-    BarSettings b = settings->bar;
-    int32_t hoverfocus = USIsHoverFocus(s);
-    CFGSaveVar(cfg, "MCount", &s->mcount);
-    CFGSaveVar(cfg, "Layout", &s->defaultlayout);
-    CFGSaveVar(cfg, "OLayout", &s->odefaultlayout);
-    CFGSaveVar(cfg, "DefaultDesk", &s->defaultdesk);
-    CFGSaveVar(cfg, "HoverFocus", &hoverfocus);
-    CFGSaveVar(cfg, "RefreshRate", &s->refreshrate);
-    CFGSaveVar(cfg, "GapRatio", &s->gapratio);
-    CFGSaveVar(cfg, "Snap", &s->snap);
-    CFGSaveVar(cfg, "MaxClientCount", &s->maxcc);
-    CFGSaveVar(cfg, "MFact", &s->mfact);
-    /* Left */
-    CFGSaveVar(cfg, "BarLW", &b.left.w);
-    CFGSaveVar(cfg, "BarLH", &b.left.h);
-    CFGSaveVar(cfg, "BarLX", &b.left.x);
-    CFGSaveVar(cfg, "BarLY", &b.left.y);
-    /* Right */
-    CFGSaveVar(cfg, "BarRW", &b.right.w);
-    CFGSaveVar(cfg, "BarRH", &b.right.h);
-    CFGSaveVar(cfg, "BarRX", &b.right.x);
-    CFGSaveVar(cfg, "BarRY", &b.right.y);
-    /* Top */
-    CFGSaveVar(cfg, "BarTW", &b.top.w);
-    CFGSaveVar(cfg, "BarTH", &b.top.h);
-    CFGSaveVar(cfg, "BarTX", &b.top.x);
-    CFGSaveVar(cfg, "BarTY", &b.top.y);
-    /* Bottom */
-    CFGSaveVar(cfg, "BarBW", &b.bottom.w);
-    CFGSaveVar(cfg, "BarBH", &b.bottom.h);
-    CFGSaveVar(cfg, "BarBX", &b.bottom.x);
-    CFGSaveVar(cfg, "BarBY", &b.bottom.y);
-    CFGWrite(cfg);
+    i32 i;
+    for(i = 0; i < UserSettingsLAST; ++i)
+    {   SCParserSaveVar(cfg, _DATA_ENTRY_NAME[i], ((uint8_t *)s) + _DATA_ENTRY_OFFSET[i]);
+    }
+    SCParserWrite(cfg, CONFIG_FILE);
 }
 
 void
@@ -183,186 +391,8 @@ USWipe(
     if(!settings || !settings->cfg)
     {   return;
     }
-    CFG *cfg = settings->cfg;
-    CFGDestroy(cfg);
+    SCParser *cfg = settings->cfg;
+    SCParserDestroy(cfg);
     memset(settings, 0, sizeof(UserSettings));
 }
 
-void
-USSetHoverFocus(
-        UserSettings *settings, 
-        uint8_t state
-        )
-{
-    SETFLAG(settings->flags, _USER_SETTINGS_HOVER_FOCUS, state);
-}
-
-uint8_t
-USIsHoverFocus(
-        UserSettings *settings
-        )
-{
-    return !!FLAGSET(settings->flags, _USER_SETTINGS_HOVER_FOCUS);
-}
-
-void
-USSetMFact(
-        UserSettings *settings, 
-        float mfact
-        )
-{
-    settings->mfact = mfact;
-}
-
-float
-USGetMFact(
-        UserSettings *settings
-        )
-{
-    return settings->mfact;
-}
-
-void
-USSetMCount(
-        UserSettings *settings,
-        uint16_t mcount
-        )
-{
-    settings->mcount = mcount;
-}
-
-uint16_t
-USGetMCount(
-        UserSettings *settings
-        )
-{
-    return settings->mcount;
-}
-
-void
-USSetLayout(
-        UserSettings *settings,
-        uint8_t layout
-        )
-{
-    settings->defaultlayout = layout;
-}
-
-uint8_t
-USGetLayout(
-        UserSettings *settings
-        )
-{
-    return settings->defaultlayout;
-}
-
-void
-USSetOLayout(
-        UserSettings *settings,
-        uint8_t layout
-        )
-{
-    settings->odefaultlayout = layout;
-}
-
-uint8_t
-USGetOLayout(
-        UserSettings *settings
-        )
-{
-    return settings->odefaultlayout;
-}
-
-void
-USSetDefaultDesk(
-        UserSettings *settings,
-        uint16_t desk 
-        )
-{
-    settings->defaultdesk = desk;
-}
-
-uint16_t
-USGetDefaultDesk(
-        UserSettings *settings
-        )
-{
-    return settings->defaultdesk;
-}
-
-void
-USSetGapRatio(
-        UserSettings *settings,
-        float ratio
-        )
-{
-    settings->gapratio = ratio;
-}
-
-float
-USGetGapRatio(
-        UserSettings *settings
-        )
-{
-    return settings->gapratio;
-}
-
-void
-USSetSnap(
-        UserSettings *settings,
-        uint16_t snap
-        )
-{
-    settings->snap = snap;
-}
-
-uint16_t
-USGetSnap(
-        UserSettings *settings
-        )
-{
-    return settings->snap;
-}
-
-void
-USSetRefreshRate(
-        UserSettings *settings,
-        uint16_t rate
-        )
-{
-    settings->refreshrate = rate;
-}
-
-uint16_t
-USGetRefreshRate(
-        UserSettings *settings
-        )
-{
-    return settings->refreshrate;
-}
-
-
-void
-USSetMaxClientCount(
-        UserSettings *settings,
-        uint16_t maxcc 
-        )
-{
-    settings->maxcc = maxcc;
-}
-
-uint16_t
-USGetMaxClientCount(
-        UserSettings *settings
-        )
-{
-    return settings->maxcc;
-}
-
-BarSettings *
-USGetBarSettings(
-        UserSettings *settings
-        )
-{
-    return &settings->bar;
-}
