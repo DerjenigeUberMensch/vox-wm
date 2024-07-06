@@ -260,7 +260,7 @@ floating(Desktop *desk)
 void
 grid(Desktop *desk)
 {
-    const float bgwr = USGetGapRatio(&_cfg);
+    const float bgwr = _cfg.gapratio;
 
     i32 n, cols, rows, cn, rn, i, cx, cy, cw, ch;
     i32 nx, ny;
@@ -489,9 +489,9 @@ stackpriority(Client *c1, Client *c2)
 void
 tile(Desktop *desk)
 {
-    const u16 nmaster = USGetMCount(&_cfg);
-    const float mfact = USGetMFact(&_cfg);
-    const float bgwr = USGetGapRatio(&_cfg);
+    const u16 nmaster = _cfg.mcount;
+    const float mfact = _cfg.mfact;
+    const float bgwr = _cfg.gapratio;
 
     i32 h, mw, my, ty;
     i32 n, i;
