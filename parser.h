@@ -1,6 +1,6 @@
 /* MIT License
  *
- * Copyright (c) 2024- Joseph
+ * Copyright (c) 2024 Joseph
  * All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -10,8 +10,8 @@
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
  * 
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ *  The above copyright notice and this permission notice shall be included in all
+ *  copies or substantial portions of the Software.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -21,38 +21,32 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-#ifndef SIMPLE_CONFIG_H 
-#define SIMPLE_CONFIG_H
+#ifndef _SIMPLE_CONFIG_PARSER_H
+#define _SIMPLE_CONFIG_PARSER_H
 
 
-#include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 
-
-typedef struct CFG CFG;
-typedef struct CFGItem CFGItem;
-
-
-struct CFG
+enum SCType
 {
-    char *file;
-    CFGItem *items;
-    CFGItem *last;
+    SCTypeNoType,
+    SCTypeUCHAR,
+    SCTypeCHAR,
+    SCTypeUSHORT,
+    SCTypeSHORT,
+    SCTypeUINT,
+    SCTypeINT,
+    SCTypeFLOAT,
+    SCTypeDOUBLE,
+    SCTypeLONG,
+    SCTypeULONG,
+    SCTypeSTRING,
 };
 
-struct CFGItem
-{
-    uint8_t _type;
-    size_t size;
-    void *data;
-    char *name;
-
-    CFGItem *next;
-    CFGItem *prev;
-};
-
-enum ParseCode
+enum SCParseCode
 {
     ParseSuccess,
     ParseError,
@@ -61,110 +55,139 @@ enum ParseCode
     ParseEOF,
 };
 
-enum CFGType
-{
-    NOTYPE,
-    CHAR,
-    UCHAR,
-    SHORT,
-    USHORT,
-    INT,
-    UINT,
-    LONG,
-    ULONG,
-    FLOAT,
-    DOUBLE,
-    LASTTYPE,
-};
 
+typedef struct _SP_PARSER_STRUT SCParser;
+typedef struct _SP_PARSER_ITEM SCItem;
 
-CFG *
-CFGCreate(
-        char *FILE_NAME
+/* Quick time function, on failure use SCParserSearchSlow();
+ *
+ * RETURN: SCItem * on Success.
+ * RETURN: NULL on Failure.
+ */
+SCItem *
+SCParserSearch(
+        SCParser *parser,
+        const char *const NAME
         );
 
-void
-CFGDestroy(
-        CFG *cfg
+/* Quick time function, on failure use SCParserSearchSlow();
+ *
+ * RETURN: SCItem * on Success.
+ * RETURN: NULL on Failure.
+ */
+SCItem *
+SCParserSearchSlow(
+        SCParser *parser,
+        const char *const NAME
         );
 
-CFGItem *
-CFGCreateItem(
-        void
-        );
-
+/* If no type given data is memcpied to _return,
+ * else data is formated as _optional_type.
+ *
+ * NOTE: If _optional_type specified as STRING User must free resulting char * copied into _return.
+ * NOTE: usage of _optional_type greatly increases chance of data being correct.
+ *
+ * RETURN: 0 on Success.
+ * RETURN: 1 on Failure.
+ */
 int
-CFGCreateVar(
-        CFG *cfg, 
-        char *VarName, 
-        int CFGType
+SCParserLoad(
+        SCItem *item,
+        void *_return,
+        const size_t bytescopy,
+        const enum SCType _optional_type
         );
 
 /*
- * Interpreted by caller.
- *
- * NOTE: Must be SAME TYPE when casting, else undefined behaviour.
- */
-void *
-CFGGetVarValue(
-        CFG *cfg, 
-        char *VarName
-        );
-
-/* Saves data specified by the variable name If it exists. 
- * One must pass in the address of the data wanting to be used, this includes strings interpreted as char *.
- *
- * NOTE: Must be same type.
- *
- * EX: int x = 10; 
- *     CFGSaveVar(MyCfg, "MyVar", &x);
- * EX: char *str = "my cool string";
- *     char str2[] = "my cool string";
- *     CFGSaveVar(MyCfg, "MyVarString", str);
- *     CFGSaveVar(MyCfg, "MyVarStringArray", str2);
- * 
- *
- * RETURN: 0 On Success.
- * RETURN: 1 On Failure.
+ * RETURN: 0 on Success.
+ * RETURN: 1 on Failure.
  */
 int
-CFGSaveVar(
-        CFG *cfg, 
-        char *VarName, 
+SCParserWrite(
+        SCParser *parser,
+        const char *const FILE_NAME
+        );
+
+/* 
+ *
+ * NOTE: No checks are made for unresonable BASE_VAR_COUNT, this is purely a constant optimization.
+ *
+ * RETURN: SCParser * on success.
+ * RETURN: NULL on Failure.
+ */
+SCParser *
+SCPParserCreate(
+        const uint32_t BASE_VAR_COUNT
+        );
+
+/*
+ * Frees parser data, and itself, any references should be terminated.
+ */
+void
+SCParserDestroy(
+        SCParser *parser
+        );
+
+/* Replaces variable data from parser if VAR_NAME found and applicable.
+ *
+ * NOTE: Only searches Previously created variables.
+ *
+ * NOTE: ANY PREVIOUS DATA in parser IS DESTROYED, if present.
+ *
+ * RETURN: 0 on Success.
+ * RETURN: 1 on Failure.
+ */
+int
+SCParserReadFile(
+        SCParser *parser,
+        const char *const FILE_NAME
+        );
+
+
+/*
+ *
+ * NOTE: READONLY_SECTION == 1, VAR_NAME is a const static variable no memory is allocated.
+ * NOTE: READONLY_SECTION == 0, VAR_NAME is not a const static varaible is memory is allocated.
+ *
+ * NOTE: VAR_NAME_FULL_LENGTH is the full length of the string, including the nullbyte '0'.
+ *
+ * NOTE: size is not recomended for usage and unsupported for STRING types.
+ *
+ * RETURN: 0 on Success.
+ * RETURN: 1 on Failure.
+ */
+int
+SCParserNewVar(
+        SCParser *parser,
+        const char *const VAR_NAME,
+        const uint32_t VAR_NAME_FULL_LENGTH,
+        const uint8_t READONLY_SECTION,
+        const size_t size,
+        const enum SCType _optional_type
+        );
+
+/*
+ * RETURN: 0 if VAR_NAME exists.
+ * RETURN: 1 if VAR_NAME doest exist.
+ */
+int
+SCParserDelVar(
+        SCParser *parser,
+        const char *const VAR_NAME
+        );
+/*
+ * NOTE: STRINGS are only saved by pointer reference, undefined behaviour may occur if freed.
+ *
+ * RETURN: 0 on Success.
+ * RETURN: 1 on Failure.
+ */
+int
+SCParserSaveVar(
+        SCParser *parser,
+        const char *const VAR_NAME,
         void *data
         );
-
-/* Writes current data to file.
- */
-int
-CFGWrite(
-        CFG *cfg
-        );
-
-/* Loads CFG to names if possible,
- * RETURN: NonZero on Failure.
- * RETURN: 0 on Success.
- */
-int
-CFGLoad(
-        CFG *OldCfg
-        );
-
-
-
-
-
-
-
-
 
 
 
 #endif
-
-
-
-
-
-
-
