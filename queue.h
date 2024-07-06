@@ -12,11 +12,13 @@ struct CQueue
 {
     int64_t front;
     int64_t rear;
-    void **data;
+    void *data;
     uint32_t datalen;
     size_t datasize;
     pthread_mutex_t mutex;
     pthread_cond_t cond;
+    pthread_spinlock_t spin;
+    uint8_t pad0[4];
 };
 
 /*
@@ -54,7 +56,7 @@ void *CQueueGetLast(CQueue *queue);
  * RETURN: 0 on Success.
  * RETURN: 1 on Failure.
  */
-uint8_t CQueueCreate(void **data, uint32_t datalen, size_t size_of_one_item, CQueue *_Q_RETURN);
+uint8_t CQueueCreate(void *data, uint32_t datalen, size_t size_of_one_item, CQueue *_Q_RETURN);
 /* Frees any data from queue.
  */
 void CQueueDestroy(CQueue *queue);
