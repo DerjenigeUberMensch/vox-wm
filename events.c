@@ -7,6 +7,7 @@
 #include "monitor.h"
 #include "client.h"
 #include "desktop.h"
+#include "getprop.h"
 
 
 extern WM _wm;
@@ -1412,96 +1413,68 @@ propertynotify(XCBGenericEvent *event)
     const XCBTimestamp timestamp= ev->time;
     const u16 state             = ev->state;
 
-
     (void)timestamp;
-
-    Client *c = NULL;
-    u8 sync = 0;
 
     if(state == XCB_PROPERTY_DELETE)
     {   return;
     }
 
-    XCBCookie cookie;
-    XCBCookie cookie2;
-    XCBWindowProperty *prop1;
-    XCBWindowProperty *prop2;
-    XCBWMHints *wmh;
-    XCBWindow trans;
-    uint8_t transstatus = 0;
-    Client *tmp = NULL;
-    if((c = wintoclient(win)))
-    {   
-        switch(atom)
-        {
-            case XCB_ATOM_WM_TRANSIENT_FOR:
-                cookie = XCBGetTransientForHintCookie(_wm.dpy, win);
-                transstatus = XCBGetTransientForHintReply(_wm.dpy, cookie, &trans);
-                if(transstatus)
-                {
-                    if((tmp = wintoclient(trans)))
-                    {   
-                        setwtypedialog(tmp, 1);
-                        sync = 1;
-                    }
-                }
-                break;
-            case XCB_ATOM_WM_HINTS:
-                /* TODO This IS SLOW */
-                cookie = XCBGetWMHintsCookie(_wm.dpy, c->win);
-                wmh = XCBGetWMHintsReply(_wm.dpy, cookie);
-                updatewmhints(c, wmh);
-                free(wmh);
-                sync = 1;
-                break;
-            case XCB_ATOM_WM_NORMAL_HINTS:
-                /* updatewmhints */
-                break;
-            case XCB_ATOM_WM_NAME:
-                goto TITLE;
-                break;
-            case XCB_ATOM_WM_ICON_NAME:
-                break;
-            case XCB_ATOM_WM_CLASS:
-                break;
-            case XCB_ATOM_WM_CLIENT_MACHINE:
-                break;
-            default:
-                /* other atoms */
-                if(atom == motifatom)
-                {   
-                    cookie = XCBGetWindowPropertyCookie(_wm.dpy, c->win, motifatom, 0L, 5L, False, motifatom);
-                    prop1 = XCBGetWindowPropertyReply(_wm.dpy, cookie);
-                    updatemotifhints(c, prop1);
-                    free(prop1);
-                }
-                else if(atom == netatom[NetWMName])
-                {   goto TITLE;
-                }
-                else if(atom == netatom[NetWMWindowType])
-                {   /* TODO */
-                }
-                else if(atom == netatom[NetWMState])
-                {   /* TODO */
-                }
-                break;
-        }
-    }
-    goto END;
-TITLE:
-    cookie = XCBGetWindowPropertyCookie(_wm.dpy, c->win, netatom[NetWMName], 0L, UINT32_MAX, False, netatom[NetUtf8String]);
-    cookie2 = XCBGetWindowPropertyCookie(_wm.dpy, c->win, XCB_ATOM_WM_NAME, 0L, UINT32_MAX, False, XCB_ATOM_STRING);
-    prop1 = XCBGetWindowPropertyReply(_wm.dpy, cookie);
-    prop2 = XCBGetWindowPropertyReply(_wm.dpy, cookie2);
-    char *netwmname = getnamefromreply(prop1);
-    char *wmname = getnamefromreply(prop2);
-    updatetitle(c, netwmname, wmname);
-    free(prop1);
-    free(prop2);
-    sync = 1;
-END:
-    if(sync)
-    {   XCBFlush(_wm.dpy);
+    switch(atom)
+    {
+        case XCB_ATOM_WM_TRANSIENT_FOR:
+            PropListen(_wm.dpy, win, PropTransient);
+            break;
+        case XCB_ATOM_WM_HINTS:
+            PropListen(_wm.dpy, win, PropWMHints);
+            break;
+        case XCB_ATOM_WM_NORMAL_HINTS:
+            PropListen(_wm.dpy, win, PropSizeHints);
+            break;
+        case XCB_ATOM_WM_NAME:
+            PropListen(_wm.dpy, win, PropWMName);
+            break;
+        case XCB_ATOM_WM_ICON_NAME:
+            /* ignore */
+            break;
+        case XCB_ATOM_WM_CLASS:
+            PropListen(_wm.dpy, win, PropWMClass);
+            break;
+        case XCB_ATOM_WM_CLIENT_MACHINE:
+            /* ignore */
+            break;
+        default:
+            /* other atoms */
+            if(atom == motifatom)
+            {   PropListen(_wm.dpy, win, PropMotifHints);
+            }
+            else if(atom == netatom[NetWMName])
+            {   PropListen(_wm.dpy, win, PropNetWMName);
+            }
+            else if(atom == netatom[NetWMWindowType])
+            {   PropListen(_wm.dpy, win, PropWindowType);
+            }
+            else if(atom == netatom[NetWMState])
+            {   PropListen(_wm.dpy, win, PropWindowState);
+            }
+            else if(atom == wmatom[WMProtocols])
+            {   PropListen(_wm.dpy, win, PropWMProtocol);
+            }
+            else if(atom == netatom[NetWMStrut])
+            {   PropListen(_wm.dpy, win, PropStrut);
+            }
+            else if(atom == netatom[NetWMStrutPartial])
+            {   PropListen(_wm.dpy, win, PropStrutp);
+            }
+            else if(atom == netatom[NetWMPid])
+            {   PropListen(_wm.dpy, win, PropPid);
+            }
+            else if(atom == netatom[NetWMIcon])
+            {   PropListen(_wm.dpy, win, PropIcon);
+            }
+            else if(atom == motifatom)
+            {   PropListen(_wm.dpy, win, PropMotifHints);
+            }
+            break;
     }
 }
 
