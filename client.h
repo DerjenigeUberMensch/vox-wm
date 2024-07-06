@@ -3,6 +3,7 @@
 
 
 #include "XCB-TRL/xcb_trl.h"
+#include "decorations.h"
 
 #include <stdint.h>
 
@@ -39,18 +40,9 @@ enum ManageCookies
 };
 
 typedef struct Client Client;
-typedef struct Decoration Decoration;
 
 /* extern structs */
 struct Desktop;
-
-struct Decoration
-{
-    /* TODO */
-    uint16_t w;
-    uint16_t h;
-    XCBWindow win;
-};
 
 struct Client
 {
@@ -160,11 +152,6 @@ void configure(Client *c);
  * RETURN: NULL on Failure.
 */
 Client *createclient(void);
-/* Allocates a decoration with all properties set to 0 or NULL. 
- * RETURN: Decoration * on Success.
- * RETURN: NULL on Failure.
- */
-Decoration *createdecoration(void);
 /* Sets focus to the specified client.
  * NOTE: if NULL provided first visible client in stack is choosen as focus specifier.
  */

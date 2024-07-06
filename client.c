@@ -566,7 +566,7 @@ createclient(void)
 {
     /* This uses calloc as we are currently testing stuff, but we will juse malloc and zero it out later in production*/
     Client *c = calloc(1, sizeof(Client ));
-    Decoration *decor = createdecoration();
+    Decoration *decor = X11DecorCreate();
     if(!c || !decor)
     {   
         DEBUG0("Could not allocate memory for client (OutOfMemory).");
@@ -597,13 +597,6 @@ createclient(void)
     c->classname = NULL;
     c->instancename = NULL;
     return c;
-}
-
-Decoration *
-createdecoration(void)
-{                       /* replace with malloc later... */
-    Decoration *decor = calloc(1, sizeof(Decoration));
-    return decor;
 }
 
 void
@@ -2193,34 +2186,28 @@ updatewindowstate(Client *c, XCBAtom state, uint8_t add_remove_toggle)
     else if (state == netatom[NetWMStateAbove] || state == netatom[NetWMStateAlwaysOnTop])
     {
         if(toggle)
-        {
-            setalwaysontop(c, !ISALWAYSONTOP(c));
+        {   setalwaysontop(c, !ISALWAYSONTOP(c));
         }
         else
-        {
-            setalwaysontop(c, add_remove_toggle);
+        {   setalwaysontop(c, add_remove_toggle);
         }
     }
     else if (state == netatom[NetWMStateDemandAttention])
     {
         if(toggle)
-        {   
-            seturgent(c, !ISURGENT(c));
+        {   seturgent(c, !ISURGENT(c));
         }
         else
-        {
-            seturgent(c, add_remove_toggle);
+        {   seturgent(c, add_remove_toggle);
         }
     }
     else if (state == netatom[NetWMStateFullscreen])
     {
         if(toggle)
-        {
-            setfullscreen(c, !ISFULLSCREEN(c));
+        {   setfullscreen(c, !ISFULLSCREEN(c));
         }
         else
-        {
-            setfullscreen(c, add_remove_toggle);
+        {   setfullscreen(c, add_remove_toggle);
         }
     }
     else if (state == netatom[NetWMStateMaximizedHorz])
@@ -2278,85 +2265,69 @@ updatewindowstate(Client *c, XCBAtom state, uint8_t add_remove_toggle)
     else if (state == netatom[NetWMStateSticky])
     {
         if(toggle)
-        {   
-            setsticky(c, !ISSTICKY(c));
+        {   setsticky(c, !ISSTICKY(c));
         }
         else
-        {
-            setsticky(c, add_remove_toggle);
+        {   setsticky(c, add_remove_toggle);
         }
     }
     else if (state == netatom[NetWMStateBelow])
     {   
         /* this is a wierd state to even configure so idk */
         if(toggle)
-        {   
-            setalwaysonbottom(c, !ISALWAYSONBOTTOM(c));
+        {       setalwaysonbottom(c, !ISALWAYSONBOTTOM(c));
         }
         else
-        {
-            /* attach last */
-            setalwaysonbottom(c, add_remove_toggle);
+        {   setalwaysonbottom(c, add_remove_toggle);
         }
     }
     else if (state == netatom[NetWMStateSkipTaskbar])
     {   
         if(toggle)
-        {
-            setskiptaskbar(c, !SKIPTASKBAR(c));
+        {   setskiptaskbar(c, !SKIPTASKBAR(c));
         }
         else
-        {
-            setskiptaskbar(c, add_remove_toggle);
+        {   setskiptaskbar(c, add_remove_toggle);
         }
     }
     else if (state == netatom[NetWMStateSkipPager])
     {
         if(toggle)
-        {
-            setskippager(c, !SKIPPAGER(c));
+        {   setskippager(c, !SKIPPAGER(c));
         }
         else
-        {
-            setskippager(c, add_remove_toggle);
+        {   setskippager(c, add_remove_toggle);
         }
     }
     else if (state == netatom[NetWMStateHidden])
     {   
         if(toggle)
-        {
-            sethidden(c, !ISHIDDEN(c));
+        {   sethidden(c, !ISHIDDEN(c));
         }
         else
-        {
-            sethidden(c, add_remove_toggle);
+        {   sethidden(c, add_remove_toggle);
         }
     }
     else if (state == netatom[NetWMStateFocused])
     {
         if(toggle)
-        {
-            SETFLAG(c->wstateflags, _STATE_FOCUSED, !ISFOCUSED(c));
+        {   SETFLAG(c->wstateflags, _STATE_FOCUSED, !ISFOCUSED(c));
         }
         else
-        {
-            SETFLAG(c->wstateflags, _STATE_FOCUSED, add_remove_toggle);
+        {   SETFLAG(c->wstateflags, _STATE_FOCUSED, add_remove_toggle);
         }
     }
     else if (state == netatom[NetWMStateShaded])
     {
         if(toggle)
-        {
-            setshaded(c, !ISSHADED(c));
+        {   setshaded(c, !ISSHADED(c));
         }
         else
-        {
-            setshaded(c, add_remove_toggle);
+        {   setshaded(c, add_remove_toggle);
         }
     }
     else
-    {
-        DEBUG0("Could not find state.");
+    {   DEBUG0("Could not find state.");
     }
 }
 
@@ -2395,161 +2366,141 @@ updatewindowtype(Client *c, XCBAtom wtype, uint8_t add_remove_toggle)
     if (wtype == netatom[NetWMWindowTypeDesktop])
     {
         if(toggle)
-        {   
-            setwtypedesktop(c, !ISDESKTOP(c));
+        {   setwtypedesktop(c, !ISDESKTOP(c));
         }
         else
-        {
-            setwtypedesktop(c, add_remove_toggle);
+        {   setwtypedesktop(c, add_remove_toggle);
         }
         /* TODO */
     }
     else if (wtype == netatom[NetWMWindowTypeDock])
     {
         if(toggle)
-        {
-            setwtypedock(c, !ISDOCK(c));
+        {   setwtypedock(c, !ISDOCK(c));
         }
         else
-        {
-            setwtypedock(c, add_remove_toggle);
+        {   setwtypedock(c, add_remove_toggle);
         }
     }
     else if (wtype == netatom[NetWMWindowTypeToolbar])
     {   
         if(toggle)
-        {
-            setwtypetoolbar(c, !ISTOOLBAR(c));
+        {   setwtypetoolbar(c, !ISTOOLBAR(c));
         }
         else
-        {
-            setwtypetoolbar(c, add_remove_toggle);
+        {   setwtypetoolbar(c, add_remove_toggle);
         }
     }
     else if (wtype == netatom[NetWMWindowTypeMenu])
     {
         if(toggle)
-        {
-            setwtypemenu(c, !ISMENU(c));
+        {   setwtypemenu(c, !ISMENU(c));
         }
         else
-        {
-            setwtypemenu(c, add_remove_toggle);
+        {   setwtypemenu(c, add_remove_toggle);
         }
     }
     else if (wtype == netatom[NetWMWindowTypeUtility])
     {
         if(toggle)
-        {
-            setwtypeutility(c, !ISUTILITY(c));
+        {   setwtypeutility(c, !ISUTILITY(c));
         }
         else
-        {
-            setwtypeutility(c, add_remove_toggle);
+        {   setwtypeutility(c, add_remove_toggle);
         }
     }
     else if (wtype == netatom[NetWMWindowTypeSplash])
     {
         if(toggle)
-        {   
-            setwtypesplash(c, !ISSPLASH(c));
+        {   setwtypesplash(c, !ISSPLASH(c));
         }
         else
-        {
-            setwtypesplash(c, add_remove_toggle);
+        {   setwtypesplash(c, add_remove_toggle);
         }
     }
     else if (wtype == netatom[NetWMWindowTypeDialog])
     {   
         if(toggle)
-        { 
-            setwtypedialog(c, !ISDIALOG(c));
+        {   setwtypedialog(c, !ISDIALOG(c));
         }
         else
-        {
-            setwtypedialog(c, add_remove_toggle);
+        {   setwtypedialog(c, add_remove_toggle);
         }
     }
     else if (wtype == netatom[NetWMWindowTypeDropdownMenu])
     {   
         if(toggle)
-        { 
-            setwtypedropdownmenu(c, !ISDROPDOWNMENU(c));
+        {   setwtypedropdownmenu(c, !ISDROPDOWNMENU(c));
         }
         else
-        {
-            setwtypedropdownmenu(c, add_remove_toggle);
+        {   setwtypedropdownmenu(c, add_remove_toggle);
         }
     }
     else if (wtype == netatom[NetWMWindowTypePopupMenu])
     {
         if(toggle)
-        {
-            setwtypepopupmenu(c, !ISPOPUPMENU(c));
+        {   setwtypepopupmenu(c, !ISPOPUPMENU(c));
         }
         else
-        {
-            setwtypepopupmenu(c, add_remove_toggle);
+        {   setwtypepopupmenu(c, add_remove_toggle);
         }
     }
     else if (wtype == netatom[NetWMWindowTypeTooltip])
     {
         if(toggle)
-        {
-            setwtypetooltip(c, !ISTOOLTIP(c));
+        {   setwtypetooltip(c, !ISTOOLTIP(c));
         }
         else
-        {
-            setwtypetooltip(c, add_remove_toggle);
+        {   setwtypetooltip(c, add_remove_toggle);
         }
     }
     else if (wtype == netatom[NetWMWindowTypeNotification])
     { 
         if(toggle)
-        {
-            setwtypenotification(c, !ISNOTIFICATION(c));
+        {   setwtypenotification(c, !ISNOTIFICATION(c));
         }
         else
-        {
-            setwtypenotification(c, add_remove_toggle);
+        {   setwtypenotification(c, add_remove_toggle);
         }
     }
     else if (wtype == netatom[NetWMWindowTypeCombo])
     {
         if(toggle)
-        {
-            setwtypecombo(c, !ISCOMBO(c));
+        {   setwtypecombo(c, !ISCOMBO(c));
         }
         else
-        {
-            setwtypecombo(c, add_remove_toggle);
+        {   setwtypecombo(c, add_remove_toggle);
         }
     }
     else if (wtype == netatom[NetWMWindowTypeDnd])
     {
         if(toggle)
-        {
-            setwtypednd(c, !ISDND(c));
+        {   setwtypednd(c, !ISDND(c));
         }
         else
-        {
-            setwtypednd(c, add_remove_toggle);
+        {   setwtypednd(c, add_remove_toggle);
         }
     }
     else if (wtype == netatom[NetWMWindowTypeNormal])
     {
         if(toggle)
-        {
-            setwtypenormal(c, !ISNORMAL(c));
+        {   setwtypenormal(c, !ISNORMAL(c));
         }
         else
-        {
-            setwtypenormal(c, add_remove_toggle);   
+        {   setwtypenormal(c, add_remove_toggle);   
         }
     }
     else
-    {
-        DEBUG0("Could not find type.");
+    {   
+        xcb_get_atom_name_cookie_t cokie = xcb_get_atom_name(_wm.dpy, wtype);
+        xcb_get_atom_name_reply_t *rep = xcb_get_atom_name_reply(_wm.dpy, cokie, NULL);
+        if(rep)
+        {   DEBUG("Atom type: %s", xcb_get_atom_name_name(rep));
+        }
+        else
+        {   DEBUG0("Could not find type.");
+        }
+        free(rep);
     }
 }
 
