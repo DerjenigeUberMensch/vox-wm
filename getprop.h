@@ -1,5 +1,5 @@
-#ifndef _WM_PROPERTY_NOTIFY_H_
-#define _WM_PROPERTY_NOTIFY_H_
+#ifndef _WM_GET_PROP_H
+#define _WM_GET_PROP_H
 
 #include "XCB-TRL/xcb_trl.h"
 
