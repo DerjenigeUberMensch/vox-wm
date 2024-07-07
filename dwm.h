@@ -62,12 +62,6 @@ enum ClkType
 };
 
 
-enum BarSides
-{
-    BarSideLeft, BarSideRight, BarSideTop, BarSideBottom
-};
-
-
 typedef union  Arg Arg;
 typedef struct Key Key;
 typedef struct Button Button;
@@ -226,10 +220,5 @@ void updatebargeom(Monitor *m);
 void wakeupconnection(XCBDisplay *display, int screen);
 /* Error handler */
 void xerror(XCBDisplay *display, XCBGenericError *error);
-
-/* checks if a client could be a bar */
-int COULDBEBAR(Client *c, uint8_t strut);
-
-enum BarSides GETBARSIDE(Monitor *m, Client *bar, uint8_t get_prev_side);
 
 #endif 
