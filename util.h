@@ -89,7 +89,6 @@ union ARGB
                                           } while(0)
 #define FLAGSET(FLAGS, FLAG)            (((FLAGS & FLAG)))
 
-
 #define DIE(fmt, ...)           do { fprintf(stderr, "[%s:%d] by %s(): " fmt "\n", __FILE__,__LINE__,__func__,__VA_ARGS__); exit(EXIT_FAILURE); } while (0)
 #define DIECAT(fmt, ...)        do { fprintf(stderr, "[%s:%d] by %s()\n"                \
                                     "________________________________\n"                \
