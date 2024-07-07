@@ -166,6 +166,11 @@ Client *restoreclientsession(Desktop *desk, char *buff, uint16_t len);
 Desktop *restoredesktopsession(Monitor *m, char *buff, uint16_t len);
 /* Attempts to restore session from buff for given monitor */
 Monitor *restoremonsession(char *buff, uint16_t len);
+/* Attemps to restore sesion stack/focus/client variables 
+ * RETURN: 1 on Success.
+ * RETURN: 0 on Failure.
+ */
+int restorestacksession(Desktop *desk, char *buff, uint16_t len);
 /* Searches through every monitor for a possible big enough size to fit rectangle parametors specified */
 Monitor *recttomon(int16_t x, int16_t y, uint16_t width, uint16_t height);
 /* Flags RESTART and sets running to 0;

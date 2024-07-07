@@ -443,7 +443,14 @@ restoresession(void)
     Monitor *m = NULL;
     Desktop *desk = NULL;
 
-    FILE *fr = fopen(SESSION_FILE, "r");
+    const char *filename = SESSION_FILE;
+    const int MAX_LENGTH_1 = 1024;
+    const int offset = sizeof(SESSION_FILE) - 1;
+    char buff[MAX_LENGTH_1];
+    memset(buff, 0, MAX_LENGTH_1 * sizeof(char));
+    strcpy(buff, filename);
+    snprintf(buff + offset, MAX_LENGTH_1 - offset, "-%d", getpid());
+    FILE *fr = fopen(buff, "r");
     const int MAX_LENGTH = 1024;
     char str[MAX_LENGTH];
     int output = 0;
@@ -482,39 +489,13 @@ restoresession(void)
             {   continue;
             }
             restoreclientsession(desk, str, MAX_LENGTH);
-            isclient = 0;
-            isclients = 0;
         }
         if(isclients)
         {
             if(!desk)
             {   continue;
             }
-            if(strcmp(str, "ClientsEnd."))
-            {
-                const u8 SSCANF_CHECK_SUM = 1;
-                XCBWindow win = 0;
-                u8 status = sscanf(str, "Client: %u", &win);
-                if(status == SSCANF_CHECK_SUM)
-                {   
-                    Client *c;
-                    if((c = wintoclient(win)))
-                    {   
-                        setclientdesktop(c, desk);
-                        DEBUG("Moving [%u] (Client) to right desktop...", c->win);
-                    }
-                    else
-                    {   DEBUG0("Could not find client in stack...");
-                    }
-                }
-                else
-                {   /* TODO: Technically we dont need isclientsend, but having that prevents a "fail" due to strcmp("Client.", buff); happening after/ */
-                    DEBUG0("Failed to pass move checksum for client.");
-                }
-            }
-            else /* end stream */
-            {   isclients = 0;
-            }
+            isclients = restorestacksession(desk, str, MAX_LENGTH);
         }
         if(isdesk)
         {   
@@ -547,6 +528,7 @@ restoresession(void)
         {
             for(c = desk->clients; c; c = nextclient(c))
             {   
+                showhide(c);
                 XCBMapWindow(_wm.dpy, c->win);
             }
         }
@@ -559,7 +541,7 @@ restoresession(void)
 Client *
 restoreclientsession(Desktop *desk, char *buff, u16 len)
 {
-    const u8 SCANF_CHECK_SUM = 15;
+    const u8 SCANF_CHECK_SUM = 13;
     u8 check = 0;
 
     i32 x, y;
@@ -580,8 +562,6 @@ restoreclientsession(Desktop *desk, char *buff, u16 len)
                     "(x: %d, y: %d) (w: %u h: %u)" " "
                     "(ox: %d, oy: %d) (ow: %u oh: %u)" " "
                     "WindowId: %u" " "
-                    "WindowIdFocus: %u" " "
-                    "WindowIdStack: %u" " "
                     "BorderWidth: %u" " "
                     "BorderColor: %u" " "
                     "Flags: %u" " "
@@ -590,8 +570,6 @@ restoreclientsession(Desktop *desk, char *buff, u16 len)
                     &x, &y, &w, &h,
                     &ox, &oy, &ow, &oh,
                     &WindowId,
-                    &WindowIdFocus,
-                    &WindowIdStack,
                     &BorderWidth,
                     &BorderColor,
                     &Flags,
@@ -602,8 +580,6 @@ restoreclientsession(Desktop *desk, char *buff, u16 len)
     if(check == SCANF_CHECK_SUM)
     {
         cclient = wintoclient(WindowId);
-        Client *fclient = wintoclient(WindowIdFocus);
-        Client *sclient = wintoclient(WindowIdStack);
         if(cclient)
         {
             setborderwidth(cclient, BorderWidth);
@@ -613,25 +589,17 @@ restoreclientsession(Desktop *desk, char *buff, u16 len)
              * So we dont want to resize its old size
              */
             applysizehints(cclient, &ox, &oy, (i32 *)&ow, (i32 *)&oh, 0);
+            applysizehints(cclient, &x, &y, (i32 *)&w, (i32 *)&h, 0);
             cclient->oldx = ox;
             cclient->oldy = oy;
             cclient->oldw = ow;
             cclient->oldh = oh;
-            resize(cclient, x, y, w, h, 0);
+            cclient->x = x;
+            cclient->y = y;
+            cclient->w = w;
+            cclient->h = h;
             cclient->flags = Flags;
             cclient->ewmhflags = __EWMHFlag;
-            /* FIXME: For some reason size isnt propagated correctly requiring this line */
-            showhide(cclient);
-        }
-        if(fclient)
-        {
-            detachfocus(fclient);
-            attachfocus(fclient);
-        }
-        if(sclient)
-        {   
-            detachstack(sclient);
-            attachstack(sclient);
         }
     }
     else
@@ -687,7 +655,6 @@ restoredesktopsession(Monitor *m, char *buff, u16 len)
         if(desk)
         {
             Client *sel = wintoclient(DesktopSel);
-
             if(sel && sel->desktop != desk)
             {   setclientdesktop(sel, desk);
             }
@@ -814,6 +781,56 @@ restoremonsession(char *buff, u16 len)
     return NULL;
 }
 
+int restorestacksession(Desktop *desk, char *buff, uint16_t len)
+{
+    const u8 SSCANF_CHECK_SUM = 1;
+    u8 status = strcmp(buff, "ClientsEnd.");
+    if(status)
+    {
+        XCBWindow client = 0;
+        XCBWindow focus = 0;
+        XCBWindow stack = 0;
+        status = sscanf(buff, 
+                            "Client: %u" " "
+                            "Focus: %u" " "
+                            "Stack: %u" " "
+                            ,
+                            &client,
+                            &focus,
+                            &stack
+                        );
+
+        if(status == SSCANF_CHECK_SUM)
+        {   
+            Client *c;
+            if((c = wintoclient(client)))
+            {   
+                setclientdesktop(c, desk);
+                DEBUG("Moving [%u] (Client) to right desktop...", c->win);
+            }
+            else
+            {   DEBUG0("Could not find client in stack...");
+            }
+            if((c = wintoclient(focus)))
+            {   
+                detachfocus(c);
+                attachfocus(c);
+            }
+            if((c = wintoclient(stack)))
+            {   
+                detachstack(c);
+                attachstack(c);
+            }
+        }
+        else
+        {   /* TODO: Technically we dont need isclientsend, but having that prevents a "fail" due to strcmp("Client.", buff); happening after/ */
+            DEBUG0("Failed to pass move checksum for client.");
+        }
+    }
+    /* end stream */
+    return 0;
+}
+
 void
 restart(void)
 {
@@ -853,10 +870,19 @@ savesession(void)
             ev = NULL;
         }
     }
+    if(!_wm.restart)
+    {   return;
+    }
     /* save client data. */
     const char *filename = SESSION_FILE;
+    const int MAX_LENGTH = 1024;
+    const int offset = sizeof(SESSION_FILE) - 1;
+    char buff[MAX_LENGTH];
+    memset(buff, 0, MAX_LENGTH * sizeof(char));
+    strcpy(buff, filename);
+    snprintf(buff + offset, MAX_LENGTH - offset, "-%d", getpid());
     Monitor *m;
-    FILE *fw = fopen(filename, "w");
+    FILE *fw = fopen(buff, "w");
     if(!fw)
     {   DEBUG0("Failed to alloc FILE(OutOfMemory)");
         return;
@@ -875,20 +901,6 @@ void
 saveclientsession(FILE *fw, Client *c)
 {
     const char *IDENTIFIER = "Client.";
-    static Client *c1 = NULL;
-    static Client *c2 = NULL;
-    XCBWindow focus;
-    XCBWindow stack;
-
-    if(!c1)
-    {   c1 = c->desktop->flast;
-    }
-    if(!c2)
-    {   c2 = c->desktop->slast;
-    }
-
-    focus = c1 ? c1->win : 0;
-    stack = c2 ? c2->win : 0;
 
     fprintf(fw,
             "%s" 
@@ -896,8 +908,6 @@ saveclientsession(FILE *fw, Client *c)
             "(x: %d, y: %d) (w: %u h: %u)" " "
             "(ox: %d, oy: %d) (ow: %u oh: %u)" " "
             "WindowId: %u" " "
-            "WindowIdFocus: %u" " "
-            "WindowIdStack: %u" " "
             "BorderWidth: %u" " "
             "BorderColor: %u" " "
             "Flags: %u" " "
@@ -908,29 +918,19 @@ saveclientsession(FILE *fw, Client *c)
             c->x, c->y, c->w, c->h,
             c->oldx, c->oldy, c->oldw, c->oldh,
             c->win,
-            focus,
-            stack,
             c->bw,
             c->bcol,
             c->flags,
             c->ewmhflags
             );
-
-    if(c1 && prevfocus(c1))
-    {   c1 = prevfocus(c1);
-    }
-    if(c2 && prevstack(c2))
-    {   c2 = prevstack(c2);
-    }
 }
 
 void
 savedesktopsession(FILE *fw, Desktop *desk)
 {
-    const char *IDENTIFIER = "Desktop.";
-    const char *IDENTIFIERCLIENTS = "Clients.";
-    const char *IDENTIFIERCLIENTSEND = "ClientsEnd.";
-    Client *c;
+    const char *const IDENTIFIER = "Desktop.";
+    const char *const IDENTIFIERCLIENTS = "Clients.";
+    const char *const IDENTIFIERCLIENTSEND = "ClientsEnd.";
 
     fprintf(fw,
             "%s"
@@ -947,16 +947,29 @@ savedesktopsession(FILE *fw, Desktop *desk)
             desk->num,
             desk->sel ? desk->sel->win : 0
             );
-    if(desk->clients)
-    {
-        fprintf(fw, "%s\n", IDENTIFIERCLIENTS);
-        for(c = desk->clients; c; c = nextclient(c))
-        {   fprintf(fw, "Client: %u\n", c->win);
-        }
-    }
-    fprintf(fw, "%s\n", IDENTIFIERCLIENTSEND);
     /* make sure correct order */
     reorder(desk);
+    Client *c = desk->clients;
+    Client *focus = desk->focus;
+    Client *stack = desk->stack;
+    fprintf(fw, "%s\n", IDENTIFIERCLIENTS);
+    while(c)
+    {
+        fprintf(fw, 
+                "Client: %u" " "
+                "Focus: %u" " "
+                "Stack: %u" " "
+                "\n"
+                ,
+                c->win,
+                focus ? focus->win : 0,
+                stack ? stack->win : 0
+                );
+        c = nextclient(c);
+        focus = nextfocus(focus);
+        stack = nextstack(stack);
+    }
+    fprintf(fw, "%s\n", IDENTIFIERCLIENTSEND);
     for(c = desk->clast; c; c = prevclient(c))
     {   saveclientsession(fw, c); 
     }
