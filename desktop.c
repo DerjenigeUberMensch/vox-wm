@@ -419,20 +419,20 @@ reorder(Desktop *desk)
  *
  * sort order is 1,2,3,4,5,6
  */
-static inline int
-__stack_priority_helper_above(const unsigned int x1, const unsigned int x2)
+static inline bool
+__stack_priority_helper_above(const u32 x1, const u32 x2)
 {
-    return x1 < x2;
+    return !(x1 & x2);
 }
 /* how to return.
  * reference point is c1.
  *
  * sort order is 6,5,4,3,2,1
  */
-static inline int 
-__stack_priority_helper_below(const unsigned int x1, const unsigned int x2)
+static inline bool
+__stack_priority_helper_below(const u32 x1, const u32 x2)
 {
-    return x1 > x2;
+    return x1 & x2;
 }
 
 void
@@ -445,45 +445,33 @@ setdesktoplayout(Desktop *desk, uint8_t layout)
 int
 stackpriority(Client *c1, Client *c2)
 {
-    const unsigned int dock1 = ISDOCK(c1);
-    const unsigned int dock2 = ISDOCK(c2);
+    const u32 ewmhflag1 = c1->ewmhflags;
+    const u32 ewmhflag2 = c2->ewmhflags;
+    const u32 flags1 = c1->flags;
+    const u32 flags2 = c2->flags;
 
-    const unsigned int above1 = ISALWAYSONTOP(c1);
-    const unsigned int above2 = ISALWAYSONTOP(c2);
+    const u32 ewmhflags = ewmhflag1 ^ ewmhflag2;
+    const u32 flags = flags1 ^ flags2;
 
-    const unsigned int float1 = ISFAKEFLOATING(c1);
-    const unsigned int float2 = ISFAKEFLOATING(c2);
-
-    const unsigned int below1 = ISBELOW(c1);
-    const unsigned int below2 = ISBELOW(c2);
-
-    const unsigned int hidden1 = ISHIDDEN(c1);
-    const unsigned int hidden2 = ISHIDDEN(c2);
-
-    /* Bottom Restacking */
-    if(below1 ^ below2)
-    {   
-        return __stack_priority_helper_below(below1, below2);
+    if(ewmhflags & WStateFlagBelow)
+    {   return __stack_priority_helper_below(ewmhflag1, WStateFlagBelow);
     }
-    else if(hidden1 ^ hidden2)
-    {   
-        return __stack_priority_helper_below(hidden1, hidden2);
+    if(ewmhflags & WStateFlagHidden)
+    {   return __stack_priority_helper_below(ewmhflag1, WStateFlagHidden);
     }
-    /* Regular restacking */
-    else if(dock1 ^ dock2)
-    {   
-        return __stack_priority_helper_above(dock1, dock2);
+    if(ewmhflags & WTypeFlagDock)
+    {   return __stack_priority_helper_above(ewmhflag1, WTypeFlagDock);
     }
-    else if(above1 ^ above2)
-    {   
-        return __stack_priority_helper_above(above1, above2);
+    if(ewmhflags & WStateFlagAbove)
+    {   return __stack_priority_helper_above(ewmhflag1, WStateFlagAbove);
     }
-    else if(float1 ^ float2)
-    {   
-        return __stack_priority_helper_above(float1, float2);
+    if(c1->desktop->layout != Floating && c2->desktop->layout != Floating)
+    {
+        if(flags & ClientFlagFloating)
+        {   return __stack_priority_helper_above(flags1, ClientFlagFloating);
+        }
     }
-    /* focus is forward order so, we must calculate reversely */
-    return __stack_priority_helper_above(c2->rstacknum, c1->rstacknum);
+    return c1->rstacknum > c2->rstacknum;
 }
 
 void
