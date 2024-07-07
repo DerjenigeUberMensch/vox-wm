@@ -570,8 +570,7 @@ restoreclientsession(Desktop *desk, char *buff, u16 len)
     XCBWindow WindowIdFocus;
     XCBWindow WindowIdStack;
     u32 Flags;
-    u32 WTFlags;
-    u32 WSFlags;
+    u32 __EWMHFlag;
     u32 BorderWidth;
     u32 BorderColor;
 
@@ -586,8 +585,7 @@ restoreclientsession(Desktop *desk, char *buff, u16 len)
                     "BorderWidth: %u" " "
                     "BorderColor: %u" " "
                     "Flags: %u" " "
-                    "WTFlags: %u" " "
-                    "WSFlags: %u" " "
+                    "EWMHFlags: %u" " "
                     ,
                     &x, &y, &w, &h,
                     &ox, &oy, &ow, &oh,
@@ -597,8 +595,7 @@ restoreclientsession(Desktop *desk, char *buff, u16 len)
                     &BorderWidth,
                     &BorderColor,
                     &Flags,
-                    &WTFlags,
-                    &WSFlags
+                    &__EWMHFlag
                     );
 
     Client *cclient = NULL;
@@ -622,8 +619,7 @@ restoreclientsession(Desktop *desk, char *buff, u16 len)
             cclient->oldh = oh;
             resize(cclient, x, y, w, h, 0);
             cclient->flags = Flags;
-            cclient->wtypeflags = WTFlags;
-            cclient->wstateflags = WSFlags;
+            cclient->ewmhflags = __EWMHFlag;
             /* FIXME: For some reason size isnt propagated correctly requiring this line */
             showhide(cclient);
         }
@@ -905,8 +901,7 @@ saveclientsession(FILE *fw, Client *c)
             "BorderWidth: %u" " "
             "BorderColor: %u" " "
             "Flags: %u" " "
-            "WTFlags: %u" " "
-            "WSFlags: %u" " "
+            "EWMHFlags: %u" " "
             "\n"
             ,
             IDENTIFIER,
@@ -918,8 +913,7 @@ saveclientsession(FILE *fw, Client *c)
             c->bw,
             c->bcol,
             c->flags,
-            c->wtypeflags,
-            c->wstateflags
+            c->ewmhflags
             );
 
     if(c1 && prevfocus(c1))
