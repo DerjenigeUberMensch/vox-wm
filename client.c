@@ -17,53 +17,6 @@ extern XCBAtom wmatom[];
 extern XCBAtom gtkatom[];
 extern XCBAtom motifatom;
 
-/* Client struct flags */
-#define _FSTATE_FLOATING            ((1 << 0))
-#define _FSTATE_WASFLOATING         ((1 << 1))
-#define _FSTATE_SHOW_DECOR          ((1 << 2))
-#define _FSTATE_OVERRIDE_REDIRECT   ((1 << 3))
-#define _FSTATE_KEEP_FOCUS          ((1 << 4))
-#define _FSTATE_DISABLE_BORDER      ((1 << 5))
-/* EWMH window types */
-#define _TYPE_DESKTOP       ((1 << 0))
-#define _TYPE_DOCK          ((1 << 1))
-#define _TYPE_TOOLBAR       ((1 << 2))
-#define _TYPE_MENU          ((1 << 3))
-#define _TYPE_UTILITY       ((1 << 4))
-#define _TYPE_SPLASH        ((1 << 5))
-#define _TYPE_DIALOG        ((1 << 6))
-#define _TYPE_DROPDOWN_MENU ((1 << 7))
-#define _TYPE_POPUP_MENU    ((1 << 8))
-#define _TYPE_TOOLTIP       ((1 << 9))
-#define _TYPE_NOTIFICATION  ((1 << 10))
-#define _TYPE_COMBO         ((1 << 11))
-#define _TYPE_DND           ((1 << 12))
-#define _TYPE_NORMAL        ((1 << 13))
-
-/* custom types (using spare bits )*/
-#define _TYPE_NEVERFOCUS    ((1 << 14))
-/* Window map states, Widthdrawn, Iconic, Normal. */
-#define _TYPE_MAP_ICONIC    ((1 << 15))
-
-/* EWMH Window states */
-#define _STATE_MODAL                        ((1 << 0))
-#define _STATE_STICKY                       ((1 << 1))
-#define _STATE_MAXIMIZED_VERT               ((1 << 2))  
-#define _STATE_MAXIMIZED_HORZ               ((1 << 3))
-#define _STATE_SHADED                       ((1 << 4))
-#define _STATE_SKIP_TASKBAR                 ((1 << 5))
-#define _STATE_SKIP_PAGER                   ((1 << 6))
-#define _STATE_HIDDEN                       ((1 << 7))
-#define _STATE_FULLSCREEN                   ((1 << 8))
-#define _STATE_ABOVE                        ((1 << 9))
-#define _STATE_BELOW                        ((1 << 10))
-#define _STATE_DEMANDS_ATTENTION            ((1 << 11))
-#define _STATE_FOCUSED                      ((1 << 12))
-
-/* extra states (using spare bits) */
-#define _STATE_SUPPORTED_WM_TAKE_FOCUS      ((1 << 13))
-#define _STATE_SUPPORTED_WM_SAVE_YOURSELF   ((1 << 14))
-#define _STATE_SUPPORTED_WM_DELETE_WINDOW   ((1 << 15))
 
 /* Macro definitions */
 
@@ -72,49 +25,48 @@ u16 OLDHEIGHT(Client *c)        { return (c->oldw + (c->bw * 2)); }
 u16 WIDTH(Client *c)            { return (c->w + (c->bw * 2)); }
 u16 HEIGHT(Client *c)           { return (c->h + (c->bw * 2)); } 
 /* Our custom states */
-int ISALWAYSONTOP(Client *c)    { return c->wstateflags & _STATE_ABOVE; }
-int ISALWAYSONBOTTOM(Client *c) { return c->wstateflags & _STATE_BELOW; }
-int WASFLOATING(Client *c)      { return c->flags & _FSTATE_WASFLOATING; }
-int ISFLOATING(Client *c)       { return c->flags & _FSTATE_FLOATING; }
-int ISOVERRIDEREDIRECT(Client *c) { return c->flags & _FSTATE_OVERRIDE_REDIRECT; }
-int KEEPFOCUS(Client *c)        { return c->flags & _FSTATE_KEEP_FOCUS; }
-int DISABLEBORDER(Client *c)    { return c->flags & _FSTATE_DISABLE_BORDER; }
-int ISFAKEFLOATING(Client *c)   { return c->flags & _FSTATE_FLOATING || c->desktop->layout == Floating; }
+u32 ISALWAYSONTOP(Client *c)    { return c->ewmhflags & WStateFlagAbove; }
+u32 ISALWAYSONBOTTOM(Client *c) { return c->ewmhflags & WStateFlagBelow; }
+u32 WASFLOATING(Client *c)      { return c->flags & ClientFlagWasFloating; }
+u32 ISFLOATING(Client *c)       { return c->flags & ClientFlagFloating; }
+u32 ISOVERRIDEREDIRECT(Client *c) { return c->flags & ClientFlagOverrideRedirect; }
+u32 KEEPFOCUS(Client *c)        { return c->flags & ClientFlagKeepFocus; }
+u32 DISABLEBORDER(Client *c)    { return c->flags & ClientFlagDisableBorder; }
 
-int WASDOCKEDVERT(Client *c)    {   const i16 wy = c->desktop->mon->wy;
+u32 WASDOCKEDVERT(Client *c)    {   const i16 wy = c->desktop->mon->wy;
                                     const u16 wh = c->desktop->mon->wh;
                                     const i16 y = c->oldy;
                                     const u16 h = OLDHEIGHT(c);
                                     return (wy == y) && (wh == h);
                                 }
-int WASDOCKEDHORZ(Client *c)    {   const i16 wx = c->desktop->mon->wx;
+u32 WASDOCKEDHORZ(Client *c)    {   const i16 wx = c->desktop->mon->wx;
                                     const u16 ww = c->desktop->mon->ww;
                                     const i16 x = c->oldx;
                                     const u16 w = OLDWIDTH(c);
                                     return (wx == x) && (ww == w);
                                 }
 
-int WASDOCKED(Client *c)        { return WASDOCKEDVERT(c) & WASDOCKEDHORZ(c); }
+u32 WASDOCKED(Client *c)        { return WASDOCKEDVERT(c) & WASDOCKEDHORZ(c); }
 
-int DOCKEDVERT(Client *c)       {   const i16 wy = c->desktop->mon->wy;
+u32 DOCKEDVERT(Client *c)       {   const i16 wy = c->desktop->mon->wy;
                                     const u16 wh = c->desktop->mon->wh;
                                     const i16 y = c->y;
                                     const u16 h = HEIGHT(c);
                                     return (wy == y) && (wh == h);
                                 }
 
-int DOCKEDHORZ(Client *c)       {   const i16 wx = c->desktop->mon->wx;
+u32 DOCKEDHORZ(Client *c)       {   const i16 wx = c->desktop->mon->wx;
                                     const u16 ww = c->desktop->mon->ww;
                                     const i16 x = c->x;
                                     const u16 w = WIDTH(c);
                                     return (wx == x) && (ww == w);
                                 }
-int DOCKED(Client *c)           { return DOCKEDVERT(c) & DOCKEDHORZ(c); }
+u32 DOCKED(Client *c)           { return DOCKEDVERT(c) & DOCKEDHORZ(c); }
 /* This covers some apps being able to DragWindow/ResizeWindow, in toggle.c
  * (semi-frequently) a user might "accidentally" click on them (me) and basically we dont want that window to be floating because of that user error.
  * So this is a leeway sort function.
  */
-int SHOULDMAXIMIZE(Client *c)   {
+u32 SHOULDMAXIMIZE(Client *c)   {
                                     if(DOCKED(c))
                                     {   return 0;
                                     }
@@ -157,7 +109,7 @@ int SHOULDMAXIMIZE(Client *c)   {
                                 }
 
 /* used in manage */
-int DOCKEDINITIAL(Client *c)    {   Monitor *m = c->desktop->mon;
+u32 DOCKEDINITIAL(Client *c)    {   Monitor *m = c->desktop->mon;
                                     const i16 wx = m->wx;
                                     const i16 wy = m->my;
                                     const i16 mx = m->mx;
@@ -186,26 +138,26 @@ int DOCKEDINITIAL(Client *c)    {   Monitor *m = c->desktop->mon;
                                         ;
                                 }
 
-int ISFIXED(Client *c)          { return (c->minw != 0) && (c->minh != 0) && (c->minw == c->maxw) && (c->minh == c->maxh); }
-int ISURGENT(Client *c)         { return c->wstateflags & _STATE_DEMANDS_ATTENTION; }
+u32 ISFIXED(Client *c)          { return (c->minw != 0) && (c->minh != 0) && (c->minw == c->maxw) && (c->minh == c->maxh); }
+u32 ISURGENT(Client *c)         { return c->ewmhflags & WStateFlagDemandAttention; }
 /* flag */
-int NEVERFOCUS(Client *c)       { return c->wtypeflags & _TYPE_NEVERFOCUS; }
+u32 NEVERFOCUS(Client *c)       { return c->ewmhflags & WStateFlagNeverFocus; }
 /* client state 
  * taken from i3, 
  * polybar kinda sucks at us grabbing their buttons, so we choose to never focus "dock" (generally statusbars) type windows.
  * What does polybar do?:
- * It used to break the whole WM, but that was mitagated from another i3 feature of replay pointing only the main button(s).
+ * It used to break the whole WM, but that was mitagated from another i3 feature of replay pou32ing only the main button(s).
  * Now its only unusable if grabbuttons(), twice, basically the "focus" part of grabbuttons(), which is undisireable.
  */
-int NEVERHOLDFOCUS(Client *c)   { return NEVERFOCUS(c) || ISDOCK(c);}
-int ISMAXHORZ(Client *c)        { return WIDTH(c) == c->desktop->mon->ww; }
-int ISMAXVERT(Client *c)        { return HEIGHT(c) == c->desktop->mon->wh; }
-int ISVISIBLE(Client *c)        { return (c->desktop->mon->desksel == c->desktop || ISSTICKY(c)) && !ISHIDDEN(c); }
-/* int ISVISIBLEGEOM(Client *c) */
-int SHOWDECOR(Client *c)        { return c->flags & _FSTATE_SHOW_DECOR; }
-int ISSELECTED(Client *c)       { return c->desktop->sel == c; }
+u32 NEVERHOLDFOCUS(Client *c)   { return NEVERFOCUS(c) || ISDOCK(c);}
+u32 ISMAXHORZ(Client *c)        { return WIDTH(c) == c->desktop->mon->ww; }
+u32 ISMAXVERT(Client *c)        { return HEIGHT(c) == c->desktop->mon->wh; }
+u32 ISVISIBLE(Client *c)        { return (c->desktop->mon->desksel == c->desktop || ISSTICKY(c)) && !ISHIDDEN(c); }
+/* u32 ISVISIBLEGEOM(Client *c) */
+u32 SHOWDECOR(Client *c)        { return c->flags & ClientFlagShowDecor; }
+u32 ISSELECTED(Client *c)       { return c->desktop->sel == c; }
         
-int COULDBEBAR(Client *c, uint8_t strut) 
+u32 COULDBEBAR(Client *c, uint8_t strut) 
                                 {
                                     const u8 sticky = !!ISSTICKY(c);
                                     const u8 isdock = !!(ISDOCK(c));
@@ -213,46 +165,43 @@ int COULDBEBAR(Client *c, uint8_t strut)
                                     return (sticky && strut && (above || isdock));
                                 }
 /* EWMH Window types */
-int ISDESKTOP(Client *c)        { return c->wtypeflags & _TYPE_DESKTOP; }
-int ISDOCK(Client *c)           { return c->wtypeflags & _TYPE_DOCK; }
-int ISTOOLBAR(Client *c)        { return c->wtypeflags & _TYPE_TOOLBAR; }
-int ISMENU(Client *c)           { return c->wtypeflags & _TYPE_MENU; }
-int ISUTILITY(Client *c)        { return c->wtypeflags & _TYPE_UTILITY; }
-int ISSPLASH(Client *c)         { return c->wtypeflags & _TYPE_SPLASH; }
-int ISDIALOG(Client *c)         { return c->wtypeflags & _TYPE_DIALOG; }
-int ISDROPDOWNMENU(Client *c)   { return c->wtypeflags & _TYPE_DROPDOWN_MENU; }
-int ISPOPUPMENU(Client *c)      { return c->wtypeflags & _TYPE_POPUP_MENU; }
-int ISTOOLTIP(Client *c)        { return c->wtypeflags & _TYPE_TOOLTIP; }
-int ISNOTIFICATION(Client *c)   { return c->wtypeflags & _TYPE_NOTIFICATION; }
-int ISCOMBO(Client *c)          { return c->wtypeflags & _TYPE_COMBO; }
-int ISDND(Client *c)            { return c->wtypeflags & _TYPE_DND; }
-int ISNORMAL(Client *c)         { return c->wtypeflags & _TYPE_NORMAL; }
-int ISMAPICONIC(Client *c)      { return c->wtypeflags & _TYPE_MAP_ICONIC; }
-int ISMAPNORMAL(Client *c)      { return !ISMAPICONIC(c); }
-int WTYPENONE(Client *c)        { return c->wtypeflags == 0; }
+u32 ISDESKTOP(Client *c)        { return c->ewmhflags & WTypeFlagDesktop; }
+u32 ISDOCK(Client *c)           { return c->ewmhflags & WTypeFlagDock; }
+u32 ISTOOLBAR(Client *c)        { return c->ewmhflags & WTypeFlagToolbar; }
+u32 ISMENU(Client *c)           { return c->ewmhflags & WTypeFlagMenu; }
+u32 ISUTILITY(Client *c)        { return c->ewmhflags & WTypeFlagUtility; }
+u32 ISSPLASH(Client *c)         { return c->ewmhflags & WTypeFlagSplash; }
+u32 ISDIALOG(Client *c)         { return c->ewmhflags & WTypeFlagDialog; }
+u32 ISDROPDOWNMENU(Client *c)   { return c->ewmhflags & WTypeFlagDropdownMenu; }
+u32 ISPOPUPMENU(Client *c)      { return c->ewmhflags & WTypeFlagPopupMenu; }
+u32 ISTOOLTIP(Client *c)        { return c->ewmhflags & WTypeFlagTooltip; }
+u32 ISNOTIFICATION(Client *c)   { return c->ewmhflags & WTypeFlagNotification; }
+u32 ISCOMBO(Client *c)          { return c->ewmhflags & WTypeFlagCombo; }
+u32 ISDND(Client *c)            { return c->ewmhflags & WTypeFlagDnd; }
+u32 ISNORMAL(Client *c)         { return c->ewmhflags & WTypeFlagNormal; }
+u32 ISMAPICONIC(Client *c)      { return c->ewmhflags & WStateFlagMapIconic; }
+u32 ISMAPNORMAL(Client *c)      { return !ISMAPICONIC(c); }
 /* EWMH Window states */
-int ISMODAL(Client *c)          { return c->wstateflags & _STATE_MODAL; }
-int ISSTICKY(Client *c)         { return c->wstateflags & _STATE_STICKY; }
+u32 ISMODAL(Client *c)          { return c->ewmhflags & WStateFlagModal; }
+u32 ISSTICKY(Client *c)         { return c->ewmhflags & WStateFlagSticky; }
 /* DONT USE */
-int ISMAXIMIZEDVERT(Client *c)  { return c->wstateflags & _STATE_MAXIMIZED_VERT; }
+u32 ISMAXIMIZEDVERT(Client *c)  { return c->ewmhflags & WStateFlagMaximizedVert; }
 /* DONT USE */
-int ISMAXIMIZEDHORZ(Client *c)  { return c->wstateflags & _STATE_MAXIMIZED_HORZ; }
-int ISSHADED(Client *c)         { return c->wstateflags & _STATE_SHADED; }
-int SKIPTASKBAR(Client *c)      { return c->wstateflags & _STATE_SKIP_TASKBAR; }
-int SKIPPAGER(Client *c)        { return c->wstateflags & _STATE_SKIP_PAGER; }
-int ISHIDDEN(Client *c)         { return c->wstateflags & _STATE_HIDDEN; }
-int ISFULLSCREEN(Client *c)     { return c->wstateflags & _STATE_FULLSCREEN; }
-int ISABOVE(Client *c)          { return c->wstateflags & _STATE_ABOVE; }
-int ISBELOW(Client *c)          { return c->wstateflags & _STATE_BELOW; }
-int DEMANDSATTENTION(Client *c) { return c->wstateflags & _STATE_DEMANDS_ATTENTION; }
-int ISFOCUSED(Client *c)        { return c->wstateflags & _STATE_FOCUSED; }
-int WSTATENONE(Client *c)       { return c->wstateflags == 0; }
+u32 ISMAXIMIZEDHORZ(Client *c)  { return c->ewmhflags & WStateFlagMaximizedHorz; }
+u32 ISSHADED(Client *c)         { return c->ewmhflags & WStateFlagShaded; }
+u32 SKIPTASKBAR(Client *c)      { return c->ewmhflags & WStateFlagSkipTaskbar; }
+u32 SKIPPAGER(Client *c)        { return c->ewmhflags & WStateFlagSkipPager; }
+u32 ISHIDDEN(Client *c)         { return c->ewmhflags & WStateFlagHidden; }
+u32 ISFULLSCREEN(Client *c)     { return c->ewmhflags & WStateFlagFullscreen; }
+u32 ISABOVE(Client *c)          { return c->ewmhflags & WStateFlagAbove; }
+u32 ISBELOW(Client *c)          { return c->ewmhflags & WStateFlagBelow; }
+u32 DEMANDSATTENTION(Client *c) { return c->ewmhflags & WStateFlagDemandAttention; }
+u32 ISFOCUSED(Client *c)        { return c->ewmhflags & WStateFlagFocused; }
+u32 WSTATENONE(Client *c)       { return c->ewmhflags == 0; }
 /* WM Protocol */
-int HASWMTAKEFOCUS(Client *c)   { return c->wstateflags & _STATE_SUPPORTED_WM_TAKE_FOCUS; }
-int HASWMSAVEYOURSELF(Client *c){ return c->wstateflags & _STATE_SUPPORTED_WM_SAVE_YOURSELF; }
-int HASWMDELETEWINDOW(Client *c){ return c->wstateflags & _STATE_SUPPORTED_WM_DELETE_WINDOW; }
-
-
+u32 HASWMTAKEFOCUS(Client *c)   { return c->ewmhflags & WStateFlagWMTakeFocus; }
+u32 HASWMSAVEYOURSELF(Client *c){ return c->ewmhflags & WStateFlagWMSaveYourself; }
+u32 HASWMDELETEWINDOW(Client *c){ return c->ewmhflags & WStateFlagWMDeleteWindow; }
 
 void
 applygravity(const u32 gravity, i16 *x, i16 *y, const u16 w, const u16 h, const u16 bw)
@@ -581,8 +530,8 @@ createclient(void)
     c->w = c->h = 0;
     c->oldx = c->oldy = 0;
     c->oldw = c->oldh = 0;
-    c->wtypeflags = 0;
-    c->wstateflags = 0;
+    c->ewmhflags = 0;
+    c->ewmhflags = 0;
     c->bw = c->oldbw = 0;
     c->bcol = 0;
     c->win = 0;
@@ -1192,13 +1141,13 @@ sendprotocolevent(Client *c, XCBAtom proto)
 void
 setalwaysontop(Client *c, u8 state)
 {
-    SETFLAG(c->wstateflags, _STATE_ABOVE, !!state);
+    SETFLAG(c->ewmhflags, WStateFlagAbove, !!state);
 }
 
 void
 setalwaysonbottom(Client *c, uint8_t state)
 {
-    SETFLAG(c->wstateflags, _STATE_BELOW, !!state);
+    SETFLAG(c->ewmhflags, WStateFlagBelow, !!state);
 }
 
 void
@@ -1403,7 +1352,7 @@ CLEANUP:
 void
 setdisableborder(Client *c, uint8_t state)
 {
-    SETFLAG(c->flags, _FSTATE_DISABLE_BORDER, !!state);
+    SETFLAG(c->flags, ClientFlagDisableBorder, !!state);
 }
 
 void
@@ -1415,97 +1364,97 @@ setclientpid(Client *c, pid_t pid)
 void
 setwtypedesktop(Client *c, uint8_t state)
 {
-    SETFLAG(c->wtypeflags, _TYPE_DESKTOP, !!state);
+    SETFLAG(c->ewmhflags, WTypeFlagDesktop, !!state);
 }
 
 void
 setwtypedialog(Client *c, uint8_t state)
 {
-    SETFLAG(c->wtypeflags, _TYPE_DIALOG, !!state);
+    SETFLAG(c->ewmhflags, WTypeFlagDialog, !!state);
 }
 
 void
 setwtypedock(Client *c, uint8_t state)
 {
-    SETFLAG(c->wtypeflags, _TYPE_DOCK, !!state);
+    SETFLAG(c->ewmhflags, WTypeFlagDock, !!state);
 }
 
 void
 setwtypetoolbar(Client *c, uint8_t state)
 {
-    SETFLAG(c->wtypeflags, _TYPE_TOOLBAR, !!state);
+    SETFLAG(c->ewmhflags, WTypeFlagToolbar, !!state);
 }
 
 void
 setwtypemenu(Client *c, uint8_t state)
 {
-    SETFLAG(c->wtypeflags, _TYPE_MENU, !!state);
+    SETFLAG(c->ewmhflags, WTypeFlagMenu, !!state);
 }
 
 void
 setwtypeneverfocus(Client *c, uint8_t state)
 {
-    SETFLAG(c->wtypeflags, _TYPE_NEVERFOCUS, !!state);
+    SETFLAG(c->ewmhflags, WStateFlagNeverFocus, !!state);
 }
 
 void
 setwtypeutility(Client *c, uint8_t state)
 {
-    SETFLAG(c->wtypeflags, _TYPE_UTILITY, !!state);
+    SETFLAG(c->ewmhflags, WTypeFlagUtility, !!state);
 }
 
 void
 setwtypesplash(Client *c, uint8_t state)
 {
-    SETFLAG(c->wtypeflags, _TYPE_SPLASH, !!state);
+    SETFLAG(c->ewmhflags, WTypeFlagSplash, !!state);
 }
 
 void
 setwtypedropdownmenu(Client *c, uint8_t state)
 {
-    SETFLAG(c->wtypeflags, _TYPE_DROPDOWN_MENU, !!state);
+    SETFLAG(c->ewmhflags, WTypeFlagDropdownMenu, !!state);
 }
 
 void
 setwtypepopupmenu(Client *c, uint8_t state)
 {
-    SETFLAG(c->wtypeflags, _TYPE_POPUP_MENU, !!state);
+    SETFLAG(c->ewmhflags, WTypeFlagPopupMenu, !!state);
 }
 
 void
 setwtypetooltip(Client *c, uint8_t state)
 {
-    SETFLAG(c->wtypeflags, _TYPE_TOOLTIP, !!state);
+    SETFLAG(c->ewmhflags, WTypeFlagTooltip, !!state);
 }
 
 void
 setwtypenotification(Client *c, uint8_t state)
 {
-    SETFLAG(c->wtypeflags, _TYPE_NOTIFICATION, !!state);
+    SETFLAG(c->ewmhflags, WTypeFlagNotification, !!state);
 }
 
 void
 setwtypecombo(Client *c, uint8_t state)
 {
-    SETFLAG(c->wtypeflags, _TYPE_COMBO, !!state);
+    SETFLAG(c->ewmhflags, WTypeFlagCombo, !!state);
 }
 
 void
 setwtypednd(Client *c, uint8_t state)
 {
-    SETFLAG(c->wtypeflags, _TYPE_DND, !!state);
+    SETFLAG(c->ewmhflags, WTypeFlagDnd, !!state);
 }
 
 void
 setwtypenormal(Client *c, uint8_t state)
 {
-    SETFLAG(c->wtypeflags, _TYPE_NORMAL, !!state);
+    SETFLAG(c->ewmhflags, WTypeFlagNormal, !!state);
 }
 
 void
 setwtypemapiconic(Client *c, uint8_t state)
 {
-    SETFLAG(c->wtypeflags, _TYPE_MAP_ICONIC, !!state);
+    SETFLAG(c->ewmhflags, WStateFlagMapIconic, !!state);
 }
 
 void
@@ -1517,31 +1466,31 @@ setwtypemapnormal(Client *c, uint8_t state)
 void 
 setwmtakefocus(Client *c, uint8_t state)
 {
-    SETFLAG(c->wstateflags, _STATE_SUPPORTED_WM_TAKE_FOCUS, !!state);
+    SETFLAG(c->ewmhflags, WStateFlagWMTakeFocus, !!state);
 }
 
 void 
 setwmsaveyourself(Client *c, uint8_t state)
 {
-    SETFLAG(c->wstateflags, _STATE_SUPPORTED_WM_SAVE_YOURSELF, !!state);
+    SETFLAG(c->ewmhflags, WStateFlagWMSaveYourself, !!state);
 }
 
 void 
 setwmdeletewindow(Client *c, uint8_t state)
 {
-    SETFLAG(c->wstateflags, _STATE_SUPPORTED_WM_DELETE_WINDOW, !!state);
+    SETFLAG(c->ewmhflags, WStateFlagWMDeleteWindow, !!state);
 }
 
 void
 setskippager(Client *c, uint8_t state)
 {
-    SETFLAG(c->wstateflags, _STATE_SKIP_PAGER, !!state);
+    SETFLAG(c->ewmhflags, WStateFlagSkipPager, !!state);
 }
 
 void
 setskiptaskbar(Client *c, uint8_t state)
 {
-    SETFLAG(c->wstateflags, _STATE_SKIP_TASKBAR, !!state);
+    SETFLAG(c->ewmhflags, WStateFlagSkipTaskbar, !!state);
 }
 
 void
@@ -1560,7 +1509,7 @@ setshowdecor(Client *c, uint8_t state)
         {   XCBUnmapWindow(_wm.dpy, c->decor->win);
         }
     }
-    SETFLAG(c->flags, _FSTATE_SHOW_DECOR, !!state);
+    SETFLAG(c->flags, ClientFlagShowDecor, !!state);
 }
 
 void
@@ -1578,14 +1527,14 @@ setfullscreen(Client *c, u8 state)
         setborderwidth(c, c->oldbw);
     }
     updateborderwidth(c);
-    SETFLAG(c->wstateflags, _STATE_FULLSCREEN, !!state);
+    SETFLAG(c->ewmhflags, WStateFlagFullscreen, !!state);
 }
 
 void
 setfloating(Client *c, uint8_t state)
 {
-    SETFLAG(c->flags, _FSTATE_WASFLOATING, !!(c->flags & _FSTATE_FLOATING));
-    SETFLAG(c->flags, _FSTATE_FLOATING, !!state);
+    SETFLAG(c->flags, ClientFlagWasFloating, !!(c->flags & ClientFlagFloating));
+    SETFLAG(c->flags, ClientFlagFloating, !!state);
 }
 
 void
@@ -1596,7 +1545,7 @@ setfocus(Client *c)
         XCBSetInputFocus(_wm.dpy, c->win, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
         XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&(c->win), 1);
         setclientnetstate(c, netatom[NetWMStateFocused], 1);
-        SETFLAG(c->wstateflags, _STATE_FOCUSED, 1);
+        SETFLAG(c->ewmhflags, WStateFlagFocused, 1);
     }
     if(HASWMTAKEFOCUS(c))
     {   sendprotocolevent(c, wmatom[WMTakeFocus]);
@@ -1616,49 +1565,49 @@ sethidden(Client *c, uint8_t state)
         setclientstate(c, XCB_WINDOW_NORMAL_STATE);
         setwtypemapnormal(c, 1);
     }
-    SETFLAG(c->wstateflags, _STATE_HIDDEN, !!state);
+    SETFLAG(c->ewmhflags, WStateFlagHidden, !!state);
 }
 
 void 
 setkeepfocus(Client *c, uint8_t state)
 {
-    SETFLAG(c->flags, _FSTATE_KEEP_FOCUS, !!state);
+    SETFLAG(c->flags, ClientFlagKeepFocus, !!state);
 }
 
 void
 setmaximizedvert(Client *c, uint8_t state)
 {
-    SETFLAG(c->wstateflags, _STATE_MAXIMIZED_VERT, !!state);
+    SETFLAG(c->ewmhflags, WStateFlagMaximizedVert, !!state);
 }
 
 void
 setmaximizedhorz(Client *c, uint8_t state)
 {
-    SETFLAG(c->wstateflags, _STATE_MAXIMIZED_HORZ, !!state);
+    SETFLAG(c->ewmhflags, WStateFlagMaximizedHorz, !!state);
 }
 
 void
 setshaded(Client *c, uint8_t state)
 {
-    SETFLAG(c->wstateflags, _STATE_SHADED, !!state);
+    SETFLAG(c->ewmhflags, WStateFlagShaded, !!state);
 }
 
 void
 setmodal(Client *c, uint8_t state)
 {
-    SETFLAG(c->wstateflags, _STATE_MODAL, !!state);
+    SETFLAG(c->ewmhflags, WStateFlagModal, !!state);
 }
 
 void
 setoverrideredirect(Client *c, uint8_t state)
 {
-    SETFLAG(c->flags, _FSTATE_OVERRIDE_REDIRECT, !!state);
+    SETFLAG(c->flags, ClientFlagOverrideRedirect, !!state);
 }
 
 void
 setsticky(Client *c, u8 state)
 {
-    SETFLAG(c->wstateflags, _STATE_STICKY, !!state);
+    SETFLAG(c->ewmhflags, WStateFlagSticky, !!state);
 }
 
 void
@@ -1666,7 +1615,7 @@ seturgent(Client *c, uint8_t state)
 {
     XCBCookie wmhcookie = XCBGetWMHintsCookie(_wm.dpy, c->win);
     XCBWMHints *wmh = XCBGetWMHintsReply(_wm.dpy, wmhcookie);
-    SETFLAG(c->wstateflags, _STATE_DEMANDS_ATTENTION, !!state);
+    SETFLAG(c->ewmhflags, WStateFlagDemandAttention, !!state);
     if(state)
     {   /* set window border */   
     }
@@ -1741,7 +1690,7 @@ unfocus(Client *c, uint8_t setfocus)
         XCBSetInputFocus(_wm.dpy, _wm.root, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
         XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow]);
     }
-    SETFLAG(c->wstateflags, _STATE_FOCUSED, 0);
+    SETFLAG(c->ewmhflags, WStateFlagFocused, 0);
 }
 
 void
@@ -2311,10 +2260,10 @@ updatewindowstate(Client *c, XCBAtom state, uint8_t add_remove_toggle)
     else if (state == netatom[NetWMStateFocused])
     {
         if(toggle)
-        {   SETFLAG(c->wstateflags, _STATE_FOCUSED, !ISFOCUSED(c));
+        {   SETFLAG(c->ewmhflags, WStateFlagFocused, !ISFOCUSED(c));
         }
         else
-        {   SETFLAG(c->wstateflags, _STATE_FOCUSED, add_remove_toggle);
+        {   SETFLAG(c->ewmhflags, WStateFlagFocused, add_remove_toggle);
         }
     }
     else if (state == netatom[NetWMStateShaded])
@@ -2536,7 +2485,7 @@ updatewmhints(Client *c, XCBWMHints *wmh)
         else
         {   
             /* dont put seturgent() here cause that would just undo what we did and be recursive */
-            SETFLAG(c->wstateflags, _STATE_DEMANDS_ATTENTION, !!(wmh->flags & XCB_WM_HINT_URGENCY));
+            SETFLAG(c->ewmhflags, WStateFlagDemandAttention, !!(wmh->flags & XCB_WM_HINT_URGENCY));
         }
         if(wmh->flags & XCB_WM_HINT_INPUT)
         {   setwtypeneverfocus(c, !wmh->input);

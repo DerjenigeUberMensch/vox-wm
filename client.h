@@ -6,6 +6,61 @@
 #include "decorations.h"
 
 #include <stdint.h>
+/* EWMH window types */
+enum EWMHFlags
+{
+    /* Window Type */
+    WTypeFlagDesktop =          1u << 0,
+    WTypeFlagDock =             1u << 1,
+    WTypeFlagToolbar =          1u << 2,
+    WTypeFlagMenu =             1u << 3,
+    WTypeFlagUtility =          1u << 4,
+    WTypeFlagSplash =           1u << 5,
+    WTypeFlagDialog =           1u << 6,
+    WTypeFlagDropdownMenu =     1u << 7,
+    WTypeFlagPopupMenu =        1u << 8,
+    WTypeFlagTooltip =          1u << 9,
+    WTypeFlagNotification =     1u << 10,
+    WTypeFlagCombo =            1u << 11,
+    WTypeFlagDnd =              1u << 12,
+    WTypeFlagNormal =           1u << 13,
+
+    /* Window State */
+    WStateFlagModal =           1u << 14,
+    WStateFlagSticky =          1u << 15,
+    WStateFlagMaximizedVert =   1u << 16,
+    WStateFlagMaximizedHorz =   1u << 17,
+    WStateFlagShaded =          1u << 18,
+    WStateFlagSkipTaskbar =     1u << 19,
+    WStateFlagSkipPager =       1u << 20,
+    WStateFlagHidden =          1u << 21,
+    WStateFlagFullscreen =      1u << 22,
+    WStateFlagAbove =           1u << 23,
+    WStateFlagBelow =           1u << 24,
+    WStateFlagDemandAttention = 1u << 25,
+    WStateFlagFocused =         1u << 26,
+
+    /* Extra Bits */
+    WStateFlagWMTakeFocus =     1u << 27,
+    WStateFlagWMSaveYourself =  1u << 28,
+    WStateFlagWMDeleteWindow =  1u << 29,
+    WStateFlagNeverFocus =      1u << 30,
+/* Iso prevents it cause why not */
+/*    WStateFlagMapIconic =       1u << 31,     */
+};
+/* Window map states, Widthdrawn, Iconic, Normal. */
+#define WStateFlagMapIconic     (1u << 31)
+
+/* Client struct flags */
+enum ClientFlags
+{
+    ClientFlagFloating = 1u << 0,
+    ClientFlagWasFloating = 1 << 1,
+    ClientFlagShowDecor = 1u << 2,
+    ClientFlagKeepFocus = 1u << 4,
+    ClientFlagDisableBorder = 1u << 5,
+    ClientFlagOverrideRedirect = 1u << 6,
+};
 
 /* kill client type */
 enum KillType 
@@ -39,10 +94,17 @@ enum ManageCookies
     ManageCookieLAST
 };
 
+enum BarSides
+{
+    BarSideLeft, BarSideRight, BarSideTop, BarSideBottom
+};
+
+
 typedef struct Client Client;
 
 /* extern structs */
 struct Desktop;
+struct Monitor;
 
 struct Client
 {
@@ -58,12 +120,6 @@ struct Client
 
     uint16_t oldw;      /* Previous Width           */
     uint16_t oldh;      /* Previous Height          */
-
-
-    uint16_t wtypeflags;/* Window type flags        */
-    uint16_t wstateflags;/* Window state flags      */
-
-    uint32_t flags;     /* Misc States              */
 
 
     uint16_t bw;        /* Border Width             */
@@ -112,7 +168,9 @@ struct Client
     uint32_t *icon;     /* Array of icon values     */
 
     uint16_t rstacknum; /* Used in calculating pos  */
-    uint8_t pad0[6];
+    uint16_t flags;     /* Misc States              */
+
+    uint32_t ewmhflags; /* EWMH types/states        */
 };
 
 
@@ -454,76 +512,76 @@ void unmaximizevert(Client *c);
 
 /* MACROS */
 
-int ISALWAYSONTOP(Client *c);
-int ISALWAYSONBOTTOM(Client *c);
-int WASFLOATING(Client *c);
-int ISFLOATING(Client *c);
-int ISOVERRIDEREDIRECT(Client *c);
-int KEEPFOCUS(Client *c);
-int DISABLEBORDER(Client *c);
-int ISFAKEFLOATING(Client *c);
-int DOCKEDVERT(Client *c);
-int DOCKEDHORZ(Client *c);
-int DOCKED(Client *c);
-int SHOULDMAXIMIZE(Client *c);
-int WASDOCKEDVERT(Client *c);
-int WASDOCKEDHORZ(Client *c);
-int WASDOCKED(Client *c);
-int ISFIXED(Client *c);
-int ISURGENT(Client *c);
+/* checks if a client could be a bar */
+uint32_t COULDBEBAR(Client *c, uint8_t strut);
+uint32_t ISALWAYSONTOP(Client *c);
+uint32_t ISALWAYSONBOTTOM(Client *c);
+uint32_t WASFLOATING(Client *c);
+uint32_t ISFLOATING(Client *c);
+uint32_t ISOVERRIDEREDIRECT(Client *c);
+uint32_t KEEPFOCUS(Client *c);
+uint32_t DISABLEBORDER(Client *c);
+uint32_t DOCKEDVERT(Client *c);
+uint32_t DOCKEDHORZ(Client *c);
+uint32_t DOCKED(Client *c);
+uint32_t SHOULDMAXIMIZE(Client *c);
+uint32_t WASDOCKEDVERT(Client *c);
+uint32_t WASDOCKEDHORZ(Client *c);
+uint32_t WASDOCKED(Client *c);
+uint32_t ISFIXED(Client *c);
+uint32_t ISURGENT(Client *c);
 /* flag */
-int NEVERFOCUS(Client *c);
+uint32_t NEVERFOCUS(Client *c);
 /* client state */
-int NEVERHOLDFOCUS(Client *c);
-int ISVISIBLE(Client *c);
-int SHOWDECOR(Client *c);
-int ISSELECTED(Client *c);
+uint32_t NEVERHOLDFOCUS(Client *c);
+uint32_t ISVISIBLE(Client *c);
+uint32_t SHOWDECOR(Client *c);
+uint32_t ISSELECTED(Client *c);
 
 /* EWMH Window types */
-int ISDESKTOP(Client *c);
-int ISDOCK(Client *c);
-int ISTOOLBAR(Client *c);
-int ISMENU(Client *c);
-int ISUTILITY(Client *c);
-int ISSPLASH(Client *c);
-int ISDIALOG(Client *c);
-int ISDROPDOWNMENU(Client *c);
-int ISPOPUPMENU(Client *c);
-int ISTOOLTIP(Client *c);
-int ISNOTIFICATION(Client *c);
-int ISCOMBO(Client *c);
-int ISDND(Client *c);
-int ISNORMAL(Client *c);
-int ISMAPICONIC(Client *c);
-int ISMAPNORMAL(Client *c);
-int WTYPENONE(Client *c);
+uint32_t ISDESKTOP(Client *c);
+uint32_t ISDOCK(Client *c);
+uint32_t ISTOOLBAR(Client *c);
+uint32_t ISMENU(Client *c);
+uint32_t ISUTILITY(Client *c);
+uint32_t ISSPLASH(Client *c);
+uint32_t ISDIALOG(Client *c);
+uint32_t ISDROPDOWNMENU(Client *c);
+uint32_t ISPOPUPMENU(Client *c);
+uint32_t ISTOOLTIP(Client *c);
+uint32_t ISNOTIFICATION(Client *c);
+uint32_t ISCOMBO(Client *c);
+uint32_t ISDND(Client *c);
+uint32_t ISNORMAL(Client *c);
+uint32_t ISMAPICONIC(Client *c);
+uint32_t ISMAPNORMAL(Client *c);
 
 /* EWMH Window states */
-int ISMODAL(Client *c);
-int ISSTICKY(Client *c);
-int ISMAXIMIZEDVERT(Client *c);
-int ISMAXIMIZEDHORZ(Client *c);
-int ISSHADED(Client *c);
-int SKIPTASKBAR(Client *c);
-int SKIPPAGER(Client *c);
-int ISHIDDEN(Client *c);
-int ISFULLSCREEN(Client *c);
-int ISABOVE(Client *c);
-int ISBELOW(Client *c);
-int DEMANDSATTENTION(Client *c);
-int ISFOCUSED(Client *c);
-int WSTATENONE(Client *c);
+uint32_t ISMODAL(Client *c);
+uint32_t ISSTICKY(Client *c);
+uint32_t ISMAXIMIZEDVERT(Client *c);
+uint32_t ISMAXIMIZEDHORZ(Client *c);
+uint32_t ISSHADED(Client *c);
+uint32_t SKIPTASKBAR(Client *c);
+uint32_t SKIPPAGER(Client *c);
+uint32_t ISHIDDEN(Client *c);
+uint32_t ISFULLSCREEN(Client *c);
+uint32_t ISABOVE(Client *c);
+uint32_t ISBELOW(Client *c);
+uint32_t DEMANDSATTENTION(Client *c);
+uint32_t ISFOCUSED(Client *c);
 
 /* WM Protocol */
-int HASWMTAKEFOCUS(Client *c);
-int HASWMSAVEYOURSELF(Client *c);
-int HASWMDELETEWINDOW(Client *c);
+uint32_t HASWMTAKEFOCUS(Client *c);
+uint32_t HASWMSAVEYOURSELF(Client *c);
+uint32_t HASWMDELETEWINDOW(Client *c);
 
 uint16_t OLDWIDTH(Client *c);
 uint16_t OLDHEIGHT(Client *c);
 uint16_t WIDTH(Client *c);
 uint16_t HEIGHT(Client *c);
 
+enum BarSides GETBARSIDE(struct Monitor *m, Client *bar, uint8_t get_prev_side);
 
 
 
