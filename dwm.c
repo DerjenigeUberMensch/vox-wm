@@ -559,7 +559,7 @@ restoresession(void)
 Client *
 restoreclientsession(Desktop *desk, char *buff, u16 len)
 {
-    const u8 SCANF_CHECK_SUM = 16;
+    const u8 SCANF_CHECK_SUM = 15;
     u8 check = 0;
 
     i32 x, y;
@@ -955,6 +955,8 @@ savedesktopsession(FILE *fw, Desktop *desk)
         }
     }
     fprintf(fw, "%s\n", IDENTIFIERCLIENTSEND);
+    /* make sure correct order */
+    reorder(desk);
     for(c = desk->clast; c; c = prevclient(c))
     {   saveclientsession(fw, c); 
     }
@@ -1401,7 +1403,11 @@ startup(void)
     display = display ? display : getenv("DISPLAY");
     DEBUG("DISPLAY -> %s", display);
     if(!_wm.dpy)
-    {   DIECAT("FATAL: Cannot Connect to X Server. [%s]", display);
+    {   
+        if(_wm.use_threads)
+        {   pthread_mutex_destroy(&_wm.mutex);
+        }
+        DIECAT("FATAL: Cannot Connect to X Server. [%s]", display);
     }
     checkotherwm();
     /* This allows for execvp and exec to only spawn process on the specified display rather than the default varaibles */
