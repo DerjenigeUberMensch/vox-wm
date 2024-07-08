@@ -130,6 +130,12 @@ UserStats(const Arg *arg)
                 }
             }
         }
+        for(; c; c = nextclient(c))
+        {   
+            DEBUG("%s", c->netwmname);
+            DEBUG("%s", c->wmname);
+            DEBUG0("");
+        }
     }
     else
     {   DEBUG0("NULL");

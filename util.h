@@ -109,6 +109,7 @@ union ARGB
 /* gcc */
 #ifdef __GNUC__
 #define ASM(X)                          (__asm__(X))
+#define asm __asm__
 #define NOINLINE                        __attribute__ ((noinline))
 #elif __clang__
 
