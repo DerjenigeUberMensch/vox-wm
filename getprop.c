@@ -616,18 +616,18 @@ PropDestroy(void)
 void 
 PropListen(XCBDisplay *display, XCBWindow win, enum PropertyType type)
 {
-    int hasspace = 1;
+    int full = CQueueIsFull(&__threads.queue);
     int usethreads = __threads.use_threads && _wm.use_threads;
     __Property__Cookie__ cookie;
     cookie.win = win;
     cookie.type = type;
-    if(usethreads)
-    {   hasspace = CQueueAdd(&__threads.queue, (void *)&cookie);
+    if(usethreads && !full)
+    {   CQueueAdd(&__threads.queue, (void *)&cookie);
     }
     /* single thread operation */
-    if(!usethreads || !hasspace)
+    if(!usethreads || full)
     {   
         UpdateProperty(display, &cookie);
-        DEBUG("Using single threads, full: %d", !hasspace);
+        DEBUG("Using single threads, full: %d", full);
     }
 }
