@@ -951,9 +951,9 @@ savedesktopsession(FILE *fw, Desktop *desk)
             );
     /* make sure correct order */
     reorder(desk);
-    Client *c = desk->clients;
-    Client *focus = desk->focus;
-    Client *stack = desk->stack;
+    Client *c = desk->clast;
+    Client *focus = desk->flast;
+    Client *stack = desk->slast;
     fprintf(fw, "%s\n", IDENTIFIERCLIENTS);
     while(c)
     {
@@ -967,9 +967,9 @@ savedesktopsession(FILE *fw, Desktop *desk)
                 focus ? focus->win : 0,
                 stack ? stack->win : 0
                 );
-        c = nextclient(c);
-        focus = nextfocus(focus);
-        stack = nextstack(stack);
+        c = prevclient(c);
+        focus = prevfocus(focus);
+        stack = prevstack(stack);
     }
     fprintf(fw, "%s\n", IDENTIFIERCLIENTSEND);
     for(c = desk->clast; c; c = prevclient(c))
