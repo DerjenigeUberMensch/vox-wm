@@ -489,6 +489,8 @@ restoresession(void)
             {   continue;
             }
             restoreclientsession(desk, str, MAX_LENGTH);
+            isclient = 0;
+            isclients = 0;
         }
         if(isclients)
         {
@@ -783,7 +785,7 @@ restoremonsession(char *buff, u16 len)
 
 int restorestacksession(Desktop *desk, char *buff, uint16_t len)
 {
-    const u8 SSCANF_CHECK_SUM = 1;
+    const u8 SSCANF_CHECK_SUM = 3;
     u8 status = strcmp(buff, "ClientsEnd.");
     if(status)
     {
@@ -828,7 +830,7 @@ int restorestacksession(Desktop *desk, char *buff, uint16_t len)
         }
     }
     /* end stream */
-    return 0;
+    return status;
 }
 
 void
