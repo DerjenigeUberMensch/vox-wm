@@ -12,7 +12,7 @@ MANPREFIX = ${PREFIX}/share/man
 # grep -r xcb
 INCS = `pkg-config --cflags --libs xcb xcb-util xcb-aux xcb-xinerama xcb-event xcb-keysyms`
 #-lxcb-util -lxcb-icccm -lxcb-keysyms
-LIBS =  ${INCS}
+LIBS =  ${INCS} 
 
 #X86 isnt explicitly supported.
 X86 = -m32
@@ -24,11 +24,10 @@ XNATIVE = -march=native -mtune=native
 STATICLINK = -static
 DYNAMICLINK= -ldl
 SECTIONCODE= -ffunction-sections -fdata-sections
-MEMORYDEBUG= -lefence 
-
 LINKMODE = ${DYNAMICLINK}
-
-DEBUGFLAGS = -fsanitize=address -fno-omit-frame-pointer -ggdb -g ${CCVERSION} ${WARNINGFLAGS} ${INCS} ${CPPFLAGS} ${BINARY} ${SECTIONCODE}
+MEMFLAGS = -fsanitize=address -fno-omit-frame-pointer -lefence 
+#MEMFLAGS = 
+DEBUGFLAGS = -ggdb -g ${CCVERSION} ${WARNINGFLAGS} ${INCS} ${CPPFLAGS} ${BINARY} ${SECTIONCODE} ${MEMFLAGS}
 
 
 WARNINGFLAGS = -pedantic -Wall -Wno-deprecated-declarations -Wshadow -Wuninitialized -Werror=format-security
@@ -61,7 +60,7 @@ RELEASE = ${RELEASEFLAGS} -O2
 # Release Speed (-O3)
 RELEASES= ${RELEASEFLAGS} -O3 
 # Release Speed (-O3) (debug)
-#RELEASES = ${RELEASEFLAGS} -O3 ${DEBUGFLAGS} -fno-inline -DENABLE_DEBUG -DXCB_TRL_ENABLE_DEBUG
+RELEASES = ${RELEASEFLAGS} -O3 ${DEBUGFLAGS} -fno-inline -DENABLE_DEBUG -DXCB_TRL_ENABLE_DEBUG
 
 # Build using cpu specific instruction set for more performance (Optional)
 BUILDSELF = ${RELEASEFLAGS} ${XNATIVE} -O3
