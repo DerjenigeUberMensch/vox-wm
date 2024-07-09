@@ -2275,6 +2275,22 @@ XCBSendEvent(
     return ret;
 }
 
+/* Copies err to xcb err handler set when using this API.
+ */
+void
+XCBSendError(
+        XCBDisplay *display,
+        XCBGenericError *err
+        );
+/* This is used by external libraries. 
+ * NOTE: Field '*err' must be a pointer to a memory allocated block of memory that is inacessible after callig this function.
+ */
+void
+XCBSendErrorP(
+        XCBDisplay *display,
+        XCBGenericError *err
+        );
+
 int 
 XCBNextEvent(
         XCBDisplay *display, 
