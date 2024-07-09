@@ -150,7 +150,6 @@
  * XCBMapWindow(dpy, cool_window);
  *
  * # <<< Event Generated >>> #
- * 
  *
  * However we can "spoof" no reply and generate no event for ourselves.
  *
@@ -170,10 +169,137 @@
  * # This does nothing because we flushed the buffer to the display using XCBSync()
  * XCBDiscardReply(dpy, cookie);
  *
+ *
+ * # Replies
+ *
+ * Simply put a reply is a 2 step container that holds what the information entails (info) (the first part).
+ * And holds the actual data in the second part.
+ *
+ * Now both are technically the same thing, ie you only need to the free the "reply" (first part).
+ *
+ * Lets first start with Usual no data replies, these are replies which are just small enough to fit into 1 structure.
+ *
+ * // Example 1
+ *
+ * // Here we have a empty unfilled reply.
+ * // Lets get a reply back.
+ *
+ * XCBGetWindowAttributes *wa = NULL;
+ *
+ * // Open display.
+ * int screen = 0;
+ * XCBDisplay *display = XCBOpenDisplay(NULL, &screen);
+ * if(!display)
+ * {    // display refused to open. May there is no XServer Active?
+ *      exit(EXIT_FAILURE);
+ * }
+ *
+ * // This is just a example target you can use any window ID you want.
+ * const XCBWindow target = XCBRootWindow(display, screen);
+ *
+ *
+ * XCBCookie cookie = XCBGetWindowAttributesCookie(display, target);
+ *
+ * // wait for the reply (this blocks the current thread and waits for a server reply back)s
+ *
+ * wa = XCBGetWindowAttributesReply(display, cookie);
+ *
+ * // Check if there was no reply, (Did we pass in the wrong data? Is the window already destroyed?)
+ * if(!wa)
+ * {    
+ *      // In this case we simply remove our XServer connection and exit, 
+ *      // but often times you assume the window doesnt have attributes, or a bug in your code.
+ *      XCBCloseDisplay(display);
+ *      exit(EXIT_FAILURE);
+ * }
+ * // else we got a window attribute back.
+ *
+ * // as you can see the Window attribute has all the data by itself, which is good as no other data was also allocated after.
+ * wa->_class;
+ * // Now this part is useless, but is "pad" in other words every reply has these, and is what we use as spare bits for extra data.
+ * wa->pad0[0];
+ * wa->pad0[1];
+ *
+ * // free resulting data.
+ * free(wa);
+ * 
+ * // Example 2.
+ *
+ * // Here we will get the WM_NAME of a window if set.
+ *
+ * #define NO_BYTE_OFFSET               (0L)
+ * #define REQUEST_MAX_NEEDED_ITEMS     (UINT32_MAX)
+ * 
+ * // See Xlib documentation for what these fields indicate.
+ * XCBCookie  wmcookie = XCBGetWindowPropertyCookie(display, target, XCB_ATOM_WM_NAME, NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_STRING);
+ * 
+ * // Here we wait again for the reply to come back from the XServer.
+ * XCBWindowProperty *prop = XCBGetWindowPropertyReply(display, wmcokie);
+ * 
+ * // First we check if the prop exists, in this case probably no because the target is the root window, 
+ * // but if we used a actual window then we would get something back.
+ *
+ * if(!prop)
+ * {    // no prop.
+ *      XCBCloseDisplay(display);
+ *      exit(EXIT_FAILURE);
+ * }
+ * // But if we did get a prop back then the window probably has the WM_NAME atleast configured, not necessarily set though.
+ * int32_t offset = 0;
+ * // This gets how big it is in bytes. Relative to the specified format which should be 8 (as this is a string).
+ * XCBGetPropertyValueSize(prop, &offset);
+ * char *str = XCBGetPropertyValue(prop);
+ *
+ * // Now technically you could just do nothing here and use this as it is, because this is now YOUR memory.
+ * // But that would be somewhat memory inefficient.
+ *
+ * // Check if has value, or if the offset says 0, because that indicates how long our memory is for the value.
+ * if(!str || !offset)
+ * {    
+ *      // In this case the target window did not have a WM_NAME net.
+ *      XCBCloseDisplay(display);
+ *      exit(EXIT_FAILURE);
+ * }
+ * // Print out the string, and hope its null-terminating.
+ * printf("%s\n", str);
+ *
+ * // Now the actually handle the "string".
+ * size_t sizeofstring = sizeof(char) * offset;     // strlen() of string.
+ * size_t sizeofnullbyte = sizeof(char);            // nullbyte -> '\0'
+ * size_t fullsize = sizeofstring + sizeofnullbyte;
+ * char *newstring = malloc(fullsize);
+ * if(!newstring)
+ * {    // We failed to malloc memory, this is not covered by this example.
+ *      XCBCloseDisplay(display);
+ *      exit(EXIT_FAILURE);
+ * }
+ * memcpy(newstring, str, offset);
+ * // Yes technically you can just do memset with 0, but no this is more clear.
+ * memcpy(newstring + offset, "\0", sizeofnullbyte);
+ *
+ * // Now we have a fully save string that doesnt inclued extra padding.
+ *
+ * // And we free the prop, this includes the info in XCBGetWindowAttributes *prop,
+ * // And the data we got, XCBGetPropertyValue(prop), or "str" in this case.
+ *
+ * // Here is how it would look like. (Not To Scale).
+ * // As you can see the whole thing really is just 1 big 'o block of memory, 
+ * // which is why we only need to free(prop), because of being the start of the chunk of memory.
+ * // Now dont be silly and free the data, because that is quite hard to debug, I would know (it isnt).
+ * // What it does do is leave a dangling pointer, which is equally bad.
+ *
+ * XCBWindowProperty *prop;            | void *data = XCBGetPropertyValue(prop);
+ * 01010100 00110010 00000000 01000110   00011100 11001111 00110010 01010100 
+ *
+ * free(prop);
+ *
+ * // And were done with (most) props.
+ * XCBCloseDisplay(display);
+ * return EXIT_SUCCESS;
+ *
  * # Reply64
  * # This really isnt too important as unless your doing some very specific things.
  * XCBDiscardReply64(dpy, cookie);
- *
  *
  * Reply backs;
  *
@@ -196,6 +322,30 @@
  * However reply backs, (ie any function that calls for a reply from a cookie).
  * Instead uses the XCBErrorHandler(), this can be set by the client using XCBSetErrorHandler().
  * By Default however we call die() on extension errors and so nothing on know errors that can be ignored.
+ *
+ *
+ *
+ *
+ *
+ * # Decorations ;
+ *
+ * <<< Server Sided decorations >>> ;
+ *
+ * Some window manager may imply "decorations" and/or titlebar(s) to your windows.
+ * You can "ask" most "modern" window managers to disable them using motif hints.
+ *
+ * <<< Client side decorations >>> ;
+ * By default these are always disabled, however one can enable them as a window manager using the enviroment variable GTK_CSD.
+ * Simply by setting it to any value it should enable them for gtk windows if they support it.
+ * see: https://wiki.archlinux.org/title/GTK#Client-side_decorations
+ *
+ * TODO: Maybe show docu for Qt5?
+ *
+ *
+ *
+ *
+ *
+ *
  */
 
 #ifndef XCB_PTL_TYPEDEF_H_
@@ -481,7 +631,7 @@ typedef xcb_selection_clear_event_t XCBSelectionClearEvent;
 typedef xcb_selection_notify_event_t XCBSelectionNotifyEvent;
 typedef xcb_selection_request_event_t XCBSelectionRequestEvent;
 /* This is NOT short for XCBGenericEvent rather is used for Ge Events */
-typedef xcb_ge_event_t XCBGeEvent;
+typedef xcb_ge_generic_event_t XCBGeEvent;
 
 
 
@@ -617,7 +767,7 @@ are reserved in the protocol for errors and replies. */
 #define XCBColormapNotify	                XCB_COLORMAP_NOTIFY
 #define XCBClientMessage	                XCB_CLIENT_MESSAGE
 #define XCBMappingNotify	                XCB_MAPPING_NOTIFY
-#define XCBGeEvent		                    XCB_GE_GENERIC
+#define XCBGeGeneric		                XCB_GE_GENERIC
 #define XCBLASTEvent		                ((XCB_GE_GENERIC > 36 ? XCB_GE_GENERIC + 1 : 36))	/* must be bigger than any event number */
 
 
@@ -2448,6 +2598,23 @@ XCBSendEvent(
         uint32_t event_mask,
         const char *event
         );
+
+/* Copies err to xcb err handler set when using this API.
+ */
+void
+XCBSendError(
+        XCBDisplay *display,
+        XCBGenericError *err
+        );
+/* This is used by external libraries. 
+ * NOTE: Field '*err' must be a pointer to a memory allocated block of memory that is inacessible after callig this function.
+ */
+void
+XCBSendErrorP(
+        XCBDisplay *display,
+        XCBGenericError *err
+        );
+
 /* 
  * Gets and returns the next Event from the XServer.
  * This returns a structure called xcb_generic_event_t.
