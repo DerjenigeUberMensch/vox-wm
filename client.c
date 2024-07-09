@@ -806,11 +806,11 @@ managereply(XCBWindow win, XCBCookie requests[ManageCookieLAST])
     /* checks */
     if(win == _wm.root)
     {   DEBUG("%s", "Cannot manage() root window.");
-        return NULL;
+        goto DISCARD;
     }
     else if(wintoclient(win))
     {   DEBUG("Window already managed????: [%u]", win);
-        return NULL;
+        goto DISCARD;
     } 
     
     const u16 bw = 0;
@@ -956,6 +956,11 @@ CLEANUP:
     free(iconreply);
     free(motifreply);
     return c;
+DISCARD:
+    for(pid = 0; pid < ManageCookieLAST; ++pid)
+    {   XCBDiscardReply(_wm.dpy, requests[pid]);
+    }
+    return NULL;
 }
 
 void
