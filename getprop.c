@@ -586,7 +586,8 @@ PropDestroyWorkers(uint32_t threads)
     }
     volatile uint32_t j;
     for(j = 0; j < threads; ++j)
-    {   pthread_join(__threads.threads[j], NULL);
+    {   
+        pthread_cancel(__threads.threads[j]);
     }
 }
 
