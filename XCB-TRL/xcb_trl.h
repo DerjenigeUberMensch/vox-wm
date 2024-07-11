@@ -537,14 +537,6 @@ struct XCBClassHint
     char *class_name;
 };
 
-
-enum XCBColorFlags
-{
-    XCB_DO_RED = 1 << 0,
-    XCB_DO_GREEN = 1 << 2,
-    XCB_DO_BLUE = 1 << 3
-};
-
 struct XCBColor
 {
     uint64_t pixel;
@@ -674,7 +666,7 @@ union XCBARGB
 
 
 /* macros */
-enum XCBWindowState
+enum XCBWMWindowState
 {
     XCB_WINDOW_NORMAL_STATE = XCB_ICCCM_WM_STATE_NORMAL,
     XCB_WINDOW_ICONIC_STATE = XCB_ICCCM_WM_STATE_ICONIC,
@@ -699,128 +691,118 @@ enum XCBWindowState
 
 /* Input Event Masks. Used as event-mask window attribute and as arguments
    to Grab requests.  Not to be confused with event names.  */
-
-#define XCBNoEventMask			            XCB_NO_EVENT_MASK
-#define XCBKeyPressMask			            XCB_EVENT_MASK_KEY_PRESS
-#define XCBKeyReleaseMask	                XCB_EVENT_MASK_KEY_RELEASE
-#define XCBButtonPressMask	                XCB_EVENT_MASK_BUTTON_PRESS
-#define XCBButtonReleaseMask		        XCB_EVENT_MASK_BUTTON_RELEASE
-#define XCBEnterWindowMask                  XCB_EVENT_MASK_ENTER_WINDOW
-#define XCBLeaveWindowMask		            XCB_EVENT_MASK_LEAVE_WINDOW
-#define XCBPointerMotionMask		        XCB_EVENT_MASK_POINTER_MOTION
-#define XCBPointerMotionHintMask            XCB_EVENT_MASK_POINTER_MOTION_HINT
-#define XCBButton1MotionMask		        XCB_EVENT_MASK_BUTTON_1_MOTION
-#define XCBButton2MotionMask		        XCB_EVENT_MASK_BUTTON_2_MOTION
-#define XCBButton3MotionMask		        XCB_EVENT_MASK_BUTTON_3_MOTION
-#define XCBButton4MotionMask		        XCB_EVENT_MASK_BUTTON_4_MOTION
-#define XCBButton5MotionMask	            XCB_EVENT_MASK_BUTTON_5_MOTION
-#define XCBButtonMotionMask		            XCB_EVENT_MASK_BUTTON_MOTION
-#define XCBKeymapStateMask		            XCB_EVENT_MASK_KEYMAP_STATE
-#define XCBExposureMask			            XCB_EVENT_MASK_EXPOSURE
-#define XCBVisibilityChangeMask	            XCB_EVENT_MASK_VISIBILITY_CHANGE
-#define XCBStructureNotifyMask              XCB_EVENT_MASK_STRUCTURE_NOTIFY
-#define XCBResizeRedirectMask		        XCB_EVENT_MASK_RESIZE_REDIRECT
-#define XCBSubstructureNotifyMask           XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY
-#define XCBSubstructureRedirectMask         XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT
-#define XCBFocusChangeMask		            XCB_EVENT_MASK_FOCUS_CHANGE
-#define XCBPropertyChangeMask	            XCB_EVENT_MASK_PROPERTY_CHANGE
-#define XCBColormapChangeMask	            XCB_EVENT_MASK_COLOR_MAP_CHANGE
-#define XCBOwnerGrabButtonMask	            XCB_EVENT_MASK_OWNER_GRAB_BUTTON
-
-
-
+enum
+{    
+    XCBNoEventMask               = XCB_EVENT_MASK_NO_EVENT,
+    XCBKeyPressMask              = XCB_EVENT_MASK_KEY_PRESS,
+    XCBKeyReleaseMask            = XCB_EVENT_MASK_KEY_RELEASE,
+    XCBButtonPressMask           = XCB_EVENT_MASK_BUTTON_PRESS,
+    XCBButtonReleaseMask         = XCB_EVENT_MASK_BUTTON_RELEASE,
+    XCBEnterWindowMask           = XCB_EVENT_MASK_ENTER_WINDOW,
+    XCBLeaveWindowMask           = XCB_EVENT_MASK_LEAVE_WINDOW,
+    XCBPointerMotionMask         = XCB_EVENT_MASK_POINTER_MOTION,
+    XCBPointerMotionHintMask     = XCB_EVENT_MASK_POINTER_MOTION_HINT,
+    XCBButton1MotionMask         = XCB_EVENT_MASK_BUTTON_1_MOTION,
+    XCBButton2MotionMask         = XCB_EVENT_MASK_BUTTON_2_MOTION,
+    XCBButton3MotionMask         = XCB_EVENT_MASK_BUTTON_3_MOTION,
+    XCBButton4MotionMask         = XCB_EVENT_MASK_BUTTON_4_MOTION,
+    XCBButton5MotionMask         = XCB_EVENT_MASK_BUTTON_5_MOTION,
+    XCBButtonMotionMask          = XCB_EVENT_MASK_BUTTON_MOTION,
+    XCBKeymapStateMask           = XCB_EVENT_MASK_KEYMAP_STATE,
+    XCBExposureMask              = XCB_EVENT_MASK_EXPOSURE,
+    XCBVisibilityChangeMask      = XCB_EVENT_MASK_VISIBILITY_CHANGE,
+    XCBStructureNotifyMask       = XCB_EVENT_MASK_STRUCTURE_NOTIFY,
+    XCBResizeRedirectMask        = XCB_EVENT_MASK_RESIZE_REDIRECT,
+    XCBSubstructureNotifyMask    = XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY,
+    XCBSubstructureRedirectMask  = XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT,
+    XCBFocusChangeMask           = XCB_EVENT_MASK_FOCUS_CHANGE,
+    XCBPropertyChangeMask        = XCB_EVENT_MASK_PROPERTY_CHANGE,
+    XCBColormapChangeMask        = XCB_EVENT_MASK_COLOR_MAP_CHANGE,
+    XCBOwnerGrabButtonMask       = XCB_EVENT_MASK_OWNER_GRAB_BUTTON,
+};
 
 /* Event names.  Used in "type" field in XEvent structures.  Not to be
 confused with event masks above.  They start from 2 because 0 and 1
 are reserved in the protocol for errors and replies. */
-
-#define XCBKeyPress		                    XCB_KEY_PRESS
-#define XCBKeyRelease                       XCB_KEY_RELEASE
-#define XCBButtonPress		                XCB_BUTTON_PRESS
-#define XCBButtonRelease	                XCB_BUTTON_RELEASE
-#define XCBMotionNotify		                XCB_MOTION_NOTIFY
-#define XCBEnterNotify		                XCB_ENTER_NOTIFY
-#define XCBLeaveNotify		                XCB_LEAVE_NOTIFY
-#define XCBFocusIn		                    XCB_FOCUS_IN
-#define XCBFocusOut		                    XCB_FOCUS_OUT
-#define XCBKeymapNotify		                XCB_KEYMAP_NOTIFY
-#define XCBExpose		                    XCB_EXPOSE
-#define XCBGraphicsExpose	                XCB_GRAPHICS_EXPOSURE
-#define XCBNoExpose		                    XCB_NO_EXPOSURE
-#define XCBVisibilityNotify	                XCB_VISIBILITY_NOTIFY
-#define XCBCreateNotify		                XCB_CREATE_NOTIFY
-#define XCBDestroyNotify	                XCB_DESTROY_NOTIFY
-#define XCBUnmapNotify		                XCB_UNMAP_NOTIFY
-#define XCBMapNotify		                XCB_MAP_NOTIFY
-#define XCBMapRequest		                XCB_MAP_REQUEST
-#define XCBReparentNotify	                XCB_REPARENT_NOTIFY
-#define XCBConfigureNotify	                XCB_CONFIGURE_NOTIFY
-#define XCBConfigureRequest	                XCB_CONFIGURE_REQUEST
-#define XCBGravityNotify	                XCB_GRAVITY_NOTIFY
-#define XCBResizeRequest	                XCB_RESIZE_REQUEST
-#define XCBCirculateNotify	                XCB_CIRCULATE_NOTIFY
-#define XCBCirculateRequest	                XCB_CIRCULATE_REQUEST
-#define XCBPropertyNotify	                XCB_PROPERTY_NOTIFY
-#define XCBSelectionClear	                XCB_SELECTION_CLEAR
-#define XCBSelectionRequest	                XCB_SELECTION_REQUEST
-#define XCBSelectionNotify                  XCB_SELECTION_NOTIFY
-#define XCBColormapNotify	                XCB_COLORMAP_NOTIFY
-#define XCBClientMessage	                XCB_CLIENT_MESSAGE
-#define XCBMappingNotify	                XCB_MAPPING_NOTIFY
-#define XCBGeGeneric		                XCB_GE_GENERIC
-#define XCBLASTEvent		                ((XCB_GE_GENERIC > 36 ? XCB_GE_GENERIC + 1 : 36))	/* must be bigger than any event number */
-
-
+enum
+{ 
+    XCBKeyPress           = XCB_KEY_PRESS,
+    XCBKeyRelease         = XCB_KEY_RELEASE,
+    XCBButtonPress        = XCB_BUTTON_PRESS,
+    XCBButtonRelease      = XCB_BUTTON_RELEASE,
+    XCBMotionNotify       = XCB_MOTION_NOTIFY,
+    XCBEnterNotify        = XCB_ENTER_NOTIFY,
+    XCBLeaveNotify        = XCB_LEAVE_NOTIFY,
+    XCBFocusIn            = XCB_FOCUS_IN,
+    XCBFocusOut           = XCB_FOCUS_OUT,
+    XCBKeymapNotify       = XCB_KEYMAP_NOTIFY,
+    XCBExpose             = XCB_EXPOSE,
+    XCBGraphicsExpose     = XCB_GRAPHICS_EXPOSURE,
+    XCBNoExpose           = XCB_NO_EXPOSURE,
+    XCBVisibilityNotify   = XCB_VISIBILITY_NOTIFY,
+    XCBCreateNotify       = XCB_CREATE_NOTIFY,
+    XCBDestroyNotify      = XCB_DESTROY_NOTIFY,
+    XCBUnmapNotify        = XCB_UNMAP_NOTIFY,
+    XCBMapNotify          = XCB_MAP_NOTIFY,
+    XCBMapRequest         = XCB_MAP_REQUEST,
+    XCBReparentNotify     = XCB_REPARENT_NOTIFY,
+    XCBConfigureNotify    = XCB_CONFIGURE_NOTIFY,
+    XCBConfigureRequest   = XCB_CONFIGURE_REQUEST,
+    XCBGravityNotify      = XCB_GRAVITY_NOTIFY,
+    XCBResizeRequest      = XCB_RESIZE_REQUEST,
+    XCBCirculateNotify    = XCB_CIRCULATE_NOTIFY,
+    XCBCirculateRequest   = XCB_CIRCULATE_REQUEST,
+    XCBPropertyNotify     = XCB_PROPERTY_NOTIFY,
+    XCBSelectionClear     = XCB_SELECTION_CLEAR,
+    XCBSelectionRequest   = XCB_SELECTION_REQUEST,
+    XCBSelectionNotify    = XCB_SELECTION_NOTIFY,
+    XCBColormapNotify     = XCB_COLORMAP_NOTIFY,
+    XCBClientMessage      = XCB_CLIENT_MESSAGE,
+    XCBMappingNotify      = XCB_MAPPING_NOTIFY,
+    XCBGeGeneric          = XCB_GE_GENERIC,
+    XCBLASTEvent          = ((XCB_GE_GENERIC > 36 ? XCB_GE_GENERIC + 1 : 36)) /* must be bigger than any event number */
+};
 /* Key masks. Used as modifiers to GrabButton and GrabKey, results of QueryPointer,
    state in various key-, mouse-, and button-related events. */
-
-#define XCBModMaskAny                       XCB_MOD_MASK_ANY
-#define XCBShiftMask		                XCB_MOD_MASK_SHIFT
-#define XCBLockMask	                        XCB_MOD_MASK_LOCK
-#define XCBControlMask		                XCB_MOD_MASK_CONTROL
-#define XCBMod1Mask	                        XCB_MOD_MASK_1
-#define XCBMod2Mask		                    XCB_MOD_MASK_2
-#define XCBMod3Mask		                    XCB_MOD_MASK_3
-#define XCBMod4Mask		                    XCB_MOD_MASK_4
-#define XCBMod5Mask		                    XCB_MOD_MASK_5
+enum
+{
+    XCBModMaskAny     = XCB_MOD_MASK_ANY,
+    XCBShiftMask      = XCB_MOD_MASK_SHIFT,
+    XCBLockMask       = XCB_MOD_MASK_LOCK,
+    XCBControlMask    = XCB_MOD_MASK_CONTROL,
+    XCBMod1Mask       = XCB_MOD_MASK_1,
+    XCBMod2Mask       = XCB_MOD_MASK_2,
+    XCBMod3Mask       = XCB_MOD_MASK_3,
+    XCBMod4Mask       = XCB_MOD_MASK_4,
+    XCBMod5Mask       = XCB_MOD_MASK_5,
+};
 
 /* modifier names.  Used to build a SetModifierMapping request or
    to read a GetModifierMapping request.  These correspond to the
    masks defined above. */
-#define XCBShiftMapIndex	                XCB_MAP_INDEX_SHIFT
-#define XCBLockMapIndex		                XCB_MAP_INDEX_LOCK
-#define XCBControlMapIndex	                XCB_MAP_INDEX_CONTROL
-#define XCBMod1MapIndex		                XCB_MAP_INDEX_1
-#define XCBMod2MapIndex		                XCB_MAP_INDEX_2
-#define XCBMod3MapIndex		                XCB_MAP_INDEX_3
-#define XCBMod4MapIndex		                XCB_MAP_INDEX_4
-#define XCBMod5MapIndex		                XCB_MAP_INDEX_5
-
+enum
+{    
+    XCBShiftMapIndex    = XCB_MAP_INDEX_SHIFT,
+    XCBLockMapIndex     = XCB_MAP_INDEX_LOCK,
+    XCBControlMapIndex  = XCB_MAP_INDEX_CONTROL,
+    XCBMod1MapIndex     = XCB_MAP_INDEX_1,
+    XCBMod2MapIndex     = XCB_MAP_INDEX_2,
+    XCBMod3MapIndex     = XCB_MAP_INDEX_3,
+    XCBMod4MapIndex     = XCB_MAP_INDEX_4,
+    XCBMod5MapIndex     = XCB_MAP_INDEX_5,
+};
 /* button masks.  Used in same manner as Key masks above. Not to be confused
    with button names below. */
-
-#define XCBButton1Mask		                XCB_BUTTON_MASK_1
-#define XCBButton2Mask		                XCB_BUTTON_MASK_2
-#define XCBButton3Mask		                XCB_BUTTON_MASK_3
-#define XCBButton4Mask		                XCB_BUTTON_MASK_4
-#define XCBButton5Mask		                XCB_BUTTON_MASK_5
-
-
-/* extras LIMIT 32768 */
-#define XCB_BUTTON_MASK_6                   (XCB_BUTTON_MASK_5 << 1)
-
-#define XCBButton6Mask                      XCB_BUTTON_MASK_6
-
-
-/* button names. Used as arguments to GrabButton and as detail in ButtonPress
- * and ButtonRelease events.  Not to be confused with button masks above.
- * Note that 0 is already defined above as "AnyButton".  */
-
-#define XCBButton1                          XCB_BUTTON_INDEX_1
-#define XCBButton2			                XCB_BUTTON_INDEX_2
-#define XCBButton3			                XCB_BUTTON_INDEX_3
-#define XCBButton4			                XCB_BUTTON_INDEX_4
-#define XCBButton5			                XCB_BUTTON_INDEX_5
+enum 
+{
+    XCBButton1Mask = XCB_BUTTON_MASK_1,
+    XCBButton2Mask = XCB_BUTTON_MASK_2,
+    XCBButton3Mask = XCB_BUTTON_MASK_3,
+    XCBButton4Mask = XCB_BUTTON_MASK_4,
+    XCBButton5Mask = XCB_BUTTON_MASK_5,
+    /* extras LIMIT 32768 */
+    XCBButton6Mask = XCBButton5Mask << 1,
+};
 
 /* extra's if you need more buttons just define them as the number ya want */
 #define XCB_BUTTON_INDEX_6                  (6)
@@ -840,144 +822,295 @@ are reserved in the protocol for errors and replies. */
 #define XCB_BUTTON_INDEX_19                 (19)
 #define XCB_BUTTON_INDEX_20                 (20)
 */
-#define XCBButton6                          XCB_BUTTON_INDEX_6
-/*
-#define XCBButton7                          XCB_BUTTON_INDEX_7
-#define XCBButton8                          XCB_BUTTON_INDEX_8
-#define XCBButton9                          XCB_BUTTON_INDEX_9
-#define XCBButton10                         XCB_BUTTON_INDEX_10
-#define XCBButton11                         XCB_BUTTON_INDEX_11
-#define XCBButton12                         XCB_BUTTON_INDEX_12
-#define XCBButton13                         XCB_BUTTON_INDEX_13
-#define XCBButton14                         XCB_BUTTON_INDEX_14
-#define XCBButton15                         XCB_BUTTON_INDEX_15
-#define XCBButton16                         XCB_BUTTON_INDEX_16
-*/
 
-/* This is a button number, NOT a button mask. */
-#define XCBButtonAny                        XCB_BUTTON_INDEX_ANY
-
+/* button names. Used as arguments to GrabButton and as detail in ButtonPress
+ * and ButtonRelease events.  Not to be confused with button masks above.
+ * Note that 0 is already defined above as "AnyButton".  */
+enum 
+{
+    /* This is a button number, NOT a button mask. */
+    XCBButtonAny = XCB_BUTTON_INDEX_ANY,
+    XCBButton1 = XCB_BUTTON_INDEX_1,
+    XCBButton2 = XCB_BUTTON_INDEX_2,
+    XCBButton3 = XCB_BUTTON_INDEX_3,
+    XCBButton4 = XCB_BUTTON_INDEX_4,
+    XCBButton5 = XCB_BUTTON_INDEX_5,
+    XCBButton6 = XCB_BUTTON_INDEX_6,
+};
 
 /* Notify modes */
-
-#define XCBNotifyNormal	    	            XCB_NOTIFY_MODE_NORMAL
-#define XCBNotifyGrab	    	            XCB_NOTIFY_MODE_GRAB
-#define XCBNotifyUngrab	    	            XCB_NOTIFY_MODE_UNGRAB
-#define XCBNotifyWhileGrabbed	            XCB_NOTIFY_MODE_WHILE_GRABBED
-                                            /* for MotionNotify events */
-#define XCBNotifyHint	    	            XCB_MOTION_HINT
+enum 
+{
+    XCBNotifyNormal = XCB_NOTIFY_MODE_NORMAL,
+    XCBNotifyGrab = XCB_NOTIFY_MODE_GRAB,
+    XCBNotifyUngrab = XCB_NOTIFY_MODE_UNGRAB,
+    XCBNotifyWhileGrabbed = XCB_NOTIFY_MODE_WHILE_GRABBED,
+    /* for MotionNotify events */
+    XCBNotifyHint = XCB_MOTION_HINT,
+};
 
 
 /* Notify detail */
 
-#define XCBNotifyAncestor	                XCB_NOTIFY_DETAIL_ANCESTOR
-#define XCBNotifyVirtual		            XCB_NOTIFY_DETAIL_VIRTUAL
-#define XCBNotifyInferior		            XCB_NOTIFY_DETAIL_INFERIOR
-#define XCBNotifyNonlinear		            XCB_NOTIFY_DETAIL_NONLINEAR
-#define XCBNotifyNonlinearVirtual	        XCB_NOTIFY_DETAIL_NONLINEAR_VIRTUAL
-#define XCBNotifyPointer		            XCB_NOTIFY_DETAIL_POINTER
-#define XCBNotifyPointerRoot	            XCB_NOTIFY_DETAIL_POINTER_ROOT
-#define XCBNotifyDetailNone	                XCB_NOTIFY_DETAIL_NONE
-
-
-
+enum 
+{
+    XCBNotifyAncestor = XCB_NOTIFY_DETAIL_ANCESTOR,
+    XCBNotifyVirtual = XCB_NOTIFY_DETAIL_VIRTUAL,
+    XCBNotifyInferior = XCB_NOTIFY_DETAIL_INFERIOR,
+    XCBNotifyNonlinear = XCB_NOTIFY_DETAIL_NONLINEAR,
+    XCBNotifyNonlinearVirtual = XCB_NOTIFY_DETAIL_NONLINEAR_VIRTUAL,
+    XCBNotifyPointer = XCB_NOTIFY_DETAIL_POINTER,
+    XCBNotifyPointerRoot = XCB_NOTIFY_DETAIL_POINTER_ROOT,
+    XCBNotifyDetailNone = XCB_NOTIFY_DETAIL_NONE,
+};
 /* Visibility notify */
 
-#define XCBVisibilityUnobscured		        XCB_VISIBILITY_UNOBSCURED
-#define XCBVisibilityPartiallyObscured	    XCB_VISIBILITY_PARTIALLY_OBSCURED
-#define XCBVisibilityFullyObscured		    XCB_VISIBILITY_FULLY_OBSCURED
-
+enum XCBVisibility
+{
+    XCBVisibilityUnobscured = XCB_VISIBILITY_UNOBSCURED,
+    XCBVisibilityPartiallyObscured = XCB_VISIBILITY_PARTIALLY_OBSCURED,
+    XCBVisibilityFullyObscured = XCB_VISIBILITY_FULLY_OBSCURED,
+};
 /* Circulation request */
 
-#define XCBPlaceOnTop		                XCB_PLACE_ON_TOP
-#define XCBPlaceOnBottom	                XCB_PLACE_ON_BOTTOM
+enum XCBPlacement 
+{
+    XCBPlaceOnTop = XCB_PLACE_ON_TOP,
+    XCBPlaceOnBottom = XCB_PLACE_ON_BOTTOM,
+};
 
 /* protocol families */
-                                            /* IPv4 */
-#define XCBFamilyInternet		            XCB_FAMILY_INTERNET
-#define XCBFamilyDECnet		                XCB_FAMILY_DE_CNET
-#define XCBFamilyChaos		                XCB_FAMILY_CHAOS
-                                            /* IPv6 */
-#define XCBFamilyInternet6		            XCB_FAMILY_INTERNET6
-
-/* authentication families not tied to a specific protocol */
-#define XCBFamilyServerInterpreted          XCB_FAMILY_SERVER_INTERPRETED
-
+enum XCBFamily 
+{
+    /* IPv4 */
+    XCBFamilyInternet = XCB_FAMILY_INTERNET,
+    XCBFamilyDECnet = XCB_FAMILY_DECNET,
+    XCBFamilyChaos = XCB_FAMILY_CHAOS,
+    /* authentication families not tied to a specific protocol */
+    XCBFamilyServerInterpreted = XCB_FAMILY_SERVER_INTERPRETED,
+    /* IPv6 */
+    XCBFamilyInternet6 = XCB_FAMILY_INTERNET_6,
+};
 /* Property notification */
-
-#define XCBPropertyNewValue	                XCB_PROPERTY_NEW_VALUE
-#define XCBPropertyDelete		            XCB_PROPERTY_DELETE
-
+enum XCBPropertyNotification 
+{
+    XCBPropertyNewValue = XCB_PROPERTY_NEW_VALUE,
+    XCBPropertyDelete = XCB_PROPERTY_DELETE,
+};
 /* Color Map notification */
-
-#define XCBColormapUninstalled	            XCB_COLORMAP_STATE_UNINSTALLED
-#define XCBColormapInstalled	            XCB_COLORMAP_STATE_INSTALLED
-
+enum XCBColorMapNotification 
+{
+    XCBColormapUninstalled = XCB_COLORMAP_STATE_UNINSTALLED,
+    XCBColormapInstalled = XCB_COLORMAP_STATE_INSTALLED,
+};
 /* GrabPointer, GrabButton, GrabKeyboard, GrabKey Modes */
-
-#define XCBGrabModeSync		                XCB_GRAB_MODE_SYNC
-#define XCBGrabModeAsync		            XCB_GRAB_MODE_ASYNC
+enum XCBGrabMode 
+{
+    XCBGrabModeSync = XCB_GRAB_MODE_SYNC,
+    XCBGrabModeAsync = XCB_GRAB_MODE_ASYNC,
+};
 
 /* GrabPointer, GrabKeyboard reply status */
-
-#define XCBGrabSuccess		                XCB_GRAB_STATUS_SUCCESS
-#define XCBAlreadyGrabbed		            XCB_GRAB_STATUS_ALREADY_GRABBED
-#define XCBGrabInvalidTime		            XCB_GRAB_STATUS_INVALID_TIME
-#define XCBGrabNotViewable		            XCB_GRAB_STATUS_NOT_VIEWABLE
-#define XCBGrabFrozen		                XCB_GRAB_STATUS_FROZEN
-
+enum XCBGrabStatus
+{
+    XCBGrabSuccess = XCB_GRAB_STATUS_SUCCESS,
+    XCBAlreadyGrabbed = XCB_GRAB_STATUS_ALREADY_GRABBED,
+    XCBGrabInvalidTime = XCB_GRAB_STATUS_INVALID_TIME,
+    XCBGrabNotViewable = XCB_GRAB_STATUS_NOT_VIEWABLE,
+    XCBGrabFrozen = XCB_GRAB_STATUS_FROZEN,
+};
 /* AllowEvents modes */
-
-#define XCBAsyncPointer		                ALLOW_ASYNC_POINTER
-#define XCBSyncPointer		                XCB_ALLOW_SYNC_POINTER
-#define XCBReplayPointer		            XCB_ALLOW_REPLAY_POINTER
-#define XCBAsyncKeyboard		            XCB_ALLOW_ASYNC_KEYBOARD
-#define XCBSyncKeyboard	                    XCB_ALLOW_SYNC_KEYBOARD
-#define XCBReplayKeyboard	                XCB_ALLOW_REPLAY_KEYBOARD
-#define XCBAsyncBoth	                    XCB_ALLOW_ASYNC_BOTH
-#define XCBSyncBoth	                        XCB_ALLOW_SYNC_BOTH
-
+enum XCBAllowEventsMode
+{
+    XCBAsyncPointer = XCB_ALLOW_ASYNC_POINTER,
+    XCBSyncPointer = XCB_ALLOW_SYNC_POINTER,
+    XCBReplayPointer = XCB_ALLOW_REPLAY_POINTER,
+    XCBAsyncKeyboard = XCB_ALLOW_ASYNC_KEYBOARD,
+    XCBSyncKeyboard = XCB_ALLOW_SYNC_KEYBOARD,
+    XCBReplayKeyboard = XCB_ALLOW_REPLAY_KEYBOARD,
+    XCBAsyncBoth = XCB_ALLOW_ASYNC_BOTH,
+    XCBSyncBoth = XCB_ALLOW_SYNC_BOTH,
+};
 /* Used in SetInputFocus, GetInputFocus */
-
-#define XCBRevertToNone		                XCB_INPUT_FOCUS_NONE
-#define XCBRevertToPointerRoot	            XCB_INPUT_FOCUS_POINTER_ROOT
-#define XCBRevertToParent		            XCB_INPUT_FOCUS_PARENT
-/* NOT YET DOCUMENTED. Only relevant for the xinput extension. */
-#define XCBRevertToFollowKeyboard           XCB_INPUT_FOCUS_FOLLOW_KEYBOARD
+enum XCBInputFocusMode
+{
+    XCBRevertToNone = XCB_INPUT_FOCUS_NONE,
+    XCBRevertToPointerRoot = XCB_INPUT_FOCUS_POINTER_ROOT,
+    XCBRevertToParent = XCB_INPUT_FOCUS_PARENT,
+       /* NOT YET DOCUMENTED. Only relevant for the xinput extension. */
+    XCBRevertToFollowKeyboard = XCB_INPUT_FOCUS_FOLLOW_KEYBOARD,
+};
 
 /*****************************************************************
  * ERROR CODES (Mostly to interface with X but not with XCB)
  *****************************************************************/
 
-#define XCBSuccess		    0               /* everything's okay */
-#define XCBBadRequest	    1	            /* bad request code */
-#define XCBBadValue	        2	            /* int parameter out of range */
-#define XCBBadWindow	    3	            /* parameter not a Window */
-#define XCBBadPixmap	    4	            /* parameter not a Pixmap */
-#define XCBBadAtom		    5	            /* parameter not an Atom */
-#define XCBBadCursor	    6	            /* parameter not a Cursor */
-#define XCBBadFont		    7	            /* parameter not a Font */
-#define XCBBadMatch	        8	            /* parameter mismatch */
-#define XCBBadDrawable	    9	            /* parameter not a Pixmap or Window */
-#define XCBBadAccess	    10	            /* depending on context:
-                                             *   - key/button already grabbed
-                                             *   - attempt to free an illegal
-                                             *        cmap entry
-                                             *   - attempt to store into a read-only
-                                             *        color map entry.
-                                             *   - attempt to modify the access control
-                                             *        list from other than the local host.
-                                             */
-#define XCBBadAlloc	        11	            /* insufficient resources */
-#define XCBBadColor	        12	            /* no such colormap */
-#define XCBBadGC		    13	            /* parameter not a GC */
-#define XCBBadIDChoice	    14	            /* choice not in range or already used */
-#define XCBBadName		    15	            /* font or color name doesn't exist */
-#define XCBBadLength	    16	            /* Request length incorrect */
-#define XCBBadImplementation 17	            /* server is defective */
+enum
+{
+    XCBSuccess,		    /* everything's okay                        */
+    XCBBadRequest,	    /* bad request code                         */
+    XCBBadValue,	    /* int parameter out of range               */
+    XCBBadWindow,	    /* parameter not a Window                   */
+    XCBBadPixmap,	    /* parameter not a Pixmap                   */
+    XCBBadAtom,		    /* parameter not an Atom                    */
+    XCBBadCursor,	    /* parameter not a Cursor                   */
+    XCBBadFont,		    /* parameter not a Font                     */
+    XCBBadMatch,	    /* parameter mismatch                       */
+    XCBBadDrawable,	    /* parameter not a Pixmap or Window         */
+    XCBBadAccess,	    /* depending on context:
+                         *   - key/button already grabbed
+                         *   - attempt to free an illegal
+                         *        cmap entry
+                         *   - attempt to store into a read-only
+                         *        color map entry.
+                         *   - attempt to modify the access control
+                         *        list from other than the local host.
+                         */
+    XCBBadAlloc,	    /* insufficient resources                   */
+    XCBBadColor,	    /* no such colormap                         */
+    XCBBadGC,		    /* parameter not a GC                       */
+    XCBBadIDChoice,	    /* choice not in range or already used      */
+    XCBBadName,		    /* font or color name doesn't exist         */
+    XCBBadLength,	    /* Request length incorrect                 */
+    XCBBadImplementation,/* server is defective                     */
 
-#define XCBFirstExtensionError	128
-#define XCBLastExtensionError	255
+
+
+
+    XCBFirstExtensionError = 128,
+    XCBLastExtensionError = 255,
+};
+
+enum
+{
+    XCB_Error,
+    XCB_Reply,
+    XCB_CreateWindow = XCB_Reply,
+    XCB_ChangeWindowAttributes,
+    XCB_GetWindowAttributes,
+    XCB_DestroyWindow,
+    XCB_DestroySubwindows,
+    XCB_ChangeSaveSet,
+    XCB_ReparentWindow,
+    XCB_MapWindow,
+    XCB_MapSubwindows,
+    XCB_UnmapWindow,
+    XCB_UnmapSubwindows,
+    XCB_ConfigureWindow,
+    XCB_CirculateWindow,
+    XCB_GetGeometry,
+    XCB_QueryTree,
+    XCB_InternAtom,
+    XCB_GetAtomName,
+    XCB_ChangeProperty,
+    XCB_DeleteProperty,
+    XCB_GetProperty,
+    XCB_ListProperties,
+    XCB_SetSelectionOwner,
+    XCB_GetSelectionOwner,
+    XCB_ConvertSelection,
+    XCB_SendEvent,
+    XCB_GrabPointer,
+    XCB_UngrabPointer,
+    XCB_GrabButton,
+    XCB_UngrabButton,
+    XCB_ChangeActivePointerGrab,
+    XCB_GrabKeyboard,
+    XCB_UngrabKeyboard,
+    XCB_GrabKey,
+    XCB_UngrabKey,
+    XCB_AllowEvents,
+    XCB_GrabServer,
+    XCB_UngrabServer,
+    XCB_QueryPointer,
+    XCB_GetMotionEvents,
+    XCB_TranslateCoords,
+    XCB_WarpPointer,
+    XCB_SetInputFocus,
+    XCB_GetInputFocus,
+    XCB_QueryKeymap,
+    XCB_OpenFont,
+    XCB_CloseFont,
+    XCB_QueryFont,
+    XCB_QueryTextExtents,
+    XCB_ListFonts,
+    XCB_ListFontsWithInfo,
+    XCB_SetFontPath,
+    XCB_GetFontPath,
+    XCB_CreatePixmap,
+    XCB_FreePixmap,
+    XCB_CreateGC,
+    XCB_ChangeGC,
+    XCB_CopyGC,
+    XCB_SetDashes,
+    XCB_SetClipRectangles,
+    XCB_FreeGC,
+    XCB_ClearArea,
+    XCB_CopyArea,
+    XCB_CopyPlane,
+    XCB_PolyPoint,
+    XCB_PolyLine,
+    XCB_PolySegment,
+    XCB_PolyRectangle,
+    XCB_PolyArc,
+    XCB_FillPoly,
+    XCB_PolyFillRectangle,
+    XCB_PolyFillArc,
+    XCB_PutImage,
+    XCB_GetImage,
+    XCB_PolyText8,
+    XCB_PolyText16,
+    XCB_ImageText8,
+    XCB_ImageText16,
+    XCB_CreateColormap,
+    XCB_FreeColormap,
+    XCB_CopyColormapAndFree,
+    XCB_InstallColormap,
+    XCB_UninstallColormap,
+    XCB_ListInstalledColormaps,
+    XCB_AllocColor,
+    XCB_AllocNamedColor,
+    XCB_AllocColorCells,
+    XCB_AllocColorPlanes,
+    XCB_FreeColors,
+    XCB_StoreColors,
+    XCB_StoreNamedColor,
+    XCB_QueryColors,
+    XCB_LookupColor,
+    XCB_CreateCursor,
+    XCB_CreateGlyphCursor,
+    XCB_FreeCursor,
+    XCB_RecolorCursor,
+    XCB_QueryBestSize,
+    XCB_QueryExtension,
+    XCB_ListExtensions,
+    XCB_ChangeKeyboardMapping,
+    XCB_GetKeyboardMapping,
+    XCB_ChangeKeyboardControl,
+    XCB_GetKeyboardControl,
+    XCB_Bell,
+    XCB_ChangePointerControl,
+    XCB_GetPointerControl,
+    XCB_SetScreenSaver,
+    XCB_GetScreenSaver,
+    XCB_ChangeHosts,
+    XCB_ListHosts,
+    XCB_SetAccessControl,
+    XCB_SetCloseDownMode,
+    XCB_KillClient,
+    XCB_RotateProperties,
+    XCB_ForceScreenSaver,
+    XCB_SetPointerMapping,
+    XCB_GetPointerMapping,
+    XCB_SetModifierMapping,
+    XCB_GetModifierMapping,
+
+
+
+
+    XCB_NoOperation = 127
+};
+
 
 /*****************************************************************
  * WINDOW DEFINITIONS
@@ -985,336 +1118,373 @@ are reserved in the protocol for errors and replies. */
 
 /* Window classes used by CreateWindow */
 /* Note that CopyFromParent is already defined as 0 above (good to have though.)*/
-#define XCBInputCopyFromParent  XCB_WINDOW_CLASS_COPY_FROM_PARENT
-#define XCBInputOutput		    XCB_WINDOW_CLASS_INPUT_OUTPUT
-#define XCBInputOnly		    XCB_WINDOW_CLASS_INPUT_ONLY
-
+/* Window classes used by CreateWindow */
+enum XCBWindowClass 
+{
+    XCBInputCopyFromParent = XCB_WINDOW_CLASS_COPY_FROM_PARENT,
+    XCBInputOutput = XCB_WINDOW_CLASS_INPUT_OUTPUT,
+    XCBInputOnly = XCB_WINDOW_CLASS_INPUT_ONLY,
+};
 /* Window attributes for CreateWindow and ChangeWindowAttributes */
-
-#define XCBCWBackPixmap		    XCB_CW_BACK_PIXMAP
-#define XCBCWBackPixel		    XCB_CW_BACK_PIXEL
-#define XCBCWBorderPixmap		XCB_CW_BORDER_PIXMAP
-#define XCBCWBorderPixel        XCB_CW_BORDER_PIXEL
-#define XCBCWBitGravity		    XCB_CW_BIT_GRAVITY
-#define XCBCWWinGravity		    XCB_CW_WIN_GRAVITY
-#define XCBCWBackingStore       XCB_CW_BACKING_STORE
-#define XCBCWBackingPlanes	    XCB_CW_BACKING_PLANES
-#define XCBCWBackingPixel	    XCB_CW_BACKING_PIXEL
-#define XCBCWOverrideRedirect	XCB_CW_OVERRIDE_REDIRECT
-#define XCBCWSaveUnder		    XCB_CW_SAVE_UNDER
-#define XCBCWEventMask	        XCB_CW_EVENT_MASK
-#define XCBCWDontPropagate	    XCB_CW_DONT_PROPAGATE
-#define XCBCWColormap	        XCB_CW_COLORMAP
-#define XCBCWCursor	            XCB_CW_CURSOR
+enum XCBCreateWindowAttributesCW
+{
+    XCBCWBackPixmap         = XCB_CW_BACK_PIXMAP,
+    XCBCWBackPixel          = XCB_CW_BACK_PIXEL,
+    XCBCWBorderPixmap       = XCB_CW_BORDER_PIXMAP,
+    XCBCWBorderPixel        = XCB_CW_BORDER_PIXEL,
+    XCBCWBitGravity         = XCB_CW_BIT_GRAVITY,
+    XCBCWWinGravity         = XCB_CW_WIN_GRAVITY,
+    XCBCWBackingStore       = XCB_CW_BACKING_STORE,
+    XCBCWBackingPlanes      = XCB_CW_BACKING_PLANES,
+    XCBCWBackingPixel       = XCB_CW_BACKING_PIXEL,
+    XCBCWOverrideRedirect   = XCB_CW_OVERRIDE_REDIRECT,
+    XCBCWSaveUnder          = XCB_CW_SAVE_UNDER,
+    XCBCWEventMask          = XCB_CW_EVENT_MASK,
+    XCBCWDontPropagate      = XCB_CW_DONT_PROPAGATE,
+    XCBCWColormap           = XCB_CW_COLORMAP,
+    XCBCWCursor             = XCB_CW_CURSOR
+};
 
 /* ConfigureWindow structure */
-
-#define XCBCWX			        XCB_CONFIG_WINDOW_X
-#define XCBCWY			        XCB_CONFIG_WINDOW_Y
-#define XCBCWWidth			    XCB_CONFIG_WINDOW_WIDTH
-#define XCBCWHeight		        XCB_CONFIG_WINDOW_HEIGHT
-#define XCBCWBorderWidth		XCB_CONFIG_WINDOW_BORDER_WIDTH
-#define XCBCWSibling		    XCB_CONFIG_WINDOW_SIBLING
-#define XCBCWStackMode		    XCB_CONFIG_WINDOW_STACK_MODE
-
-
+enum XCBConfigureWindowAttributesCW 
+{
+    XCBCWX               = XCB_CONFIG_WINDOW_X,
+    XCBCWY               = XCB_CONFIG_WINDOW_Y,
+    XCBCWWidth           = XCB_CONFIG_WINDOW_WIDTH,
+    XCBCWHeight          = XCB_CONFIG_WINDOW_HEIGHT,
+    XCBCWBorderWidth     = XCB_CONFIG_WINDOW_BORDER_WIDTH,
+    XCBCWSibling         = XCB_CONFIG_WINDOW_SIBLING,
+    XCBCWStackMode       = XCB_CONFIG_WINDOW_STACK_MODE
+};
 /* Bit Gravity */
-
-#define XCBForgetGravity		XCB_GRAVITY_BIT_FORGET
-#define XCBUnmapGravity         XCB_GRAVITY_WIN_UNMAP
-#define XCBNorthWestGravity	    XCB_GRAVITY_NORTH_WEST
-#define XCBNorthGravity		    XCB_GRAVITY_NORTH
-#define XCBNorthEastGravity	    XCB_GRAVITY_NORTH_EAST
-#define XCBWestGravity		    XCB_GRAVITY_WEST
-#define XCBCenterGravity	    XCB_GRAVITY_CENTER
-#define XCBEastGravity		    XCB_GRAVITY_EAST
-#define XCBSouthWestGravity	    XCB_GRAVITY_SOUTH_WEST
-#define XCBSouthGravity		    XCB_GRAVITY_SOUTH
-#define XCBSouthEastGravity	    XCB_GRAVITY_SOUTH_EAST
-#define XCBStaticGravity		XCB_GRAVITY_STATIC
-
-/* Window gravity + bit gravity above (no)*/
-
-#define XCBUnmapGravity		    XCB_GRAVITY_WIN_UNMAP
+enum XCBBitGravity 
+{
+    XCBForgetGravity     = XCB_GRAVITY_BIT_FORGET,
+    /* Window gravity + bit gravity above (no)*/
+    XCBUnmapGravity      = XCB_GRAVITY_WIN_UNMAP,
+    XCBNorthWestGravity  = XCB_GRAVITY_NORTH_WEST,
+    XCBNorthGravity      = XCB_GRAVITY_NORTH,
+    XCBNorthEastGravity  = XCB_GRAVITY_NORTH_EAST,
+    XCBWestGravity       = XCB_GRAVITY_WEST,
+    XCBCenterGravity     = XCB_GRAVITY_CENTER,
+    XCBEastGravity       = XCB_GRAVITY_EAST,
+    XCBSouthWestGravity  = XCB_GRAVITY_SOUTH_WEST,
+    XCBSouthGravity      = XCB_GRAVITY_SOUTH,
+    XCBSouthEastGravity  = XCB_GRAVITY_SOUTH_EAST,
+    XCBStaticGravity     = XCB_GRAVITY_STATIC,
+};
 
 /* Used in CreateWindow for backing-store hint */
-
-#define XCBNotUseful            XCB_BACKING_STORE_NOT_USEFUL
-#define XCBWhenMapped           XCB_BACKING_STORE_WHEN_MAPPED
-#define XCBAlways               XCB_BACKING_STORE_ALWAYS
+enum XCBBackingStoreHint 
+{
+    XCBNotUseful            = XCB_BACKING_STORE_NOT_USEFUL,
+    XCBWhenMapped           = XCB_BACKING_STORE_WHEN_MAPPED,
+    XCBAlways               = XCB_BACKING_STORE_ALWAYS
+};
 
 /* Used in GetWindowAttributes reply */
-
-#define XCBIsUnmapped		    XCB_MAP_STATE_UNMAPPED
-#define XCBIsUnviewable		    XCB_MAP_STATE_UNVIEWABLE
-#define XCBIsViewable		    XCB_MAP_STATE_VIEWABLE
-
+enum XCBMapState 
+{
+    XCBIsUnmapped           = XCB_MAP_STATE_UNMAPPED,
+    XCBIsUnviewable         = XCB_MAP_STATE_UNVIEWABLE,
+    XCBIsViewable           = XCB_MAP_STATE_VIEWABLE
+};
 /* Used in ChangeSaveSet */
-
-#define XCBSetModeInsert        XCB_SET_MODE_INSERT
-#define XCBSetModeDelete        XCB_SET_MODE_DELETE
-
+enum XCBSetMode 
+{
+    XCBSetModeInsert        = XCB_SET_MODE_INSERT,
+    XCBSetModeDelete        = XCB_SET_MODE_DELETE
+};
 /* Used in ChangeCloseDownMode */
-
-#define XCBDestroyAll           XCB_CLOSE_DOWN_DESTROY_ALL
-#define XCBRetainPermanent      XCB_CLOSE_DOWN_RETAIN_PERMANENT
-#define XCBRetainTemporary      XCB_CLOSE_DOWN_RETAIN_TEMPORARY
-
+enum XCBCloseDownMode 
+{
+    XCBDestroyAll           = XCB_CLOSE_DOWN_DESTROY_ALL,
+    XCBRetainPermanent      = XCB_CLOSE_DOWN_RETAIN_PERMANENT,
+    XCBRetainTemporary      = XCB_CLOSE_DOWN_RETAIN_TEMPORARY
+};
 /* Window stacking method (in configureWindow) */
-
-#define XCBAbove                XCB_STACK_MODE_ABOVE
-#define XCBBelow                XCB_STACK_MODE_BELOW
-#define XCBTopIf                XCB_STACK_MODE_TOP_IF
-#define XCBBottomIf             XCB_STACK_MODE_BOTTOM_IF
-#define XCBOpposite             XCB_STACK_MODE_OPPOSITE
-
+enum XCBStackingMethod 
+{
+    XCBAbove                = XCB_STACK_MODE_ABOVE,
+    XCBBelow                = XCB_STACK_MODE_BELOW,
+    XCBTopIf                = XCB_STACK_MODE_TOP_IF,
+    XCBBottomIf             = XCB_STACK_MODE_BOTTOM_IF,
+    XCBOpposite             = XCB_STACK_MODE_OPPOSITE
+};
 /* Circulation direction */
-
-#define XCBRaiseLowest          XCB_CIRCULATE_RAISE_LOWEST
-#define XCBLowerHighest         XCB_CIRCULATE_LOWER_HIGHEST
-
+enum XCBCirculationDirection 
+{
+    XCBRaiseLowest          = XCB_CIRCULATE_RAISE_LOWEST,
+    XCBLowerHighest         = XCB_CIRCULATE_LOWER_HIGHEST
+};
 /* Property modes */
-
-#define XCBPropModeReplace      XCB_PROP_MODE_REPLACE
-#define XCBPropModePrepend      XCB_PROP_MODE_PREPEND
-#define XCBPropModeAppend       XCB_PROP_MODE_APPEND
-
+enum XCBPropertyMode 
+{
+    XCBPropModeReplace      = XCB_PROP_MODE_REPLACE,
+    XCBPropModePrepend      = XCB_PROP_MODE_PREPEND,
+    XCBPropModeAppend       = XCB_PROP_MODE_APPEND
+};
 /*****************************************************************
  * GRAPHICS DEFINITIONS
  *****************************************************************/
 
 /* graphics functions, as in GC.alu */
-                                /* 0 */
-#define	XCBGXclear			    XCB_GX_CLEAR
-                                /* src AND dst */
-#define XCBGXand			    XCB_GX_AND
-                                /* src AND NOT dst */
-#define XCBGXandReverse		    XCB_GX_AND_REVERSE
-                                /* src */
-#define XCBGXcopy			    XCB_GX_COPY
-                                /* NOT src AND dst */
-#define XCBGXandInverted		XCB_GX_AND_INVERTED
-                                /* dst */
-#define	XCBGXnoop			    XCB_GX_NOOP
-                                /* src XOR dst */
-#define XCBGXxor			    XCB_GX_XOR
-                                /* src OR dst */
-#define XCBGXor			        XCB_GX_OR
-                                /* NOT src AND NOT dst */
-#define XCBGXnor			    XCB_GX_NOR
-                                /* NOT src XOR dst */
-#define XCBGXequiv			    XCB_GX_EQUIV
-                                /* NOT dst */
-#define XCBGXinvert		        XCB_GX_INVERT
-                                /* src OR NOT dst */
-#define XCBGXorReverse		    XCB_GX_OR_REVERSE
-                                /* NOT src */
-#define XCBGXcopyInverted		XCB_GX_COPY_INVERTED
-                                /* NOT src OR dst */
-#define XCBGXorInverted		    XCB_GX_OR_INVERTED
-                                /* NOT src OR NOT dst */
-#define XCBGXnand			    XCB_GX_NAND
-                                /* '1' */
-#define XCBGXset			    XCB_GX_SET
+enum XCBGraphicsOperation 
+{
+    XCBGXclear              = XCB_GX_CLEAR,             /* 0 */
+    XCBGXand                = XCB_GX_AND,               /* src AND dst */
+    XCBGXandReverse         = XCB_GX_AND_REVERSE,       /* src AND NOT dst */
+    XCBGXcopy               = XCB_GX_COPY,              /* src */
+    XCBGXandInverted        = XCB_GX_AND_INVERTED,      /* NOT src AND dst */
+    XCBGXnoop               = XCB_GX_NOOP,              /* dst */
+    XCBGXxor                = XCB_GX_XOR,               /* src XOR dst */
+    XCBGXor                 = XCB_GX_OR,                /* src OR dst */
+    XCBGXnor                = XCB_GX_NOR,               /* NOT src AND NOT dst */
+    XCBGXequiv              = XCB_GX_EQUIV,             /* NOT src XOR dst */
+    XCBGXinvert             = XCB_GX_INVERT,            /* NOT dst */
+    XCBGXorReverse          = XCB_GX_OR_REVERSE,        /* src OR NOT dst */
+    XCBGXcopyInverted       = XCB_GX_COPY_INVERTED,     /* NOT src */
+    XCBGXorInverted         = XCB_GX_OR_INVERTED,       /* NOT src OR dst */
+    XCBGXnand               = XCB_GX_NAND,              /* NOT src OR NOT dst */
+    XCBGXset			    = XCB_GX_SET,               /* 1 */
+};
 
 /* LineStyle */
-
-#define XCBLineSolid		    XCB_LINE_STYLE_SOLID
-#define XCBLineOnOffDash	    XCB_LINE_STYLE_ON_OFF_DASH
-#define XCBLineDoubleDash		XCB_LINE_STYLE_DOUBLE_DASH
-
+enum XCBLineStyle 
+{
+    XCBLineSolid        = XCB_LINE_STYLE_SOLID,
+    XCBLineOnOffDash    = XCB_LINE_STYLE_ON_OFF_DASH,
+    XCBLineDoubleDash   = XCB_LINE_STYLE_DOUBLE_DASH
+};
 /* capStyle */
-
-#define XCBCapNotLast		    XCB_CAP_STYLE_NOT_LAST
-#define XCBCapButt			    XCB_CAP_STYLE_BUTT
-#define XCBCapRound		        XCB_CAP_STYLE_ROUND
-#define XCBCapProjecting	    XCB_CAP_STYLE_PROJECTING
-
+enum XCBCapStyle 
+{
+    XCBCapNotLast       = XCB_CAP_STYLE_NOT_LAST,
+    XCBCapButt          = XCB_CAP_STYLE_BUTT,
+    XCBCapRound         = XCB_CAP_STYLE_ROUND,
+    XCBCapProjecting    = XCB_CAP_STYLE_PROJECTING
+};
 /* joinStyle */
-
-#define XCBJoinMiter		    XCB_JOIN_STYLE_MITER
-#define XCBJoinRound		    XCB_JOIN_STYLE_ROUND
-#define XCBJoinBevel		    XCB_JOIN_STYLE_BEVEL
-
+enum XCBJoinStyle 
+{
+    XCBJoinMiter        = XCB_JOIN_STYLE_MITER,
+    XCBJoinRound        = XCB_JOIN_STYLE_ROUND,
+    XCBJoinBevel        = XCB_JOIN_STYLE_BEVEL
+};
 /* fillStyle */
-
-#define XCBFillSolid		    XCB_FILL_STYLE_SOLID
-#define XCBFillTiled		    XCB_FILL_STYLE_TILED
-#define XCBFillStippled		    XCB_FILL_STYLE_STIPPLED
-#define XCBFillOpaqueStippled	XCB_FILL_STYLE_OPAQUE_STIPPLED
-
+enum XCBFillStyle 
+{
+    XCBFillSolid             = XCB_FILL_STYLE_SOLID,
+    XCBFillTiled             = XCB_FILL_STYLE_TILED,
+    XCBFillStippled          = XCB_FILL_STYLE_STIPPLED,
+    XCBFillOpaqueStippled    = XCB_FILL_STYLE_OPAQUE_STIPPLED
+};
 /* fillRule */
-
-#define XCBEvenOddRule		    XCB_FILL_RULE_EVEN_ODD
-#define XCbWindingRule		    XCB_FILL_RULE_WINDING
-
+enum XCBFillRule 
+{
+    XCBEvenOddRule    = XCB_FILL_RULE_EVEN_ODD,
+    XCbWindingRule    = XCB_FILL_RULE_WINDING
+};
 /* subwindow mode */
-
-#define XCBClipByChildren		XCB_SUBWINDOW_MODE_CLIP_BY_CHILDREN
-#define XCBIncludeInferiors	    XCB_SUBWINDOW_MODE_INCLUDE_INFERIORS
-
+enum XCBSubwindowMode 
+{
+    XCBClipByChildren     = XCB_SUBWINDOW_MODE_CLIP_BY_CHILDREN,
+    XCBIncludeInferiors   = XCB_SUBWINDOW_MODE_INCLUDE_INFERIORS
+};
 /* SetClipRectangles ordering */
-
-#define XCBUnsorted		        XCB_CLIP_ORDERING_UNSORTED
-#define XCBYSorted			    XCB_CLIP_ORDERING_Y_SORTED
-#define XCBYXSorted		        XCB_CLIP_ORDERING_YX_SORTED
-#define XCBYXBanded		        XCB_CLIP_ORDERING_YX_BANDED
-
+enum XCBClipOrdering 
+{
+    XCBUnsorted     = XCB_CLIP_ORDERING_UNSORTED,
+    XCBYSorted      = XCB_CLIP_ORDERING_Y_SORTED,
+    XCBYXSorted     = XCB_CLIP_ORDERING_YX_SORTED,
+    XCBYXBanded     = XCB_CLIP_ORDERING_YX_BANDED
+};
 /* CoordinateMode for drawing routines */
-                                /* relative to the origin */
-#define XCBCoordModeOrigin		XCB_COORD_MODE_ORIGIN
-                                /* relative to previous point */
-#define XCBCoordModePrevious    XCB_COORD_MODE_PREVIOUS
+enum XCBCoordMode 
+{
+    XCBCoordModeOrigin      = XCB_COORD_MODE_ORIGIN,    /* relative to the origin */
+    XCBCoordModePrevious    = XCB_COORD_MODE_PREVIOUS   /* relative to previous point */
+};
 
 /* Polygon shapes */
-                                /* paths may intersect */
-#define XCBComplex			    XCB_POLY_SHAPE_COMPLEX
-                                /* no paths intersect, but not convex */
-#define XCBNonconvex		    XCB_POLY_SHAPE_NONCONVEX
-                                /* wholly convex */
-#define XCBConvex			    XCB_POLY_SHAPE_CONVEX
+enum XCBPolyShape 
+{
+    XCBComplex      = XCB_POLY_SHAPE_COMPLEX,   /* paths may intersect */
+    XCBNonconvex    = XCB_POLY_SHAPE_NONCONVEX, /* no paths intersect, but not convex */
+    XCBConvex       = XCB_POLY_SHAPE_CONVEX,    /* wholly convex */
+};
 
 /* Arc modes for PolyFillArc */
-                                /* join endpoints of arc */
-#define XCBArcChord		        XCB_ARC_MODE_CHORD
-                                /* join endpoints to center of arc */
-#define XCBArcPieSlice		    XCB_ARC_MODE_PIE_SLICE
+enum XCBArcMode 
+{
+    XCBArcChord     = XCB_ARC_MODE_CHORD,       /* join endpoints of arc */
+    XCBArcPieSlice  = XCB_ARC_MODE_PIE_SLICE    /* join endpoints to center of arc */
+};
 
 /* GC components: masks used in CreateGC, CopyGC, ChangeGC, OR'ed into
    GC.stateChanges */
 
-#define XCBGCFunction           XCB_GC_FUNCTION
-#define XCBGCPlaneMask          XCB_GC_PLANE_MASK
-#define XCBGCForeground         XCB_GC_FOREGROUND
-#define XCBGCBackground         XCB_GC_BACKGROUND
-#define XCBGCLineWidth          XCB_GC_LINE_WIDTH
-#define XCBGCLineStyle          XCB_GC_LINE_STYLE
-#define XCBGCCapStyle           XCB_GC_CAP_STYLE
-#define XCBGCJoinStyle		    XCB_GC_JOIN_STYLE
-#define XCBGCFillStyle		    XCB_GC_FILL_STYLE
-#define XCBGCFillRule		    XCB_GC_FILL_RULE
-#define XCBGCTile			    XCB_GC_TILE
-#define XCBGCStipple		    XCB_GC_STIPPLE
-#define XCBGCTileStipXOrigin	XCB_GC_TILE_STIPPLE_ORIGIN_X
-#define XCBGCTileStipYOrigin    XCB_GC_TILE_STIPPLE_ORIGIN_Y
-#define XCBGCFont 			    XCB_GC_FONT
-#define XCBGCSubwindowMode		XCB_GC_SUBWINDOW_MODE
-#define XCBGCGraphicsExposures  XCB_GC_GRAPHICS_EXPOSURES
-#define XCBGCClipXOrigin		XCB_GC_CLIP_ORIGIN_X
-#define XCBGCClipYOrigin	    XCB_GC_CLIP_ORIGIN_Y
-#define XCBGCClipMask		    XCB_GC_CLIP_MASK
-#define XCBGCDashOffset		    XCB_GC_DASH_OFFSET
-#define XCBGCDashList		    XCB_GC_DASH_LIST
-#define XCBGCArcMode		    XCB_GC_ARC_MODE
-
-                                /* Refers quite literrally to the last bit so   1000 0000 0000 0000
-                                 *                                              ^
-                                 * like that last bit, for now it does nothing
-                                 */
-#define XCBGCLastBit		    XCB_GC_ARC_MODE << 1L
+enum XCBGCComponent 
+{
+    XCBGCFunction           = XCB_GC_FUNCTION,
+    XCBGCPlaneMask          = XCB_GC_PLANE_MASK,
+    XCBGCForeground         = XCB_GC_FOREGROUND,
+    XCBGCBackground         = XCB_GC_BACKGROUND,
+    XCBGCLineWidth          = XCB_GC_LINE_WIDTH,
+    XCBGCLineStyle          = XCB_GC_LINE_STYLE,
+    XCBGCCapStyle           = XCB_GC_CAP_STYLE,
+    XCBGCJoinStyle          = XCB_GC_JOIN_STYLE,
+    XCBGCFillStyle          = XCB_GC_FILL_STYLE,
+    XCBGCFillRule           = XCB_GC_FILL_RULE,
+    XCBGCTile               = XCB_GC_TILE,
+    XCBGCStipple            = XCB_GC_STIPPLE,
+    XCBGCTileStipXOrigin    = XCB_GC_TILE_STIPPLE_ORIGIN_X,
+    XCBGCTileStipYOrigin    = XCB_GC_TILE_STIPPLE_ORIGIN_Y,
+    XCBGCFont               = XCB_GC_FONT,
+    XCBGCSubwindowMode      = XCB_GC_SUBWINDOW_MODE,
+    XCBGCGraphicsExposures  = XCB_GC_GRAPHICS_EXPOSURES,
+    XCBGCClipXOrigin        = XCB_GC_CLIP_ORIGIN_X,
+    XCBGCClipYOrigin        = XCB_GC_CLIP_ORIGIN_Y,
+    XCBGCClipMask           = XCB_GC_CLIP_MASK,
+    XCBGCDashOffset         = XCB_GC_DASH_OFFSET,
+    XCBGCDashList           = XCB_GC_DASH_LIST,
+    XCBGCArcMode            = XCB_GC_ARC_MODE,
+                            /* Refers quite literrally to the last bit so   1000 0000 0000 0000
+                             *                                              ^
+                             * like that last bit, for now it does nothing
+                             */
+    XCBGCLastBit            = XCB_GC_ARC_MODE << 1L,
+};
 /*****************************************************************
  * FONTS
  *****************************************************************/
 
 /* used in QueryFont -- draw direction */
 
-#define XCBFontLeftToRight		XCB_FONT_DRAW_LEFT_TO_RIGHT
-#define XCBFontRightToLeft		XCB_FONT_DRAW_RIGHT_TO_LEFT
-                                /* TODO: Couldnt find */
-#define XCBFontChange		    XCB_FONT_CHANGE
+enum XCBFontDraw 
+{
+    XCBFontLeftToRight = XCB_FONT_DRAW_LEFT_TO_RIGHT,
+    XCBFontRightToLeft = XCB_FONT_DRAW_RIGHT_TO_LEFT,
+};
 
 /*****************************************************************
  *  IMAGING
  *****************************************************************/
 
 /* ImageFormat -- PutImage, GetImage */
-                                /* depth 1, XYFormat */
-#define XCBXYBitmap		        XCB_IMAGE_FORMAT_XY_BITMAP
-                                /* depth == drawable depth */
-#define XCBXYPixmap		        XCB_IMAGE_FORMAT_XY_PIXMAP
-                                /* depth == drawable depth */
-#define XCBZPixmap			    XCB_IMAGE_FORMAT_Z_PIXMAP
+enum XCBImageFormat 
+{
+    XCBXYBitmap             = XCB_IMAGE_FORMAT_XY_BITMAP,       /* depth 1, XYFormat */
+    XCBXYPixmap             = XCB_IMAGE_FORMAT_XY_PIXMAP,       /* depth == drawable depth */
+    XCBZPixmap              = XCB_IMAGE_FORMAT_Z_PIXMAP,        /* depth == drawable depth */
+};
 
 /*****************************************************************
  *  COLOR MAP STUFF
  *****************************************************************/
 
 /* For CreateColormap */
-                                /* create map with no entries */
-#define XCBAllocNone		    XCB_COLORMAP_ALLOC_NONE
-                                /* allocate entire map writeable */
-#define XCBAllocAll		        XCB_COLORMAP_ALLOC_ALL
-
+enum XCBColormapAlloc 
+{
+    XCBAllocNone = XCB_COLORMAP_ALLOC_NONE,     /* create map with no entries */
+    XCBAllocAll = XCB_COLORMAP_ALLOC_ALL,       /* allocate entire map writeable */
+};
 
 /* Flags used in StoreNamedColor, StoreColors */
 
-#define XCBDoRed			    XCB_COLOR_FLAG_RED
-#define XCBDoGreen			    XCB_COLOR_FLAG_GREEN
-#define XCBDoBlue			    XCB_COLOR_FLAG_BLUE
+enum XCBColorFlags 
+{
+    XCBDoRed = XCB_COLOR_FLAG_RED,
+    XCBDoGreen = XCB_COLOR_FLAG_GREEN,
+    XCBDoBlue = XCB_COLOR_FLAG_BLUE,
+};
 
 /*****************************************************************
  * CURSOR STUFF
  *****************************************************************/
 
 /* QueryBestSize Class */
-                                /* largest size that can be displayed */
-#define XCBCursorShape		    XCB_QUERY_SHAPE_OF_LARGEST_CURSOR
-                                /* size tiled fastest */
-#define XCBTileShape		    XCB_QUERY_SHAPE_OF_FASTEST_TILE
-                                /* size stippled fastest */
-#define XCBStippleShape	        XCB_QUERY_SHAPE_OF_FASTEST_STIPPLE
-
+enum XCBCursorQueryShape 
+{
+    XCBCursorShape   = XCB_QUERY_SHAPE_OF_LARGEST_CURSOR,   /* Largest size that can be displayed */
+    XCBTileShape     = XCB_QUERY_SHAPE_OF_FASTEST_TILE,     /* Size tiled fastest */
+    XCBStippleShape  = XCB_QUERY_SHAPE_OF_FASTEST_STIPPLE   /* Size stippled fastest */
+};
 /*****************************************************************
  * KEYBOARD/POINTER STUFF
  *****************************************************************/
 
-#define XCBAutoRepeatModeOff	    XCB_AUTO_REPEAT_MODE_OFF
-#define XCBAutoRepeatModeOn	        XCB_AUTO_REPEAT_MODE_ON
-#define XCBAutoRepeatModeDefault	XCB_AUTO_REPEAT_MODE_DEFAULT
+enum XCBAutoRepeatMode 
+{
+    XCBAutoRepeatModeOff     = XCB_AUTO_REPEAT_MODE_OFF,     /* Auto repeat off */
+    XCBAutoRepeatModeOn      = XCB_AUTO_REPEAT_MODE_ON,      /* Auto repeat on */
+    XCBAutoRepeatModeDefault = XCB_AUTO_REPEAT_MODE_DEFAULT  /* Default auto repeat mode */
+};
 
-#define XCBLedModeOff		        XCB_LED_MODE_OFF
-#define XCBLedModeOn		        XCB_LED_MODE_ON
-
+enum XCBLedMode 
+{
+    XCBLedModeOff = XCB_LED_MODE_OFF,   /* Led mode off */
+    XCBLedModeOn  = XCB_LED_MODE_ON     /* Led mode on */
+};
 /* masks for ChangeKeyboardControl */
+enum XCBKeyboardControl 
+{
+    XCBKBKeyClickPercent = XCB_KB_KEY_CLICK_PERCENT,
+    XCBKBBellPercent = XCB_KB_BELL_PERCENT,
+    XCBKBBellPitch = XCB_KB_BELL_PITCH,
+    XCBKBBellDuration = XCB_KB_BELL_DURATION,
+    XCBKBLed = XCB_KB_LED,
+    XCBKBLedMode = XCB_KB_LED_MODE,
+    XCBKBKey = XCB_KB_KEY,
+    XCBKBAutoRepeatMode = XCB_KB_AUTO_REPEAT_MODE
+};
 
-#define XCBKBKeyClickPercent	XCB_KB_KEY_CLICK_PERCENT
-#define XCBKBBellPercent		XCB_KB_Bint ELL_PERCENT
-#define XCBKBBellPitch		    XCB_KB_BELL_PITCH
-#define XCBKBBellDuration		XCB_KB_BELL_DURATION
-#define XCBKBLed			    XCB_KB_LED
-#define XCBKBLedMode		    XCB_KB_LED_MODE
-#define XCBKBKey			    XCB_KB_KEY
-#define XCBKBAutoRepeatMode	    XCB_KB_AUTO_REPEAT_MODE
+enum XCBMappingStatus 
+{
+    XCBMappingSuccess = XCB_MAPPING_STATUS_SUCCESS,
+    XCBMappingBusy = XCB_MAPPING_STATUS_BUSY,
+    XCBMappingFailed = XCB_MAPPING_STATUS_FAILURE
+};
 
-#define XCBMappingSuccess     	XCB_MAPPING_STATUS_SUCCESS
-#define XCBMappingBusy          XCB_MAPPING_STATUS_BUSY
-#define XCBMappingFailed		XCB_MAPPING_STATUS_FAILURE
-
-#define XCBMappingModifier		XCB_MAPPING_MODIFIER
-#define XCBMappingKeyboard		XCB_MAPPING_KEYBOARD
-#define XCBMappingPointer		XCB_MAPPING_POINTER
+enum XCBMapping 
+{
+    XCBMappingModifier = XCB_MAPPING_MODIFIER,
+    XCBMappingKeyboard = XCB_MAPPING_KEYBOARD,
+    XCBMappingPointer = XCB_MAPPING_POINTER
+};
 
 /*****************************************************************
  * SCREEN SAVER STUFF
  *****************************************************************/
 
-#define XCBDontPreferBlanking	XCB_BLANKING_NOT_PREFERRED
-#define XCBPreferBlanking		XCB_BLANKING_PREFERRED
-#define XCBDefaultBlanking		XCB_BLANKING_DEFAULT
+enum XCBBlanking 
+{
+    XCBDontPreferBlanking = XCB_BLANKING_NOT_PREFERRED,
+    XCBPreferBlanking = XCB_BLANKING_PREFERRED,
+    XCBDefaultBlanking = XCB_BLANKING_DEFAULT
+};
 
-/* Not sure how to directly translate this but this will probably do FIXME */
-#define XCBDisableScreenSaver	((!XCB_SCREEN_SAVER_ACTIVE))
-/* Not sure how to directly translate this but this will probably do FIXME */
-#define XCBDisableScreenInterval	0
+enum
+{
+    /* Not sure how to directly translate this but this will probably do FIXME */
+    XCBDisableScreenInterval = 0,	
+};
 
-#define XCBDontAllowExposures	XCB_EXPOSURES_NOT_ALLOWED
-#define XCBAllowExposures		XCB_EXPOSURES_ALLOWED
-#define XCBDefaultExposures	    XCB_EXPOSURES_DEFAULT
-
+enum XCBExposures
+{
+    XCBDontAllowExposures = XCB_EXPOSURES_NOT_ALLOWED,
+    XCBAllowExposures = XCB_EXPOSURES_ALLOWED,
+    XCBDefaultExposures = XCB_EXPOSURES_DEFAULT
+};
 /* for ForceScreenSaver */
 
-#define XCBScreenSaverReset     XCB_SCREEN_SAVER_RESET
-#define XCBScreenSaverActive    XCB_SCREEN_SAVER_ACTIVE
+enum XCBScreenSaverMode
+{
+    XCBScreenSaverReset = XCB_SCREEN_SAVER_RESET,
+    /* Not sure how to directly translate this but this will probably do FIXME */
+    XCBDisableScreenSaver = ((!XCB_SCREEN_SAVER_ACTIVE)),
+    XCBScreenSaverActive = XCB_SCREEN_SAVER_ACTIVE
+};
 
 /*****************************************************************
  * HOSTS AND CONNECTIONS
@@ -1322,30 +1492,37 @@ are reserved in the protocol for errors and replies. */
 
 /* for ChangeHosts */
 
-#define XCBHostInsert		    XCB_HOST_MODE_INSERT
-#define XCBHostDelete		    XCB_HOST_MODE_DELETE
-
+enum XCBChangeHosts 
+{
+    XCBHostInsert = XCB_HOST_MODE_INSERT,
+    XCBHostDelete = XCB_HOST_MODE_DELETE
+};
 /* for ChangeAccessControl */
-
-#define XCBEnableAccess		    XCB_ACCESS_CONTROL_ENABLE
-#define XCBDisableAccess		XCB_ACCESS_CONTROL_DISABLE
-
+enum XCBChangeAccessControl 
+{
+    XCBEnableAccess = XCB_ACCESS_CONTROL_ENABLE,
+    XCBDisableAccess = XCB_ACCESS_CONTROL_DISABLE
+};
 /* Display classes  used in opening the connection
  * Note that the statically allocated ones are even numbered and the
- * dynamically changeable ones are odd numbered */
-
-#define XCBStaticGray		    XCB_VISUAL_CLASS_STATIC_GRAY
-#define XCBGrayScale		    XCB_VISUAL_CLASS_GRAY_SCALE
-#define XCBStaticColor		    XCB_VISUAL_CLASS_STATIC_COLOR
-#define XCBPseudoColor		    XCB_VISUAL_CLASS_PSEUDO_COLOR
-#define XCBTrueColor		    XCB_VISUAL_CLASS_TRUE_COLOR
-#define XCBDirectColor		    XCB_VISUAL_CLASS_DIRECT_COLOR
-
+ * dynamically changeable ones are odd numbered 
+ */
+enum XCBDisplayClasses 
+{
+    XCBStaticGray = XCB_VISUAL_CLASS_STATIC_GRAY,
+    XCBGrayScale = XCB_VISUAL_CLASS_GRAY_SCALE,
+    XCBStaticColor = XCB_VISUAL_CLASS_STATIC_COLOR,
+    XCBPseudoColor = XCB_VISUAL_CLASS_PSEUDO_COLOR,
+    XCBTrueColor = XCB_VISUAL_CLASS_TRUE_COLOR,
+    XCBDirectColor = XCB_VISUAL_CLASS_DIRECT_COLOR
+};
 
 /* Byte order  used in imageByteOrder and bitmapBitOrder */
-
-#define XCBLSBFirst		        XCB_IMAGE_ORDER_LSB_FIRST
-#define XCBMSBFirst		        XCB_IMAGE_ORDER_MSB_FIRST
+enum XCBByteOrder 
+{
+    XCBLSBFirst = XCB_IMAGE_ORDER_LSB_FIRST,
+    XCBMSBFirst = XCB_IMAGE_ORDER_MSB_FIRST
+};
 
 /*  
  * Opens the display returning a XCBDisplay * to the connection

@@ -99,13 +99,13 @@ color_parser_foreground(
 {
     if(foreground)
     {
-        if(foreground->flags & XCB_DO_RED)
+        if(foreground->flags & XCBDoRed)
         {   *red = foreground->red;
         }
-        if(foreground->flags & XCB_DO_GREEN)
+        if(foreground->flags & XCBDoGreen)
         {   *green = foreground->green;
         }
-        if(foreground->flags & XCB_DO_BLUE)
+        if(foreground->flags & XCBDoBlue)
         {   *blue = foreground->blue;
         }
     }
@@ -121,17 +121,18 @@ color_parser_background(
 {
     if(background)
     {
-        if(background->flags & XCB_DO_RED)
+        if(background->flags & XCBDoRed)
         {   *red = background->red;
         }
-        if(background->flags & XCB_DO_GREEN)
+        if(background->flags & XCBDoGreen)
         {   *green = background->green;
         }
-        if(background->flags & XCB_DO_BLUE)
+        if(background->flags & XCBDoBlue)
         {   *blue = background->blue;
         }
     }
 }
+
 
 #ifdef DBG
 
@@ -383,6 +384,82 @@ _xcb_err_handler(
 #ifdef DBG
     XCBBreakPoint();
 #endif
+}
+
+static void
+__XCBThrowError(
+        XCBDisplay *display,
+        XCBCookie cookie, 
+        uint8_t error, 
+        uint8_t major_code, 
+        uint16_t minor_code
+        )
+{
+    XCBGenericError _err;
+    memset(&_err, 0, sizeof(XCBGenericError));
+    _err.error_code = error;
+    _err.major_code = major_code;
+    _err.minor_code = minor_code;
+    _err.response_type = XCB_NONE;
+    _err.full_sequence = cookie.sequence;
+    _err.sequence = cookie.sequence;
+    _xcb_handler(display, &_err);
+}
+
+static const uint32_t
+__XValidFormat(uint8_t x) 
+{
+    switch(x)
+    {
+        case 32:
+        case 16:
+        case 8:
+            return 1;
+    }
+    return 0;
+}
+/* Automaticalyly frees data on error */
+static const uint32_t
+__XValidFormatThrow(
+        XCBDisplay *display, 
+        XCBCookie cookie,
+        XCBWindowProperty *prop
+        )
+{
+    const uint32_t ret = __XValidFormat(prop->format);
+    if(ret)
+    {   return 1;
+    }
+    __XCBThrowError(display, cookie, XCBBadImplementation, X_GetProperty, XCB_NONE);
+    free(prop);
+    return 0;
+}
+
+static const uint32_t
+__XValidSize(
+        uint32_t value_len
+        ) 
+{
+    /* X11, GetProp.c
+     * Protect against both integer overflow and just plain oversized
+     * memory allocation - no server should ever return this many props.
+     */
+    return value_len <= (INT32_MAX >> 4);
+}
+
+static const uint32_t
+__XValidSizeThrow(
+        XCBDisplay *display, 
+        XCBCookie cookie,
+        XCBWindowProperty *prop
+        )
+{
+    const uint32_t ret = __XValidSize(prop->value_len);
+    if(ret)
+    {   return 1;
+    }
+    __XCBThrowError(display, cookie, XCBBadImplementation, X_GetProperty, XCB_NONE);
+    return 0;
 }
 
 XCBDisplay *
@@ -1252,9 +1329,7 @@ XCBGetTransientForHintReply(
         XCBWindow *win
         )
 {
-    XCBGenericError *err = NULL;
-    xcb_get_property_cookie_t cookie1 = { .sequence = cookie.sequence };
-    xcb_get_property_reply_t *reply = xcb_get_property_reply(display, cookie1, &err);
+    XCBWindowProperty *reply = XCBGetPropertyReply(display, cookie);
     u8 status = 1;
 
 #ifdef DBG
@@ -1280,10 +1355,6 @@ XCBGetTransientForHintReply(
         }
     }
 
-    if(err)
-    {   _xcb_err_handler(display, err);
-        return 0;
-    }
     free(reply);
     return status;
 }
@@ -1332,23 +1403,11 @@ XCBGetWindowPropertyReply(
         XCBCookie cookie
         )
 {
-    XCBGenericError *err = NULL;
-    const xcb_get_property_cookie_t cookie1 = { .sequence = cookie.sequence };
-    xcb_get_property_reply_t *reply = xcb_get_property_reply(display, cookie1, &err);
-
+    XCBWindowProperty *reply = XCBGetPropertyReply(display, cookie);
 #ifdef DBG
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret, _fn);
 #endif
-
-    if(err)
-    {
-        _xcb_err_handler(display, err);
-        if(reply)
-        {   free(reply);
-        }
-        return NULL;
-    }
     return reply;
 }
 
@@ -1380,9 +1439,6 @@ XCBGetWindowPropertyValueSize(
         __XCB__FORMAT__16 = 16,
         __XCB__FORMAT__32 = 32,
     };
-    /* XCB malforms some requests for some reason :/ so go back to failsafe of reply->value_len. 
-     * Which?: Some icons are malformed as to say size "0" when they do have a actual size.
-     */
     switch(reply->format)
     {
         case __XCB__FORMAT__8:
@@ -1446,6 +1502,7 @@ XCBGetPropertyReply(
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret, _fn);
 #endif
+
     if(err)
     {
         _xcb_err_handler(display, err);
@@ -1453,6 +1510,12 @@ XCBGetPropertyReply(
         {   free(reply);
         }
         return NULL;
+    }
+    if(reply)
+    {   
+        if(!__XValidFormatThrow(display, cookie, reply) || !__XValidSizeThrow(display, cookie, reply))
+        {   reply = NULL;
+        }
     }
     return reply;
 }
@@ -1750,14 +1813,12 @@ XCBGetTextPropertyReply(
         XCBTextProperty *reply_return
         )
 {
-    XCBGenericError *err = NULL;
     u8 status = 1;
-    const xcb_get_property_cookie_t cookie1 = { .sequence = cookie.sequence };
 #ifdef DBG
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret, _fn);
 #endif
-    xcb_get_property_reply_t *reply = xcb_get_property_reply(display, cookie1, &err);
+    XCBWindowProperty *reply = XCBGetPropertyReply(display, cookie);
     
     if(!reply)
     {   status = 0;
@@ -1772,11 +1833,6 @@ XCBGetTextPropertyReply(
         XCBGetWindowPropertyValueLength(reply_return->_reply, sizeof(char), &reply_return->name_len);
     }
 
-    if(err)
-    {   
-        _xcb_err_handler(display, err);
-        status = 0;
-    }
     free(reply);
     return status;
 }
@@ -2003,7 +2059,7 @@ XCBGetErrorCodeText(
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret, _fn);
 #endif
-    const char *const errs[18] =
+    static const char *const errs[18] =
     {
         [0] = NULL,
         [XCBBadRequest] = "BadRequest",
@@ -2037,7 +2093,7 @@ XCBGetErrorMajorCodeText(
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret, _fn);
 #endif
-    const char *const errs[128] = 
+    static const char *const errs[128] = 
     {
         [0] = NULL,
         [X_CreateWindow] = "CreateWindow",
@@ -2214,7 +2270,7 @@ XCBGetFullErrorText(
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret, _fn);
 #endif
-    const char *errs[18] =
+    static const char *errs[18] =
     {
         [0] = NULL,
         [XCBBadRequest] = "BadRequest (invalid request code or no such operation)",
@@ -2275,21 +2331,23 @@ XCBSendEvent(
     return ret;
 }
 
-/* Copies err to xcb err handler set when using this API.
- */
 void
 XCBSendError(
         XCBDisplay *display,
         XCBGenericError *err
-        );
-/* This is used by external libraries. 
- * NOTE: Field '*err' must be a pointer to a memory allocated block of memory that is inacessible after callig this function.
- */
+        )
+{
+    _xcb_handler(display, err);
+}
+
 void
 XCBSendErrorP(
         XCBDisplay *display,
         XCBGenericError *err
-        );
+        )
+{
+    _xcb_err_handler(display, err);
+}
 
 int 
 XCBNextEvent(
@@ -3490,9 +3548,8 @@ XCBGetWMHintsReply(
     _xcb_push_func(ret, _fn);
 #endif
     XCBGenericError *err = NULL;
-    xcb_get_property_cookie_t cookie1 = { .sequence = cookie.sequence };
 
-    xcb_get_property_reply_t *reply = xcb_get_property_reply(display, cookie1, &err);
+    XCBWindowProperty *reply = XCBGetPropertyReply(display, cookie);
     XCBWMHints *data = NULL;
 
     /* error handling */
