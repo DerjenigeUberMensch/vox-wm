@@ -1511,7 +1511,7 @@ XCBGetPropertyReply(
         }
         return NULL;
     }
-    if(reply)
+    if(reply && reply->type != XCB_NONE)
     {   
         if(!__XValidFormatThrow(display, cookie, reply) || !__XValidSizeThrow(display, cookie, reply))
         {   reply = NULL;
