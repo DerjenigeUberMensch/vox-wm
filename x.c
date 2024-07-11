@@ -6,6 +6,10 @@
 #include "util.h"
 
 
+#include "XCB-TRL/xcb_winutil.h"
+
+extern XCBAtom netatom[];
+
 uint8_t
 checksticky(int64_t x)
 {
@@ -21,16 +25,26 @@ char *
 getnamefromreply(XCBWindowProperty *namerep)
 {
     char *nstr = NULL;
-    if(namerep)
+    if(namerep && (namerep->type == XCB_ATOM_STRING || namerep->type == netatom[NetUtf8String]))
     {
+        DEBUG("Length:  [%u]", namerep->length);
+        DEBUG("Type:    [%u]", namerep->type);
+        DEBUG("Format:  [%u]", namerep->format);
+        DEBUG("Sequence:[%u]", namerep->sequence);
+        DEBUG("VALENGTH:[%u]", namerep->value_len);
+        DEBUG("BytesAft:[%u]", namerep->bytes_after);
+        DEBUG("Resptype:[%u]", namerep->response_type);
         uint32_t offset = 0;
+
         XCBGetPropertyValueSize(namerep, &offset);
         char *str = XCBGetPropertyValue(namerep);
         nstr = malloc(sizeof(char) * offset + sizeof(char));
         if(nstr)
         {   
-            memcpy(nstr, str, offset);
-            memcpy(nstr + offset, "\0", sizeof(char));
+            if(offset)
+            {   memcpy(nstr, str, offset);
+            }
+            nstr[offset] = '\0';
         }
     }
     return nstr;
@@ -46,7 +60,7 @@ geticonprop(XCBWindowProperty *iconreply)
     const uint8_t MIN_ICON_DATA_SIZE = (MIN_WIDTH + MIN_HEIGHT) * 2;     /* times 2 cause the first and second index are the size */
 
     uint32_t *ret = NULL;
-    if(iconreply)
+    if(iconreply && iconreply->type == XCB_ATOM_CARDINAL)
     {
         uint32_t *icon = XCBGetPropertyValue(iconreply);
         uint32_t length = 0;
