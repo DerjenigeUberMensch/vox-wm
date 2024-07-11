@@ -27,6 +27,8 @@ getnamefromreply(XCBWindowProperty *namerep)
     char *nstr = NULL;
     if(namerep && (namerep->type == XCB_ATOM_STRING || namerep->type == netatom[NetUtf8String]))
     {
+        /* debug against stack smashing */
+        /*
         DEBUG("Length:  [%u]", namerep->length);
         DEBUG("Type:    [%u]", namerep->type);
         DEBUG("Format:  [%u]", namerep->format);
@@ -34,6 +36,7 @@ getnamefromreply(XCBWindowProperty *namerep)
         DEBUG("VALENGTH:[%u]", namerep->value_len);
         DEBUG("BytesAft:[%u]", namerep->bytes_after);
         DEBUG("Resptype:[%u]", namerep->response_type);
+        */
         uint32_t offset = 0;
 
         XCBGetPropertyValueSize(namerep, &offset);
