@@ -3,8 +3,18 @@
 #include <X11/X.h>
 #include <X11/Xlib.h>
 #include <string.h>
+#include <unistd.h>
 
 
+void
+func()
+{
+    /* TODO, without this XServer sends way too many requests way too fast causing the window manager to hang till the event queue is clear.
+     * A malicious app could hang the window manager.
+     * How long to clear ~2-5 seconds per ~.5 seconds of execution, may vary on different systems.
+     */
+    usleep(1);
+}
 
 /* Stack Smash,
  * In this case overruning the event queue.
@@ -34,6 +44,8 @@ main()
         else
         {   XChangeProperty(dpy, win, XA_STRING, XA_STRING, 32, PropModeReplace, (const unsigned char *)str2, strlen(str2) + 1);
         }
+        ++i;
+        func();
     }
     return 0;
 }
