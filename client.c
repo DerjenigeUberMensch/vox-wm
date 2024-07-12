@@ -744,60 +744,22 @@ lastrstack(Desktop *desk)
 void
 managerequest(XCBWindow win, XCBCookie requests[ManageCookieLAST])
 {
-    const u32 REQUEST_MAX_NEEDED_ITEMS = UINT32_MAX;
-    const u8 STRUT_P_LENGTH = 12;
-    const u8 STRUT_LENGTH = 4;
-    const u8 NO_BYTE_OFFSET = 0;
-    const u8 MOTIF_WM_HINT_LENGTH = 5;
-
-    /* Window Attributes */
-    requests[ManageCookieAttributes] = 
-        XCBGetWindowAttributesCookie(_wm.dpy, win);
-    /* Window Geometry */
-    requests[ManageCookieGeometry] = 
-        XCBGetWindowGeometryCookie(_wm.dpy, win);
-    /* Window Transient */
-    requests[ManageCookieTransient] = 
-        XCBGetTransientForHintCookie(_wm.dpy, win);
-    /* Window Type(s) */
-    requests[ManageCookieWType] = 
-        XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMWindowType], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_ATOM);
-    /* Window State(s) */
-    requests[ManageCookieWState] = 
-        XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMState], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_ATOM);
-    /* Window Size Hints */
-    requests[ManageCookieSizeHint] = 
-        XCBGetWMNormalHintsCookie(_wm.dpy, win);
-    /* Window WM Hints */
-    requests[ManageCookieWMHints] = 
-        XCBGetWMHintsCookie(_wm.dpy, win);
-    /* Window Class/Instance */
-    requests[ManageCookieClass] = 
-        XCBGetWMClassCookie(_wm.dpy, win);
-    /* Window WM Protocol(s) */
-    requests[ManageCookieWMProtocol] = 
-        XCBGetWMProtocolsCookie(_wm.dpy, win, wmatom[WMProtocols]);
-    /* Window Strut */
-    requests[ManageCookieStrut] = 
-        XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMStrut], NO_BYTE_OFFSET, STRUT_LENGTH, False, XCB_ATOM_CARDINAL);
-    /* Window StrutP */
-    requests[ManageCookieStrutP] = 
-        XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMStrutPartial], NO_BYTE_OFFSET, STRUT_P_LENGTH, False, XCB_ATOM_CARDINAL);
-    /* Window NetWMName */
-    requests[ManageCookieNetWMName] = 
-        XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMName], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, netatom[NetUtf8String]);
-    /* Window WMName */
-    requests[ManageCookieWMName] = 
-        XCBGetWindowPropertyCookie(_wm.dpy, win, XCB_ATOM_WM_NAME, NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_STRING);
-    /* Window Pid */
-    requests[ManageCookiePid] = 
-        XCBGetPidCookie(_wm.dpy, win, netatom[NetWMPid]);
-    /* Window Icon */
-    requests[ManageCookieIcon] =                                                                /* Some icons are cardinal, even though they should be :/ */
-        XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMIcon], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_ANY);
-    /* Window Motif */
-    requests[ManageCookieMotif] = 
-        XCBGetWindowPropertyCookie(_wm.dpy, win, motifatom, NO_BYTE_OFFSET, MOTIF_WM_HINT_LENGTH, False, motifatom);
+    requests[ManageCookieAttributes] = XCBGetWindowAttributesCookie(_wm.dpy, win);
+    requests[ManageCookieGeometry] = XCBGetWindowGeometryCookie(_wm.dpy, win);
+    requests[ManageCookieTransient] = GetTransientCookie(_wm.dpy, win);
+    requests[ManageCookieWType] = GetWindowTypeCookie(_wm.dpy, win);
+    requests[ManageCookieWState] = GetWindowStateCookie(_wm.dpy, win);
+    requests[ManageCookieSizeHint] = GetSizeHintsCookie(_wm.dpy, win);
+    requests[ManageCookieWMHints] = GetWMHintsCookie(_wm.dpy, win);
+    requests[ManageCookieClass] = GetWMClassCookie(_wm.dpy, win);
+    requests[ManageCookieWMProtocol] = GetWMProtocolCookie(_wm.dpy, win);
+    requests[ManageCookieStrut] = GetStrutCookie(_wm.dpy, win);
+    requests[ManageCookieStrutP] = GetStrutpCookie(_wm.dpy, win);
+    requests[ManageCookieNetWMName] = GetNetWMNameCookie(_wm.dpy, win);
+    requests[ManageCookieWMName] = GetWMNameCookie(_wm.dpy, win);
+    requests[ManageCookiePid] = GetPidCookie(_wm.dpy, win);
+    requests[ManageCookieIcon] = GetIconCookie(_wm.dpy, win);
+    requests[ManageCookieMotif] = GetMotifHintsCookie(_wm.dpy, win);
 }
 
 Client *
