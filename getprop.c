@@ -37,22 +37,24 @@ ThreadHandler
 
 struct PropHandler
 {
-    XCBCookie (*cookie_getter)(XCBDisplay *, XCBWindow);
-    void (*reply_getter)(XCBDisplay *, __Property__Cookie__ *, XCBCookie);
+    XCBCookie (*cookie_getter)(XCBDisplay *display, XCBWindow window);
+    void (*reply_getter)(XCBDisplay *display, __Property__Cookie__ *, XCBCookie);
 };
 
 static ThreadHandler __threads;
 
+extern WM _wm;
 /* These dont require mutex for the following reasons:
  * - They are stack allocated.
  * - They are set during setup() before propertynotify is intialized.
  * - They are never changed afterwards.
  * - These threads are killed before exit, to prevent the stack from de-initializing these variables.
  */
-extern WM _wm;
 extern XCBAtom netatom[NetLast];
 extern XCBAtom wmatom[WMLast];
 extern XCBAtom motifatom;
+
+XCBCookie GetInvalidCookie(XCBDisplay *display, XCBWindow window);
 
 static void UpdateInvalid(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
 static void UpdateTrans(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
@@ -70,21 +72,6 @@ static void UpdatePid(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCook
 static void UpdateIcon(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
 static void UpdateMotifHints(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
 
-static XCBCookie GetInvalid(XCBDisplay *, XCBWindow);
-static XCBCookie GetTransient(XCBDisplay *, XCBWindow);
-static XCBCookie GetWindowState(XCBDisplay *, XCBWindow);
-static XCBCookie GetWindowType(XCBDisplay *, XCBWindow);
-static XCBCookie GetSizeHints(XCBDisplay *, XCBWindow);
-static XCBCookie GetWMHints(XCBDisplay *, XCBWindow);
-static XCBCookie GetWMClass(XCBDisplay *, XCBWindow);
-static XCBCookie GetWMProtocol(XCBDisplay *, XCBWindow);
-static XCBCookie GetStrut(XCBDisplay *, XCBWindow);
-static XCBCookie GetStrutp(XCBDisplay *, XCBWindow);
-static XCBCookie GetNetWMName(XCBDisplay *, XCBWindow);
-static XCBCookie GetWMName(XCBDisplay *, XCBWindow);
-static XCBCookie GetPid(XCBDisplay *, XCBWindow);
-static XCBCookie GetIcon(XCBDisplay *, XCBWindow);
-static XCBCookie GetMotifHints(XCBDisplay *, XCBWindow);
 enum PropMode
 {
     __PropModeCookie,
@@ -94,22 +81,22 @@ enum PropMode
 
 static PropHandler __prop_handler[PropLAST] =
 {
-    [PropNone] =        { GetInvalid,     UpdateInvalid     },
-    [PropTransient] =   { GetTransient,   UpdateTrans       },
-    [PropWindowState] = { GetWindowState, UpdateWindowState },
-    [PropWindowType] =  { GetWindowType,  UpdateWindowType  },
-    [PropSizeHints] =   { GetSizeHints,   UpdateSizeHints   },
-    [PropWMHints] =     { GetWMHints,     UpdateWMHints     },
-    [PropWMClass] =     { GetWMClass,     UpdateWMClass     },
-    [PropWMProtocol] =  { GetWMProtocol,  UpdateWMProtocol  },
-    [PropStrut] =       { GetStrut,       UpdateStrut       },
-    [PropStrutp] =      { GetStrutp,      UpdateStrutP      },
-    [PropNetWMName] =   { GetNetWMName,   UpdateNetWMName   },
-    [PropWMName] =      { GetWMName,      UpdateWMName      },
-    [PropPid] =         { GetPid,         UpdatePid         },
-    [PropIcon] =        { GetIcon,        UpdateIcon        },
-    [PropMotifHints] =  { GetMotifHints,  UpdateMotifHints  },
-    [PropExitThread] =  { GetInvalid,     UpdateInvalid     },
+    [PropNone] =        { GetInvalidCookie,     UpdateInvalid     },
+    [PropTransient] =   { GetTransientCookie,   UpdateTrans       },
+    [PropWindowState] = { GetWindowStateCookie, UpdateWindowState },
+    [PropWindowType] =  { GetWindowTypeCookie,  UpdateWindowType  },
+    [PropSizeHints] =   { GetSizeHintsCookie,   UpdateSizeHints   },
+    [PropWMHints] =     { GetWMHintsCookie,     UpdateWMHints     },
+    [PropWMClass] =     { GetWMClassCookie,     UpdateWMClass     },
+    [PropWMProtocol] =  { GetWMProtocolCookie,  UpdateWMProtocol  },
+    [PropStrut] =       { GetStrutCookie,       UpdateStrut       },
+    [PropStrutp] =      { GetStrutpCookie,      UpdateStrutP      },
+    [PropNetWMName] =   { GetNetWMNameCookie,   UpdateNetWMName   },
+    [PropWMName] =      { GetWMNameCookie,      UpdateWMName      },
+    [PropPid] =         { GetPidCookie,         UpdatePid         },
+    [PropIcon] =        { GetIconCookie,        UpdateIcon        },
+    [PropMotifHints] =  { GetMotifHintsCookie,  UpdateMotifHints  },
+    [PropExitThread] =  { GetInvalidCookie,     UpdateInvalid     },
 };
 
 
@@ -129,109 +116,13 @@ UnlockMainThread()
     }
 }
 
-static XCBCookie
-GetInvalid(XCBDisplay *display, XCBWindow win)
+XCBCookie
+GetInvalidCookie(XCBDisplay *display, XCBWindow win)
 {   
     (void)display;
     (void)win;
     return (XCBCookie) { .sequence = 0 };
 }
-
-static XCBCookie
-GetTransient(XCBDisplay *display, XCBWindow win)
-{   return XCBGetTransientForHintCookie(display, win);
-}
-
-static XCBCookie
-GetWindowState(XCBDisplay *display, XCBWindow win)
-{   
-    const uint8_t NO_BYTE_OFFSET = 0;
-    const uint32_t REQUEST_MAX_NEEDED_ITEMS = UINT32_MAX;
-    return XCBGetWindowPropertyCookie(display, win, netatom[NetWMState], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_ATOM);
-}
-
-static XCBCookie
-GetWindowType(XCBDisplay *display, XCBWindow win)
-{   
-    const uint8_t NO_BYTE_OFFSET = 0;
-    const uint32_t REQUEST_MAX_NEEDED_ITEMS = UINT32_MAX;
-    return XCBGetWindowPropertyCookie(display, win, netatom[NetWMWindowType], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_ATOM);
-}
-
-static XCBCookie
-GetSizeHints(XCBDisplay *display, XCBWindow win)
-{   return XCBGetWMNormalHintsCookie(display, win);
-}
-
-static XCBCookie
-GetWMHints(XCBDisplay *display, XCBWindow win)
-{   return XCBGetWMHintsCookie(display, win);
-}
-
-static XCBCookie
-GetWMClass(XCBDisplay *display, XCBWindow win)
-{   return XCBGetWMClassCookie(display, win);
-}
-
-static XCBCookie
-GetWMProtocol(XCBDisplay *display, XCBWindow win)
-{   return XCBGetWMProtocolsCookie(display, win, wmatom[WMProtocols]);
-}
-
-static XCBCookie
-GetStrut(XCBDisplay *display, XCBWindow win)
-{   
-    const uint8_t NO_BYTE_OFFSET = 0;
-    const uint8_t STRUT_LENGTH = 4;
-    return XCBGetWindowPropertyCookie(display, win, netatom[NetWMStrut], NO_BYTE_OFFSET, STRUT_LENGTH, False, XCB_ATOM_CARDINAL);
-}
-
-static XCBCookie
-GetStrutp(XCBDisplay *display, XCBWindow win)
-{   
-    const uint8_t NO_BYTE_OFFSET = 0;
-    const uint8_t STRUT_P_LENGTH = 12;
-    return XCBGetWindowPropertyCookie(display, win, netatom[NetWMStrutPartial], NO_BYTE_OFFSET, STRUT_P_LENGTH, False, XCB_ATOM_CARDINAL);
-}
-
-static XCBCookie
-GetNetWMName(XCBDisplay *display, XCBWindow win)
-{   
-    const uint8_t NO_BYTE_OFFSET = 0;
-    const uint32_t REQUEST_MAX_NEEDED_ITEMS = UINT32_MAX;
-    return XCBGetWindowPropertyCookie(display, win, netatom[NetWMName], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, netatom[NetUtf8String]);
-}
-
-static XCBCookie
-GetWMName(XCBDisplay *display, XCBWindow win)
-{   
-    const uint8_t NO_BYTE_OFFSET = 0;
-    const uint32_t REQUEST_MAX_NEEDED_ITEMS = UINT32_MAX;
-    return XCBGetWindowPropertyCookie(display, win, XCB_ATOM_WM_NAME, NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_STRING);
-}
-
-static XCBCookie
-GetPid(XCBDisplay *display, XCBWindow win)
-{   return XCBGetPidCookie(display, win, netatom[NetWMPid]);
-}
-
-static XCBCookie
-GetIcon(XCBDisplay *display, XCBWindow win)
-{   
-    const uint8_t NO_BYTE_OFFSET = 0;
-    const uint32_t REQUEST_MAX_NEEDED_ITEMS = UINT32_MAX;
-    return XCBGetWindowPropertyCookie(display, win, netatom[NetWMIcon], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_ANY);
-}
-
-static XCBCookie
-GetMotifHints(XCBDisplay *display, XCBWindow win)
-{   
-    const uint8_t NO_BYTE_OFFSET = 0;
-    const uint8_t MOTIF_WM_HINT_LENGTH = 5;
-    return XCBGetWindowPropertyCookie(display, win, motifatom, NO_BYTE_OFFSET, MOTIF_WM_HINT_LENGTH, False, motifatom);
-}
-
-
 
 static void
 UpdateInvalid(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE)
@@ -525,6 +416,29 @@ Worker(void *x)
     return NULL;
 }
 
+
+static int
+CreateWorkerAttr(pthread_attr_t *attr)
+{
+    int status = 0;
+    status = pthread_attr_init(attr);
+    if(status)
+    {   return status;
+    }
+    status = pthread_attr_setstacksize(attr, PTHREAD_STACK_MIN);
+    if(status)
+    {   
+        pthread_attr_destroy(attr);
+        return status;
+    }
+    status = pthread_attr_setguardsize(attr, 0);
+    if(status)
+    {
+        pthread_attr_destroy(attr);
+        return status;
+    }
+}
+
 /*
  * RETURN: pthread_create() return values.
  */
@@ -533,11 +447,10 @@ CreateWorker(pthread_t *id_return)
 {
     int ret;
     pthread_attr_t attr;
-    pthread_attr_init(&attr);
-    /* tbh you could do this with only ~100 bytes of stack */
-    pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN);
-    /* No need for stack protection since we just get pointers back, and see above */
-    pthread_attr_setguardsize(&attr, 0);
+    ret = CreateWorkerAttr(&attr);
+    if(ret)
+    {   return ret;
+    }
     ret = pthread_create(id_return, &attr, Worker, NULL);
     pthread_attr_destroy(&attr);
     return ret;

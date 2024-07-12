@@ -18,8 +18,9 @@ CQueueIsFull(CQueue *queue)
     if(!queue)
     {   return 0;
     }
+    uint8_t ret = 0;
     pthread_spin_lock(&queue->spin);
-    uint8_t ret = __CQueue_full_no_lock(queue);
+    ret = __CQueue_full_no_lock(queue);
     pthread_spin_unlock(&queue->spin);
     return ret;
 }
@@ -30,10 +31,11 @@ CQueueIsEmpty(CQueue *queue)
     if(!queue)
     {   return 0;
     }
+    uint8_t ret = 0;
     pthread_spin_lock(&queue->spin);
-    uint8_t status = queue->front == -1;
+    ret = queue->front == -1;
     pthread_spin_unlock(&queue->spin);
-    return status;
+    return ret;
 }
 
 uint8_t 
