@@ -90,7 +90,7 @@ static const char *dmenucmd[] =
     CFG_DMENU_TOP_BAR ? NULL : "-b", CFG_DMENU_FAST_INPUT ? "-f" : NULL ,CFG_DMENU_CASE_SENSITIVE ? "-i" : NULL, NULL
 }; /* flags -b == bottom bar; -f == getkeyboard input first then handle request; */
 
-static const char *termcmd[2]        = { "st", NULL };
+static const char *termcmd[]        = { "st", NULL};
 static const char *filemanager[2]    = {"thunar", NULL };
 static const Key keys[] =
 {
