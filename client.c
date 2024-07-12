@@ -1158,27 +1158,23 @@ setalwaysonbottom(Client *c, uint8_t state)
 void
 setborderalpha(Client *c, uint8_t alpha)
 {
-    /* remove previous alpha */
-    const u32 ccol = c->bcol & ~(UINT8_MAX << 24);
-    const u32 col = ccol + (alpha << 24);
-    /* TODO */
-    setbordercolor32(c, col);
+    c->bcol &= ~(UINT8_MAX << 24);
+    c->bcol |= alpha << 24;
 }
 
 void
 setbordercolor(Client *c, uint8_t red, uint8_t green, uint8_t blue)
 {
-    /* get alpha */
-    const u32 alpha = c->bcol & (UINT8_MAX << 24);
-
-    const u32 col = blue + (green << 8) + (red << 16) + alpha;
+    const u32 col = blue + (green << 8) + (red << 16);
     setbordercolor32(c, col);
 }
 
 void
 setbordercolor32(Client *c, uint32_t col)
 {   
-    c->bcol = col & ~(UINT8_MAX << 24);
+    const u32 mask = (UINT32_MAX ^ (UINT8_MAX << 24));
+    c->bcol &= mask;
+    c->bcol |= col & mask;
 }
 
 void
