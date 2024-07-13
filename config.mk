@@ -25,7 +25,7 @@ STATICLINK = -static
 DYNAMICLINK= -ldl
 SECTIONCODE= -ffunction-sections -fdata-sections
 LINKMODE = ${DYNAMICLINK}
-MEMFLAGS = -fsanitize=address -fno-omit-frame-pointer -lefence 
+MEMFLAGS = -fsanitize=address -fno-omit-frame-pointer
 #MEMFLAGS = 
 DEBUGFLAGS = -ggdb -g ${CCVERSION} ${WARNINGFLAGS} ${INCS} ${CPPFLAGS} ${BINARY} ${SECTIONCODE} ${MEMFLAGS}
 
@@ -66,7 +66,7 @@ RELEASES= ${RELEASEFLAGS} -O3
 BUILDSELF = ${RELEASEFLAGS} ${XNATIVE} -O3
 
 # Set your options or presets (see above) ex: ${PRESETNAME} (Compiler used is on top)
-CFLAGS = ${RELEASES}
+CFLAGS = ${DEBUG}
 
 CMACROS = -DXINERAMA
 
