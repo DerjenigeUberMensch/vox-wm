@@ -383,13 +383,23 @@ clientinitfloat(Client *c)
     /* This check is mostly for (some) popup windows 
      * Mainly those which dont matter, like steams startup display, but are nice to have's.
      */
-    if(
-            /* _NET_WM_STATE */
-            ISMODAL(c) |
-            /* _NET_WM_WINDOW_TYPE */
-            ISSPLASH(c) | ISDIALOG(c) | ISPOPUPMENU(c) | ISNOTIFICATION(c)
-      )
-    {   DEBUG0("Dialog Window detected.");
+    if(ISSPLASH(c))
+    {   DEBUG0("Splash Window.");
+    }
+    else if(ISMODAL(c))
+    {   DEBUG0("Modal Window.");
+    }
+    else if(ISPOPUPMENU(c))
+    {   DEBUG0("Popup Menu");
+    }
+    else if(ISDIALOG(c))
+    {   DEBUG0("Dialog Menu");
+    }
+    else if(ISNOTIFICATION(c))
+    {   DEBUG0("Notification.");
+    }
+    else if(ISCOMBO(c))
+    {   DEBUG0("Combo Menu,");
     }
     /* This check is mostly as to not soft lock the window to always be above others */
     else if(ISABOVE(c))
@@ -397,14 +407,48 @@ clientinitfloat(Client *c)
     }
     /* This checks for other non dialog types that sort of work like dialog(s) if not maximized. */
     else if(ISUTILITY(c))
+    {   DEBUG0("Util Window detected, maybe picture-in-picture?");
+    }
+    else if(ISNORMAL(c))
     {   
-        if(DOCKEDINITIAL(c))
-        {   return;
-        }
-        DEBUG0("Util Window detected, maybe picture-in-picture?");
+        DEBUG0("Non-floating window detected");
+        return;
     }
     else
-    {   return;
+    {
+        /* If the window didnt have any states, steam... 
+         * Check if its resonably small enough to be a floating window 
+         */
+        const float FLOAT_SIZE_MIN = .65f;
+        /* Note dont check if ISFIXED(c) as games often set that option */
+        if(
+            (c->w <= m->ww * FLOAT_SIZE_MIN || c->w <= m->mw * FLOAT_SIZE_MIN)
+            ||
+            (c->h <= m->wh * FLOAT_SIZE_MIN || c->h <= m->mh * FLOAT_SIZE_MIN)
+          )
+        {   
+            DEBUG0("Client is small enough to be floating, but should use hints...");
+        }
+        else
+        {   
+            DEBUG0("Client is probably not meant to be floating.");
+            return;
+        }
+        if(DOCKEDINITIAL(c))
+        {   
+            DEBUG0("Client is probably not meant to be floating.");
+            return;
+        }
+        else if(!c->classname || !c->instancename)
+        {   
+            DEBUG0("Cient is probably single instance.");
+            return;
+        }
+        else if(!strcmp(c->classname, c->instancename))
+        {   
+            DEBUG0("Client is probably single instance.");
+            return;
+        }
     }
     const u32 bw = WIDTH(c) - c->w;
     const u32 bh = HEIGHT(c) - c->h;
@@ -2024,6 +2068,18 @@ updatesizehints(Client *c, XCBSizeHints *size)
     inch = MIN(inch, UINT16_MAX);
     incw = MIN(incw, UINT16_MAX);
 
+    /* cleanse impossible sizes */
+    minw = MAX(minw, 0);
+    minh = MAX(minh, 0);
+    maxw = MAX(maxw, 0);
+    maxh = MAX(maxh, 0);
+    basew = MAX(basew, 0);
+    baseh = MAX(baseh, 0);
+    mina = MAX(mina, 0);
+    maxa = MAX(maxa, 0);
+    inch = MAX(inch, 0);
+    incw = MAX(incw, 0);
+
     c->minw = minw;
     c->minh = minh;
     c->maxw = maxw;
@@ -2239,7 +2295,15 @@ updatewindowstate(Client *c, XCBAtom state, uint8_t add_remove_toggle)
         }
     }
     else
-    {   DEBUG0("Could not find state.");
+    {   
+        XCBCookie cookie = XCBGetAtomNameCookie(_wm.dpy, state);
+        XCBAtomName *rep = XCBGetAtomNameReply(_wm.dpy, cookie);
+        if(rep)
+        {   DEBUG("Atom type: %s", xcb_get_atom_name_name(rep));
+        }
+        else
+        {   DEBUG0("Could not find type.");
+        }
     }
 }
 
@@ -2404,8 +2468,8 @@ updatewindowtype(Client *c, XCBAtom wtype, uint8_t add_remove_toggle)
     }
     else
     {   
-        xcb_get_atom_name_cookie_t cokie = xcb_get_atom_name(_wm.dpy, wtype);
-        xcb_get_atom_name_reply_t *rep = xcb_get_atom_name_reply(_wm.dpy, cokie, NULL);
+        XCBCookie cookie = XCBGetAtomNameCookie(_wm.dpy, wtype);
+        XCBAtomName *rep = XCBGetAtomNameReply(_wm.dpy, cookie);
         if(rep)
         {   DEBUG("Atom type: %s", xcb_get_atom_name_name(rep));
         }

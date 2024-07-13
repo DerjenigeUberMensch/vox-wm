@@ -9,7 +9,8 @@
 
 uint8_t
 __CQueue_full_no_lock(CQueue *queue)
-{   return (queue->front == queue->rear + 1) | ((!queue->front) & (queue->rear == (queue->datalen / (queue->datasize + !queue->datasize) - 1)));
+{   
+    return queue->front == queue->rear + 1 || (!queue->front && queue->rear == queue->datalen);
 }
 
 uint8_t 
