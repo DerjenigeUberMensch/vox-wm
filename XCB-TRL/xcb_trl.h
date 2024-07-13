@@ -557,6 +557,7 @@ typedef xcb_query_extension_reply_t XCBQueryExtension;
 typedef xcb_query_tree_reply_t XCBQueryTree;
 typedef xcb_get_window_attributes_reply_t XCBGetWindowAttributes;
 typedef xcb_change_window_attributes_value_list_t XCBWindowAttributes;
+typedef xcb_get_atom_name_reply_t XCBAtomName;
 typedef xcb_get_geometry_reply_t XCBGeometry;
 typedef xcb_get_geometry_reply_t XCBWindowGeometry;
 typedef xcb_pixmap_t XCBPixmap;
@@ -3755,8 +3756,20 @@ XCBDiscardReply(
  */
 void 
 XCBPrefetchMaximumRequestLength(
-        XCBDisplay *display);
+        XCBDisplay *display
+        );
 
+XCBCookie
+XCBGetAtomNameCookie(
+        XCBDisplay *display,
+        XCBAtom atom
+        );
+
+XCBAtomName *
+XCBGetAtomNameReply(
+        XCBDisplay *display,
+        XCBCookie cookie
+        );
 
 /* This functions widens a cookies requets to match the 64 version of functions.
  *
@@ -3770,7 +3783,8 @@ XCBPrefetchMaximumRequestLength(
 XCBCookie64
 XCBWiden(
         XCBDisplay *display, 
-        XCBCookie cookie);
+        XCBCookie cookie
+        );
 /* This functions widens a cookies requets to match the 64 version of functions.
  *
  * NOTE: This function is NOT supported and may break at any time.
