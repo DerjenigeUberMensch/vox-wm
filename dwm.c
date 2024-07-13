@@ -1431,6 +1431,7 @@ startup(void)
     }
     PropInit();
     atexit(exithandler);
+    setenv("GTK_CSD", "amogus", 1);
 #ifndef DEBUG
     XCBSetErrorHandler(xerror);
 #endif
