@@ -3360,6 +3360,43 @@ XCBPrefetchMaximumRequestLength(
     xcb_prefetch_maximum_request_length(display);
 }
 
+XCBCookie
+XCBGetAtomNameCookie(
+        XCBDisplay *display,
+        XCBAtom atom
+        )
+{
+    const xcb_get_atom_name_cookie_t cookie = xcb_get_atom_name(display, atom);
+    const XCBCookie ret = { .sequence = cookie.sequence };
+
+#ifdef DBG
+    _xcb_push_func(ret, _fn);
+#endif
+    return ret;
+}
+
+XCBAtomName *
+XCBGetAtomNameReply(
+        XCBDisplay *display,
+        XCBCookie cookie
+        )
+{
+    XCBGenericError *err = NULL;
+    const xcb_get_atom_name_cookie_t cookie1 = { .sequence = cookie.sequence };
+    xcb_get_atom_name_reply_t *reply = xcb_get_atom_name_reply(display, cookie1, &err);
+
+    if(err)
+    {
+        _xcb_err_handler(display, err);
+        if(reply)
+        {   free(reply);
+        }
+        return NULL;
+    }
+    return reply;
+}
+
+
 XCBCookie64
 XCBWiden(
         XCBDisplay *display, 
