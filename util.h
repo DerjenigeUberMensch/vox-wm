@@ -110,14 +110,21 @@ union ARGB
 #ifdef __GNUC__
 #define ASM(X)                          (__asm__(X))
 #define asm __asm__
+#define __HOT__                          __attribute__((hot))
+#define __COLD__                        __attribute__((cold))
 #define NOINLINE                        __attribute__ ((noinline))
 #elif __clang__
-
 #define ASM(X)                          (__asm__(X))
+#define asm __asm__
+#define __HOT__                         __attribute__((hot))
+#define __COLD__                        __attribute__((cold))
 #define NOINLINE                        __attribute__ ((noinline))
 
 #else
 #define ASM(X)                          ((void)X)
+#defube asm(X)                          ((void)X)
+#define __HOT__
+#define __COLD__
 #define NOINLINE                        
 
 #endif
