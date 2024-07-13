@@ -459,8 +459,18 @@ stackpriority(Client *c1, Client *c2)
     if(ewmhflags & WStateFlagHidden)
     {   return __stack_priority_helper_below(ewmhflag1, WStateFlagHidden);
     }
+
     if(ewmhflags & WTypeFlagDock)
     {   return __stack_priority_helper_above(ewmhflag1, WTypeFlagDock);
+    }
+    if(ewmhflags & WTypeFlagSplash)
+    {   return __stack_priority_helper_above(ewmhflag1, WTypeFlagSplash);
+    }
+    if(ewmhflags & WTypeFlagNotification)
+    {   return __stack_priority_helper_above(ewmhflag1, WTypeFlagNotification);
+    }
+    if(ewmhflags & WStateFlagModal)
+    {   return __stack_priority_helper_above(ewmhflag1, WStateFlagModal);
     }
     if(ewmhflags & WStateFlagAbove)
     {   return __stack_priority_helper_above(ewmhflag1, WStateFlagAbove);
@@ -471,6 +481,7 @@ stackpriority(Client *c1, Client *c2)
         {   return __stack_priority_helper_above(flags1, ClientFlagFloating);
         }
     }
+    /* return correct focus order */
     return c1->rstacknum > c2->rstacknum;
 }
 
