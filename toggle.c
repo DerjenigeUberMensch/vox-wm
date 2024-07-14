@@ -298,6 +298,17 @@ DragWindow(
                 case XCB_MOTION_NOTIFY:
                     nx = oldx + (((XCBMotionNotifyEvent *)ev)->event_x - x);
                     ny = oldy + (((XCBMotionNotifyEvent *)ev)->event_y - y);
+                    /* snap to window area */
+                    const int SNAP = 10;
+                    if (abs(_wm.selmon->wx - nx) < SNAP)
+                        nx = _wm.selmon->wx;
+                    else if (abs((_wm.selmon->wx + _wm.selmon->ww) - (nx + WIDTH(c))) < SNAP)
+                        nx = _wm.selmon->wx + _wm.selmon->ww - WIDTH(c);
+                    if (abs(_wm.selmon->wy - ny) < SNAP)
+                        ny = _wm.selmon->wy;
+                    else if (abs((_wm.selmon->wy + _wm.selmon->wh) - (ny + HEIGHT(c))) < SNAP)
+                        ny = _wm.selmon->wy + _wm.selmon->wh - HEIGHT(c);
+
                     if(c)
                     {   resize(c, nx, ny, c->w, c->h, 1);
                     }
