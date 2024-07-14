@@ -2029,6 +2029,7 @@ updatesizehints(Client *c, XCBSizeHints *size)
     i32 inch = UNINITIALIZED;       
     float mina = (float)UNINITIALIZED + 0.0f;   /* make sure sign is positive */
     float maxa = (float)UNINITIALIZED + 0.0f;   /* make sure sign is positive */
+    i32 gravity = UNINITIALIZED;
 
     /* size is uninitialized, ensure that size.flags aren't used */
     if(!size->flags)
@@ -2074,6 +2075,10 @@ updatesizehints(Client *c, XCBSizeHints *size)
         mina = fabsf(mina);
         maxa = fabsf(maxa);
     }
+
+    if(size->flags & XCB_SIZE_HINT_P_WIN_GRAVITY)
+    {   gravity = size->win_gravity;
+    }
     /* clamp */
     minw = MIN(minw, UINT16_MAX);
     minh = MIN(minh, UINT16_MAX);
@@ -2085,6 +2090,7 @@ updatesizehints(Client *c, XCBSizeHints *size)
     (void)maxa;
     inch = MIN(inch, UINT16_MAX);
     incw = MIN(incw, UINT16_MAX);
+    gravity = MIN(gravity, XCBStaticGravity);
 
     /* cleanse impossible sizes */
     minw = MAX(minw, 0);
@@ -2097,6 +2103,7 @@ updatesizehints(Client *c, XCBSizeHints *size)
     maxa = MAX(maxa, 0);
     inch = MAX(inch, 0);
     incw = MAX(incw, 0);
+    gravity = MAX(gravity, 0);
 
     c->minw = minw;
     c->minh = minh;
@@ -2108,6 +2115,7 @@ updatesizehints(Client *c, XCBSizeHints *size)
     c->maxa = maxa;
     c->inch = inch;
     c->incw = incw;
+    c->gravity = gravity;
 }
 
 void
