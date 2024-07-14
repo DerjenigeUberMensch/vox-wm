@@ -770,6 +770,7 @@ configurerequest(XCBGenericEvent *event)
         }
         if(geom)
         {
+            applygravity(c->gravity, &rx, &ry, rw, rh, c->bw);
             resizeclient(c, rx, ry, rw, rh);
             /* these checks are so we maintain wasfloating correctly without messing everything up */
             if(!ISFLOATING(c) && !DOCKED(c))
@@ -1299,8 +1300,7 @@ clientmessage(XCBGenericEvent *event)
             i32 y = l2;
             i32 w = l3;
             i32 h = l4;
-            applysizehints(c, &x, &y, &w, &h, 0);
-            applygravity(gravity, (int16_t *)&x, (int16_t *)&y, w, h, c->bw);
+            applygravity(gravity, &x, &y, w, h, c->bw);
             resize(c, x, y, w, h, 0);
             sync = 1;
         }
