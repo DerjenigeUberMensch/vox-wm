@@ -171,6 +171,7 @@ struct Client
     uint16_t flags;     /* Misc States              */
 
     uint32_t ewmhflags; /* EWMH types/states        */
+    enum XCBBitGravity gravity; /* Client gravity   */
 };
 
 

@@ -1323,7 +1323,12 @@ clientmessage(XCBGenericEvent *event)
             sync = 1;
         }
         else if(atom == netatom[NetRequestFrameExtents])
-        {   /* TODO */
+        {   
+            /* TODO Implement getframeextents() macro.
+             * See comment on top setshowdecor().
+             */
+            const u32 _data[4] = { 0, 0, 0, 0 };
+            XCBChangeProperty(_wm.dpy, c->win, netatom[NetRequestFrameExtents], XCB_ATOM_CARDINAL, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)_data, 4);
         }
         else if (atom == netatom[NetNumberOfDesktops])
         {   /* ignore */
