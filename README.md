@@ -51,8 +51,14 @@ cd xcb-wswm
 git checkout origin/Experimental
 ```
 4. Configure it See **Configuration** (Optional)
-5. `sudo make install` to install or `make` to just compile.
-6. Done.
+5. Choose optimization level this can be changed in config.mk -> "CFLAGS" roughly line 70.
+     - DEBUG: Default compilation method bulky, with debug symbols.
+     - SIZE:  Roughly a 10-20% decrease in binary size compared to RELEASES.
+     - SIZEONLY: Roughly a 5-15% decrease in binary size compared to SIZE.
+     - RELEASE: Applies standard "safe" optimizations. (-O2)
+     - RELEASES: Applies stanard "non-safe" optimizations. (-O3)
+7. `sudo make install` to install or `make` to just compile.
+8. Done.
 
 ## How to Run/Use
 1. Compile, See Above.
