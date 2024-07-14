@@ -3759,12 +3759,22 @@ XCBPrefetchMaximumRequestLength(
         XCBDisplay *display
         );
 
+/*
+ * RETURN: Cookie to request.
+ */
 XCBCookie
 XCBGetAtomNameCookie(
         XCBDisplay *display,
         XCBAtom atom
         );
 
+/* Note strings returned from xcb_get_atom_name_name() are NOT null terminating, thus to safely use one must manually copy the string memcpy,
+ * and add a nullbyte '\0' at the end.
+ *
+ *
+ * RETURN: XCBAtomName * on Success.
+ * RETURN: NULL on Failure.
+ */
 XCBAtomName *
 XCBGetAtomNameReply(
         XCBDisplay *display,
