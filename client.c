@@ -912,6 +912,7 @@ managereply(XCBWindow win, XCBCookie requests[ManageCookieLAST])
     updateicon(c, iconreply);
     /* check if should be floating after, all size hints and other things are set. */
     clientinitfloat(c);
+    clientinitdecor(c);
     XCBSelectInput(_wm.dpy, win, inputmask);
     grabbuttons(c, 0);
 
@@ -1500,11 +1501,30 @@ setskiptaskbar(Client *c, uint8_t state)
 void
 setshowdecor(Client *c, uint8_t state)
 {
-    return;
+    /* TODO, Implement this.
+     * As of now this is not implemented but for the sake of being NetWM Compliant, 
+     * We just set the decorations to be 0, (AKA No decorations)
+     */
+    state = 0;
+    enum __FrameExtents
+    {
+        __FrameExtentsLW,   /* Left "decoration" Width */
+        __FrameExtentsRW,   /* Right "decoration" Width */
+        __FrameExtentsTW,   /* Top "decoration" Width, AKA the Height */
+        __FrameExtentsBW,   /* Bottom "decoration" Width, AKA the Height */
+    };
+    u32 data[4] = { 0, 0, 0, 0 };
     if(state)
     {   
         if(c->decor->win)
-        {   XCBMapWindow(_wm.dpy, c->decor->win);   
+        {   
+            Decoration *decor = c->decor;
+            XCBMapWindow(_wm.dpy, decor->win);   
+            /* as of now not supported but eventually */
+            data[0] = 0;
+            data[1] = 0;
+            data[2] = decor->h;
+            data[3] = 0;
         }
     }
     else
@@ -1514,6 +1534,7 @@ setshowdecor(Client *c, uint8_t state)
         }
     }
     SETFLAG(c->flags, ClientFlagShowDecor, !!state);
+    XCBChangeProperty(_wm.dpy, c->win, netatom[NetWMFrameExtents], XCB_ATOM_CARDINAL, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)data, 4);
 }
 
 void
