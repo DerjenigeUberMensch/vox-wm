@@ -1019,6 +1019,7 @@ gravitynotify(XCBGenericEvent *event)
     (void)win;
     (void)x;
     (void)y;
+    /* TODO? Maybe add Update Sizehints Not sure how this works and exactly. */
 }
 
 void
