@@ -62,6 +62,106 @@ u32 DOCKEDHORZ(Client *c)       {   const i16 wx = c->desktop->mon->wx;
                                     return (wx == x) && (ww == w);
                                 }
 u32 DOCKED(Client *c)           { return DOCKEDVERT(c) & DOCKEDHORZ(c); }
+u32 COULDBEFLOATINGGEOM(Client *c)  
+                                {
+                                    const Monitor *m = c->desktop->mon;
+                                    /* If the window didnt have any states, steam... 
+                                    * Check if its resonably small enough to be a floating window 
+                                    */
+                                    const float FLOAT_SIZE_MIN = .65f;
+                                    u8 floatw;
+                                    u8 floath;
+                                    floatw = (c->w <= m->ww * FLOAT_SIZE_MIN || c->w <= m->mw * FLOAT_SIZE_MIN);
+                                    floath =  (c->h <= m->wh * FLOAT_SIZE_MIN || c->h <= m->mh * FLOAT_SIZE_MIN);
+
+                                    u32 ret = floatw || floath;
+                                    /* If its not resonably small check a much stricter guideline,
+                                     * But plausible if say they moved it off to the bottom of the screen or something 
+                                     */
+                                    const float FLOAT_SIZE_MIN_STRICT = .75f;
+                                    const float FLOAT_OFFSET_MIN_STRICT = .65f;
+                                    const float FLOAT_OFFSET_MAX_STRICT = .95f;     /* dont want it offscreen */
+                                    u8 floatx;
+                                    u8 floaty;
+                                    floatw = (c->w <= m->ww * FLOAT_SIZE_MIN_STRICT || c->w <= m->mw * FLOAT_SIZE_MIN_STRICT);
+                                    floath = (c->h <= m->wh * FLOAT_SIZE_MIN_STRICT || c->h <= m->mh * FLOAT_SIZE_MIN_STRICT);
+                                    floatx = BETWEEN(c->x, (m->wx + m->ww) * FLOAT_OFFSET_MIN_STRICT, (m->wx + m->ww) * FLOAT_OFFSET_MAX_STRICT);
+                                    floaty = BETWEEN(c->y, (m->wy + m->wh) * FLOAT_OFFSET_MIN_STRICT, (m->wy + m->wh) * FLOAT_OFFSET_MAX_STRICT);
+                                    if(!ret)
+                                    {   ret = (floatw && floatx) || (floath && floaty);
+                                    }
+                                    return ret;
+                                }
+u32 COULDBEFLOATINGHINTS(Client *c)
+                                {
+                                    /* This check is mostly for (some) popup windows 
+                                     * Mainly those which dont matter, like steams startup display, but are nice to have's.
+                                     */
+                                    if(ISSPLASH(c))
+                                    {   DEBUG0("Splash Window.");
+                                    }
+                                    else if(ISMODAL(c))
+                                    {   DEBUG0("Modal Window.");
+                                    }
+                                    else if(ISPOPUPMENU(c))
+                                    {   DEBUG0("Popup Menu");
+                                    }
+                                    else if(ISDIALOG(c))
+                                    {   DEBUG0("Dialog Menu");
+                                    }
+                                    else if(ISNOTIFICATION(c))
+                                    {   DEBUG0("Notification.");
+                                    }
+                                    else if(ISCOMBO(c))
+                                    {   DEBUG0("Combo Menu,");
+                                    }
+                                    /* This check is mostly as to not soft lock the window to always be above others */
+                                    else if(ISABOVE(c))
+                                    {   DEBUG0("AlwaysOnTop Window detected.");
+                                    }
+                                    /* This checks for other non dialog types that sort of work like dialog(s) if not maximized. */
+                                    else if(ISUTILITY(c))
+                                    {   DEBUG0("Util Window detected, maybe picture-in-picture?");
+                                    }
+                                    else
+                                    {   return 0;
+                                    }
+                                    return !DOCKEDINITIAL(c);
+                                }
+u32 SHOULDBEFLOATING(Client *c) 
+                                {
+                                    u32 ret = 0;
+                                    if(COULDBEFLOATINGHINTS(c))
+                                    {   return 1;
+                                    }
+                                    /* Note dont check if ISFIXED(c) as games often set that option */
+                                    if(COULDBEFLOATINGGEOM(c))
+                                    {   
+                                        DEBUG0("Client is small enough to be floating, but should use hints...");
+                                        ret = 1;
+                                    }
+                                    else
+                                    {   ret = 0;
+                                    }
+                                    /* extra checks to make sure its floating */
+                                    if(ret)
+                                    {
+                                        /* If they dont have a classname/instancename then likely they are single instance windows */
+                                        if(!c->classname || !c->instancename)
+                                        {   ret = 0;
+                                        }
+                                        /* Some windows do set their classname/instancename but to the same string which means one of the following.
+                                         * A.) Its the main window, which we shouldnt make floating (duh).
+                                         * B.) It has subwindows but again see above.
+                                         * C.) It sets this to all windows and doesnt have any subwindows.
+                                         * D.) (rarely) Its broken, but probably will be fixed later if their developer cares enough.
+                                         */
+                                        else if(!strcmp(c->classname, c->instancename))
+                                        {   ret = 0;
+                                        }
+                                    }
+                                    return ret;
+                                }
 /* This covers some apps being able to DragWindow/ResizeWindow, in toggle.c
  * (semi-frequently) a user might "accidentally" click on them (me) and basically we dont want that window to be floating because of that user error.
  * So this is a leeway sort function.
@@ -204,59 +304,57 @@ u32 HASWMSAVEYOURSELF(Client *c){ return c->ewmhflags & WStateFlagWMSaveYourself
 u32 HASWMDELETEWINDOW(Client *c){ return c->ewmhflags & WStateFlagWMDeleteWindow; }
 
 void
-applygravity(const u32 gravity, i16 *x, i16 *y, const u16 w, const u16 h, const u16 bw)
+applygravity(const enum XCBBitGravity gravity, int32_t *x, int32_t *y, const uint32_t w, const uint32_t h, const uint32_t bw)
 {
-    if(!gravity || !x || !y)
+    if(!x || !y)
     {   return;
     }
-    /* This is bullshit just reference relative to this point */
-    if(gravity & XCB_GRAVITY_STATIC)
-    {   /* default do nothing */
-    }
-    else if(gravity & XCB_GRAVITY_NORTH_WEST)
+    /* im a dumbass */
+    switch(gravity)
     {
-        *x -= bw;
-        *y -= bw;
-    }
-    else if(gravity & XCB_GRAVITY_NORTH)
-    {   
-        *x += w >> 1;
-        *y -= bw;
-    }
-    else if(gravity & XCB_GRAVITY_NORTH_EAST)
-    {
-        *x += w + bw;
-        *y -= bw;
-    }
-    else if(gravity & XCB_GRAVITY_EAST)
-    {
-        *x += w + bw;
-        *y += h >> 1;
-    }
-    else if(gravity & XCB_GRAVITY_SOUTH_EAST)
-    {
-        *x += w + bw;
-        *y += h + bw;
-    }
-    else if(gravity & XCB_GRAVITY_SOUTH)
-    {
-        *x += w >> 1;
-        *y += h + bw;
-    }
-    else if(gravity & XCB_GRAVITY_SOUTH_WEST)
-    {
-        *x -= bw;
-        *y += h + bw;
-    }
-    else if(gravity & XCB_GRAVITY_WEST)
-    {
-        *x -= bw;
-        *y += h >> 1;
-    }
-    else if(gravity & XCB_GRAVITY_CENTER)
-    {
-        *x += w >> 1;
-        *y += h >> 1;
+        case XCBNorthGravity:
+            *x += w >> 1;
+            *y -= bw;
+            break;
+        case XCBNorthWestGravity:
+            *x -= bw;
+            *y -= bw;
+            break;
+        case XCBNorthEastGravity:
+            *x += w + bw;
+            *y -= bw;
+            break;
+        case XCBWestGravity:
+            *x -= bw;
+            *y += h >> 1;
+            break;
+        case XCBEastGravity:
+            *x += w + bw;
+            *y += h >> 1;
+            break;
+        case XCBSouthWestGravity:
+            *x -= bw;
+            *y += h + bw;
+            break;
+        case XCBSouthEastGravity:
+            *x += w + bw;
+            *y += h + bw;
+            break;
+        case XCBSouthGravity:
+            *x += w >> 1;
+            *y += h + bw;
+            break;
+        case XCBCenterGravity:
+            *x += w >> 1;
+            *y += h >> 1;
+            break;
+        case XCBForgetGravity:
+            /* FALLTHROUGH */
+        case XCBStaticGravity:
+            /* FALLTHROUGH */
+        default:
+            DEBUG("Window has no gravity. [%d]", gravity);
+            break;
     }
 }
 
@@ -374,82 +472,19 @@ clientinitdecor(Client *c)
     };
 
     decor->win = XCBCreateWindow(_wm.dpy, _wm.root, 0, 0, c->w, c->h, 0, depth, class, visual, mask, &va);
+
+    /* no frame extents */
+    u32 data[4] = { 0, 0, 0, 0 };
+    XCBChangeProperty(_wm.dpy, c->win, netatom[NetWMFrameExtents], XCB_ATOM_CARDINAL, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)data, 4);
 }
 
 void
 clientinitfloat(Client *c)
 {
+    if(!SHOULDBEFLOATING(c))
+    {   return;
+    }
     const Monitor *m = c->desktop->mon;
-    /* This check is mostly for (some) popup windows 
-     * Mainly those which dont matter, like steams startup display, but are nice to have's.
-     */
-    if(ISSPLASH(c))
-    {   DEBUG0("Splash Window.");
-    }
-    else if(ISMODAL(c))
-    {   DEBUG0("Modal Window.");
-    }
-    else if(ISPOPUPMENU(c))
-    {   DEBUG0("Popup Menu");
-    }
-    else if(ISDIALOG(c))
-    {   DEBUG0("Dialog Menu");
-    }
-    else if(ISNOTIFICATION(c))
-    {   DEBUG0("Notification.");
-    }
-    else if(ISCOMBO(c))
-    {   DEBUG0("Combo Menu,");
-    }
-    /* This check is mostly as to not soft lock the window to always be above others */
-    else if(ISABOVE(c))
-    {   DEBUG0("AlwaysOnTop Window detected.");
-    }
-    /* This checks for other non dialog types that sort of work like dialog(s) if not maximized. */
-    else if(ISUTILITY(c))
-    {   DEBUG0("Util Window detected, maybe picture-in-picture?");
-    }
-    else if(ISNORMAL(c))
-    {   
-        DEBUG0("Non-floating window detected");
-        return;
-    }
-    else
-    {
-        /* If the window didnt have any states, steam... 
-         * Check if its resonably small enough to be a floating window 
-         */
-        const float FLOAT_SIZE_MIN = .65f;
-        /* Note dont check if ISFIXED(c) as games often set that option */
-        if(
-            (c->w <= m->ww * FLOAT_SIZE_MIN || c->w <= m->mw * FLOAT_SIZE_MIN)
-            ||
-            (c->h <= m->wh * FLOAT_SIZE_MIN || c->h <= m->mh * FLOAT_SIZE_MIN)
-          )
-        {   
-            DEBUG0("Client is small enough to be floating, but should use hints...");
-        }
-        else
-        {   
-            DEBUG0("Client is probably not meant to be floating.");
-            return;
-        }
-        if(DOCKEDINITIAL(c))
-        {   
-            DEBUG0("Client is probably not meant to be floating.");
-            return;
-        }
-        else if(!c->classname || !c->instancename)
-        {   
-            DEBUG0("Cient is probably single instance.");
-            return;
-        }
-        else if(!strcmp(c->classname, c->instancename))
-        {   
-            DEBUG0("Client is probably single instance.");
-            return;
-        }
-    }
     const u32 bw = WIDTH(c) - c->w;
     const u32 bh = HEIGHT(c) - c->h;
     /* If the window is docked for whatever reason, center it and shrink it down */
@@ -907,6 +942,7 @@ managereply(XCBWindow win, XCBCookie requests[ManageCookieLAST])
     updatetitle(c, netwmname, wmname);
     updateborder(c);
     updatesizehints(c, &hints);
+    applygravity(c->gravity, (int32_t *)&c->x, (int32_t *)&c->y, c->w, c->h, c->bw);
     if(clsstatus)
     {   updateclass(c, &cls);
     }
@@ -935,6 +971,9 @@ managereply(XCBWindow win, XCBCookie requests[ManageCookieLAST])
     {   setfullscreen(c, ISFULLSCREEN(c->desktop->sel) || ISFULLSCREEN(c));
     }
 
+    XCBWindowChanges wc;
+    wc.border_width = 0;
+    XCBConfigureWindow(_wm.dpy, c->win, XCBCWBorderWidth, &wc);
     /* propagates border_width, if size doesn't change */
     configure(c);
     /* if its a new bar we dont want to return it as the monitor now manages it */
@@ -1858,8 +1897,9 @@ __update_motif_decor(Client *c, uint32_t hints)
 
     if(hints & DECOR_BORDER)
     {   
-        setborderwidth(c, c->oldbw);
+        setborderwidth(c, c->bw);
         updateborderwidth(c);
+        DEBUG0("Updated border");
     }
     else
     {   
@@ -1867,6 +1907,7 @@ __update_motif_decor(Client *c, uint32_t hints)
         setborderwidth(c, 0);
         updateborderwidth(c);
         setdisableborder(c, 1);
+        DEBUG0("Disabled border");
     }
     if(hints & DECOR_RESIZEH)
     {   
@@ -2011,6 +2052,7 @@ updatesizehints(Client *c, XCBSizeHints *size)
     i32 inch = UNINITIALIZED;       
     float mina = (float)UNINITIALIZED + 0.0f;   /* make sure sign is positive */
     float maxa = (float)UNINITIALIZED + 0.0f;   /* make sure sign is positive */
+    i32 gravity = UNINITIALIZED;
 
     /* size is uninitialized, ensure that size.flags aren't used */
     if(!size->flags)
@@ -2056,6 +2098,10 @@ updatesizehints(Client *c, XCBSizeHints *size)
         mina = fabsf(mina);
         maxa = fabsf(maxa);
     }
+
+    if(size->flags & XCB_SIZE_HINT_P_WIN_GRAVITY)
+    {   gravity = size->win_gravity;
+    }
     /* clamp */
     minw = MIN(minw, UINT16_MAX);
     minh = MIN(minh, UINT16_MAX);
@@ -2067,6 +2113,7 @@ updatesizehints(Client *c, XCBSizeHints *size)
     (void)maxa;
     inch = MIN(inch, UINT16_MAX);
     incw = MIN(incw, UINT16_MAX);
+    gravity = MIN(gravity, XCBStaticGravity);
 
     /* cleanse impossible sizes */
     minw = MAX(minw, 0);
@@ -2079,6 +2126,7 @@ updatesizehints(Client *c, XCBSizeHints *size)
     maxa = MAX(maxa, 0);
     inch = MAX(inch, 0);
     incw = MAX(incw, 0);
+    gravity = MAX(gravity, 0);
 
     c->minw = minw;
     c->minh = minh;
@@ -2090,6 +2138,7 @@ updatesizehints(Client *c, XCBSizeHints *size)
     c->maxa = maxa;
     c->inch = inch;
     c->incw = incw;
+    c->gravity = gravity;
 }
 
 void
@@ -2296,14 +2345,14 @@ updatewindowstate(Client *c, XCBAtom state, uint8_t add_remove_toggle)
     }
     else
     {   
-        XCBCookie cookie = XCBGetAtomNameCookie(_wm.dpy, state);
-        XCBAtomName *rep = XCBGetAtomNameReply(_wm.dpy, cookie);
-        if(rep)
-        {   DEBUG("Atom type: %s", xcb_get_atom_name_name(rep));
+        char *name = GetAtomNameQuick(_wm.dpy, state);
+        if(name)
+        {   DEBUG("Atom type: %s", name);
         }
         else
         {   DEBUG0("Could not find type.");
         }
+        free(name);
     }
 }
 
@@ -2468,15 +2517,14 @@ updatewindowtype(Client *c, XCBAtom wtype, uint8_t add_remove_toggle)
     }
     else
     {   
-        XCBCookie cookie = XCBGetAtomNameCookie(_wm.dpy, wtype);
-        XCBAtomName *rep = XCBGetAtomNameReply(_wm.dpy, cookie);
-        if(rep)
-        {   DEBUG("Atom type: %s", xcb_get_atom_name_name(rep));
+        char *name = GetAtomNameQuick(_wm.dpy, wtype);
+        if(name)
+        {   DEBUG("Atom type: %s", name);
         }
         else
         {   DEBUG0("Could not find type.");
         }
-        free(rep);
+        free(name);
     }
 }
 
