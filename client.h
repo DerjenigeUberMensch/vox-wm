@@ -176,7 +176,7 @@ struct Client
 
 /* Applies the gravity shifts specified by the gravity onto the x and y coordinates.
 */
-void applygravity(const uint32_t gravity, int16_t *x, int16_t *y, const uint16_t width, const uint16_t height, const uint16_t border_width);
+void applygravity(const enum XCBBitGravity gravity, int32_t *x, int32_t *y, const uint32_t width, const uint32_t height, const uint32_t border_width);
 /* Applies size hints to the specified values.
 * interact:             1/true/True         Does not restrict bounds to window area.
 *                       0/false/False       Restricts bounds to window area.
