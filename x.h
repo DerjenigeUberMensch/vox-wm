@@ -38,5 +38,6 @@ XCBCookie GetPidCookie(XCBDisplay *display, XCBWindow window);
 XCBCookie GetIconCookie(XCBDisplay *display, XCBWindow window);
 XCBCookie GetMotifHintsCookie(XCBDisplay *display, XCBWindow window);
 
+char *GetAtomNameQuick(XCBDisplay *display, XCBAtom atom);
 
 #endif
