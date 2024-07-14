@@ -62,6 +62,106 @@ u32 DOCKEDHORZ(Client *c)       {   const i16 wx = c->desktop->mon->wx;
                                     return (wx == x) && (ww == w);
                                 }
 u32 DOCKED(Client *c)           { return DOCKEDVERT(c) & DOCKEDHORZ(c); }
+u32 COULDBEFLOATINGGEOM(Client *c)  
+                                {
+                                    const Monitor *m = c->desktop->mon;
+                                    /* If the window didnt have any states, steam... 
+                                    * Check if its resonably small enough to be a floating window 
+                                    */
+                                    const float FLOAT_SIZE_MIN = .65f;
+                                    u8 floatw;
+                                    u8 floath;
+                                    floatw = (c->w <= m->ww * FLOAT_SIZE_MIN || c->w <= m->mw * FLOAT_SIZE_MIN);
+                                    floath =  (c->h <= m->wh * FLOAT_SIZE_MIN || c->h <= m->mh * FLOAT_SIZE_MIN);
+
+                                    u32 ret = floatw || floath;
+                                    /* If its not resonably small check a much stricter guideline,
+                                     * But plausible if say they moved it off to the bottom of the screen or something 
+                                     */
+                                    const float FLOAT_SIZE_MIN_STRICT = .75f;
+                                    const float FLOAT_OFFSET_MIN_STRICT = .65f;
+                                    const float FLOAT_OFFSET_MAX_STRICT = .95f;     /* dont want it offscreen */
+                                    u8 floatx;
+                                    u8 floaty;
+                                    floatw = (c->w <= m->ww * FLOAT_SIZE_MIN_STRICT || c->w <= m->mw * FLOAT_SIZE_MIN_STRICT);
+                                    floath = (c->h <= m->wh * FLOAT_SIZE_MIN_STRICT || c->h <= m->mh * FLOAT_SIZE_MIN_STRICT);
+                                    floatx = BETWEEN(c->x, (m->wx + m->ww) * FLOAT_OFFSET_MIN_STRICT, (m->wx + m->ww) * FLOAT_OFFSET_MAX_STRICT);
+                                    floaty = BETWEEN(c->y, (m->wy + m->wh) * FLOAT_OFFSET_MIN_STRICT, (m->wy + m->wh) * FLOAT_OFFSET_MAX_STRICT);
+                                    if(!ret)
+                                    {   ret = (floatw && floatx) || (floath && floaty);
+                                    }
+                                    return ret;
+                                }
+u32 COULDBEFLOATINGHINTS(Client *c)
+                                {
+                                    /* This check is mostly for (some) popup windows 
+                                     * Mainly those which dont matter, like steams startup display, but are nice to have's.
+                                     */
+                                    if(ISSPLASH(c))
+                                    {   DEBUG0("Splash Window.");
+                                    }
+                                    else if(ISMODAL(c))
+                                    {   DEBUG0("Modal Window.");
+                                    }
+                                    else if(ISPOPUPMENU(c))
+                                    {   DEBUG0("Popup Menu");
+                                    }
+                                    else if(ISDIALOG(c))
+                                    {   DEBUG0("Dialog Menu");
+                                    }
+                                    else if(ISNOTIFICATION(c))
+                                    {   DEBUG0("Notification.");
+                                    }
+                                    else if(ISCOMBO(c))
+                                    {   DEBUG0("Combo Menu,");
+                                    }
+                                    /* This check is mostly as to not soft lock the window to always be above others */
+                                    else if(ISABOVE(c))
+                                    {   DEBUG0("AlwaysOnTop Window detected.");
+                                    }
+                                    /* This checks for other non dialog types that sort of work like dialog(s) if not maximized. */
+                                    else if(ISUTILITY(c))
+                                    {   DEBUG0("Util Window detected, maybe picture-in-picture?");
+                                    }
+                                    else
+                                    {   return 0;
+                                    }
+                                    return !DOCKEDINITIAL(c);
+                                }
+u32 SHOULDBEFLOATING(Client *c) 
+                                {
+                                    u32 ret = 0;
+                                    if(COULDBEFLOATINGHINTS(c))
+                                    {   return 1;
+                                    }
+                                    /* Note dont check if ISFIXED(c) as games often set that option */
+                                    if(COULDBEFLOATINGGEOM(c))
+                                    {   
+                                        DEBUG0("Client is small enough to be floating, but should use hints...");
+                                        ret = 1;
+                                    }
+                                    else
+                                    {   ret = 0;
+                                    }
+                                    /* extra checks to make sure its floating */
+                                    if(ret)
+                                    {
+                                        /* If they dont have a classname/instancename then likely they are single instance windows */
+                                        if(!c->classname || !c->instancename)
+                                        {   ret = 0;
+                                        }
+                                        /* Some windows do set their classname/instancename but to the same string which means one of the following.
+                                         * A.) Its the main window, which we shouldnt make floating (duh).
+                                         * B.) It has subwindows but again see above.
+                                         * C.) It sets this to all windows and doesnt have any subwindows.
+                                         * D.) (rarely) Its broken, but probably will be fixed later if their developer cares enough.
+                                         */
+                                        else if(!strcmp(c->classname, c->instancename))
+                                        {   ret = 0;
+                                        }
+                                    }
+                                    return ret;
+                                }
 /* This covers some apps being able to DragWindow/ResizeWindow, in toggle.c
  * (semi-frequently) a user might "accidentally" click on them (me) and basically we dont want that window to be floating because of that user error.
  * So this is a leeway sort function.
@@ -376,77 +476,10 @@ clientinitdecor(Client *c)
 void
 clientinitfloat(Client *c)
 {
+    if(!SHOULDBEFLOATING(c))
+    {   return;
+    }
     const Monitor *m = c->desktop->mon;
-    /* This check is mostly for (some) popup windows 
-     * Mainly those which dont matter, like steams startup display, but are nice to have's.
-     */
-    if(ISSPLASH(c))
-    {   DEBUG0("Splash Window.");
-    }
-    else if(ISMODAL(c))
-    {   DEBUG0("Modal Window.");
-    }
-    else if(ISPOPUPMENU(c))
-    {   DEBUG0("Popup Menu");
-    }
-    else if(ISDIALOG(c))
-    {   DEBUG0("Dialog Menu");
-    }
-    else if(ISNOTIFICATION(c))
-    {   DEBUG0("Notification.");
-    }
-    else if(ISCOMBO(c))
-    {   DEBUG0("Combo Menu,");
-    }
-    /* This check is mostly as to not soft lock the window to always be above others */
-    else if(ISABOVE(c))
-    {   DEBUG0("AlwaysOnTop Window detected.");
-    }
-    /* This checks for other non dialog types that sort of work like dialog(s) if not maximized. */
-    else if(ISUTILITY(c))
-    {   DEBUG0("Util Window detected, maybe picture-in-picture?");
-    }
-    else if(ISNORMAL(c))
-    {   
-        DEBUG0("Non-floating window detected");
-        return;
-    }
-    else
-    {
-        /* If the window didnt have any states, steam... 
-         * Check if its resonably small enough to be a floating window 
-         */
-        const float FLOAT_SIZE_MIN = .65f;
-        /* Note dont check if ISFIXED(c) as games often set that option */
-        if(
-            (c->w <= m->ww * FLOAT_SIZE_MIN || c->w <= m->mw * FLOAT_SIZE_MIN)
-            ||
-            (c->h <= m->wh * FLOAT_SIZE_MIN || c->h <= m->mh * FLOAT_SIZE_MIN)
-          )
-        {   
-            DEBUG0("Client is small enough to be floating, but should use hints...");
-        }
-        else
-        {   
-            DEBUG0("Client is probably not meant to be floating.");
-            return;
-        }
-        if(DOCKEDINITIAL(c))
-        {   
-            DEBUG0("Client is probably not meant to be floating.");
-            return;
-        }
-        else if(!c->classname || !c->instancename)
-        {   
-            DEBUG0("Cient is probably single instance.");
-            return;
-        }
-        else if(!strcmp(c->classname, c->instancename))
-        {   
-            DEBUG0("Client is probably single instance.");
-            return;
-        }
-    }
     const u32 bw = WIDTH(c) - c->w;
     const u32 bh = HEIGHT(c) - c->h;
     /* If the window is docked for whatever reason, center it and shrink it down */
