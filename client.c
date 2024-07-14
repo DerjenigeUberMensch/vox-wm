@@ -2354,15 +2354,14 @@ updatewindowstate(Client *c, XCBAtom state, uint8_t add_remove_toggle)
         }
     }
     else
-    {   
-        XCBCookie cookie = XCBGetAtomNameCookie(_wm.dpy, state);
-        XCBAtomName *rep = XCBGetAtomNameReply(_wm.dpy, cookie);
-        if(rep)
-        {   DEBUG("Atom type: %s", xcb_get_atom_name_name(rep));
+    {   char *name = GetAtomNameQuick(_wm.dpy, state);
+        if(name)
+        {   DEBUG("Atom type: %s", name);
         }
         else
         {   DEBUG0("Could not find type.");
         }
+        free(name);
     }
 }
 
@@ -2527,15 +2526,14 @@ updatewindowtype(Client *c, XCBAtom wtype, uint8_t add_remove_toggle)
     }
     else
     {   
-        XCBCookie cookie = XCBGetAtomNameCookie(_wm.dpy, wtype);
-        XCBAtomName *rep = XCBGetAtomNameReply(_wm.dpy, cookie);
-        if(rep)
-        {   DEBUG("Atom type: %s", xcb_get_atom_name_name(rep));
+        char *name = GetAtomNameQuick(_wm.dpy, wtype);
+        if(name)
+        {   DEBUG("Atom type: %s", name);
         }
         else
         {   DEBUG0("Could not find type.");
         }
-        free(rep);
+        free(name);
     }
 }
 
