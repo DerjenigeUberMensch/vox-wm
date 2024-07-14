@@ -204,59 +204,56 @@ u32 HASWMSAVEYOURSELF(Client *c){ return c->ewmhflags & WStateFlagWMSaveYourself
 u32 HASWMDELETEWINDOW(Client *c){ return c->ewmhflags & WStateFlagWMDeleteWindow; }
 
 void
-applygravity(const u32 gravity, i16 *x, i16 *y, const u16 w, const u16 h, const u16 bw)
+applygravity(const enum XCBBitGravity gravity, int32_t *x, int32_t *y, const uint32_t w, const uint32_t h, const uint32_t bw)
 {
-    if(!gravity || !x || !y)
+    if(!x || !y)
     {   return;
     }
-    /* This is bullshit just reference relative to this point */
-    if(gravity & XCB_GRAVITY_STATIC)
-    {   /* default do nothing */
-    }
-    else if(gravity & XCB_GRAVITY_NORTH_WEST)
+    /* im a dumbass */
+    switch(gravity)
     {
-        *x -= bw;
-        *y -= bw;
-    }
-    else if(gravity & XCB_GRAVITY_NORTH)
-    {   
-        *x += w >> 1;
-        *y -= bw;
-    }
-    else if(gravity & XCB_GRAVITY_NORTH_EAST)
-    {
-        *x += w + bw;
-        *y -= bw;
-    }
-    else if(gravity & XCB_GRAVITY_EAST)
-    {
-        *x += w + bw;
-        *y += h >> 1;
-    }
-    else if(gravity & XCB_GRAVITY_SOUTH_EAST)
-    {
-        *x += w + bw;
-        *y += h + bw;
-    }
-    else if(gravity & XCB_GRAVITY_SOUTH)
-    {
-        *x += w >> 1;
-        *y += h + bw;
-    }
-    else if(gravity & XCB_GRAVITY_SOUTH_WEST)
-    {
-        *x -= bw;
-        *y += h + bw;
-    }
-    else if(gravity & XCB_GRAVITY_WEST)
-    {
-        *x -= bw;
-        *y += h >> 1;
-    }
-    else if(gravity & XCB_GRAVITY_CENTER)
-    {
-        *x += w >> 1;
-        *y += h >> 1;
+        case XCBNorthGravity:
+            *x += w >> 1;
+            *y -= bw;
+            break;
+        case XCBNorthWestGravity:
+            *x -= bw;
+            *y -= bw;
+            break;
+        case XCBNorthEastGravity:
+            *x += w + bw;
+            *y -= bw;
+            break;
+        case XCBWestGravity:
+            *x -= bw;
+            *y += h >> 1;
+            break;
+        case XCBEastGravity:
+            *x += w + bw;
+            *y += h >> 1;
+            break;
+        case XCBSouthWestGravity:
+            *x -= bw;
+            *y += h + bw;
+            break;
+        case XCBSouthEastGravity:
+            *x += w + bw;
+            *y += h + bw;
+            break;
+        case XCBSouthGravity:
+            *x += w >> 1;
+            *y += h + bw;
+            break;
+        case XCBCenterGravity:
+            *x += w >> 1;
+            *y += h >> 1;
+            break;
+        case XCBForgetGravity:
+            /* FALLTHROUGH */
+        case XCBStaticGravity:
+            /* FALLTHROUGH */
+        default:
+            DEBUG("Window has no gravity. [%d]", gravity);
     }
 }
 
