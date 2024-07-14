@@ -215,3 +215,23 @@ GetMotifHintsCookie(XCBDisplay *display, XCBWindow win)
 }
 
 
+char *
+GetAtomNameQuick(XCBDisplay *display, XCBAtom atom)
+{
+    XCBCookie cookie;
+    XCBAtomName *rep;
+    cookie = XCBGetAtomNameCookie(display, atom);
+    rep = XCBGetAtomNameReply(display, cookie);
+    DEBUG("%u", atom);
+    char *buff = NULL;
+    if(rep->name_len)
+    {   buff = malloc(sizeof(char) * rep->name_len + 1);
+    }
+    if(buff)
+    {   
+        memcpy(buff, xcb_get_atom_name_name(rep), rep->name_len);
+        buff[rep->name_len] = '\0';
+    }
+    free(rep);
+    return buff;
+}
