@@ -16,7 +16,7 @@
 #include "XCB-TRL/xcb_image.h"
 #include "XCB-TRL/xcb_imgutil.h"
 #include "util.h"
-#include "dwm.h"
+#include "main.h"
 #include "toggle.h"
 #include "keybinds.h"
 

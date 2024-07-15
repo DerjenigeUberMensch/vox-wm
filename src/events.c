@@ -3,7 +3,7 @@
 #include "events.h"
 #include "util.h"
 #include "keybinds.h"
-#include "dwm.h"
+#include "main.h"
 #include "monitor.h"
 #include "client.h"
 #include "desktop.h"
