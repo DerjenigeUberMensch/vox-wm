@@ -50,62 +50,62 @@ UserStats(const Arg *arg)
     if(c)
     {   
         argb.argb = c->bcol;
-        DEBUG("(x: %d, y: %d, w: %u, h: %u)", c->x, c->y, c->w, c->h);
-        DEBUG("(ox: %d, oy: %d, ow: %u, oh: %u)", c->oldx, c->oldy, c->oldw, c->oldh);
-        DEBUG("NETNAME:     %s", c->netwmname);
-        DEBUG("WMNAME:      %s", c->wmname);
-        DEBUG("CLASSNAME:   %s", c->classname);
-        DEBUG("INSTANCENAME:%s", c->instancename);
-        DEBUG("WindowID:    %u", c->win);
-        DEBUG("PID:         %u", c->pid);
-        DEBUG("RGBA:        (R: %u, G: %u, B: %u, A: %u)", argb.c.r, argb.c.g, argb.c.b, argb.c.a);
-        DEBUG("BorderWidth: %u", c->bw);
-        DEBUG("MINW:        %u", c->minw);
-        DEBUG("MINH:        %u", c->minh);
-        DEBUG("MAXW:        %u", c->maxw);
-        DEBUG("MAXH:        %u", c->maxh);
-        DEBUG("INCW:        %d", c->incw);
-        DEBUG("INCH:        %d", c->inch);
-        DEBUG("Icon:        (w: %u, h: %u)", c->icon ? c->icon[0] : 0, c->icon ? c->icon[1] : 0);
+        Debug("(x: %d, y: %d, w: %u, h: %u)", c->x, c->y, c->w, c->h);
+        Debug("(ox: %d, oy: %d, ow: %u, oh: %u)", c->oldx, c->oldy, c->oldw, c->oldh);
+        Debug("NETNAME:     %s", c->netwmname);
+        Debug("WMNAME:      %s", c->wmname);
+        Debug("CLASSNAME:   %s", c->classname);
+        Debug("INSTANCENAME:%s", c->instancename);
+        Debug("WindowID:    %u", c->win);
+        Debug("PID:         %u", c->pid);
+        Debug("RGBA:        (R: %u, G: %u, B: %u, A: %u)", argb.c.r, argb.c.g, argb.c.b, argb.c.a);
+        Debug("BorderWidth: %u", c->bw);
+        Debug("MINW:        %u", c->minw);
+        Debug("MINH:        %u", c->minh);
+        Debug("MAXW:        %u", c->maxw);
+        Debug("MAXH:        %u", c->maxh);
+        Debug("INCW:        %d", c->incw);
+        Debug("INCH:        %d", c->inch);
+        Debug("Icon:        (w: %u, h: %u)", c->icon ? c->icon[0] : 0, c->icon ? c->icon[1] : 0);
 
-        DEBUG0("STATES.");
-        DEBUG("MODAL:               %s", GET_BOOL(ISMODAL(c)));
-        DEBUG("STICKY:              %s", GET_BOOL(ISSTICKY(c)));
-        DEBUG("MAXIMIZED VERT:      %s", GET_BOOL(ISMAXIMIZEDVERT(c)));
-        DEBUG("MAXIMIZED HORZ:      %s", GET_BOOL(ISMAXIMIZEDHORZ(c)));
-        DEBUG("SHADED:              %s", GET_BOOL(ISSHADED(c)));
-        DEBUG("SKIP TASKBAR:        %s", GET_BOOL(SKIPTASKBAR(c)));
-        DEBUG("SKIP PAGER:          %s", GET_BOOL(SKIPPAGER(c)));
-        DEBUG("HIDDEN:              %s", GET_BOOL(ISHIDDEN(c)));
-        DEBUG("FULLSCREEN:          %s", GET_BOOL(ISFULLSCREEN(c)));
-        DEBUG("ABOVE:               %s", GET_BOOL(ISABOVE(c)));
-        DEBUG("BELOW:               %s", GET_BOOL(ISBELOW(c)));
-        DEBUG("DEMANDS ATTENTION:   %s", GET_BOOL(DEMANDSATTENTION(c)));
-        DEBUG("FOCUSED:             %s", GET_BOOL(ISFOCUSED(c)));
-        DEBUG0("Supported States.");
-        DEBUG("WM_TAKE_FOCUS:       %s", GET_BOOL(HASWMTAKEFOCUS(c)));
-        DEBUG("WM_SAVE_YOURSELF:    %s", GET_BOOL(HASWMSAVEYOURSELF(c)));
-        DEBUG("WM_DELETE_WINDOW:    %s", GET_BOOL(HASWMDELETEWINDOW(c)));
-        DEBUG0("Window Types.");
-        DEBUG("DESKTOP:             %s", GET_BOOL(ISDESKTOP(c)));
-        DEBUG("DOCK:                %s", GET_BOOL(ISDOCK(c)));
-        DEBUG("TOOLBAR:             %s", GET_BOOL(ISTOOLBAR(c)));
-        DEBUG("MENU:                %s", GET_BOOL(ISMENU(c)));
-        DEBUG("UTILITY:             %s", GET_BOOL(ISUTILITY(c)));
-        DEBUG("SPLASH:              %s", GET_BOOL(ISSPLASH(c)));
-        DEBUG("DIALOG:              %s", GET_BOOL(ISDIALOG(c)));
-        DEBUG("DROPDOWN MENU:       %s", GET_BOOL(ISDROPDOWNMENU(c)));
-        DEBUG("POPUP MENU:          %s", GET_BOOL(ISPOPUPMENU(c)));
-        DEBUG("TOOLTIP:             %s", GET_BOOL(ISTOOLTIP(c)));
-        DEBUG("NOTIFICATION:        %s", GET_BOOL(ISNOTIFICATION(c)));
-        DEBUG("COMBO:               %s", GET_BOOL(ISCOMBO(c)));
-        DEBUG("DND:                 %s", GET_BOOL(ISDND(c)));
-        DEBUG("NORMAL:              %s", GET_BOOL(ISNORMAL(c)));
-        DEBUG0("Extras.");
-        DEBUG("NEVERFOCUS:          %s", GET_BOOL(NEVERFOCUS(c)));
-        DEBUG("MAP ICONIC:          %s", GET_BOOL(ISMAPICONIC(c)));
-        DEBUG("FLOATING:            %s", GET_BOOL(ISFLOATING(c)));
-        DEBUG("WASFLOATING:         %s", GET_BOOL(WASFLOATING(c)));
+        Debug0("STATES.");
+        Debug("MODAL:               %s", GET_BOOL(ISMODAL(c)));
+        Debug("STICKY:              %s", GET_BOOL(ISSTICKY(c)));
+        Debug("MAXIMIZED VERT:      %s", GET_BOOL(ISMAXIMIZEDVERT(c)));
+        Debug("MAXIMIZED HORZ:      %s", GET_BOOL(ISMAXIMIZEDHORZ(c)));
+        Debug("SHADED:              %s", GET_BOOL(ISSHADED(c)));
+        Debug("SKIP TASKBAR:        %s", GET_BOOL(SKIPTASKBAR(c)));
+        Debug("SKIP PAGER:          %s", GET_BOOL(SKIPPAGER(c)));
+        Debug("HIDDEN:              %s", GET_BOOL(ISHIDDEN(c)));
+        Debug("FULLSCREEN:          %s", GET_BOOL(ISFULLSCREEN(c)));
+        Debug("ABOVE:               %s", GET_BOOL(ISABOVE(c)));
+        Debug("BELOW:               %s", GET_BOOL(ISBELOW(c)));
+        Debug("DEMANDS ATTENTION:   %s", GET_BOOL(DEMANDSATTENTION(c)));
+        Debug("FOCUSED:             %s", GET_BOOL(ISFOCUSED(c)));
+        Debug0("Supported States.");
+        Debug("WM_TAKE_FOCUS:       %s", GET_BOOL(HASWMTAKEFOCUS(c)));
+        Debug("WM_SAVE_YOURSELF:    %s", GET_BOOL(HASWMSAVEYOURSELF(c)));
+        Debug("WM_DELETE_WINDOW:    %s", GET_BOOL(HASWMDELETEWINDOW(c)));
+        Debug0("Window Types.");
+        Debug("DESKTOP:             %s", GET_BOOL(ISDESKTOP(c)));
+        Debug("DOCK:                %s", GET_BOOL(ISDOCK(c)));
+        Debug("TOOLBAR:             %s", GET_BOOL(ISTOOLBAR(c)));
+        Debug("MENU:                %s", GET_BOOL(ISMENU(c)));
+        Debug("UTILITY:             %s", GET_BOOL(ISUTILITY(c)));
+        Debug("SPLASH:              %s", GET_BOOL(ISSPLASH(c)));
+        Debug("DIALOG:              %s", GET_BOOL(ISDIALOG(c)));
+        Debug("DROPDOWN MENU:       %s", GET_BOOL(ISDROPDOWNMENU(c)));
+        Debug("POPUP MENU:          %s", GET_BOOL(ISPOPUPMENU(c)));
+        Debug("TOOLTIP:             %s", GET_BOOL(ISTOOLTIP(c)));
+        Debug("NOTIFICATION:        %s", GET_BOOL(ISNOTIFICATION(c)));
+        Debug("COMBO:               %s", GET_BOOL(ISCOMBO(c)));
+        Debug("DND:                 %s", GET_BOOL(ISDND(c)));
+        Debug("NORMAL:              %s", GET_BOOL(ISNORMAL(c)));
+        Debug0("Extras.");
+        Debug("NEVERFOCUS:          %s", GET_BOOL(NEVERFOCUS(c)));
+        Debug("MAP ICONIC:          %s", GET_BOOL(ISMAPICONIC(c)));
+        Debug("FLOATING:            %s", GET_BOOL(ISFLOATING(c)));
+        Debug("WASFLOATING:         %s", GET_BOOL(WASFLOATING(c)));
         if(c->icon)
         {
             u32 *icon = c->icon;
@@ -132,15 +132,15 @@ UserStats(const Arg *arg)
         }
         for(; c; c = nextclient(c))
         {   
-            DEBUG("%s", c->netwmname);
-            DEBUG("%s", c->wmname);
-            DEBUG0("");
+            Debug("%s", c->netwmname);
+            Debug("%s", c->wmname);
+            Debug0("");
         }
     }
     else
-    {   DEBUG0("NULL");
+    {   Debug0("NULL");
     }
-    DEBUG0("Manually flushed win");
+    Debug0("Manually flushed win");
     XCBFlush(_wm.dpy);
 }
 
@@ -150,15 +150,15 @@ FocusMonitor(const Arg *arg)
     Monitor *m;
     if(!_wm.mons)
     {   
-        DEBUG0("There are no monitors, this should not be possible.");
+        Debug0("There are no monitors, this should not be possible.");
         return;
     }
     if(!_wm.mons->next)
-    {   DEBUG0("There is no other monitor to focus.");
+    {   Debug0("There is no other monitor to focus.");
     }
 
     if(!_wm.selmon)
-    {   DEBUG0("No monitor selected in Context, this should not be possible");
+    {   Debug0("No monitor selected in Context, this should not be possible");
     }
 
     if((m = dirtomon(arg->i)) == _wm.selmon)
@@ -205,7 +205,7 @@ DragWindow(
         const Arg *arg
         )
 {
-    DEBUG0("Called.");
+    Debug0("Called.");
     static u8 running = 0;
     if(!arg->v || ((XCBButtonPressEvent *)arg->v)->event == _wm.root || running)
     {   return;
@@ -381,7 +381,7 @@ Quit(const Arg *arg)
 void
 ResizeWindow(const Arg *arg)
 {
-    DEBUG0("Called.");
+    Debug0("Called.");
     static u8 running = 0;
     if(!arg->v || ((XCBButtonPressEvent *)arg->v)->event == _wm.root || running)
     {   return;
@@ -604,7 +604,7 @@ ResizeWindow(const Arg *arg)
 void
 ResizeWindowAlt(const Arg *arg)
 {
-    DEBUG0("Called.");
+    Debug0("Called.");
     static u8 running = 0;
     if(!arg->v || ((XCBButtonPressEvent *)arg->v)->event == _wm.root || running)
     {   return;
@@ -823,14 +823,14 @@ SpawnWindow(const Arg *arg)
     if(pipe(pipefds))
     {   
         perror("pipe");
-        DEBUG0("pipe() failed.");
+        Debug0("pipe() failed.");
         err = EX_OSERR;
         return;
     }
     if(fcntl(pipefds[1], F_SETFD, fcntl(pipefds[1], F_GETFD) | FD_CLOEXEC))
     {
         perror("fcntl");
-        DEBUG0("fcntl() failed.");
+        Debug0("fcntl() failed.");
         err = EX_OSERR;
         return;
     }
@@ -838,7 +838,7 @@ SpawnWindow(const Arg *arg)
     {
         case -1:
             perror("fork");
-            DEBUG0("fork() failed.");
+            Debug0("fork() failed.");
             err = EX_OSERR;
             break;
         case 0:
@@ -858,7 +858,7 @@ SpawnWindow(const Arg *arg)
             setpgid(0, 0);
 
             execvp(((char **)arg->v)[0], (char **)arg->v);
-            DEBUG0("execvp() failed.");
+            Debug0("execvp() failed.");
             write(pipefds[1], &errno, sizeof(int));
             _exit(0);
             break;
@@ -872,28 +872,28 @@ SpawnWindow(const Arg *arg)
             }
             if (count) 
             {
-                DEBUG("child's execvp(): %s", strerror(err));
+                Debug("child's execvp(): %s", strerror(err));
                 err = EX_UNAVAILABLE;
                 return;
             }
             close(pipefds[0]);
-            DEBUG0("waiting for child...");
+            Debug0("waiting for child...");
             /* would do 0, over WNOHANG, but as the name implies we cant hang the window manager any time */
             while (waitpid(child, &err, WNOHANG) == -1)
             {
                 if (errno != EINTR) 
                 {
                     perror("waitpid");
-                    DEBUG0("waitpid");
+                    Debug0("waitpid");
                     err = EX_SOFTWARE;
                     return;
                 }
             }
             if (WIFEXITED(err))
-            {   DEBUG("child exited with %d\n", WEXITSTATUS(err));
+            {   Debug("child exited with %d\n", WEXITSTATUS(err));
             }
             else if(WIFSIGNALED(err))
-            {   DEBUG("child killed by %d\n", WTERMSIG(err));
+            {   Debug("child killed by %d\n", WTERMSIG(err));
             }
     }
 }
@@ -916,7 +916,7 @@ MaximizeWindow(const Arg *arg)
         unmaximize(c);
         setfloating(c, 1);
     }
-    DEBUG("(x: %d, y: %d), (w: %u, h: %u)", c->x, c->y, c->w, c->h);
+    Debug("(x: %d, y: %d), (w: %u, h: %u)", c->x, c->y, c->w, c->h);
     arrange(c->desktop);
     XCBFlush(_wm.dpy);
 }

@@ -76,7 +76,7 @@ resizebar(Bar *bar, int32_t x, int32_t y, int32_t w, int32_t h)
 
     /* valgrind says that this generates some stack allocation error in writev(vector[1]) but it seems to be a xcb issue */
     XCBSendEvent(_wm.dpy, bar->win, False, XCB_EVENT_MASK_STRUCTURE_NOTIFY, (const char *)&ce);
-    DEBUG("(x: %d, y: %d) (w: %u, h: %u)", bar->x, bar->y, bar->w, bar->h);
+    Debug("(x: %d, y: %d) (w: %u, h: %u)", bar->x, bar->y, bar->w, bar->h);
 }
 
 /*

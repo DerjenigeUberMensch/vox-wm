@@ -31,13 +31,13 @@ getnamefromreply(XCBWindowProperty *namerep)
     {
         /* debug against stack smashing */
         /*
-        DEBUG("Length:  [%u]", namerep->length);
-        DEBUG("Type:    [%u]", namerep->type);
-        DEBUG("Format:  [%u]", namerep->format);
-        DEBUG("Sequence:[%u]", namerep->sequence);
-        DEBUG("VALENGTH:[%u]", namerep->value_len);
-        DEBUG("BytesAft:[%u]", namerep->bytes_after);
-        DEBUG("Resptype:[%u]", namerep->response_type);
+        Debug("Length:  [%u]", namerep->length);
+        Debug("Type:    [%u]", namerep->type);
+        Debug("Format:  [%u]", namerep->format);
+        Debug("Sequence:[%u]", namerep->sequence);
+        Debug("VALENGTH:[%u]", namerep->value_len);
+        Debug("BytesAft:[%u]", namerep->bytes_after);
+        Debug("Resptype:[%u]", namerep->response_type);
         */
         uint32_t offset = 0;
 
@@ -222,7 +222,7 @@ GetAtomNameQuick(XCBDisplay *display, XCBAtom atom)
     XCBAtomName *rep;
     cookie = XCBGetAtomNameCookie(display, atom);
     rep = XCBGetAtomNameReply(display, cookie);
-    DEBUG("%u", atom);
+    Debug("%u", atom);
     char *buff = NULL;
     if(rep->name_len)
     {   buff = malloc(sizeof(char) * rep->name_len + 1);
