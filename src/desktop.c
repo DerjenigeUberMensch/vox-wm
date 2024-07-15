@@ -83,7 +83,7 @@ arrangedesktop(Desktop *desk)
 #define __detach_helper(NAME, TYPE, STRUCT, HEAD, NEXT, PREV, LAST)   do                                                        \
                                                                 {                                                               \
                                                                     if(!STRUCT)                                                 \
-                                                                    {   DEBUG0("No " #TYPE " to detach, undefined FIXME");      \
+                                                                    {   Debug0("No " #TYPE " to detach, undefined FIXME");      \
                                                                         return;                                                 \
                                                                     }                                                           \
                                                                     TYPE **tc;                                                  \
@@ -229,7 +229,7 @@ createdesktop(void)
     Desktop *desk = calloc(1, sizeof(Desktop));
     if(!desk)
     {
-        DEBUG("%s", "WARN: FAILED TO CREATE DESKTOP");
+        Debug("%s", "WARN: FAILED TO CREATE DESKTOP");
         return NULL;
     }
     desk->layout = 0;
@@ -383,7 +383,7 @@ restack(Desktop *desk)
         if(config)
         {   
             XCBConfigureWindow(_wm.dpy, c->win, XCB_CONFIG_WINDOW_SIBLING|XCB_CONFIG_WINDOW_STACK_MODE, &wc);
-            DEBUG("Configured window: %s", c->netwmname);
+            Debug("Configured window: %s", c->netwmname);
         }
         /* add clients to Stack list (some apps use this) */
         if(nextstack(c))

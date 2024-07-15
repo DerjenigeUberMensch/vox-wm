@@ -98,30 +98,30 @@ u32 COULDBEFLOATINGHINTS(Client *c)
                                      * Mainly those which dont matter, like steams startup display, but are nice to have's.
                                      */
                                     if(ISSPLASH(c))
-                                    {   DEBUG0("Splash Window.");
+                                    {   Debug0("Splash Window.");
                                     }
                                     else if(ISMODAL(c))
-                                    {   DEBUG0("Modal Window.");
+                                    {   Debug0("Modal Window.");
                                     }
                                     else if(ISPOPUPMENU(c))
-                                    {   DEBUG0("Popup Menu");
+                                    {   Debug0("Popup Menu");
                                     }
                                     else if(ISDIALOG(c))
-                                    {   DEBUG0("Dialog Menu");
+                                    {   Debug0("Dialog Menu");
                                     }
                                     else if(ISNOTIFICATION(c))
-                                    {   DEBUG0("Notification.");
+                                    {   Debug0("Notification.");
                                     }
                                     else if(ISCOMBO(c))
-                                    {   DEBUG0("Combo Menu,");
+                                    {   Debug0("Combo Menu,");
                                     }
                                     /* This check is mostly as to not soft lock the window to always be above others */
                                     else if(ISABOVE(c))
-                                    {   DEBUG0("AlwaysOnTop Window detected.");
+                                    {   Debug0("AlwaysOnTop Window detected.");
                                     }
                                     /* This checks for other non dialog types that sort of work like dialog(s) if not maximized. */
                                     else if(ISUTILITY(c))
-                                    {   DEBUG0("Util Window detected, maybe picture-in-picture?");
+                                    {   Debug0("Util Window detected, maybe picture-in-picture?");
                                     }
                                     else
                                     {   return 0;
@@ -137,7 +137,7 @@ u32 SHOULDBEFLOATING(Client *c)
                                     /* Note dont check if ISFIXED(c) as games often set that option */
                                     if(COULDBEFLOATINGGEOM(c))
                                     {   
-                                        DEBUG0("Client is small enough to be floating, but should use hints...");
+                                        Debug0("Client is small enough to be floating, but should use hints...");
                                         ret = 1;
                                     }
                                     else
@@ -353,7 +353,7 @@ applygravity(const enum XCBBitGravity gravity, int32_t *x, int32_t *y, const uin
         case XCBStaticGravity:
             /* FALLTHROUGH */
         default:
-            DEBUG("Window has no gravity. [%d]", gravity);
+            Debug("Window has no gravity. [%d]", gravity);
     }
 }
 
@@ -592,9 +592,9 @@ createclient(void)
     Decoration *decor = X11DecorCreate();
     if(!c || !decor)
     {   
-        DEBUG0("Could not allocate memory for client (OutOfMemory).");
-        DEBUG("Client:      %p", (void *)c);
-        DEBUG("Decoration:  %p", (void *)decor);
+        Debug0("Could not allocate memory for client (OutOfMemory).");
+        Debug("Client:      %p", (void *)c);
+        Debug("Decoration:  %p", (void *)decor);
         free(c);
         free(decor);
         return NULL;
@@ -659,7 +659,7 @@ focus(Client *c)
         XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow]);
     }
     desk->sel = c;
-    DEBUG("Focused: [%d]", c ? c->win : 0);
+    Debug("Focused: [%d]", c ? c->win : 0);
 }
 
 void
@@ -841,11 +841,11 @@ managereply(XCBWindow win, XCBCookie requests[ManageCookieLAST])
 {
     /* checks */
     if(win == _wm.root)
-    {   DEBUG("%s", "Cannot manage() root window.");
+    {   Debug("%s", "Cannot manage() root window.");
         goto DISCARD;
     }
     else if(wintoclient(win))
-    {   DEBUG("Window already managed????: [%u]", win);
+    {   Debug("Window already managed????: [%u]", win);
         goto DISCARD;
     } 
     
@@ -915,7 +915,7 @@ managereply(XCBWindow win, XCBCookie requests[ManageCookieLAST])
     hints.flags *= !!hintstatus;    
 
     if(waattributes && waattributes->override_redirect)
-    {   DEBUG("Override Redirect: [%d]", win);
+    {   Debug("Override Redirect: [%d]", win);
         /* theoredically we could manage these but they are a hastle to deal with */
         goto FAILURE;
     }
@@ -1005,7 +1005,7 @@ maximize(Client *c)
 {
     maximizehorz(c);
     maximizevert(c);
-    DEBUG("Maximized: %u", c->win);
+    Debug("Maximized: %u", c->win);
 }
 
 void
@@ -1802,7 +1802,7 @@ unmanage(Client *c, uint8_t destroyed)
     detachcompletely(c);
     updateclientlist(win, ClientListRemove);
     cleanupclient(c);
-    DEBUG("Unmanaged: [%u]", win);
+    Debug("Unmanaged: [%u]", win);
 }
 
 void 
@@ -1810,7 +1810,7 @@ unmaximize(Client *c)
 {
     unmaximizevert(c);
     unmaximizehorz(c);
-    DEBUG("Umaximized: [%u]", c->win);
+    Debug("Umaximized: [%u]", c->win);
 }
 
 void 
@@ -1832,7 +1832,7 @@ unmaximizehorz(Client *c)
         }
     }
     else
-    {   DEBUG("Client already unmaxed horz: [%u]", c->win);
+    {   Debug("Client already unmaxed horz: [%u]", c->win);
     }
 }
 
@@ -1853,7 +1853,7 @@ unmaximizevert(Client *c)
         }
     }
     else
-    {   DEBUG("Client already unmaxed vert: [%u]", c->win);
+    {   Debug("Client already unmaxed vert: [%u]", c->win);
     }
 }
 
@@ -2356,10 +2356,10 @@ updatewindowstate(Client *c, XCBAtom state, uint8_t add_remove_toggle)
     else
     {   char *name = GetAtomNameQuick(_wm.dpy, state);
         if(name)
-        {   DEBUG("Atom type: %s", name);
+        {   Debug("Atom type: %s", name);
         }
         else
-        {   DEBUG0("Could not find type.");
+        {   Debug0("Could not find type.");
         }
         free(name);
     }
@@ -2528,10 +2528,10 @@ updatewindowtype(Client *c, XCBAtom wtype, uint8_t add_remove_toggle)
     {   
         char *name = GetAtomNameQuick(_wm.dpy, wtype);
         if(name)
-        {   DEBUG("Atom type: %s", name);
+        {   Debug("Atom type: %s", name);
         }
         else
-        {   DEBUG0("Could not find type.");
+        {   Debug0("Could not find type.");
         }
         free(name);
     }
@@ -2585,7 +2585,7 @@ updatewmhints(Client *c, XCBWMHints *wmh)
                     sethidden(c, 1);
                     break;
                 case XCB_WINDOW_WITHDRAWN_STATE:
-                    DEBUG("Window Specified is Widthdrawn? %d", c->win);
+                    Debug("Window Specified is Widthdrawn? %d", c->win);
                     break;
                 case XCB_WINDOW_NORMAL_STATE:
                     break;
@@ -2622,8 +2622,8 @@ wintoclient(XCBWindow win)
             {
                 if(c->win == win)
                 {   
-                    DEBUG0("Found non hashed client.");
-                    DEBUG0("Hashing...");
+                    Debug0("Found non hashed client.");
+                    Debug0("Hashing...");
                     /* try and re-add it to the hasmap */
                     addclienthash(c);
                     return c;

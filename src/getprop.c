@@ -394,7 +394,7 @@ Worker(void *x)
     __Property__Cookie__ cookie = { .win = 0, .type = 0 };
     if(!display)
     {   
-        DEBUG0("Failed to open display for worker");
+        Debug0("Failed to open display for worker");
         return NULL;
     }
     while(cookie.type != PropExitThread)
@@ -543,6 +543,6 @@ PropListen(XCBDisplay *display, XCBWindow win, enum PropertyType type)
     if(!usethreads || full)
     {   
         UpdateProperty(display, &cookie);
-        DEBUG("Using single threads, full: %d", full);
+        Debug("Using single threads, full: %d", full);
     }
 }

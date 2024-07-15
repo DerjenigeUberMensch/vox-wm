@@ -18,7 +18,7 @@ addclienthash(Client *c)
         /* malloc probably failed */
         if(!hashedclients)
         {   
-            DEBUG0("Failed to reinitialize hashedclients");
+            Debug0("Failed to reinitialize hashedclients");
             return;
         }
     }
@@ -37,10 +37,10 @@ addclienthash(Client *c)
     {
         case __KHASH_BAD_OPERATION:
             /* likely malloc() failed. */
-            DEBUG0("Failed to alloc memory for hash.");
+            Debug0("Failed to alloc memory for hash.");
             return;
         case __KHASH_ALREADY_PRESENT:
-            DEBUG0("Item already present in khash. FIXME");
+            Debug0("Item already present in khash. FIXME");
             return;
         case __KHASH_FIRST_HASH:
             break;

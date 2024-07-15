@@ -193,12 +193,12 @@ setdesktopcount(Monitor *m, uint16_t desktops)
 {
     const u8 MIN_DESKTOPS = 1;
     if(desktops <= MIN_DESKTOPS)
-    {   DEBUG0("Cannot make desktop count less than possible.");
+    {   Debug0("Cannot make desktop count less than possible.");
         return;
     }
     if(m->deskcount == desktops)
     {
-        DEBUG("Desktops are already at specified capacity: [%u]", desktops);
+        Debug("Desktops are already at specified capacity: [%u]", desktops);
         return;
     }
     u16 i;
@@ -238,7 +238,7 @@ setdesktopcount(Monitor *m, uint16_t desktops)
             }
         }
         if(failurecount)
-        {   DEBUG("Failed [%d]", failurecount);
+        {   Debug("Failed [%d]", failurecount);
         }
     }
 }
@@ -248,7 +248,7 @@ setdesktopsel(Monitor *mon, Desktop *desksel)
 {
     if(desksel->mon != mon)
     {   /* TODO maybe add functionality to detach desktop or something? */
-        DEBUG0("Cant set desktop of different monitor, FIXME");
+        Debug0("Cant set desktop of different monitor, FIXME");
         return;
     }
     if(mon->desksel != desksel)
@@ -271,7 +271,7 @@ setdesktopsel(Monitor *mon, Desktop *desksel)
         updatedesktop();
     }
     else
-    {   DEBUG0("Same desktop, no change.");
+    {   Debug0("Same desktop, no change.");
     }
 }
 
@@ -455,7 +455,7 @@ updateclientlist(XCBWindow win, uint8_t type)
             }
             break;
         default:
-            DEBUG0("No type specified.");
+            Debug0("No type specified.");
             break;
     }
 }

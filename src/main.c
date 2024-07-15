@@ -27,7 +27,7 @@
 #include "hashing.h"
 #include "getprop.h"
 #include "keybinds.h"
-/* for HELP/DEBUGGING see under main() or the bottom */
+/* for HELP/DebugGING see under main() or the bottom */
 
 extern void (*handler[XCBLASTEvent]) (XCBGenericEvent *);
 
@@ -319,7 +319,7 @@ cleanup(void)
         /* sometimes due to our own lack of competence we can call quit twice and segfault here */
         if(_wm.selmon)
         {
-            DEBUG0("Some data has not been freed exiting due to possible segfault.");
+            Debug0("Some data has not been freed exiting due to possible segfault.");
         }
         return;
     }
@@ -359,7 +359,7 @@ eventhandler(XCBGenericEvent *ev)
     }
     /* int for speed */
     const int cleanev = XCB_EVENT_RESPONSE_TYPE(ev);
-    /* DEBUG("%s", XCBGetEventName(cleanev)); */
+    /* Debug("%s", XCBGetEventName(cleanev)); */
     if(LENGTH(handler) > cleanev)
     {   handler[cleanev](ev);
     }
@@ -373,7 +373,7 @@ eventhandler(XCBGenericEvent *ev)
 void
 exithandler(void)
 {   
-    DEBUG("%s", "Process Terminated Successfully.");
+    Debug("%s", "Process Terminated Successfully.");
 }
 
 i8
@@ -400,7 +400,7 @@ quit(void)
 {
     _wm.running = 0;
     wakeupconnection(_wm.dpy, _wm.screen);
-    DEBUG0("Exiting...");
+    Debug0("Exiting...");
 }
 
 static u8
@@ -418,7 +418,7 @@ _restore_parser(FILE *file, char *buffer, u16 bufflen)
         {
             if(!feof(file))
             {   
-                DEBUG0("Buffer too small for current line.");
+                Debug0("Buffer too small for current line.");
                 /* BUFF TOO SMALL */
                 return bufftoosmall;
             }
@@ -605,17 +605,17 @@ restoreclientsession(Desktop *desk, char *buff, u16 len)
         }
     }
     else
-    {   DEBUG0("FAILED CHECKSUM");
+    {   Debug0("FAILED CHECKSUM");
     }
 
     if(cclient)
-    {   DEBUG("Restored Client: [%u]", cclient->win);
+    {   Debug("Restored Client: [%u]", cclient->win);
     }
     else if(check != SCANF_CHECK_SUM)
-    {   DEBUG("Failed to parse Client str: \"%s\"", buff);
+    {   Debug("Failed to parse Client str: \"%s\"", buff);
     }
     else
-    {   DEBUG("Client Not Found: [%u]", WindowId);
+    {   Debug("Client Not Found: [%u]", WindowId);
     }
     return cclient;
 }
@@ -664,11 +664,11 @@ restoredesktopsession(Monitor *m, char *buff, u16 len)
             setdesktoplayout(desk, DesktopOLayout);
             setdesktoplayout(desk, DesktopLayout);
         }
-        DEBUG("Restored desktop: [%d]", desk ? desk->num : -1);
+        Debug("Restored desktop: [%d]", desk ? desk->num : -1);
         return desk;
     }
     else
-    {   DEBUG("Failed to parse Desktop str: \"%s\"", buff);
+    {   Debug("Failed to parse Desktop str: \"%s\"", buff);
     }
     return NULL;
 }
@@ -773,12 +773,12 @@ restoremonsession(char *buff, u16 len)
                 {   setdesktopsel(pullm, desk);
                 }
             }
-            DEBUG("Restored Monitor: [%p]", (void *)pullm);
+            Debug("Restored Monitor: [%p]", (void *)pullm);
         }
         return pullm;
     }
     else
-    {   DEBUG("Failed to parse Monitor str: \"%s\"", buff);
+    {   Debug("Failed to parse Monitor str: \"%s\"", buff);
     }
     return NULL;
 }
@@ -809,10 +809,10 @@ restorestacksession(Desktop *desk, char *buff, uint16_t len)
             if((c = wintoclient(client)))
             {   
                 setclientdesktop(c, desk);
-                DEBUG("Moving [%u] (Client) to right desktop...", c->win);
+                Debug("Moving [%u] (Client) to right desktop...", c->win);
             }
             else
-            {   DEBUG0("Could not find client in stack...");
+            {   Debug0("Could not find client in stack...");
             }
             if((c = wintoclient(focus)))
             {   
@@ -827,7 +827,7 @@ restorestacksession(Desktop *desk, char *buff, uint16_t len)
         }
         else
         {   /* TODO: Technically we dont need isclientsend, but having that prevents a "fail" due to strcmp("Client.", buff); happening after/ */
-            DEBUG0("Failed to pass move checksum for client.");
+            Debug0("Failed to pass move checksum for client.");
         }
     }
     /* end stream */
@@ -838,7 +838,7 @@ void
 restart(void)
 {
     _wm.restart = 1;
-    DEBUG0("Restarting...");
+    Debug0("Restarting...");
     quit();
 }
 
@@ -887,7 +887,7 @@ savesession(void)
     Monitor *m;
     FILE *fw = fopen(buff, "w");
     if(!fw)
-    {   DEBUG0("Failed to alloc FILE(OutOfMemory)");
+    {   Debug0("Failed to alloc FILE(OutOfMemory)");
         return;
     }
 
@@ -1104,7 +1104,7 @@ scan(void)
         free(tree);
     }
     else
-    {   DEBUG0("Failed to scan for clients.");
+    {   Debug0("Failed to scan for clients.");
     }
     /* restore session covers this after */
 }
@@ -1116,7 +1116,7 @@ sendmon(Client *c, Monitor *m)
     {   c->desktop = m->desksel;
     }
     if(c->desktop->mon == m)
-    {   DEBUG0("Cant send client to itself.");
+    {   Debug0("Cant send client to itself.");
         return;
     }
     unfocus(c, 1);
@@ -1239,7 +1239,7 @@ setupbar(Monitor *m, Client *bar)
     setsticky(bar, 1);
     updatebargeom(m);
     updatebarpos(m);
-    DEBUG("Found a bar: [%d]", bar->win);
+    Debug("Found a bar: [%d]", bar->win);
 }
 
 void
@@ -1282,12 +1282,12 @@ sighandler(void)
 
     if(signal(SIGHUP, &sighup) == SIG_ERR) 
     {   
-        DEBUG("%s", "WARNING: CANNOT_INSTALL_SIGHUP_HANDLER");
+        Debug("%s", "WARNING: CANNOT_INSTALL_SIGHUP_HANDLER");
         signal(SIGHUP, SIG_DFL); /* default signal */
     }
     if(signal(SIGINT, &sigterm) == SIG_ERR)
     {   
-        DEBUG("%s", "WARNING: CANNOT_INSTALL_SIGINT_HANDLER");
+        Debug("%s", "WARNING: CANNOT_INSTALL_SIGINT_HANDLER");
         signal(SIGINT, SIG_DFL);
     }
 }
@@ -1310,7 +1310,7 @@ specialconds(int argc, char *argv[])
     /* local support */
     char *err = strerror_l(errno, uselocale((locale_t)0));
     if(err)
-    {   DEBUG("%s", strerror_l(errno, uselocale((locale_t)0)));
+    {   Debug("%s", strerror_l(errno, uselocale((locale_t)0)));
     }
 
     err = NULL;
@@ -1366,7 +1366,7 @@ specialconds(int argc, char *argv[])
     }
 
     if(err)
-    {   DEBUG("%s\nError code: %d", err, _wm.has_error);
+    {   Debug("%s\nError code: %d", err, _wm.has_error);
     }
 
 
@@ -1385,10 +1385,10 @@ specialconds(int argc, char *argv[])
         {   execvp(argv[0], argv);
         }
         else
-        {   DEBUG0("No argv?");
+        {   Debug0("No argv?");
         }
         /* UNREACHABLE */
-        DEBUG("%s", "Failed to restart " MARK);
+        Debug("%s", "Failed to restart " MARK);
     }
 }
 
@@ -1417,7 +1417,7 @@ startup(void)
     char *display = NULL;
     _wm.dpy = XCBOpenDisplay(display, &_wm.screen);
     display = display ? display : getenv("DISPLAY");
-    DEBUG("DISPLAY -> %s", display);
+    Debug("DISPLAY -> %s", display);
     if(!_wm.dpy)
     {   
         if(_wm.use_threads)
@@ -1433,7 +1433,7 @@ startup(void)
     PropInit();
     atexit(exithandler);
     setenv("GTK_CSD", "amogus", 1);
-#ifndef DEBUG
+#ifndef Debug
     XCBSetErrorHandler(xerror);
 #endif
 }
@@ -1476,7 +1476,7 @@ updatebarpos(Monitor *m)
             }
         }
         else
-        {   DEBUG0("Detected bar is a square suprisingly.");
+        {   Debug0("Detected bar is a square suprisingly.");
         }
     }
     if(!ISHIDDEN(bar))
@@ -1488,26 +1488,26 @@ updatebarpos(Monitor *m)
                 resize(bar, m->mx, m->my, bar->w, bar->h, 1);
                 m->wx += bar->w;
                 m->ww -= bar->w;
-                DEBUG0("Bar Placed Left.");
+                Debug0("Bar Placed Left.");
                 break;
             case BarSideRight:
                 /* make sure its on the right side */
                 resize(bar, m->mx + (m->mw - bar->w), m->my, bar->w, bar->h, 1);
                 m->ww -= bar->w;
-                DEBUG0("Bar Placed Right.");
+                Debug0("Bar Placed Right.");
                 break;
             case BarSideTop:
                 /* make sure its on the top side */
                 resize(bar, m->mx, m->my, bar->w, bar->h, 1);
                 m->wy += bar->h;
                 m->wh -= bar->h;
-                DEBUG0("Bar Placed Top.");
+                Debug0("Bar Placed Top.");
                 break;
             case BarSideBottom:
                 /* make sure its on the bottom side */
                 resize(bar, m->mx, m->my + (m->mh - bar->h), bar->w, bar->h, 1);
                 m->wh -= bar->h;
-                DEBUG0("Bar Placed Bottom.");
+                Debug0("Bar Placed Bottom.");
                 break;
             default:
                 break;
@@ -1628,7 +1628,7 @@ void
 wakeupconnection(XCBDisplay *display, int screen)
 {
     if(!display)
-    {   DEBUG0("No connection avaible");
+    {   Debug0("No connection avaible");
         return;
     }
     XCBGenericEvent ev;
@@ -1651,18 +1651,18 @@ xerror(XCBDisplay *display, XCBGenericError *err)
 {
     if(err)
     {   
-        DEBUG("%s %s\n", XCBGetErrorMajorCodeText(err->major_code), XCBGetFullErrorText(err->error_code));
-        DEBUG("error_code: [%d], major_code: [%d], minor_code: [%d]\n"
+        Debug("%s %s\n", XCBGetErrorMajorCodeText(err->major_code), XCBGetFullErrorText(err->error_code));
+        Debug("error_code: [%d], major_code: [%d], minor_code: [%d]\n"
               "sequence: [%d], response_type: [%d], resource_id: [%d]\n"
               "full_sequence: [%d]\n"
               ,
            err->error_code, err->major_code, err->minor_code, 
            err->sequence, err->response_type, err->resource_id, 
            err->full_sequence);
-#ifdef ENABLE_DEBUG
+#ifdef ENABLE_Debug
         XCBCookie id;
         id.sequence = err->sequence;
-        DEBUG("%s()", XCBDebugGetNameFromId(id));
+        Debug("%s()", XCBDebugGetNameFromId(id));
 #endif
     }
 }
@@ -1694,12 +1694,12 @@ main(int argc, char *argv[])
  */
 
 
-/* DEBUGGING
+/* DebugGING
  * Stuff you need gdb xephyr
  * sudo pacman -S gdb xorg-server-xephyr
  *
  *
- * first make sure its compiled in DEBUG using config.mk
+ * first make sure its compiled in Debug using config.mk
  *
  * run this command: Xephyr :1 -ac -resizeable -screen 680x480 &
  * set the display to the one you did for Xephyr in this case we did 1 so

@@ -248,7 +248,7 @@ USSetupCFGVars(
     {   
         err = SCParserNewVar(cfg, _DATA_ENTRY_NAME[i], _DATA_ENTRY_NAME_LEN[i], READONLY, _DATA_ENTRY_SIZE[i], _DATA_ENTRY_TYPE[i]);
         if(err)
-        {   DEBUG("Failed to create: \"%s\"", _DATA_ENTRY_NAME[i]);
+        {   Debug("Failed to create: \"%s\"", _DATA_ENTRY_NAME[i]);
         }
     }
 }
@@ -345,7 +345,7 @@ USLoad(
     u8 status = SCParserReadFile(cfg, CONFIG_FILE);
     if(status)
     {   
-        DEBUG0("Failed to load previous data, loading defaults...");
+        Debug0("Failed to load previous data, loading defaults...");
         return;
     }
     i32 i;
@@ -361,7 +361,7 @@ USLoad(
         {   SCParserLoad(item, data, _DATA_ENTRY_SIZE[i], _DATA_ENTRY_TYPE[i]);
         }
         else
-        {   DEBUG("Failed to load, \"%s\"", _DATA_ENTRY_NAME[i]);
+        {   Debug("Failed to load, \"%s\"", _DATA_ENTRY_NAME[i]);
         }
     }
 }

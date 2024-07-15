@@ -102,7 +102,7 @@ keypress(XCBGenericEvent *event)
     /* This Could work MAYBE allowing for upercase and lowercase Keybinds However that would complicate things due to our ability to mask Shift
      * sym = XCBKeySymbolsGetKeySym(_wm.syms, keydetail, cleanstate); 
      */
-    DEBUG("%d", sym);
+    Debug("%d", sym);
     int i;
     u8 sync = 0;
     for(i = 0; i < LENGTH(keys); ++i)
@@ -259,14 +259,14 @@ buttonpress(XCBGenericEvent *event)
             arg.v = ev;
             buttons[i].func(&arg);
             sync = 1;
-            DEBUG("%d", buttons[i].button);
+            Debug("%d", buttons[i].button);
             break;
         }
     }
     if(sync)
     {   XCBFlush(_wm.dpy);
     }
-    DEBUG("ButtonPress: (x: %d, y: %d) [%u]", rootx, rooty, eventwin);
+    Debug("ButtonPress: (x: %d, y: %d) [%u]", rootx, rooty, eventwin);
 }
 
 void
@@ -311,7 +311,7 @@ buttonrelease(XCBGenericEvent *event)
             arg.v = ev;
             buttons[i].func(&arg);
             sync = 1;
-            DEBUG("%d", buttons[i].button);
+            Debug("%d", buttons[i].button);
             break;
         }
     }
@@ -358,8 +358,8 @@ motionnotify(XCBGenericEvent *event)
     static Monitor *mon = NULL;
     Monitor *m;
 
-    //DEBUG("(x: %d, y: %d)", rootx, rooty);
-    //DEBUG("(w: %d, h: %d)", XCBDisplayWidth(_wm.dpy, _wm.screen), XCBDisplayHeight(_wm.dpy, _wm.screen));
+    //Debug("(x: %d, y: %d)", rootx, rooty);
+    //Debug("(w: %d, h: %d)", XCBDisplayWidth(_wm.dpy, _wm.screen), XCBDisplayHeight(_wm.dpy, _wm.screen));
     if((m = recttomon(rootx, rooty, 1, 1)) != mon && mon)
     {
         Client *c = _wm.selmon->desksel->sel;
@@ -599,13 +599,13 @@ circulaterequest(XCBGenericEvent *event)
     switch(place)
     {   
         case XCB_CIRCULATE_RAISE_LOWEST:
-            DEBUG("Circulate Up: [%u] ", win);
+            Debug("Circulate Up: [%u] ", win);
             break;
         case XCB_CIRCULATE_LOWER_HIGHEST:
-            DEBUG("Circulate Down: [%u] ", win);
+            Debug("Circulate Down: [%u] ", win);
             break;
         default:
-            DEBUG("Circulate Unknown: [%u] ", win);
+            Debug("Circulate Unknown: [%u] ", win);
             break;
     }
 }
@@ -674,13 +674,13 @@ configurerequest(XCBGenericEvent *event)
                         if(c1)
                         {   attachfocusbefore(c, c1);
                         }
-                        DEBUG("Raised Client: [%u] above [%u]", c->win, ev->sibling);
+                        Debug("Raised Client: [%u] above [%u]", c->win, ev->sibling);
                         break;
                     case XCB_STACK_MODE_BELOW:
                         if(c1)
                         {   attachfocusafter(c, c1);
                         }
-                        DEBUG("Lowered Client: [%u] below [%u]", c->win, ev->sibling);
+                        Debug("Lowered Client: [%u] below [%u]", c->win, ev->sibling);
                         break;
                     case XCB_STACK_MODE_TOP_IF:
                         if(c1)
@@ -691,7 +691,7 @@ configurerequest(XCBGenericEvent *event)
                                 attachfocus(c);
                             }
                         }
-                        DEBUG("Raised Client: [%u] above stack from [%u]", c->win, ev->sibling);
+                        Debug("Raised Client: [%u] above stack from [%u]", c->win, ev->sibling);
                         break;
                     case XCB_STACK_MODE_BOTTOM_IF:  
                         if(c1)
@@ -703,7 +703,7 @@ configurerequest(XCBGenericEvent *event)
                                 }
                             }
                         }
-                        DEBUG("Lowerd Client: [%u] below stack from [%u]", c->win, ev->sibling);
+                        Debug("Lowerd Client: [%u] below stack from [%u]", c->win, ev->sibling);
                         break;
                     case XCB_STACK_MODE_OPPOSITE:   
                         if(c1)
@@ -720,7 +720,7 @@ configurerequest(XCBGenericEvent *event)
                                 attachfocus(c);
                             }
                         }
-                        DEBUG("Flipped Client: [%u] flipped one to bottom [%u]", c->win, ev->sibling);
+                        Debug("Flipped Client: [%u] flipped one to bottom [%u]", c->win, ev->sibling);
                         break;
                 }
             }
@@ -731,24 +731,24 @@ configurerequest(XCBGenericEvent *event)
                     case XCB_STACK_MODE_ABOVE:      
                         detachfocus(c);
                         attachfocus(c);
-                        DEBUG("Raised Client: [%u] above stack", c->win); 
+                        Debug("Raised Client: [%u] above stack", c->win); 
                         break;
                     case XCB_STACK_MODE_BELOW:      
                         if(c->desktop->slast != c)
                         {   attachfocusafter(c->desktop->slast, c);
                         }
-                        DEBUG("Lowered Client: [%u] below stack", c->win); 
+                        Debug("Lowered Client: [%u] below stack", c->win); 
                         break;
                     case XCB_STACK_MODE_TOP_IF:
                         detachfocus(c);
                         attachfocus(c);
-                        DEBUG("Raised Client: [%u] above stack if occluded", c->win);
+                        Debug("Raised Client: [%u] above stack if occluded", c->win);
                         break;
                     case XCB_STACK_MODE_BOTTOM_IF:
                         if(c->desktop->slast != c)
                         {   attachfocusafter(c->desktop->slast, c);
                         }
-                        DEBUG("Lowerd Client: [%u] below stack if occluded", c->win);
+                        Debug("Lowerd Client: [%u] below stack if occluded", c->win);
                         break;
                     case XCB_STACK_MODE_OPPOSITE:
                         if(c->desktop->sel == c)
@@ -762,7 +762,7 @@ configurerequest(XCBGenericEvent *event)
                             detachfocus(c);
                             attachfocus(c);
                         }
-                        DEBUG("Flipped Client: [%u] XORed stack if occluded (Above if so, Below if not)", c->win);
+                        Debug("Flipped Client: [%u] XORed stack if occluded (Above if so, Below if not)", c->win);
                         break;
                 }
             }
@@ -931,7 +931,7 @@ configurenotify(XCBGenericEvent *event)
         _wm.sh = h;
 
 
-        DEBUG("(w: %d, h: %d)", w, h);
+        Debug("(w: %d, h: %d)", w, h);
         if(updategeom() || dirty)
         {
             Monitor *m;
@@ -1098,16 +1098,16 @@ visibilitynotify(XCBGenericEvent *event)
     switch(state)
     {
         case XCB_VISIBILITY_UNOBSCURED:
-            DEBUG("Viewable [%u]", win);
+            Debug("Viewable [%u]", win);
             break;
         case XCB_VISIBILITY_FULLY_OBSCURED:
-            DEBUG("Obscured [%u]", win);
+            Debug("Obscured [%u]", win);
             break;
         case XCB_VISIBILITY_PARTIALLY_OBSCURED:
-            DEBUG("Visible. [%u]", win);
+            Debug("Visible. [%u]", win);
             break;
         default:
-            DEBUG0("Invalid visiblity.");
+            Debug0("Invalid visiblity.");
     }
 }
 
@@ -1137,7 +1137,7 @@ reparentnotify(XCBGenericEvent *event)
         {   unmanage(child, 0);
         }
     }
-    DEBUG0("Reparent notify shenanigans occuring");
+    Debug0("Reparent notify shenanigans occuring");
 }
 
 void
@@ -1359,7 +1359,7 @@ clientmessage(XCBGenericEvent *event)
                     }
                 }
                 else
-                {   DEBUG0("Desktop was not in range defaulting to no desktop change.");
+                {   Debug0("Desktop was not in range defaulting to no desktop change.");
                 }
             }
         }
@@ -1395,7 +1395,7 @@ clientmessage(XCBGenericEvent *event)
                         }
                     }
                     else
-                    {   DEBUG0("Desktop was not in range defaulting to no desktop change.");
+                    {   Debug0("Desktop was not in range defaulting to no desktop change.");
                     }
                 }
             }
