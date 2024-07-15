@@ -34,7 +34,6 @@ struct Desktop
     Client *sel;                /* Selected Client              */
     Desktop *next;              /* Next Client in linked list   */
     Desktop *prev;              /* Previous Client in list      */
-    UserSettings *settings;     /* User settings data           */
 };
 
 struct Layout

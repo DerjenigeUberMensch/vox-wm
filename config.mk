@@ -10,14 +10,16 @@ MANPREFIX = ${PREFIX}/share/man
 # For more just do (GNU)
 # cd /usr/lib/pkgconfig/
 # grep -r xcb
-INCS = `pkg-config --cflags --libs xcb xcb-util xcb-aux xcb-xinerama xcb-event xcb-keysyms`
-#-lxcb-util -lxcb-icccm -lxcb-keysyms
-LIBS =  ${INCS} 
 
-#X86 isnt explicitly supported.
-X86 = -m32
-X32 = -m32
-X64 = -march=x86-64 -mtune=generic
+# fallback
+XCB_INCS_PKG = `pkg-config --cflags --libs xcb xcb-util xcb-aux xcb-xinerama xcb-event xcb-keysyms` 
+XCB_INCS = -Ixcb -Ixcb-util -Ixcb-aux -Ixcb-xinerama -Ixcb-event -Ixcb-keysyms
+TOOLS = -Itools
+INCLUDE_INCS = -Iinclude
+INCS = ${XCB_INCS} ${INCLUDE_INCS} ${TOOLS}
+#-lxcb-util -lxcb-icccm -lxcb-keysyms
+LIBS = ${XCB_INCS_PKG}
+
 CCVERSION = -std=c99
 XNATIVE = -march=native -mtune=native
 # Some libraries dont have static linking for some reason??
@@ -42,7 +44,7 @@ PRELINKERFLAGS = -fstack-protector-strong -fstack-clash-protection -fpie ${LINKT
 
 # can set higher but function overhead is pretty small so meh
 INLINELIMIT = 15
-LINKERFLAGS = ${LINKMODE} -Wl,--gc-sections,--as-needed,--relax,--strip-all,-z,relro,-z,now,-z,noexecstack,-z,defs,-pie -finline-limit=${INLINELIMIT}  ${LINKTIMEOPTIMIZATIONS} 
+LINKERFLAGS = ${LINKMODE} -Wl,--gc-sections,--as-needed,--relax,-z,relro,-z,now,-z,noexecstack,-z,defs,-pie -finline-limit=${INLINELIMIT}  ${LINKTIMEOPTIMIZATIONS} 
 
 BINARY = ${X64}
 CPPFLAGS = -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L ${XINERAMAFLAGS}
@@ -65,29 +67,7 @@ RELEASES= ${RELEASEFLAGS} -O3
 # Build using cpu specific instruction set for more performance (Optional)
 BUILDSELF = ${RELEASEFLAGS} ${XNATIVE} -O3
 
-# Set your options or presets (see above) ex: ${PRESETNAME} (Compiler used is on top)
-CFLAGS = ${DEBUG}
-
-CMACROS = -DXINERAMA
-
-
-
-
-STRIP = 0
-
-ifeq ($(STRIP), 0)
-	LINKERFLAGS = ${DYNAMICLINK} -Wl,--gc-sections 
-endif
-
-
-# debug macros
-ifeq ($(CFLAGS), $(DEBUG)) 
-	CMACROS += -DENABLE_DEBUG 
-	CMACROS += -DXCB_TRL_ENABLE_DEBUG
-	LINKERFLAGS += ${DEBUGFLAGS}
-endif
-
 # Linker flags
-LDFLAGS =  ${LIBS} ${LINKERFLAGS} ${BINARY} 
+LDFLAGS = ${LIBS} ${LINKERFLAGS} ${BINARY} 
 # Solaris
 #CFLAGS  = -fast ${INCS} -DVERSION=\"${VERSION}\"

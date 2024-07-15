@@ -1,7 +1,6 @@
 #ifndef _WM_CLIENT_H
 #define _WM_CLIENT_H
 
-
 #include "XCB-TRL/xcb_trl.h"
 #include "decorations.h"
 

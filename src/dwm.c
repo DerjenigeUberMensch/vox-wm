@@ -783,7 +783,8 @@ restoremonsession(char *buff, u16 len)
     return NULL;
 }
 
-int restorestacksession(Desktop *desk, char *buff, uint16_t len)
+int 
+restorestacksession(Desktop *desk, char *buff, uint16_t len)
 {
     const u8 SSCANF_CHECK_SUM = 3;
     u8 status = strcmp(buff, "ClientsEnd.");
