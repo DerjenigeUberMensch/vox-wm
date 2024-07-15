@@ -14,7 +14,7 @@
 #include <string.h>
 
 
-#include "dwm.h"
+#include "main.h"
 extern WM _wm;
 
 #include "bar.h"

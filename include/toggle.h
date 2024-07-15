@@ -1,7 +1,7 @@
 #ifndef TOGGLE_H_
 #define TOGGLE_H_
 
-#include "dwm.h"
+#include "main.h"
 
 
 /* Mostly a testing function */
@@ -14,15 +14,15 @@ void KillWindow(const Arg *arg);
 void TerminateWindow(const Arg *arg);
 /* keybind to move the current window where the mouse cursor is */
 void DragWindow(const Arg *arg);
-/* restarts dwm */
+/* restarts wm */
 void Restart(const Arg *arg);
-/* quits dwm */
+/* quits wm */
 void Quit(const Arg *arg);
 /* resizes the current window based on mouse position */
 void ResizeWindow(const Arg *arg);
 /* resizes the current window based on mouse position no restrictions */
 void ResizeWindowAlt(const Arg *arg);
-/* sets the window layout based on a enum in dwm.h -> Grid, Floating, Monocle, Tiled */
+/* sets the window layout based on a enum in main.h -> Grid, Floating, Monocle, Tiled */
 void SetWindowLayout(const Arg *arg);
 /* Sets the size of the master window 0.0 -> 1.0 for the Tiled Layout
  * where 1 is just monocle with extra steps */

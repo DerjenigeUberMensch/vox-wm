@@ -12,13 +12,13 @@ MANPREFIX = ${PREFIX}/share/man
 # grep -r xcb
 
 # fallback
-XCB_INCS_PKG = `pkg-config --cflags --libs xcb xcb-util xcb-aux xcb-xinerama xcb-event xcb-keysyms` 
-XCB_INCS = -Ixcb -Ixcb-util -Ixcb-aux -Ixcb-xinerama -Ixcb-event -Ixcb-keysyms
+XCB_INCS_PKG = `pkg-config --cflags --libs xcb xcb-util xcb-aux xcb-xinerama xcb-event xcb-keysyms xcb-xinput xcb-image`
+XCB_INCS = -Ixcb -Ixcb-util -Ixcb-aux -Ixcb-xinerama -Ixcb-event -Ixcb-keysyms -Ixcb-xinput -Ixcb-image
 TOOLS = -Itools
 INCLUDE_INCS = -Iinclude
 INCS = ${XCB_INCS} ${INCLUDE_INCS} ${TOOLS}
 #-lxcb-util -lxcb-icccm -lxcb-keysyms
-LIBS = ${XCB_INCS_PKG}
+LIBS = ${XCB_INCS_PKG} -lX11
 
 CCVERSION = -std=c99
 XNATIVE = -march=native -mtune=native

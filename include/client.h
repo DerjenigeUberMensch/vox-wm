@@ -477,7 +477,7 @@ void updatemotifhints(Client *c, XCBWindowProperty *motifprop);
  */
 void updatesizehints(Client *c, XCBSizeHints *size);
 /* Updates Client tile if we find one;
- * if none found default to dwm.h BROKEN
+ * if none found default to main.h BROKEN
  */
 void updatetitle(Client *c, char *netwmname, char *wmname);
 /* Updates Our own window protocol status (dont have to query every time) */

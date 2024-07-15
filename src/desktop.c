@@ -2,7 +2,7 @@
 #include "client.h"
 #include "monitor.h"
 #include "desktop.h"
-#include "dwm.h"
+#include "main.h"
 
 
 

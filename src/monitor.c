@@ -3,7 +3,7 @@
 #include <X11/keysym.h>
 #include "monitor.h"
 
-#include "dwm.h"
+#include "main.h"
 
 #include <string.h>
 

@@ -23,7 +23,7 @@
 #include <X11/keysym.h>
 
 #include "util.h"
-#include "dwm.h"
+#include "main.h"
 #include "hashing.h"
 #include "getprop.h"
 #include "keybinds.h"

@@ -4,7 +4,7 @@
 
 #include "desktop.h"
 
-#include "dwm.h"
+#include "main.h"
 #include "keybinds.h"
 #include "util.h"
 #include "hashing.h"

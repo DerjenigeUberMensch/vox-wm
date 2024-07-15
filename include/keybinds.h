@@ -2,7 +2,7 @@
 #define KEYBINDS_H_
 
 #include "toggle.h"
-#include "dwm.h"
+#include "main.h"
 #include <X11/keysym.h>
 #include <X11/XF86keysym.h> 
 

@@ -9,7 +9,7 @@
 #include "XCB-TRL/xcb_winutil.h"
 #include "queue.h"
 #include "getprop.h"
-#include "dwm.h"
+#include "main.h"
 
 #define QUEUE_SIZE 1024
 /* realistically you wont ever need more than 64 as most of these threads are just waiting for data. */
