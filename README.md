@@ -33,8 +33,8 @@ sudo pacman -S --needed dmenu xorg xorg-xinit libxcb xcb-util xcb-util-errors xc
 ```
 
 ## Usage 
-To **use** dwm you must first **compile it**.
-Afterwards you must put `exec dwm` in your `~/.xinitrc` file. **See Below.**
+To **use** xcb-wswm you must first **compile it**.
+Afterwards you must put `exec xcb-wswm` in your `~/.xinitrc` file. **See Below.**
 
 
 ## Compiling
@@ -51,21 +51,15 @@ cd xcb-wswm
 git checkout origin/Experimental
 ```
 4. Configure it See **Configuration** (Optional)
-5. Choose optimization level this can be changed in config.mk -> "CFLAGS" roughly line 70.
-     - DEBUG: Default compilation method bulky, with debug symbols.
-     - SIZE:  Roughly a 10-20% decrease in binary size compared to RELEASES.
-     - SIZEONLY: Roughly a 5-15% decrease in binary size compared to SIZE.
-     - RELEASE: Applies standard "safe" optimizations. (-O2)
-     - RELEASES: Applies stanard "non-safe" optimizations. (-O3)
-7. `sudo make install` to install or `make` to just compile.
-8. Done.
+5. `sudo make install` to install or `make` to just compile.
+6. Done.
 
 ## How to Run/Use
 1. Compile, See Above.
 2. Choose option(s) below.
 3. Locate binary 
-    - if installed should be **"dwm"**
-    - else should be located under **"binary"** folder as **"dwm"**
+    - if installed should be **"xcb-wswm"**
+    - else should be located under **"bin/release/"** folder as **"xcb-wswm"**
 
 ### Normal Usage
 4. Put **"exec YOUR_BINARY_LOCATION"** in **~/.xinitrc** or similiar XServer configuration.
@@ -77,7 +71,7 @@ git checkout origin/Experimental
 5. After locating the binary location make sure you are in the correct display server.
     - Example: `export DISPLAY=:1`
 6. After setting the correct external xserver display variable simply run the binary file.
-    - Example: `./binary/dwm` or `dwm`
+    - Example: `./bin/release/xcb-wswm` or `xcb-wswm`
 
 ## Configuration
 
