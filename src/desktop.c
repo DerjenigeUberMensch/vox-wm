@@ -219,7 +219,6 @@ cleanupdesktop(Desktop *desk)
         cleanupclient(c);
         c = next;
     }
-    free(desk->settings);
     free(desk);
     desk = NULL;
 }
@@ -240,13 +239,6 @@ createdesktop(void)
     desk->stack = NULL;
     desk->slast = NULL;
     desk->mon = NULL;
-    desk->settings = calloc(1, sizeof(UserSettings));
-    if(!desk->settings)
-    {   
-        DEBUG("%s", "WARN: FAILED TO CREATE SETTINGS.");
-        free(desk);
-        return NULL;
-    }
     return desk;
 }
 

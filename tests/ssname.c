@@ -23,7 +23,7 @@ func()
  * What shouldnt happen is the window manager crashes, (adress sanatizer) due to buffer overrun.
  */
 int 
-main()
+back()
 {
     Display *dpy = XOpenDisplay(NULL);
     int screen = DefaultScreen(dpy);

@@ -1,6 +1,6 @@
 /* See LICENSE file for copyright and license details. */
-#ifndef UTIL_H_
-#define UTIL_H_
+#ifndef __UTIL_H__42
+#define __UTIL_H__42
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -66,8 +66,6 @@ union ARGB
     uint32_t argb;  /* ARGB 32bit value */
 };
 
-
-
 #define M_STRINGIFY(x)  #x
 #define M_CONCAT(a, b)  a##b
 
@@ -98,7 +96,7 @@ union ARGB
                                     "|           {_:Y:.}_//         |\n"                \
                                     "|-----------{_}^-'{_}----------|\n"                \
                                     "\n", __FILE__,__LINE__,__func__,__VA_ARGS__); exit(EXIT_FAILURE); } while (0)
-#ifdef ENABLE_DEBUG
+#if defined(ENABLE_DEBUG) || defined(DEBUG)
 #define DEBUG(fmt, ...) (fprintf(stderr, "[%s:%d] by %s(): " fmt "\n", __FILE__,__LINE__,__func__,__VA_ARGS__))
 #define DEBUG0(X) (fprintf(stderr, "[%s:%d] by %s(): " X "\n", __FILE__, __LINE__, __func__))
 #else
@@ -110,23 +108,23 @@ union ARGB
 #ifdef __GNUC__
 #define ASM(X)                          (__asm__(X))
 #define asm __asm__
-#define __HOT__                          __attribute__((hot))
+#define __HOT__                         __attribute__((hot))
 #define __COLD__                        __attribute__((cold))
 #define NOINLINE                        __attribute__ ((noinline))
+#define _PRAGMA_ONCE
 #elif __clang__
 #define ASM(X)                          (__asm__(X))
 #define asm __asm__
 #define __HOT__                         __attribute__((hot))
 #define __COLD__                        __attribute__((cold))
 #define NOINLINE                        __attribute__ ((noinline))
-
+#define _PRAGMA_ONCE
 #else
 #define ASM(X)                          ((void)X)
 #defube asm(X)                          ((void)X)
 #define __HOT__
 #define __COLD__
 #define NOINLINE                        
-
 #endif
 
 
@@ -137,10 +135,6 @@ char *smprintf(char *fmt, ...);
 void debug(char *fmt, ...);
 
 double functime(void (*_timefunction)(void));
-
-
-
-
 
 
 #ifndef False
@@ -319,6 +313,4 @@ double functime(void (*_timefunction)(void));
                                 __insize *= 2;                                          \
                             }                                                           \
                         } while(0)
-
-
 #endif
