@@ -51,15 +51,15 @@ cd xcb-wswm
 git checkout origin/Experimental
 ```
 4. Configure it See **Configuration** (Optional)
-6. Compile using Make
+5. Compile using Make
 ```
 make
 ```
-7. Install on system, install location '/usr/local/bin'
+6. Install on system, install location '/usr/local/bin'
 ```
 sudo make install
 ```
-8. Done.
+7. Done.
 
 ## Uninstalling
 1. Change Directory to xcb-wswm.
