@@ -101,7 +101,7 @@ static PropHandler __prop_handler[PropLAST] =
 
 
 static void
-LockMainThread()
+LockMainThread(void)
 {   
     if(__threads.use_threads)
     {   pthread_mutex_lock(&_wm.mutex);
@@ -109,7 +109,7 @@ LockMainThread()
 }
 
 static void
-UnlockMainThread()
+UnlockMainThread(void)
 {   
     if(__threads.use_threads)
     {   pthread_mutex_unlock(&_wm.mutex);
@@ -481,7 +481,6 @@ static void
 PropCreateWorkers(uint32_t threads)
 {
     int32_t i;
-    pthread_t id = 0;
     for(i = 0; i < threads; ++i)
     {   CreateWorker(&__threads.threads[i]);
     }

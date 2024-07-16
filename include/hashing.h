@@ -1,7 +1,7 @@
 #ifndef _HASHING_HELPER_H
 #define _HASHING_HELPER_H
 
-#include "XCB-TRL/xcb_trl.h"
+#include "../tools/XCB-TRL/xcb_trl.h"
 
 struct Client;
 

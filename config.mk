@@ -12,13 +12,14 @@ MANPREFIX = ${PREFIX}/share/man
 # grep -r xcb
 
 # fallback
-XCB_INCS_PKG = `pkg-config --cflags --libs xcb xcb-util xcb-aux xcb-xinerama xcb-event xcb-keysyms xcb-xinput xcb-image`
-XCB_INCS = -Ixcb -Ixcb-util -Ixcb-aux -Ixcb-xinerama -Ixcb-event -Ixcb-keysyms -Ixcb-xinput -Ixcb-image
-TOOLS = -Itools
-INCLUDE_INCS = -Iinclude
-INCS = ${XCB_INCS} ${INCLUDE_INCS} ${TOOLS}
+
+INCLUDE_LIST = tools include -Ixcb -Ixcb-util -Ixcb-aux -Ixcb-xinerama -Ixcb-event -Ixcb-keysyms -Ixcb-xinput -Ixcb-image
+INCS = $(foreach dir, ${INCLUDE_LIST}, -I${dir}) 
+#${INCLUDE_INCS} ${TOOLS} 
 #-lxcb-util -lxcb-icccm -lxcb-keysyms
-LIBS = ${XCB_INCS_PKG} -lX11
+LIBS = xcb xcb-util xcb-aux xcb-xinerama xcb-event xcb-keysyms xcb-xinput xcb-image
+#x11 xcb xcb-util xcb-aux xcb-xinerama xcb-event xcb-keysyms xcb-xinput xcb-image 
+#${XCB_INCS} x11
 
 CCVERSION = -std=c99
 XNATIVE = -march=native -mtune=native
@@ -40,11 +41,11 @@ ifeq ($(CC), clang)
 	LINKTIMEOPTIMIZATIONS = 
 endif
 
-PRELINKERFLAGS = -fstack-protector-strong -fstack-clash-protection -fpie ${LINKTIMEOPTIMIZATIONS} ${SECTIONCODE} ${LINKMODE} 
+PRELINKERFLAGS = -fstack-protector-strong -fstack-clash-protection -fpie ${LINKTIMEOPTIMIZATIONS} ${SECTIONCODE}
 
 # can set higher but function overhead is pretty small so meh
 INLINELIMIT = 15
-LINKERFLAGS = ${LINKMODE} -Wl,--gc-sections,--as-needed,--relax,-z,relro,-z,now,-z,noexecstack,-z,defs,-pie -finline-limit=${INLINELIMIT}  ${LINKTIMEOPTIMIZATIONS} 
+LINKFLAGS = ${LINKMODE} -Wl,--gc-sections,--as-needed,--relax,-z,relro,-z,now,-z,noexecstack,-z,defs,-pie -finline-limit=${INLINELIMIT}  ${LINKTIMEOPTIMIZATIONS} 
 
 BINARY = ${X64}
 CPPFLAGS = -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L ${XINERAMAFLAGS}
@@ -68,6 +69,6 @@ RELEASES= ${RELEASEFLAGS} -O3
 BUILDSELF = ${RELEASEFLAGS} ${XNATIVE} -O3
 
 # Linker flags
-LDFLAGS = ${LIBS} ${LINKERFLAGS} ${BINARY} 
+LINKERFLAGS = ${LINKFLAGS} ${BINARY} 
 # Solaris
 #CFLAGS  = -fast ${INCS} -DVERSION=\"${VERSION}\"

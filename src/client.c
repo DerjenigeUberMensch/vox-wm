@@ -1,12 +1,7 @@
 #include <math.h> /* fabsf() */
 
-#include "client.h"
-
-#include "desktop.h"
-
 #include "main.h"
 #include "keybinds.h"
-#include "util.h"
 #include "hashing.h"
 
 #include <string.h>

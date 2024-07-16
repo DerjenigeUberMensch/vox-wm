@@ -27,7 +27,7 @@ enum PropertyType
     PropLAST,
 };
 
-void PropInit();
+void PropInit(void);
 void PropDestroy(void);
 void PropListen(XCBDisplay *display, XCBWindow win, enum PropertyType type);
 

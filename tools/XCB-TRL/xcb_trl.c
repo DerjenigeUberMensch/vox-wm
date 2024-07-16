@@ -255,7 +255,7 @@ XCBBreakPoint(void)
 #endif
 
 char *
-XCBDebugGetCallStack()
+XCBDebugGetCallStack(void)
 {
     char *stack = NULL;
 #ifdef DBG
@@ -285,7 +285,7 @@ XCBDebugGetCallStack()
 }
 
 char *
-XCBDebugGetLastCall()
+XCBDebugGetLastCall(void)
 {
     const char *lastcall = NULL;
 #ifdef DBG
@@ -300,7 +300,7 @@ XCBDebugGetLastCall()
 }
 
 char *
-XCBDebugGetFirstCall()
+XCBDebugGetFirstCall(void)
 {
     char *firstcall = NULL;
 #if DBG

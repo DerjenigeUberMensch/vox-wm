@@ -26,7 +26,7 @@ X11GTKSetUseCSD(
 }
 
 void
-X11GTK(
+X11GTK(void
         )
 {
 }

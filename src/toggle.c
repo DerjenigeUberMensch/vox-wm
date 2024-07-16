@@ -30,7 +30,7 @@ extern void (*handler[XCBLASTEvent]) (XCBGenericEvent *);
 extern WM _wm;
 extern XCBCursor cursors[CurLast];
 
-static const char *
+const char const*
 GET_BOOL(i64 x)
 {
     if(x)

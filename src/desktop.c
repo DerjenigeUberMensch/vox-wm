@@ -159,6 +159,8 @@ attachfocusbefore(Client *start, Client *after)
     Desktop *desk = start->desktop;
     detachfocus(after);
     __attach_before(start, after, fnext, fprev, desk->focus, desk->slast, attachfocus);
+    /* block 'unused' variable warnings */
+    (void)desk;
 }
 
 void

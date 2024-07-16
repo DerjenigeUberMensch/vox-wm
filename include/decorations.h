@@ -2,7 +2,7 @@
 #define _WM_DECORATIONS_H_
 
 
-#include "XCB-TRL/xcb_trl.h"
+#include "../tools/XCB-TRL/xcb_trl.h"
 
 typedef struct Decoration Decoration;
 

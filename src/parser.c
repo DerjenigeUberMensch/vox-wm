@@ -601,7 +601,6 @@ SCParserNewVar(
         }
     }
 
-    SCItem *items = parser->items;
     SCItem *item = parser->items + parser->index;
 
     if(_optional_type == SCTypeSTRING)
