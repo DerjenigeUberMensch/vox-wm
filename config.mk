@@ -1,5 +1,4 @@
 # compiler 
-# side note clang doesnt work with -flto for some reason
 CC = cc
 
 # paths
