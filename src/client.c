@@ -446,6 +446,16 @@ cleanupclient(Client *c)
 }
 
 void
+clientinitcolormap(Client *c, XCBWindowAttributes *wa)
+{
+    if(wa)
+    {
+        c->colormap = 0;
+        updatecolormap(c, wa->colormap);
+    }
+}
+
+void
 clientinitdecor(Client *c)
 {
     Decoration *decor = c->decor;
@@ -916,6 +926,7 @@ managereply(XCBWindow win, XCBCookie requests[ManageCookieLAST])
     }
 
     /* this sets up the desktop which is quite important for some operations */
+    clientinitcolormap(c, waattributes);
     clientinittrans(c, trans);
     clientinitgeom(c, wg);
     clientinitwtype(c, wtypeunused);
@@ -1795,6 +1806,8 @@ unmanage(Client *c, uint8_t destroyed)
     }
     delclienthash(c);
     detachcompletely(c);
+    /* Destroy colormap */
+    updatecolormap(c, 0);
     updateclientlist(win, ClientListRemove);
     cleanupclient(c);
     Debug("Unmanaged: [%u]", win);
@@ -1884,6 +1897,21 @@ updateclass(Client *c, XCBWMClass *_class)
                 c->instancename = iname;
             }
         }
+    }
+}
+
+void
+updatecolormap(Client *c, XCBColormap colormap)
+{
+    if(c)
+    {
+        if(c->colormap)
+        {   XCBUninstallColormap(_wm.dpy, c->colormap);
+        }
+        if(colormap)
+        {   XCBInstallColormap(_wm.dpy, colormap);
+        }
+        c->colormap = colormap;
     }
 }
 
