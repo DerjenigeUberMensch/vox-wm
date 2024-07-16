@@ -30,7 +30,7 @@ LINKMODE = ${DYNAMICLINK}
 MEMFLAGS = -fsanitize=address -fno-omit-frame-pointer
 
 WARNINGDEFAULT = -pedantic -Wall -Wno-deprecated-declarations -Wshadow -Wuninitialized -Werror=format-security 
-WARNINGEXTRAS = -Wunreachable-code -Waggregate-return -Wstrict-overflow=5 -Wpointer-arith
+WARNINGEXTRAS = -Wunreachable-code -Waggregate-return -Wstrict-overflow=4 -Wpointer-arith
 WARNINGFLAGS = ${WARNINGDEFAULT} ${WARNINGEXTRAS}
 
 LINKTIMEOPTIMIZATIONS = -flto -flto=auto
