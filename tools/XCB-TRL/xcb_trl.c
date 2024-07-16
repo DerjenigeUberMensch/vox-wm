@@ -830,6 +830,32 @@ XCBChangeWindowAttributes(
     return ret;
 }
 
+XCBCookie
+XCBInstallColormap(
+        XCBDisplay *display,
+        XCBColormap colormap
+        )
+{
+    XCBCookie ret = xcb_install_colormap(display, colormap);
+#ifdef DBG
+    _xcb_push_func(ret, _fn);
+#endif
+    return ret;
+}
+
+XCBCookie
+XCBUninstallColormap(
+        XCBDisplay *display,
+        XCBColormap colormap
+        )
+{
+    XCBCookie ret = xcb_uninstall_colormap(display, colormap);
+#ifdef DBG
+    _xcb_push_func(ret, _fn);
+#endif
+    return ret;
+}
+
 u32
 XCBBlackPixel(
         XCBDisplay *display, 

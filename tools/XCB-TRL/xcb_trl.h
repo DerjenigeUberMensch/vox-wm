@@ -1817,7 +1817,22 @@ XCBChangeWindowAttributes(
         XCBDisplay *display, 
         XCBWindow window, 
         uint32_t mask, 
-        XCBWindowAttributes *window_attributes);
+        XCBWindowAttributes *window_attributes
+        );
+
+XCBCookie
+XCBInstallColormap(
+        XCBDisplay *display,
+        XCBColormap colormap
+        );
+
+XCBCookie
+XCBUninstallColormap(
+        XCBDisplay *display,
+        XCBColormap colormap
+        );
+
+
 /* Returns the "Black Pixel" value for the specified screen for applications that implement a monochrome version.
  *
  * NOTE: "Black Pixel" may not always be the color "Black" but rather whatever colour the specified screen classifies as "Black".
@@ -1827,7 +1842,8 @@ XCBChangeWindowAttributes(
 uint32_t 
 XCBBlackPixel(
         XCBDisplay *display, 
-        int screen);
+        int screen
+        );
 
 /* Returns the "White Pixel" value for the specified screen for applications that implement a monochrome version.
  *
@@ -1838,7 +1854,8 @@ XCBBlackPixel(
 uint32_t 
 XCBWhitePixel(
         XCBDisplay *display, 
-        int screen);
+        int screen
+        );
 
 /* Syncs the current client to the XServer.
  *
@@ -1857,7 +1874,8 @@ XCBWhitePixel(
  */
 void 
 XCBSync(
-        XCBDisplay *display);
+        XCBDisplay *display
+        );
 /* Syncs the current client to the XServer, and discard every event in queue.
  * For each protocol error received by XCB, XCBSyncf() calls the client application's error handling routine
  *
