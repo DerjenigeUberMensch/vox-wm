@@ -171,6 +171,7 @@ struct Client
 
     uint32_t ewmhflags; /* EWMH types/states        */
     enum XCBBitGravity gravity; /* Client gravity   */
+    XCBColormap colormap;   /* Clients colormap     */
 };
 
 
@@ -187,6 +188,8 @@ uint8_t applysizehints(Client *c, int32_t *x, int32_t *y, int32_t *width, int32_
 /* Frees Client and allocated client properties. 
 */
 void cleanupclient(Client *c);
+/* Initializes the Clients colormap */
+void clientinitcolormap(Client *c, XCBWindowAttributes *wa);
 /* Initializes the Client decoration */
 void clientinitdecor(Client *c);
 /* Initializes the Clients floating status, based on clients flags/hints. _NET_WM_STATE/_NET_WM_WINDOW_TYPE */
@@ -461,6 +464,8 @@ void unfocus(Client *c, uint8_t setfocus);
  * No side effects on non filled _class dataw;
  */
 void updateclass(Client *c, XCBWMClass *_class);
+/* Updates the Clients colormap */
+void updatecolormap(Client *c, XCBColormap colormap);
 void updatedecor(Client *c);
 /* Updates the Client icon if we find one */
 void updateicon(Client *c, XCBWindowProperty *iconprop);
