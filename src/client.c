@@ -248,7 +248,6 @@ u32 NEVERHOLDFOCUS(Client *c)   { return NEVERFOCUS(c) || ISDOCK(c);}
 u32 ISMAXHORZ(Client *c)        { return WIDTH(c) == c->desktop->mon->ww; }
 u32 ISMAXVERT(Client *c)        { return HEIGHT(c) == c->desktop->mon->wh; }
 u32 ISVISIBLE(Client *c)        { return (c->desktop->mon->desksel == c->desktop || ISSTICKY(c)) && !ISHIDDEN(c); }
-/* u32 ISVISIBLEGEOM(Client *c) */
 u32 SHOWDECOR(Client *c)        { return c->flags & ClientFlagShowDecor; }
 u32 ISSELECTED(Client *c)       { return c->desktop->sel == c; }
         
@@ -446,7 +445,7 @@ cleanupclient(Client *c)
 }
 
 void
-clientinitcolormap(Client *c, XCBWindowAttributes *wa)
+clientinitcolormap(Client *c, XCBGetWindowAttributes *wa)
 {
     if(wa)
     {
