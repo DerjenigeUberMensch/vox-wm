@@ -1,5 +1,5 @@
 # compiler 
-CC = clang
+CC = cc
 
 # paths
 PREFIX = /usr/local/
