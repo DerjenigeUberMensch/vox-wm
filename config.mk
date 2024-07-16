@@ -1,5 +1,5 @@
 # compiler 
-CC = cc
+CC = clang
 
 # paths
 PREFIX = /usr/local/
@@ -16,7 +16,7 @@ INCLUDE_LIST = tools include -Ixcb -Ixcb-util -Ixcb-aux -Ixcb-xinerama -Ixcb-eve
 INCS = $(foreach dir, ${INCLUDE_LIST}, -I${dir}) 
 #${INCLUDE_INCS} ${TOOLS} 
 #-lxcb-util -lxcb-icccm -lxcb-keysyms
-LIBS = xcb xcb-util xcb-aux xcb-xinerama xcb-event xcb-keysyms xcb-xinput xcb-image
+LIBS = xcb xcb-util xcb-aux xcb-xinerama xcb-event xcb-keysyms xcb-xinput xcb-image x11
 #x11 xcb xcb-util xcb-aux xcb-xinerama xcb-event xcb-keysyms xcb-xinput xcb-image 
 #${XCB_INCS} x11
 
@@ -28,11 +28,10 @@ DYNAMICLINK= -ldl
 SECTIONCODE= -ffunction-sections -fdata-sections
 LINKMODE = ${DYNAMICLINK}
 MEMFLAGS = -fsanitize=address -fno-omit-frame-pointer
-#MEMFLAGS = 
-DEBUGFLAGS = -ggdb -g ${CCVERSION} ${WARNINGFLAGS} ${INCS} ${CPPFLAGS} ${BINARY} ${SECTIONCODE} ${MEMFLAGS}
 
-
-WARNINGFLAGS = -pedantic -Wall -Wno-deprecated-declarations -Wshadow -Wuninitialized -Werror=format-security
+WARNINGDEFAULT = -pedantic -Wall -Wno-deprecated-declarations -Wshadow -Wuninitialized -Werror=format-security 
+WARNINGEXTRAS = -Wunreachable-code -Waggregate-return -Wstrict-overflow=5 -Wpointer-arith
+WARNINGFLAGS = ${WARNINGDEFAULT} ${WARNINGEXTRAS}
 
 LINKTIMEOPTIMIZATIONS = -flto -flto=auto
 
@@ -44,14 +43,19 @@ PRELINKERFLAGS = -fstack-protector-strong -fstack-clash-protection -fpie ${LINKT
 
 # can set higher but function overhead is pretty small so meh
 INLINELIMIT = 15
-LINKFLAGS = ${LINKMODE} -Wl,--gc-sections,--as-needed,--relax,-z,relro,-z,now,-z,noexecstack,-z,defs,-pie -finline-limit=${INLINELIMIT}  ${LINKTIMEOPTIMIZATIONS} 
+# can conflict with adress sanatizer if used (clang)
+NO_SANATIZE_FLAGS =  -Wl,-z,relro
+
+LINKFLAGS = ${LINKMODE} -Wl,--as-needed,--relax,-z,now,-z,noexecstack,-z,defs,-pie -finline-limit=${INLINELIMIT}  ${LINKTIMEOPTIMIZATIONS} 
+LINKRELEASE = ${NO_SANATIZE_FLAGS} -Wl,--strip-all 
+LINKDEBUG = -Wl,--gc-sections ${MEMFLAGS}
 
 BINARY = ${X64}
 CPPFLAGS = -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L ${XINERAMAFLAGS}
 CCFLAGS  = ${CCVERSION} ${WARNINGFLAGS} ${INCS} ${CPPFLAGS} ${BINARY} ${PRELINKERFLAGS} 
 RELEASEFLAGS = ${CCFLAGS} 
 
-DEBUG 	= ${DEBUGFLAGS} -O0
+DEBUG 	= -ggdb -g ${SECTIONCODE} ${MEMFLAGS} -fverbose-asm -O0
 
 SIZE  	= ${RELEASEFLAGS} -Os 
 

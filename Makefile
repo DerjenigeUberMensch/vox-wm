@@ -46,9 +46,9 @@ INCLUDES = -I $(SRC_PATH) ${INCS}
 # General linker settings
 LINK_FLAGS = ${LINKERFLAGS}
 # Additional release-specific linker settings
-RLINK_FLAGS = -Wl,--strip-all  
+RLINK_FLAGS = ${LINKRELEASE}
 # Additional debug-specific linker settings
-DLINK_FLAGS = -Wl,--gc-sections
+DLINK_FLAGS = ${LINKDEBUG}
 # Destination directory, like a jail or mounted system
 DESTDIR = /
 # Install path (bin/ is appended automatically)
