@@ -189,7 +189,7 @@ uint8_t applysizehints(Client *c, int32_t *x, int32_t *y, int32_t *width, int32_
 */
 void cleanupclient(Client *c);
 /* Initializes the Clients colormap */
-void clientinitcolormap(Client *c, XCBWindowAttributes *wa);
+void clientinitcolormap(Client *c, XCBGetWindowAttributes *wa);
 /* Initializes the Client decoration */
 void clientinitdecor(Client *c);
 /* Initializes the Clients floating status, based on clients flags/hints. _NET_WM_STATE/_NET_WM_WINDOW_TYPE */
