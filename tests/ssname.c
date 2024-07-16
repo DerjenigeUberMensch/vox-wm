@@ -7,7 +7,7 @@
 
 
 void
-func()
+func(void)
 {
     /* TODO, without this XServer sends way too many requests way too fast causing the window manager to hang till the event queue is clear.
      * A malicious app could hang the window manager.
@@ -23,10 +23,12 @@ func()
  * What shouldnt happen is the window manager crashes, (adress sanatizer) due to buffer overrun.
  */
 int 
-back()
+back(void)
 {
     Display *dpy = XOpenDisplay(NULL);
     int screen = DefaultScreen(dpy);
+
+    (void)screen;
 
     Window root = DefaultRootWindow(dpy);
 

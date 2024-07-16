@@ -1095,6 +1095,8 @@ visibilitynotify(XCBGenericEvent *event)
     const XCBWindow win         = ev->window;
     const u8 state              = ev->state;
 
+    (void)win;
+
     switch(state)
     {
         case XCB_VISIBILITY_UNOBSCURED:

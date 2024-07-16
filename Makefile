@@ -36,7 +36,7 @@ ARCH32 = -m32 -mtune=generic
 ARCH64 = -march=x86-64 -mtune=generic
 ARCH = ${ARCH64}
 # General compiler flags
-COMPILE_FLAGS = ${CFLAGS} ${PRELINKERFLAGS} -DXINERAMA -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L
+COMPILE_FLAGS = ${CCFLAGS} ${PRELINKERFLAGS} -DXINERAMA -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L
 # Additional release-specific flags
 RCOMPILE_FLAGS = -DNDEBUG ${RELEASES}
 # Additional debug-specific flags
@@ -81,8 +81,8 @@ INSTALL_DATA = $(INSTALL) -m 644
 
 # Append pkg-config specific libraries if need be
 ifneq ($(LIBRARIES),)
-	COMPILE_FLAGS += $(shell pkg-config --cflags $(LIBRARIES))
-	LINK_FLAGS += $(shell pkg-config --libs $(LIBRARIES))
+	COMPILE_FLAGS += `pkg-config --cflags $(LIBRARIES)`
+	LINK_FLAGS += `pkg-config --libs $(LIBRARIES)`
 endif
 
 # Verbose option, to output compile and link commands
@@ -243,7 +243,7 @@ $(BIN_PATH)/$(BIN_NAME): $(OBJECTS)
 # After the first compilation they will be joined with the rules from the
 # dependency files to provide header dependencies
 $(BUILD_PATH)/%.o: $(SRC_PATH)/%.$(SRC_EXT)
-	@echo "Building: $< -> $@"
+#	@echo "Building: $< -> $@"
 # 	@$(START_TIME)
 	$(CMD_PREFIX)$(CC) $(CFLAGS) $(INCLUDES) -MP -MMD -c $< -o $@
 # 	@echo -en "\t Compile time: "

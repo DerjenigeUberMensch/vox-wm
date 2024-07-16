@@ -6,7 +6,10 @@
 
 
 #include <stdint.h>
-#include "XCB-TRL/xcb_trl.h"
+#include "../tools/XCB-TRL/xcb_trl.h"
+#include "../tools/XCB-TRL/xcb_winutil.h"
+#include "../tools/XCB-TRL/xcb_gtk.h"
+#include "../tools/XCB-TRL/xcb_xembed.h"
 
 
 
