@@ -7,6 +7,7 @@
 #include <pthread.h>
 
 #include "XCB-TRL/xcb_winutil.h"
+#include "C-Thread-Pool/thpool.h"
 #include "queue.h"
 #include "getprop.h"
 #include "main.h"
