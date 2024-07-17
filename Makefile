@@ -25,6 +25,8 @@
 include config.mk
 # The name of the executable to be created
 BIN_NAME := xcb-wswm
+MARK = ${BIN_NAME}
+VERSION = 2.5.0
 # Extension of source files used in the project
 SRC_EXT = c
 # Path to the source directory, relative to the makefile
@@ -36,7 +38,7 @@ ARCH32 = -m32 -mtune=generic
 ARCH64 = -march=x86-64 -mtune=generic
 ARCH = ${ARCH64}
 # General compiler flags
-COMPILE_FLAGS = ${CCFLAGS} ${PRELINKERFLAGS} -DXINERAMA -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L
+COMPILE_FLAGS = ${CCFLAGS} ${PRELINKERFLAGS} -DXINERAMA -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L -DVERSION=\"${VERSION}\" -DMARK=\"${MARK}\"
 # Additional release-specific flags
 RCOMPILE_FLAGS = -DNDEBUG ${RELEASES}
 # Additional debug-specific flags

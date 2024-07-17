@@ -18,7 +18,7 @@
 #endif
 
 #ifndef MARK
-#define MARK    "NOT_SET"
+#define MARK    "Generic X Server Event Handler (XEH)"
 #endif
 
 #define __CLIENTS__ __CLIENTS__
