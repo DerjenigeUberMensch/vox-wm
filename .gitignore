@@ -1,0 +1,11 @@
+# Ignore binaries
+bin/
+build/
+# Sometimes build leaves this
+*_time
+
+
+# Clang leftovers
+.cache/
+# Syntax support (clang)
+compile_commands.json
