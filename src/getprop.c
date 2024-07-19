@@ -489,18 +489,15 @@ PropCreateWorkers(uint32_t threads)
 static void
 PropDestroyWorkers(uint32_t threads)
 {
-    uint32_t i;
-    for(i = 0; i < threads; ++i)
-    {   
-        if(CQueueIsFull(&__threads.queue))
-        {   CQueuePop(&__threads.queue);
-        }
-        PropListen(NULL, 0, PropExitThread);
+    while(!CQueueIsEmpty(&__threads.queue))
+    {   CQueuePop(&__threads.queue);
     }
-    volatile uint32_t j;
+    while(!CQueueIsFull(&__threads.queue))
+    {   PropListen(NULL, 0, PropExitThread);
+    }
+    uint32_t j;
     for(j = 0; j < threads; ++j)
-    {   
-        pthread_cancel(__threads.threads[j]);
+    {   pthread_cancel(__threads.threads[j]);
     }
 }
 
