@@ -224,14 +224,19 @@ GetAtomNameQuick(XCBDisplay *display, XCBAtom atom)
     rep = XCBGetAtomNameReply(display, cookie);
     Debug("%u", atom);
     char *buff = NULL;
-    if(rep->name_len)
-    {   buff = malloc(sizeof(char) * rep->name_len + 1);
+    if(rep)
+    {
+        const u32 len = xcb_get_atom_name_name_length(rep);
+        const size_t size = sizeof(char) * len + sizeof(char);
+        if(len)
+        {   buff = malloc(size);
+        }
+        if(buff)
+        {   
+            memcpy(buff, xcb_get_atom_name_name(rep), len);
+            buff[len] = '\0';
+        }
+        free(rep);
     }
-    if(buff)
-    {   
-        memcpy(buff, xcb_get_atom_name_name(rep), rep->name_len);
-        buff[rep->name_len] = '\0';
-    }
-    free(rep);
     return buff;
 }
