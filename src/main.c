@@ -1247,6 +1247,50 @@ setupcfg(void)
 {   
     USInit(&_cfg);
 }
+void
+setupsys(void)
+{
+#ifdef __OpenBSD__
+    if (pledge("stdio rpath proc exec", NULL) == -1)
+    {   DIECAT("pledge");
+    }
+#endif /* __OpenBSD__ */
+    if(!setlocale(LC_CTYPE, ""))
+    {   fputs("WARN: NO_LOCALE_SUPPORT\n", stderr);
+    }
+}
+
+void
+setupwm(void)
+{
+    /* init threading */
+    pthread_mutexattr_t attr;
+    /* TODO: Just make toggle functions use a seperate thread isntead of high jacking the main thread #DontBeStupid */
+    _wm.use_threads = 0;
+    if(!pthread_mutexattr_init(&attr))
+    {
+        if(!pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE))
+        {   _wm.use_threads = !pthread_mutex_init(&_wm.mutex, &attr);
+        }
+        pthread_mutexattr_destroy(&attr);
+    }
+    char *display = NULL;
+    _wm.dpy = XCBOpenDisplay(display, &_wm.screen);
+    display = display ? display : getenv("DISPLAY");
+    Debug("DISPLAY -> %s", display);
+    if(!_wm.dpy)
+    {   
+        if(_wm.use_threads)
+        {   pthread_mutex_destroy(&_wm.mutex);
+        }
+        DIECAT("FATAL: Cannot Connect to X Server. [%s]", display);
+    }
+    /* This allows for execvp and exec to only spawn process on the specified display rather than the default varaibles */
+    if(display)
+    {   setenv("DISPLAY", display, 1);
+    }
+    setenv("GTK_CSD", "amogus", 1);
+}
 
 void
 sigchld(int signo) /* signal */
@@ -1378,61 +1422,16 @@ specialconds(int argc, char *argv[])
     if(_wm.dpy)
     {   cleanup();
     }
-
-    if(_wm.restart)
-    {   
-        if(argv)
-        {   execvp(argv[0], argv);
-        }
-        else
-        {   Debug0("No argv?");
-        }
-        /* UNREACHABLE */
-        Debug("%s", "Failed to restart " MARK);
-    }
 }
 
 void
 startup(void)
 {
-#ifdef __OpenBSD__
-        if (pledge("stdio rpath proc exec", NULL) == -1)
-        {   DIECAT("pledge");
-        }
-#endif /* __OpenBSD__ */
-    if(!setlocale(LC_CTYPE, ""))
-    {   fputs("WARN: NO_LOCALE_SUPPORT\n", stderr);
-    }
-    /* init threading */
-    pthread_mutexattr_t attr;
-    /* TODO: Just make toggle functions use a seperate thread isntead of high jacking the main thread #DontBeStupid */
-    _wm.use_threads = 0;
-    if(!pthread_mutexattr_init(&attr))
-    {
-        if(!pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE))
-        {   _wm.use_threads = !pthread_mutex_init(&_wm.mutex, &attr);
-        }
-        pthread_mutexattr_destroy(&attr);
-    }
-    char *display = NULL;
-    _wm.dpy = XCBOpenDisplay(display, &_wm.screen);
-    display = display ? display : getenv("DISPLAY");
-    Debug("DISPLAY -> %s", display);
-    if(!_wm.dpy)
-    {   
-        if(_wm.use_threads)
-        {   pthread_mutex_destroy(&_wm.mutex);
-        }
-        DIECAT("FATAL: Cannot Connect to X Server. [%s]", display);
-    }
+    setupsys();
+    setupwm();
     checkotherwm();
-    /* This allows for execvp and exec to only spawn process on the specified display rather than the default varaibles */
-    if(display)
-    {   setenv("DISPLAY", display, 1);
-    }
     PropInit();
     atexit(exithandler);
-    setenv("GTK_CSD", "amogus", 1);
 #ifndef Debug
     XCBSetErrorHandler(xerror);
 #endif
@@ -1670,14 +1669,17 @@ xerror(XCBDisplay *display, XCBGenericError *err)
 int
 main(int argc, char *argv[])
 {
-    argcvhandler(argc, argv);
-    startup();
-    setup();
-    scan();
-    restoresession();
-    run();
-    cleanup();
-    specialconds(argc, argv);
+    do
+    {
+        argcvhandler(argc, argv);
+        startup();
+        setup();
+        scan();
+        restoresession();
+        run();
+        cleanup();
+        specialconds(argc, argv);
+    } while(_wm.restart);
     return EXIT_SUCCESS;
 }
 

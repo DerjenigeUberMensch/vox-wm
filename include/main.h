@@ -197,6 +197,10 @@ void setupatoms(void);
 void setupbar(Monitor *m, Client *bar);
 /* Loads CFG data into Settings struct. */
 void setupcfg(void);
+/* Sets up System related data */
+void setupsys(void);
+/* Loads WM with valid memory data */
+void setupwm(void);
 /* waits for childs (zombies) to die */
 void sigchld(int signo);
 /* Handles Signals and how we use them */
