@@ -7,5 +7,6 @@ build/
 
 # Clang leftovers
 .cache/
+*.plist
 # Syntax support (clang)
 compile_commands.json
