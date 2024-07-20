@@ -1131,47 +1131,13 @@ setup(void)
     /* clean up any zombies immediately */
     sighandler();
 
-    /* startup wm */
-    _wm.running = 1;
-    _wm.syms = XCBKeySymbolsAlloc(_wm.dpy);
-    _wm.sw = XCBDisplayWidth(_wm.dpy, _wm.screen);
-    _wm.sh = XCBDisplayHeight(_wm.dpy, _wm.screen);
-    _wm.root = XCBRootWindow(_wm.dpy, _wm.screen);
-    /* Most java apps require this see:
-     * https://wiki.archlinux.org/title/Java#Impersonate_another_window_manager
-     * https://wiki.archlinux.org/title/Java#Gray_window,_applications_not_resizing_with_WM,_menus_immediately_closing
-     * for more information.
-     * "Hard coded" window managers to ignore "Write Once, Debug Everywhere"
-     * This fixes java apps just having a blank white screen on some screen instances.
-     * One example is Ghidra, made by the CIA.
-     */
-    _wm.wmname = "LG3D";
-
-    if(!_wm.syms)
-    {   
-        cleanup();
-        DIECAT("%s", "Could not establish connection with keyboard (OutOfMemory)");
-    }
     /* finds any monitor's */
     updategeom();
 
     setupatoms();
     setupcursors();
     setupcfg();
-    /* supporting window for NetWMCheck */
-    _wm.wmcheckwin = XCBCreateSimpleWindow(_wm.dpy, _wm.root, 0, 0, 1, 1, 0, 0, 0);
-    XCBSelectInput(_wm.dpy, _wm.wmcheckwin, XCB_NONE);
-    XCBChangeProperty(_wm.dpy, _wm.wmcheckwin, netatom[NetSupportingWMCheck], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&_wm.wmcheckwin, 1);
-    XCBChangeProperty(_wm.dpy, _wm.wmcheckwin, netatom[NetWMName], netatom[NetUtf8String], 8, XCB_PROP_MODE_REPLACE, _wm.wmname, strlen(_wm.wmname) + 1);
-    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupportingWMCheck], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&_wm.wmcheckwin, 1);
-    /* EWMH support per view */
-    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&netatom, NetLast);
-    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&wmatom, WMLast);
-    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&gtkatom, GTKLAST);
-    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&motifatom, 1);
-    XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetClientList]);
-    XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking]);
-
+    setupwm();
     updatedesktopnum();
     updatedesktop();
     updatedesktopnames();
@@ -1263,33 +1229,41 @@ setupsys(void)
 void
 setupwm(void)
 {
-    /* init threading */
-    pthread_mutexattr_t attr;
-    /* TODO: Just make toggle functions use a seperate thread isntead of high jacking the main thread #DontBeStupid */
-    _wm.use_threads = 0;
-    if(!pthread_mutexattr_init(&attr))
-    {
-        if(!pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE))
-        {   _wm.use_threads = !pthread_mutex_init(&_wm.mutex, &attr);
-        }
-        pthread_mutexattr_destroy(&attr);
-    }
-    char *display = NULL;
-    _wm.dpy = XCBOpenDisplay(display, &_wm.screen);
-    display = display ? display : getenv("DISPLAY");
-    Debug("DISPLAY -> %s", display);
-    if(!_wm.dpy)
-    {   
-        if(_wm.use_threads)
-        {   pthread_mutex_destroy(&_wm.mutex);
-        }
-        DIECAT("FATAL: Cannot Connect to X Server. [%s]", display);
-    }
-    /* This allows for execvp and exec to only spawn process on the specified display rather than the default varaibles */
-    if(display)
-    {   setenv("DISPLAY", display, 1);
-    }
     setenv("GTK_CSD", "amogus", 1);
+    /* startup wm */
+    _wm.running = 1;
+    _wm.syms = XCBKeySymbolsAlloc(_wm.dpy);
+    _wm.sw = XCBDisplayWidth(_wm.dpy, _wm.screen);
+    _wm.sh = XCBDisplayHeight(_wm.dpy, _wm.screen);
+    _wm.root = XCBRootWindow(_wm.dpy, _wm.screen);
+    /* Most java apps require this see:
+     * https://wiki.archlinux.org/title/Java#Impersonate_another_window_manager
+     * https://wiki.archlinux.org/title/Java#Gray_window,_applications_not_resizing_with_WM,_menus_immediately_closing
+     * for more information.
+     * "Hard coded" window managers to ignore "Write Once, Debug Everywhere"
+     * This fixes java apps just having a blank white screen on some screen instances.
+     * One example is Ghidra, made by the CIA.
+     */
+    _wm.wmname = "LG3D";
+
+    if(!_wm.syms)
+    {   
+        cleanup();
+        DIECAT("%s", "Could not establish connection with keyboard (OutOfMemory)");
+    }
+    /* supporting window for NetWMCheck */
+    _wm.wmcheckwin = XCBCreateSimpleWindow(_wm.dpy, _wm.root, 0, 0, 1, 1, 0, 0, 0);
+    XCBSelectInput(_wm.dpy, _wm.wmcheckwin, XCB_NONE);
+    XCBChangeProperty(_wm.dpy, _wm.wmcheckwin, netatom[NetSupportingWMCheck], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&_wm.wmcheckwin, 1);
+    XCBChangeProperty(_wm.dpy, _wm.wmcheckwin, netatom[NetWMName], netatom[NetUtf8String], 8, XCB_PROP_MODE_REPLACE, _wm.wmname, strlen(_wm.wmname) + 1);
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupportingWMCheck], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&_wm.wmcheckwin, 1);
+    /* EWMH support per view */
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&netatom, NetLast);
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&wmatom, WMLast);
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&gtkatom, GTKLAST);
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&motifatom, 1);
+    XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetClientList]);
+    XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking]);
 }
 
 void
@@ -1428,13 +1402,44 @@ void
 startup(void)
 {
     setupsys();
-    setupwm();
+    startupwm();
     checkotherwm();
     PropInit();
     atexit(exithandler);
 #ifndef Debug
     XCBSetErrorHandler(xerror);
 #endif
+}
+
+void
+startupwm(void)
+{
+    /* init threading */
+    pthread_mutexattr_t attr;
+    /* TODO: Just make toggle functions use a seperate thread isntead of high jacking the main thread #DontBeStupid */
+    _wm.use_threads = 0;
+    if(!pthread_mutexattr_init(&attr))
+    {
+        if(!pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE))
+        {   _wm.use_threads = !pthread_mutex_init(&_wm.mutex, &attr);
+        }
+        pthread_mutexattr_destroy(&attr);
+    }
+    char *display = NULL;
+    _wm.dpy = XCBOpenDisplay(display, &_wm.screen);
+    display = display ? display : getenv("DISPLAY");
+    Debug("DISPLAY -> %s", display);
+    if(!_wm.dpy)
+    {   
+        if(_wm.use_threads)
+        {   pthread_mutex_destroy(&_wm.mutex);
+        }
+        DIECAT("FATAL: Cannot Connect to X Server. [%s]", display);
+    }
+    /* This allows for execvp and exec to only spawn process on the specified display rather than the default varaibles */
+    if(display)
+    {   setenv("DISPLAY", display, 1);
+    }
 }
 
 void
