@@ -1131,13 +1131,12 @@ setup(void)
     /* clean up any zombies immediately */
     sighandler();
 
-    /* finds any monitor's */
-    updategeom();
-
     setupatoms();
     setupcursors();
     setupcfg();
     setupwm();
+    /* finds any monitor's */
+    updategeom();
     updatedesktopnum();
     updatedesktop();
     updatedesktopnames();
