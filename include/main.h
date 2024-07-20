@@ -187,8 +187,6 @@ void savedesktopsession(FILE *fw, Desktop *desktop);
 void savemonsession(FILE *fw, Monitor *m);
 /* Scans for new clients on startup */
 void scan(void);
-/* Vital checks and data setup before any other action is performed. */
-void startup(void);
 /* Sets up Variables, Checks, WM specific data, etc.. */
 void setup(void);
 /* Sets up Atoms ID's from the XServer */
@@ -213,10 +211,10 @@ void sigterm(int signo);
  * NOTE: This is only checked when the program is about to exit.
  */
 void specialconds(int argc, char *argcv[]);
-/* Setups most vital data for the context. 
- * Calls exit(1) on Failure.
- */
+/* Vital checks and data setup before any other action is performed. */
 void startup(void);
+/* Starts the wm basic process */
+void startupwm(void);
 /* updates the Status Bar Position from given monitor */
 void updatebarpos(Monitor *m);
 /* updates the bar geometry from the given monitor */
