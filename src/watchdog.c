@@ -51,7 +51,7 @@ sigsegv(
      */
     Debug0("Sigsev");
     watchdog->restart = 1;
-    abort();
+    watchdog->running = 0;
 }
 
 static void
@@ -170,19 +170,28 @@ WatchDogRun(
         .tv_nsec = 0
     };
     watchdog->running = 1;
-    while(watchdog->running && !watchdog->restart)
+    while(watchdog->running)
     {
         pthread_mutex_lock(&watchdog->mutex);
         pthread_cond_timedwait(&watchdog->cond, &watchdog->mutex, &_time);
         pthread_mutex_unlock(&watchdog->mutex);
     }
+    
+    int status = 0;
+    pid_t pid = 0;
+    if(watchdog->die)
+    {
+        do
+        {   waitpid(watchdog->child, &status, WNOHANG);
+        } while(!WIFEXITED(status));
+    }
+
     if(watchdog->restart)
     {   Debug0("restarting");
     }
     else
     {   exit(0);
     }
-    signal(SIGSEGV, NULL);
     usleep(100);
     munmap(watchdog, sizeof(WatchDog));
     return 10;
