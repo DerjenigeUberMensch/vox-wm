@@ -495,15 +495,19 @@ PropDestroyWorkers(uint32_t threads)
     while(!CQueueIsFull(&__threads.queue))
     {   PropListen(NULL, 0, PropExitThread);
     }
-    uint32_t j;
-    for(j = 0; j < threads; ++j)
-    {   pthread_cancel(__threads.threads[j]);
+    /* Wakup any threads (if they didnt wakup already) */
+    pthread_cond_broadcast(&__threads.queue.cond);
+    uint32_t i;
+    for(i = 0; i < threads; ++i)
+    {   pthread_join(__threads.threads[i], NULL);
     }
 }
 
 void 
 PropInit(void)
 {
+    /* Make clean */
+    memset(&__threads, 0, sizeof(ThreadHandler));
     if(!_wm.use_threads)
     {   
         __threads.use_threads = 0;
@@ -519,9 +523,13 @@ PropInit(void)
 void
 PropDestroy(void)
 {
+    if(!_wm.use_threads)
+    {   return;
+    }
     if(__threads.use_threads)
     {   PropDestroyWorkers(PropGetThreadCount());
     }
+    CQueueDestroy(&__threads.queue);
 }
 
 void 
