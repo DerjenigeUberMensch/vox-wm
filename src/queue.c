@@ -13,18 +13,8 @@ CQueueLock(CQueue *q)
 }
 
 static inline int
-CQueueSpinLock(CQueue *q)
-{   return pthread_spin_lock(&q->spin);
-}
-
-static inline int
 CQueueUnlock(CQueue *q)
 {   return pthread_mutex_unlock(&q->mutex);
-}
-
-static inline int
-CQueueSpinUnLock(CQueue *q)
-{   return pthread_spin_unlock(&q->spin);
 }
 
 static inline const int
@@ -54,9 +44,9 @@ CQueueIsFull(CQueue *queue)
     {   return 0;
     }
     uint8_t ret = 0;
-    CQueueSpinLock(queue);
+    CQueueLock(queue);
     ret = __CQueue_full_no_lock(queue);
-    CQueueSpinUnLock(queue);
+    CQueueUnlock(queue);
     return ret;
 }
 
@@ -68,23 +58,26 @@ CQueueIsEmpty(CQueue *queue)
     }
     uint8_t ret = 0;
 
-    CQueueSpinLock(queue);
+    CQueueLock(queue);
     ret = queue->front == -1;
-    CQueueSpinUnLock(queue);
+    CQueueUnlock(queue);
     return ret;
 }
 
 uint8_t 
-CQueuePop(CQueue *queue)
+CQueuePop(CQueue *queue, void *fill)
 {
     if(!queue)
     {   return 0;
     }
-    CQueueSpinLock(queue);
+    CQueueLock(queue);
     if(queue->front == -1)
     {   
-        CQueueSpinUnLock(queue);
+        CQueueUnlock(queue);
         return 0;
+    }
+    if(fill)
+    {   memcpy(fill, (uint8_t *)queue->data + (queue->datasize * queue->front), queue->datasize);
     }
     if(queue->front == queue->rear)
     {   queue->front = queue->rear = -1;
@@ -92,7 +85,7 @@ CQueuePop(CQueue *queue)
     else 
     {   queue->front = (queue->front + 1) % queue->datalen;
     }
-    CQueueSpinUnLock(queue);
+    CQueueUnlock(queue);
     return 1;
 }
 
@@ -104,20 +97,20 @@ CQueueAdd(CQueue *queue, void *data)
     }
     uint32_t empty;
     int64_t index;
-    CQueueSpinLock(queue);
+    CQueueLock(queue);
     if(__CQueue_full_no_lock(queue))
     {
-        CQueueSpinUnLock(queue);
+        CQueueUnlock(queue);
         return 0;
     }
     empty = queue->front == -1;
     index = (queue->rear + 1) % (queue->datalen);
     queue->front *= !empty;
     queue->rear = index;
-    /* TODO, would be worse with spinlock if x > ~15 bytes */
+
     memcpy((uint8_t *)queue->data + queue->datasize * index, data, queue->datasize);
     pthread_cond_signal(&queue->cond);
-    CQueueSpinUnLock(queue);
+    CQueueUnlock(queue);
     return 1;
 }
 
@@ -128,11 +121,11 @@ CQueueGetFirst(CQueue *queue)
     if(!queue)
     {   return ret;
     }
-    CQueueSpinLock(queue);
+    CQueueLock(queue);
     if(queue->front != -1)
     {   ret = (uint8_t *)queue->data + queue->rear * queue->datasize;
     }
-    CQueueSpinUnLock(queue);
+    CQueueUnlock(queue);
     return ret;
 }
 
@@ -143,11 +136,11 @@ CQueueGetLast(CQueue *queue)
     if(!queue)
     {   return ret;
     }
-    CQueueSpinLock(queue);
+    CQueueLock(queue);
     if(queue->rear != -1)
     {   ret = (uint8_t *)queue->data + queue->rear * queue->datasize;
     }
-    CQueueSpinUnLock(queue);
+    CQueueUnlock(queue);
     return ret;
 }
 
@@ -156,21 +149,14 @@ CQueueCreate(void *data, uint32_t datalen, size_t sizeof_one_item, CQueue *_Q_RE
 {
     pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
     pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
-    pthread_spinlock_t spin;
-    if(pthread_spin_init(&spin, 0))
-    {   
-        pthread_mutex_destroy(&mutex);
-        pthread_cond_destroy(&cond);
-        return 1;
-    }
     _Q_RETURN->data = data;
     _Q_RETURN->datasize = sizeof_one_item;
     _Q_RETURN->datalen = datalen;
     _Q_RETURN->rear = -1;
     _Q_RETURN->front = -1;
     _Q_RETURN->mutex = mutex;
+    _Q_RETURN->condmutex = mutex;
     _Q_RETURN->cond = cond;
-    _Q_RETURN->spin = spin;
     return 0;
 }
 
@@ -178,8 +164,8 @@ void
 CQueueDestroy(CQueue *queue)
 {
     pthread_mutex_destroy(&queue->mutex);
+    pthread_mutex_destroy(&queue->condmutex);
     pthread_cond_destroy(&queue->cond);
-    pthread_spin_destroy(&queue->spin);
 }
 
 
