@@ -16,8 +16,8 @@ struct CQueue
     uint32_t datalen;
     size_t datasize;
     pthread_mutex_t mutex;
+    pthread_mutex_t condmutex;
     pthread_cond_t cond;
-    pthread_spinlock_t spin;
 };
 
 /*
@@ -34,7 +34,7 @@ uint8_t CQueueIsEmpty(CQueue *queue);
  * RETURN: 1 on Success.
  * RETURN: 0 on Failure.
  */
-uint8_t CQueuePop(CQueue *queue);
+uint8_t CQueuePop(CQueue *queue, void *fill);
 /*
  * RETURN: 1 on Success.
  * RETURN: 0 on Failure.
