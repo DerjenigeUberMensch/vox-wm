@@ -1413,6 +1413,8 @@ startup(void)
 void
 startupwm(void)
 {
+    /* Make clean */
+    memset(&_wm, 0, sizeof(WM));
     /* init threading */
     pthread_mutexattr_t attr;
     /* TODO: Just make toggle functions use a seperate thread isntead of high jacking the main thread #DontBeStupid */
