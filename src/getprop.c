@@ -375,17 +375,6 @@ UpdateProperty(XCBDisplay *display, __Property__Cookie__ *cookie)
     __prop_handler[cookie->type].reply_getter(display, cookie, _XCB_COOKIE);
 }
 
-static void
-GrabQueuedItemWorker(__Property__Cookie__ *cookie_return)
-{
-    /* check for relavent items */
-    if(!CQueueIsEmpty(&__threads.queue))
-    {
-        *cookie_return = __threads.queue_data[__threads.queue.front];
-        CQueuePop(&__threads.queue);
-    }
-}
-
 void *
 Worker(void *x)
 {
@@ -400,11 +389,11 @@ Worker(void *x)
     while(cookie.type != PropExitThread)
     {
         /* wait for stuff to happen */
-        pthread_mutex_lock(&__threads.queue.mutex);
-        pthread_cond_wait(&__threads.queue.cond, &__threads.queue.mutex);
-        pthread_mutex_unlock(&__threads.queue.mutex);
+        pthread_mutex_lock(&__threads.queue.condmutex);
+        pthread_cond_wait(&__threads.queue.cond, &__threads.queue.condmutex);
+        pthread_mutex_unlock(&__threads.queue.condmutex);
         /* grab if any item */
-        GrabQueuedItemWorker(&cookie);
+        CQueuePop(&__threads.queue, &cookie);
 
         if(cookie.win)
         {   
@@ -490,7 +479,7 @@ static void
 PropDestroyWorkers(uint32_t threads)
 {
     while(!CQueueIsEmpty(&__threads.queue))
-    {   CQueuePop(&__threads.queue);
+    {   CQueuePop(&__threads.queue, NULL);
     }
     while(!CQueueIsFull(&__threads.queue))
     {   PropListen(NULL, 0, PropExitThread);
