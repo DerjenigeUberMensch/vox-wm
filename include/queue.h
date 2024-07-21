@@ -18,7 +18,6 @@ struct CQueue
     pthread_mutex_t mutex;
     pthread_cond_t cond;
     pthread_spinlock_t spin;
-    uint8_t pad0[4];
 };
 
 /*
