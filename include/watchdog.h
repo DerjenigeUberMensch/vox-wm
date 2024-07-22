@@ -17,7 +17,6 @@ WatchDog
     int running;
     pid_t child;
     uint8_t restart;
-    uint8_t fail_count;
     uint8_t die;
     uint8_t pad0[1];
     /* Maybe use poll?, For now just use these to sleep */

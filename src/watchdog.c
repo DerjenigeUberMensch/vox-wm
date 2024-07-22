@@ -118,6 +118,31 @@ WatchDogSetSignals(
 }
 
 void
+WatchdogExit(
+        pid_t child
+        )
+{
+    int status = 0;
+    time_t start = time(NULL);
+    time_t cur;
+    int tooslow = 0;
+    const time_t MAX_TIME_ELAPSED_SECONDS = 5;
+    do
+    {   
+        waitpid(child, &status, WNOHANG);
+        cur = time(NULL);
+        tooslow = cur - start > MAX_TIME_ELAPSED_SECONDS;
+    } while(!WIFEXITED(status) || tooslow);
+    if(tooslow)
+    {   
+        kill(child, SIGABRT);
+        Debug0("Child did not kill fast enough, aborting...");
+        abort();
+    }
+    exit(0);
+}
+
+void
 WatchDogInit(
         pid_t pid
         )
@@ -132,12 +157,14 @@ WatchDogStart(
         void
         )
 {
+    pid_t pid;
+START:
     watchdog = mmap(NULL, sizeof(WatchDog), PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
     if(!watchdog)
     {   return EXIT_FAILURE;
     }
     memset(watchdog, 0, sizeof(WatchDog));
-    pid_t pid = fork();
+    pid = fork();
     switch(pid)
     {
         /* watchdog failed to start */
@@ -145,7 +172,10 @@ WatchDogStart(
             return EXIT_FAILURE;
         case 0:
             Debug0("Watchdog Child, valid");
-            return WatchDogRun();
+            int errcount = WatchDogRun();
+            if(errcount)
+            {   goto START;   
+            }
         default:
             WatchDogInit(pid);
             watchdog->child = pid;
@@ -176,23 +206,18 @@ WatchDogRun(
         pthread_cond_timedwait(&watchdog->cond, &watchdog->mutex, &_time);
         pthread_mutex_unlock(&watchdog->mutex);
     }
-    
-    int status = 0;
-    pid_t pid = 0;
-    if(watchdog->die)
-    {
-        do
-        {   waitpid(watchdog->child, &status, WNOHANG);
-        } while(!WIFEXITED(status));
+    WatchDog wcpy = *watchdog;
+    munmap(watchdog, sizeof(WatchDog));
+
+    /* aborts watchdog if need be, but on success, calls exit() */
+    if(wcpy.die)
+    {   WatchdogExit(wcpy.child);
     }
 
-    if(watchdog->restart)
-    {   Debug0("restarting");
+    if(wcpy.restart)
+    {   
+        Debug0("restarting");
+        return 0;
     }
-    else
-    {   exit(0);
-    }
-    usleep(100);
-    munmap(watchdog, sizeof(WatchDog));
-    return 10;
+    return 1;
 }
