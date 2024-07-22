@@ -1,7 +1,5 @@
-# XCB-WSWM
-
 ## Early Release
-This build of xcb-wswm is ***not*** fully feature ready.
+This build is ***not*** fully feature ready.
 
 ## Why Use this.
 - **Low Memory Usage (~4-7 MiB) (When compiled in Release Mode)**
@@ -9,7 +7,6 @@ This build of xcb-wswm is ***not*** fully feature ready.
 - **Low CPU usage when doing expensive stuff (mapping windows) (~4-10%)**
 
 ## Why Not Use this.
-- **Code base is, ok**
 - **Doesnt use C++**
 - **XCB**
 
@@ -33,18 +30,18 @@ sudo pacman -S --needed dmenu xorg xorg-xinit libxcb xcb-util xcb-util-errors xc
 ```
 
 ## Usage 
-To **use** xcb-wswm you must first **compile it**.
-Afterwards you must put `exec xcb-wswm` in your `~/.xinitrc` file. **See Below.**
+To **use** the wm you must first **compile it**.
+Afterwards you must put `exec vox-wm` in your `~/.xinitrc` file. **See Below.**
 
 
 ## Compiling
 1. Clone this repository.
 ```
-git clone https://github.com/DerjenigeUberMensch/xcb-wswm.git
+git clone https://github.com/DerjenigeUberMensch/vox-wm.git
 ```
-2. Change Directory to xcb-wswm.
+2. Change Directory to vox-wm.
 ```
-cd xcb-wswm
+cd vox-wm
 ```
 3. Checkout the Experimental branch. (Legacy support)
 ```
@@ -62,9 +59,9 @@ sudo make install
 7. Done.
 
 ## Uninstalling
-1. Change Directory to xcb-wswm.
+1. Change Directory to vox-wm.
 ```
-cd xcb-wswm
+cd vox-wm
 ```
 2. Uninstall using Make
 ```
@@ -75,8 +72,8 @@ sudo make uninstall
 1. Compile, See Above.
 2. Choose option(s) below.
 3. Locate binary 
-    - if installed should be **"xcb-wswm"**
-    - else should be located under **"bin/release/"** folder as **"xcb-wswm"**
+    - if installed should be **"vox-wm"**
+    - else should be located under **"bin/release/"** folder as **"vox-wm"**
 
 ### Normal Usage
 4. Put **"exec YOUR_BINARY_LOCATION"** in **~/.xinitrc** or similiar XServer configuration.
@@ -88,18 +85,18 @@ sudo make uninstall
 5. After locating the binary location make sure you are in the correct display server.
     - Example: `export DISPLAY=:1`
 6. After setting the correct external xserver display variable simply run the binary file.
-    - Example: `./bin/release/xcb-wswm` or `xcb-wswm`
+    - Example: `./bin/release/vox-wm` or `vox-wm`
 
 ## Configuration
 
-****Currently Configuration is not supported in this version of xcb-wswm****
+****Currently Configuration is not supported in this version of vox-wm****
 
 ## Troubleshoot
 This is an **_experimental_** build and may contain bugs,
 Screen tearing can be mitigated by using a compositor or by enabling it in your driver setting
 
 If you have any **major** **issues** with the **current** commit you can **revert** to a **previous commit** for a generally stabler version.
-Or you can open an **[issue](https://github.com/DerjenigeUberMensch/xcb-wswm/issues)** about it.
+Or you can open an **[issue](https://github.com/DerjenigeUberMensch/vox-wm/issues)** about it.
 
 ## Planned Features
 - Panel that user can just click buttons or type values to configure windows (kinda like a dev panel).
