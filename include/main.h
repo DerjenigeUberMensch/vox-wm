@@ -9,6 +9,7 @@
 #include "client.h"
 #include "desktop.h"
 #include "monitor.h"
+#include "prop.h"
 #include "x.h"
 #include "../tools/util.h"
 
