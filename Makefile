@@ -24,7 +24,7 @@
 #### PROJECT SETTINGS ####
 include config.mk
 # The name of the executable to be created
-BIN_NAME := xcb-wswm
+BIN_NAME := vox-wm
 MARK = ${BIN_NAME}
 VERSION = 2.5.0
 # Extension of source files used in the project
