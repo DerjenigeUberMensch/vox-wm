@@ -174,11 +174,6 @@ FocusMonitor(const Arg *arg)
 }
 
 void
-ChangeMasterWindow(const Arg *arg)
-{
-}
-
-void
 KillWindow(const Arg *arg)
 {
     Client *c = _wm.selmon->desksel->sel;
@@ -957,12 +952,6 @@ MaximizeWindowHorizontal(const Arg *arg)
     else
     {   unmaximizehorz(c);
     }
-}
-
-
-void
-AltTab(const Arg *arg)
-{
 }
 
 void

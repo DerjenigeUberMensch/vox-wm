@@ -24,9 +24,6 @@ void ResizeWindow(const Arg *arg);
 void ResizeWindowAlt(const Arg *arg);
 /* sets the window layout based on a enum in main.h -> Grid, Floating, Monocle, Tiled */
 void SetWindowLayout(const Arg *arg);
-/* Sets the size of the master window 0.0 -> 1.0 for the Tiled Layout
- * where 1 is just monocle with extra steps */
-void SetMonitorFact(const Arg *arg);
 /* Spawns a window based on arguments provided */
 void SpawnWindow(const Arg *arg);
 /* Maximizes the currently selected window */
@@ -35,8 +32,6 @@ void MaximizeWindow(const Arg *arg);
 void MaximizeWindowVertical(const Arg *arg);
 /* Maximizes a window horizontally */
 void MaximizeWindowHorizontal(const Arg *arg);
-/* Switches to the next visible window based on user input */
-void AltTab(const Arg *arg);
 /* Toggles if we show the Status bar or not */
 void ToggleStatusBar(const Arg *arg);
 /* Toggles fullscreen mode for all windows in current tag */
