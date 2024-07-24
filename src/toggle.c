@@ -218,6 +218,7 @@ DragWindow(
     i16 x, y;
     i16 oldx, oldy;
     u16 oldw, oldh;
+    u16 bw;
     const XCBCursor cur = cursors[CurMove];
     const i64 detail = ((XCBButtonPressEvent *)arg->v)->detail;
     nx = ny = x = y = oldx = oldy = oldw = oldh = 0;
@@ -262,6 +263,7 @@ DragWindow(
             oldy = geom->y;
             oldw = geom->width;
             oldh = geom->height;
+            bw = geom->border_width;
             free(geom);
         }
         else
@@ -274,8 +276,12 @@ DragWindow(
         oldy = c->y;
         oldw = c->w;
         oldh = c->h;
+        bw = c->bw;
     }
 
+    /* make sure calculations include border width */
+    oldw += bw * 2;
+    oldh += bw * 2;
     if(c)
     {
         /* prevent DOCKED from computing non floating */
@@ -302,12 +308,12 @@ DragWindow(
                     const int SNAP = 10;
                     if (abs(_wm.selmon->wx - nx) < SNAP)
                         nx = _wm.selmon->wx;
-                    else if (abs((_wm.selmon->wx + _wm.selmon->ww) - (nx + WIDTH(c))) < SNAP)
-                        nx = _wm.selmon->wx + _wm.selmon->ww - WIDTH(c);
+                    else if (abs((_wm.selmon->wx + _wm.selmon->ww) - (nx + oldw)) < SNAP)
+                        nx = _wm.selmon->wx + _wm.selmon->ww - oldw;
                     if (abs(_wm.selmon->wy - ny) < SNAP)
                         ny = _wm.selmon->wy;
-                    else if (abs((_wm.selmon->wy + _wm.selmon->wh) - (ny + HEIGHT(c))) < SNAP)
-                        ny = _wm.selmon->wy + _wm.selmon->wh - HEIGHT(c);
+                    else if (abs((_wm.selmon->wy + _wm.selmon->wh) - (ny + oldh)) < SNAP)
+                        ny = _wm.selmon->wy + _wm.selmon->wh - oldh;
 
                     if(c)
                     {   resize(c, nx, ny, c->w, c->h, 1);
