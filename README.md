@@ -84,7 +84,7 @@ sudo make uninstall
 ```
 
 ## How to Run
-1. Compile, See Above.
+1. Compile, See [Compiling](#Compiling).
 2. Choose option(s) below.
 3. Locate binary 
     - if installed should be **"vox-wm"**
