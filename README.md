@@ -11,8 +11,6 @@
 
 <a name="headers"/>
 
-<a name="headers"/>
-
 ## Early Release
 This build is ***not*** fully feature ready.
 
