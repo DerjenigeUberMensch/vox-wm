@@ -1,6 +1,16 @@
 ## Preview (Monocle)
 ![example_image_monocle](https://github.com/DerjenigeUberMensch/vox-wm/blob/Experimental/images/example.png)
 
+## Table of Contents
+1. [Requirements](#Requirements)  
+2. [Usage](#Usage)  
+3. [Compiling](#Compiling)  
+4. [Uninstalling](#Uninstalling)  
+5. [How to Run/Use](#How-to-Run/Use)  
+6. [Troubleshoot](#Troubleshoot)  
+
+<a name="headers"/>
+
 ## Early Release
 This build is ***not*** fully feature ready.
 
