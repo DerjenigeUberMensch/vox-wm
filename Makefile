@@ -34,11 +34,13 @@ SRC_PATH = .
 # Space-separated pkg-config libraries used by this project
 LIBRARIES = ${LIBS}
 # Compilation Architecture.
-ARCH32 = -m32 -mtune=generic
-ARCH64 = -march=x86-64 -mtune=generic
-ARCH = ${ARCH64}
+ARCHALL = -mtune=generic
+ARCH32 = -m32 
+ARCH64 = -march=x86-64 
+ARCH = ${ARCH64} ${ARCHALL}
 # General compiler flags
-COMPILE_FLAGS = ${CCFLAGS} ${PRELINKERFLAGS} -DXINERAMA -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L -DVERSION=\"${VERSION}\" -DMARK=\"${MARK}\"
+COMPILE_FLAGS = ${CCFLAGS} ${PRELINKERFLAGS} ${ARCH} 
+COMPILE_FLAGS += -DXINERAMA -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L -DVERSION=\"${VERSION}\" -DMARK=\"${MARK}\"
 # Additional release-specific flags
 RCOMPILE_FLAGS = -DNDEBUG ${RELEASES}
 # Additional debug-specific flags
@@ -46,7 +48,7 @@ DCOMPILE_FLAGS = -DDEBUG -DENABLE_DEBUG -DXCB_TRL_ENABLE_DEBUG ${DEBUG}
 # Add additional include paths
 INCLUDES = -I $(SRC_PATH) ${INCS}
 # General linker settings
-LINK_FLAGS = ${LINKERFLAGS}
+LINK_FLAGS = ${LINKERFLAGS} ${ARCH}
 # Additional release-specific linker settings
 RLINK_FLAGS = ${LINKRELEASE}
 # Additional debug-specific linker settings
