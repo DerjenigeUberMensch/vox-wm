@@ -6,8 +6,10 @@
 2. [Usage](#Usage)  
 3. [Compiling](#Compiling)  
 4. [Uninstalling](#Uninstalling)  
-5. [How to Run/Use](#How-to-Run/Use)  
-6. [Troubleshoot](#Troubleshoot)  
+5. [How to Run/Use](#How-to-Run/Use)
+6. [Mousebinds](#Mousebinds)
+7. [Keybinds](#Keybinds)
+8. [Troubleshoot](#Troubleshoot)  
 
 <a name="headers"/>
 
@@ -103,6 +105,69 @@ sudo make uninstall
 ## Configuration
 
 ****Currently Configuration is not supported in this version of vox-wm****
+
+## Mousebinds
+These are the default mousebinds currently used within vox-wm, they are not planned to change (defaults), but will be when or if a configuration is implemented (NOT YET SUPPORTED)
+
+- RMB: Right Mouse Button.
+- LMB: Left Mouse Button.
+- MMB: Middle Mouse Button.
+
+| Button | Action |
+| ------ | ------ |
+| SUPER+RMB | Activates Window Resizing of the Clicked Window. (Must be Held) |
+| SUPER+ALT+RMB | See above, does not apply ANY window restrictions, these include: minimum size, maximimum size, base size, inc size, etc... |
+| SUPER+LMB | Activates Window Moving of the Clicked Window. (Must be Held) |
+
+## Keybinds
+These are the default keybinds currently used within vox-wm, they are not currently planned to change, but will be when or if a configuration is implemented (NOT YET SUPPORTED)
+
+- SUPER: The "Windows" key (next to fn/ctrl, usually the left side of the keyboard).
+- RETURN: The Enter key (Right above right SHIFT, Not the numlock Enter key)
+
+| Key | Action |
+| ----- | ----- |
+| SUPER+n | Debug/Unused |
+| SUPER+d | exec dmenu |
+| SUPER+RETURN | exec st |
+| SUPER+e | exec thunar |
+| SUPER+b | Hide/Show Task bar (if applicable) |
+| SUPER+SHIFT+q | Exit To Current Window |
+| CTRL+ALT+q | Terminate Current Window |
+| SUPER+w | Maximize Current Window |
+| SUPER+SHIFT+p | Quit (exit window manager) |
+| SUPER+CTRL+p | Restart |
+| SUPER+z | Change Layout To Tiling |
+| SUPER+x | Change Layout To Floating |
+| SUPER+c | Change Layout To Monocle |
+| SUPER+g | Change Layout To Grid |
+| SUPER+1 | Set Current Desktop To 1 |
+| SUPER+2 | Set Current Desktop To 2 |
+| SUPER+3 | Set Current Desktop To 3 |
+| SUPER+4 | Set Current Desktop To 4 |
+| SUPER+5 | Set Current Desktop To 5 |
+| SUPER+6 | Set Current Desktop To 6 |
+| SUPER+7 | Set Current Desktop To 7 |
+| SUPER+8 | Set Current Desktop To 8 |
+| SUPER+9 | Set Current Desktop To 9 |
+| SUPER+0 | Set Current Desktop To 10 |
+
+### Base Calls
+These are actions are those expect supporting basic keyboard support.
+| Key | Action |
+| ----- | ----- |
+| F11 | Fullscreen On The Current Window |
+| Increase Volume | Increase Volume Controls |
+| Decrease Volume | Decrease Volume Controls |
+| Increase Brightness | Increase Brightness Controls |
+| Decrease Brightness | Decrease Brightness Controls |
+| Mute | Sound Mute Functionality |
+| Play | Inverts Playing Status (play-pause) |
+| Pause |  Inverts Playing Status (play-pause) |
+| Next | Next Audio Playback |
+| Prev | Previous Audio Playback |
+
+
 
 ## Troubleshoot
 This is an **_experimental_** build and may contain bugs,
