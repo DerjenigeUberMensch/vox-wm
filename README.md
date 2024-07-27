@@ -1,3 +1,6 @@
+## Preview (Monocle)
+![example_image_monocle](https://github.com/DerjenigeUberMensch/vox-wm/blob/Experimental/images/example.png)
+
 ## Early Release
 This build is ***not*** fully feature ready.
 
