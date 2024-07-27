@@ -6,7 +6,7 @@
 2. [Usage](#Usage)  
 3. [Compiling](#Compiling)  
 4. [Uninstalling](#Uninstalling)  
-5. [How to Run/Use](#How-to-Run/Use)
+5. [How to Run](#How-to-Run)
 6. [Mousebinds](#Mousebinds)
 7. [Keybinds](#Keybinds)
 8. [Troubleshoot](#Troubleshoot)  
@@ -83,7 +83,7 @@ cd vox-wm
 sudo make uninstall
 ```
 
-## How to Run/Use
+## How to Run
 1. Compile, See Above.
 2. Choose option(s) below.
 3. Locate binary 
