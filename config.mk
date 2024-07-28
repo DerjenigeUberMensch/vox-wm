@@ -11,12 +11,12 @@ MANPREFIX = ${PREFIX}/share/man
 # grep -r xcb
 
 # fallback
-
-INCLUDE_LIST = tools include -Ixcb -Ixcb-util -Ixcb-aux -Ixcb-xinerama -Ixcb-event -Ixcb-keysyms -Ixcb-xinput -Ixcb-image
+XCBLIST = xcb xcb-util xcb-aux xcb-xinerama xcb-event xcb-keysyms xcb-xinput xcb-image xcb-errors
+INCLUDE_LIST = tools include ${XCBLIST}
 INCS = $(foreach dir, ${INCLUDE_LIST}, -I${dir}) 
 #${INCLUDE_INCS} ${TOOLS} 
 #-lxcb-util -lxcb-icccm -lxcb-keysyms
-LIBS = xcb xcb-util xcb-aux xcb-xinerama xcb-event xcb-keysyms xcb-xinput xcb-image x11
+LIBS = ${XCBLIST} x11
 #x11 xcb xcb-util xcb-aux xcb-xinerama xcb-event xcb-keysyms xcb-xinput xcb-image 
 #${XCB_INCS} x11
 
@@ -71,6 +71,6 @@ RELEASES= ${RELEASEFLAGS} -O3
 BUILDSELF = ${RELEASEFLAGS} ${XNATIVE} -O3
 
 # Linker flags
-LINKERFLAGS = ${LINKFLAGS} 
+LINKERFLAGS = ${LINKFLAGS}
 # Solaris
 #CFLAGS  = -fast ${INCS} -DVERSION=\"${VERSION}\"
