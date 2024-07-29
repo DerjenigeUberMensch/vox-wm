@@ -63,29 +63,52 @@ u32 COULDBEFLOATINGGEOM(Client *c)
                                     /* If the window didnt have any states, steam... 
                                     * Check if its resonably small enough to be a floating window 
                                     */
-                                    const float FLOAT_SIZE_MIN = .65f;
-                                    u8 floatw;
-                                    u8 floath;
-                                    floatw = (c->w <= m->ww * FLOAT_SIZE_MIN || c->w <= m->mw * FLOAT_SIZE_MIN);
-                                    floath =  (c->h <= m->wh * FLOAT_SIZE_MIN || c->h <= m->mh * FLOAT_SIZE_MIN);
+                                    const float FLOAT_SIZE_MIN_W = .65f;
+                                    const float FLOAT_SIZE_MIN_H = .65f;
+                                    float floatw;
+                                    float floath;
+                                    u8 retw;
+                                    u8 reth;
+                                    u8 retx;
+                                    u8 rety;
 
-                                    u32 ret = floatw || floath;
+                                    floatw = m->mw * FLOAT_SIZE_MIN_W;
+                                    floath = m->mh * FLOAT_SIZE_MIN_H;
+
+                                    retw = (c->w <= floatw);
+                                    reth = (c->h <= floath);
+
+                                    if(retw || reth)
+                                    {   return 1;
+                                    }
+
                                     /* If its not resonably small check a much stricter guideline,
                                      * But plausible if say they moved it off to the bottom of the screen or something 
                                      */
-                                    const float FLOAT_SIZE_MIN_STRICT = .75f;
-                                    const float FLOAT_OFFSET_MIN_STRICT = .65f;
-                                    const float FLOAT_OFFSET_MAX_STRICT = .95f;     /* dont want it offscreen */
-                                    u8 floatx;
-                                    u8 floaty;
-                                    floatw = (c->w <= m->ww * FLOAT_SIZE_MIN_STRICT || c->w <= m->mw * FLOAT_SIZE_MIN_STRICT);
-                                    floath = (c->h <= m->wh * FLOAT_SIZE_MIN_STRICT || c->h <= m->mh * FLOAT_SIZE_MIN_STRICT);
-                                    floatx = BETWEEN(c->x, (m->wx + m->ww) * FLOAT_OFFSET_MIN_STRICT, (m->wx + m->ww) * FLOAT_OFFSET_MAX_STRICT);
-                                    floaty = BETWEEN(c->y, (m->wy + m->wh) * FLOAT_OFFSET_MIN_STRICT, (m->wy + m->wh) * FLOAT_OFFSET_MAX_STRICT);
-                                    if(!ret)
-                                    {   ret = (floatw && floatx) || (floath && floaty);
-                                    }
-                                    return ret;
+                                    const float FLOAT_SIZE_STRICT_MIN_W = .95f;
+                                    const float FLOAT_SIZE_STRICT_MIN_H = .9f;
+                                    const float FLOAT_SIZE_RADIUS = .075f;
+
+                                    floatw = (float)m->mw * FLOAT_SIZE_STRICT_MIN_W;
+                                    floath = (float)m->mh * FLOAT_SIZE_STRICT_MIN_H;
+
+                                    const i32 cx = c->x + (c->w / 2);
+                                    const i32 cy = c->y + (c->h / 2);
+
+                                    const i32 ccx = m->mx + m->mw / 2;
+                                    const i32 ccy = m->my + m->mh / 2;
+
+                                    retw = (c->w <= floatw);
+                                    reth = (c->h <= floath);
+
+                                    /* Check if Client is within center radius of screen
+                                     * TODO: Probably should use a rectangle 
+                                     */
+                                    const i32 mwf = m->mw * FLOAT_SIZE_RADIUS + 1;
+                                    const i32 mhf = m->mh * FLOAT_SIZE_RADIUS + 1;
+                                    retx = !BETWEEN(cx, ccx - mwf, ccx + mwf);
+                                    rety = !BETWEEN(cy, ccy - mhf, ccy + mhf);
+                                    return (retx || rety) && retw && reth;
                                 }
 u32 COULDBEFLOATINGHINTS(Client *c)
                                 {
