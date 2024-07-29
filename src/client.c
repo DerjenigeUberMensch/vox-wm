@@ -57,7 +57,11 @@ u32 DOCKEDHORZ(Client *c)       {   const i16 wx = c->desktop->mon->wx;
                                     return (wx == x) && (ww == w);
                                 }
 u32 DOCKED(Client *c)           { return DOCKEDVERT(c) & DOCKEDHORZ(c); }
-u32 COULDBEFLOATINGGEOM(Client *c)  
+/* Unfortunatly this seems to kinda not work with some applications, mainly because some set their location AFTER being mapped.
+ * We could maybe have a timer or something that would make all configure requests apply this also.
+ * Still dont know why, they do this (firefox), wouldnt it look better to do it before? IDK.
+ */
+uint32_t COULDBEFLOATINGGEOM(Client *c)  
                                 {
                                     const Monitor *m = c->desktop->mon;
                                     /* If the window didnt have any states, steam... 
@@ -141,6 +145,15 @@ u32 COULDBEFLOATINGHINTS(Client *c)
                                     else if(ISUTILITY(c))
                                     {   Debug0("Util Window detected, maybe picture-in-picture?");
                                     }
+                                    /* Ignore normal windows */
+                                    else if(ISNORMAL(c))
+                                    {   return 0;
+                                    }
+                                    /* Ignore "maximized" or requested maximized windows. */
+                                    else if(ISMAXIMIZEDVERT(c) && ISMAXIMIZEDHORZ(c))
+                                    {   return 0;
+                                    }
+                                    /* No special attributes return */
                                     else
                                     {   return 0;
                                     }
@@ -154,12 +167,7 @@ u32 SHOULDBEFLOATING(Client *c)
                                     }
                                     /* Note dont check if ISFIXED(c) as games often set that option */
                                     if(COULDBEFLOATINGGEOM(c))
-                                    {   
-                                        Debug0("Client is small enough to be floating, but should use hints...");
-                                        ret = 1;
-                                    }
-                                    else
-                                    {   ret = 0;
+                                    {   ret = 1;
                                     }
                                     /* extra checks to make sure its floating */
                                     if(ret)
@@ -176,6 +184,9 @@ u32 SHOULDBEFLOATING(Client *c)
                                          */
                                         else if(!strcmp(c->classname, c->instancename))
                                         {   ret = 0;
+                                        }
+                                        else
+                                        {   Debug0("Client is small enough to be floating, but should use hints...");
                                         }
                                     }
                                     return ret;
