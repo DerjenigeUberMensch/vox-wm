@@ -8,9 +8,11 @@
 #include "client.h"
 #include "desktop.h"
 #include "getprop.h"
+#include "settings.h"
 
 
 extern WM _wm;
+extern UserSettings _cfg;
 extern XCBAtom netatom[NetLast];
 extern XCBAtom wmatom[WMLast];
 extern XCBAtom motifatom;
@@ -380,6 +382,9 @@ motionnotify(XCBGenericEvent *event)
 void
 enternotify(XCBGenericEvent *event)
 {
+    if(!HASHOVERFOCUS(&_cfg))
+    {   return;
+    }
     XCBEnterNotifyEvent *ev = (XCBEnterNotifyEvent *)event;
     const uint8_t detail    = ev->detail;
     const XCBTimestamp tim  = ev->time;
@@ -408,10 +413,6 @@ enternotify(XCBGenericEvent *event)
     (void)state;
     (void)mode;
     (void)samescreenfocus;
-
-    /* hover focus */
-    return;
-
 
     Client *c;
     Monitor *m;
