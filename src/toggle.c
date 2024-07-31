@@ -546,6 +546,7 @@ ResizeWindow(const Arg *arg)
             switch(XCB_EVENT_RESPONSE_TYPE(ev))
             {   
                 case XCB_MOTION_NOTIFY:
+                    mev = (XCBMotionNotifyEvent *)ev;
                     if(_cfg.refreshrate)
                     {
                         if((mev->time - lasttime) <= FRAME_TIME)
@@ -553,7 +554,6 @@ ResizeWindow(const Arg *arg)
                         }
                         lasttime = mev->time;
                     }
-                    mev = (XCBMotionNotifyEvent *)ev;
                     nw = oldw + horz * (mev->root_x - curx);
                     nh = oldh + vert * (mev->root_y - cury);
 
