@@ -7,6 +7,7 @@
 #include <string.h>
 
 extern WM _wm;
+extern UserSettings _cfg;
 extern XCBAtom netatom[];
 extern XCBAtom wmatom[];
 extern XCBAtom gtkatom[];
