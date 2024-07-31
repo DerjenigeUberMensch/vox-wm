@@ -28,9 +28,10 @@
 /* TODO: Make these functions seperate threads */
 extern void (*handler[XCBLASTEvent]) (XCBGenericEvent *);
 extern WM _wm;
+extern UserSettings _cfg;
 extern XCBCursor cursors[CurLast];
 
-const char const*
+const char *const
 GET_BOOL(i64 x)
 {
     if(x)
@@ -289,6 +290,9 @@ DragWindow(
     XCBFlush(_wm.dpy);
     XCBGenericEvent *ev = NULL;
     running = 1;
+    XCBMotionNotifyEvent *mev = NULL;
+    XCBTimestamp lasttime = 0;
+    const float FRAME_TIME = 1000.0f / (_cfg.refreshrate + !_cfg.refreshrate);
     do
     {
         if(ev)
@@ -297,17 +301,24 @@ DragWindow(
             switch(XCB_EVENT_RESPONSE_TYPE(ev))
             {
                 case XCB_MOTION_NOTIFY:
-                    nx = oldx + (((XCBMotionNotifyEvent *)ev)->event_x - x);
-                    ny = oldy + (((XCBMotionNotifyEvent *)ev)->event_y - y);
+                    mev = (XCBMotionNotifyEvent *)ev;
+                    if(_cfg.refreshrate)
+                    {
+                        if((mev->time - lasttime) <= FRAME_TIME)
+                        {   continue;
+                        }
+                        lasttime = mev->time;
+                    }
+                    nx = oldx + mev->event_x - x;
+                    ny = oldy + mev->event_y - y;
                     /* snap to window area */
-                    const int SNAP = 10;
-                    if (abs(_wm.selmon->wx - nx) < SNAP)
+                    if (abs(_wm.selmon->wx - nx) < _cfg.snap)
                         nx = _wm.selmon->wx;
-                    else if (abs((_wm.selmon->wx + _wm.selmon->ww) - (nx + oldw)) < SNAP)
+                    else if (abs((_wm.selmon->wx + _wm.selmon->ww) - (nx + oldw)) < _cfg.snap)
                         nx = _wm.selmon->wx + _wm.selmon->ww - oldw;
-                    if (abs(_wm.selmon->wy - ny) < SNAP)
+                    if (abs(_wm.selmon->wy - ny) < _cfg.snap)
                         ny = _wm.selmon->wy;
-                    else if (abs((_wm.selmon->wy + _wm.selmon->wh) - (ny + oldh)) < SNAP)
+                    else if (abs((_wm.selmon->wy + _wm.selmon->wh) - (ny + oldh)) < _cfg.snap)
                         ny = _wm.selmon->wy + _wm.selmon->wh - oldh;
 
                     if(c)
@@ -524,6 +535,9 @@ ResizeWindow(const Arg *arg)
     XCBFlush(_wm.dpy);
     running = 1;
     ev = NULL;
+    XCBMotionNotifyEvent *mev = NULL;
+    XCBTimestamp lasttime = 0;
+    const float FRAME_TIME = 1000.0f / (_cfg.refreshrate + !_cfg.refreshrate);
     do
     {
         if(ev)
@@ -532,8 +546,16 @@ ResizeWindow(const Arg *arg)
             switch(XCB_EVENT_RESPONSE_TYPE(ev))
             {   
                 case XCB_MOTION_NOTIFY:
-                    nw = oldw + horz * (((XCBMotionNotifyEvent *)ev)->root_x - curx);
-                    nh = oldh + vert * (((XCBMotionNotifyEvent *)ev)->root_y - cury);
+                    if(_cfg.refreshrate)
+                    {
+                        if((mev->time - lasttime) <= FRAME_TIME)
+                        {   continue;
+                        }
+                        lasttime = mev->time;
+                    }
+                    mev = (XCBMotionNotifyEvent *)ev;
+                    nw = oldw + horz * (mev->root_x - curx);
+                    nh = oldh + vert * (mev->root_y - cury);
 
                     if(maxw)
                     {   nw = MIN(nw, maxw);
@@ -732,6 +754,7 @@ ResizeWindowAlt(const Arg *arg)
     XCBFlush(_wm.dpy);
     running = 1;
     ev = NULL;
+    XCBMotionNotifyEvent *mev = NULL;
     do
     {
         if(ev)
@@ -740,8 +763,9 @@ ResizeWindowAlt(const Arg *arg)
             switch(XCB_EVENT_RESPONSE_TYPE(ev))
             {   
                 case XCB_MOTION_NOTIFY:
-                    nw = oldw + horz * (((XCBMotionNotifyEvent *)ev)->root_x - curx);
-                    nh = oldh + vert * (((XCBMotionNotifyEvent *)ev)->root_y - cury);
+                    mev = (XCBMotionNotifyEvent *)ev;
+                    nw = oldw + horz * mev->root_x - curx;
+                    nh = oldh + vert * mev->root_y - cury;
 
                     nx = oldx + !~horz * (oldw - nw);
                     ny = oldy + !~vert * (oldh - nh);
