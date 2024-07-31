@@ -7,23 +7,13 @@
 
 #define CONFIG_FILE             "/var/tmp/dwm-config"   /* todo make dir .config/dwm/config or someting like that */
 
-#define _USER_SETTINGS_HOVER_FOCUS                  ((1 << 0))
-#define _USER_SETTINGS_ENABLE_SERVER_DECORATIONS    ((1 << 1))
-#define _USER_SETTINGS_ENABLE_CLIENT_DECORATIONS    ((1 << 2))
-#define _USER_SETTINGS_PREFER_CLIENT_DECORATIONS    ((1 << 3))
-#define _USER_SETTINGS_C        ((1 << 4))
-#define _USER_SETTINGS_D        ((1 << 5))
-#define _USER_SETTINGS_E        ((1 << 6))
-#define _USER_SETTINGS_F        ((1 << 7))
-#define _USER_SETTINGS_G        ((1 << 8))
-#define _USER_SETTINGS_H        ((1 << 9))
-#define _USER_SETTINGS_I        ((1 << 10))
-#define _USER_SETTINGS_J        ((1 << 11))
-#define _USER_SETTINGS_K        ((1 << 12))
-#define _USER_SETTINGS_L        ((1 << 13))
-#define _USER_SETTINGS_M        ((1 << 14))
-#define _USER_SETTINGS_N        ((1 << 15))
-
+enum USFlags
+{
+    USUseHoverFocus = 1 << 0,
+    USUseServerDecorations = 1 << 1,
+    USUseClientDecorations = 1 << 2,
+    USPreferClientDecorations = 1 << 3,
+};
 
 /* helper */
 #ifndef FIELD_SIZEOF
@@ -285,10 +275,10 @@ USSetupCFGDefaults(
     s->maxcc = maxcc;
 
     /* flags */
-    SETFLAG(s->flags, _USER_SETTINGS_HOVER_FOCUS, hoverfocus);
-    SETFLAG(s->flags, _USER_SETTINGS_ENABLE_SERVER_DECORATIONS, serverdecor);
-    SETFLAG(s->flags, _USER_SETTINGS_ENABLE_CLIENT_DECORATIONS, clientdecor);
-    SETFLAG(s->flags, _USER_SETTINGS_PREFER_CLIENT_DECORATIONS, preferclientdecor);
+    SETFLAG(s->flags, USUseHoverFocus, hoverfocus);
+    SETFLAG(s->flags, USUseServerDecorations, serverdecor);
+    SETFLAG(s->flags, USUseClientDecorations, clientdecor);
+    SETFLAG(s->flags, USPreferClientDecorations, preferclientdecor);
 
     BarSettings *bs = &us->bar;
     /* Left Stuff */
@@ -394,5 +384,34 @@ USWipe(
     SCParser *cfg = settings->cfg;
     SCParserDestroy(cfg);
     memset(settings, 0, sizeof(UserSettings));
+}
+
+
+
+u32 HASHOVERFOCUS(UserSettings *settings)       { return settings->flags & USUseHoverFocus; }
+u32 HASSERVERDECOR(UserSettings *settings)      { return settings->flags & USUseServerDecorations; }    
+u32 HASCLIENTDECOR(UserSettings *settings)      { return settings->flags & USUseClientDecorations; }    
+u32 PREFERCLIENTDECOR(UserSettings *settings)   { return settings->flags & USPreferClientDecorations; }    
+
+
+
+void
+USSetHoverFocus(UserSettings *settings, u8 state)
+{   SETFLAG(settings->flags, USUseHoverFocus, !!state);
+}
+
+void
+USSetUseServerDecor(UserSettings *settings, u8 state)
+{   SETFLAG(settings->flags, USUseHoverFocus, !!state);
+}
+
+void
+USSetUseClientDecor(UserSettings *settings, u8 state)
+{   SETFLAG(settings->flags, USUseHoverFocus, !!state);
+}
+
+void
+USSetPreferClientDecor(UserSettings *settings, u8 state)
+{   SETFLAG(settings->flags, USUseHoverFocus, !!state);
 }
 

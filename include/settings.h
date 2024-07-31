@@ -84,4 +84,17 @@ USWipe(
         UserSettings *settings
         );
 
+
+/* Setter getters */
+
+uint32_t HASHOVERFOCUS(UserSettings *settings);
+uint32_t HASSERVERDECOR(UserSettings *settings);
+uint32_t HASCLIENTDECOR(UserSettings *settings);
+uint32_t PREFERCLIENTDECOR(UserSettings *settings);
+
+void USSetHoverFocus(UserSettings *settings, uint8_t state);
+void USSetUseServerDecor(UserSettings *settings, uint8_t state);
+void USSetUseClientDecor(UserSettings *settings, uint8_t state);
+void USSetPreferClientDecor(UserSettings *settings, uint8_t state);
+
 #endif
