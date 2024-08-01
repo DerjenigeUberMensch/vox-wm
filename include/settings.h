@@ -68,6 +68,14 @@ void
 USInit(
         UserSettings *settings_init
         );
+/*
+ * RETURN: EXIT_SUCCESS on Success
+ * RETURN: EXIT_FAILURE on Failure
+ */
+int
+USInitFile(
+        void
+        );
 /* Save current settings */
 void
 USSave(
