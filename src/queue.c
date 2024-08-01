@@ -34,7 +34,7 @@ __CQueue_Index_Exists(CQueue *q, const int64_t index)
 uint8_t
 __CQueue_full_no_lock(CQueue *queue)
 {   
-    return queue->front == queue->rear + 1 || (!queue->front && queue->rear == queue->datalen);
+    return queue->front == queue->rear + 1 || (!queue->front && queue->rear == queue->datalen - 1);
 }
 
 uint8_t 
