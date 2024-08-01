@@ -1,11 +1,13 @@
 #include <stdint.h>
 #include <string.h>
 #include <stddef.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <errno.h>
 
 #include "settings.h"
 #include "util.h"
-
-#define CONFIG_FILE             "/var/tmp/dwm-config"   /* todo make dir .config/dwm/config or someting like that */
 
 enum USFlags
 {
@@ -220,6 +222,52 @@ static const enum SCType _DATA_ENTRY_TYPE[UserSettingsLAST] =
     [BarBH] = SCTypeFLOAT
 };
 
+
+static char *__CONFIG__NAME__ = NULL;
+
+
+
+static int 
+USGetConfigPath(char *buff, unsigned int buff_len)
+{
+    char *home = NULL;
+    home = getenv("XDG_CONFIG_HOME");
+    if(!home)
+    {   home = getenv("HOME");
+    }
+    if(home)
+    {   
+        snprintf(buff, buff_len, "%s/.config", home);
+        return EXIT_SUCCESS;
+    }
+    return EXIT_FAILURE;
+}
+
+/* 
+ * RETURN: EXIT_SUCCESS on Success.
+ * RETURN: EXIT_FAILURE on Failure.
+ */
+static int
+USCreateDir(
+        const char *const DIR_NAME
+        )
+{
+    const int NOT_FOUND = -1;
+    int statstatus = 0; 
+    struct stat st = {0};
+
+    statstatus = stat(DIR_NAME, &st);
+
+    if(statstatus == NOT_FOUND)
+    {   
+        int mkdirstatus = mkdir(DIR_NAME, 0777);
+        if(mkdirstatus && errno != EEXIST)
+        {   return EXIT_FAILURE;
+        }
+    }
+    return EXIT_SUCCESS;
+}
+
 void
 USSetupCFGVars(
         UserSettings *us
@@ -311,6 +359,11 @@ USInit(
     if(!settings_init)
     {   return;
     }
+    if(USInitFile() == EXIT_FAILURE)
+    {   
+        Debug0("Failed to load file");
+        return;
+    }
     memset(settings_init, 0, sizeof(UserSettings));
     settings_init->cfg = SCPParserCreate(UserSettingsLAST);
     if(settings_init->cfg)
@@ -319,6 +372,47 @@ USInit(
         USSetupCFGDefaults(settings_init);
         USLoad(settings_init);
     }
+}
+
+int
+USInitFile(void)
+{
+#define _US_INIT_DIR_NAME "/vox-wm"
+#define _US_INIT_FILE_NAME "/vox.cfg"
+
+    const int HOME_SIZE = 1024;
+    const int NAME_SIZE = HOME_SIZE + sizeof(_US_INIT_DIR_NAME) + sizeof(_US_INIT_FILE_NAME);
+    char home[HOME_SIZE];
+    char filename[NAME_SIZE];
+
+    memset(home, 0, HOME_SIZE);
+    memset(filename, 0, NAME_SIZE);
+
+    if(USGetConfigPath(home, HOME_SIZE - 1) == EXIT_FAILURE)
+    {   return EXIT_FAILURE;
+    }
+
+    strcpy(filename, home);
+    strcat(filename, _US_INIT_DIR_NAME);
+
+    if(USCreateDir(filename) == EXIT_FAILURE)
+    {   return EXIT_FAILURE;
+    }
+
+    strcat(filename, _US_INIT_FILE_NAME);
+
+    u32 len = strlen(filename) + 1;
+
+    __CONFIG__NAME__ = malloc(len);
+    if(__CONFIG__NAME__)
+    {   memcpy(__CONFIG__NAME__, filename, len);
+    }
+#undef _US_INIT_FILE_NAME
+#undef _US_INIT_DIR_NAME
+    if(__CONFIG__NAME__)
+    {   return EXIT_SUCCESS;
+    }
+    return EXIT_FAILURE;
 }
 
 void
@@ -332,7 +426,7 @@ USLoad(
 
     SCParser *cfg = settings->cfg;
     SCItem *item;
-    u8 status = SCParserReadFile(cfg, CONFIG_FILE);
+    u8 status = SCParserReadFile(cfg, __CONFIG__NAME__);
     if(status)
     {   
         Debug0("Failed to load previous data, loading defaults...");
@@ -370,7 +464,17 @@ USSave(
     for(i = 0; i < UserSettingsLAST; ++i)
     {   SCParserSaveVar(cfg, _DATA_ENTRY_NAME[i], ((uint8_t *)s) + _DATA_ENTRY_OFFSET[i]);
     }
-    SCParserWrite(cfg, CONFIG_FILE);
+    FILE *fp = fopen(__CONFIG__NAME__, "r");
+    if(fp)
+    {   
+        fseek(fp, 0, SEEK_END);
+        unsigned long int len = ftell(fp);
+        fclose(fp);
+        /* Only overwrite file if empty */
+        if(len == 0)
+        {   SCParserWrite(cfg, __CONFIG__NAME__);
+        }
+    }
 }
 
 void
@@ -384,6 +488,7 @@ USWipe(
     SCParser *cfg = settings->cfg;
     SCParserDestroy(cfg);
     memset(settings, 0, sizeof(UserSettings));
+    free(__CONFIG__NAME__);
 }
 
 
@@ -414,4 +519,3 @@ void
 USSetPreferClientDecor(UserSettings *settings, u8 state)
 {   SETFLAG(settings->flags, USUseHoverFocus, !!state);
 }
-

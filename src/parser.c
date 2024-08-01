@@ -58,7 +58,7 @@ _SP_PARSER_ITEM
 };
 
 static char *
-__REMOVE_WHITE_SPACE(char *str, int str_len)
+__REMOVE_WHITE_SPACE(char *str, int str_len, uint32_t *len_return)
 {
     char *ret = NULL;
     int reti;
@@ -94,6 +94,9 @@ __REMOVE_WHITE_SPACE(char *str, int str_len)
         ret = tmp;
     }
     ret[size - 1] = '\0';
+    if(len_return)
+    {   *len_return = size;
+    }
     return ret;
 }
 
@@ -101,7 +104,7 @@ __REMOVE_WHITE_SPACE(char *str, int str_len)
  * Can return NULL
  */
 static char *
-__SC_PARSE_NAME(char *buff)
+__SC_PARSE_NAME(char *buff, uint32_t *len_return)
 {
     const char *delimeter = "=";
     char *token = NULL;
@@ -110,13 +113,13 @@ __SC_PARSE_NAME(char *buff)
     
     token = strtok(buff, delimeter);
     if(token)
-    {   ret = __REMOVE_WHITE_SPACE(token, strnlen(token, maxlen));
+    {   ret = __REMOVE_WHITE_SPACE(token, strnlen(token, maxlen), len_return);
     }
     return ret;
 }
 
 static char *
-__SC_PARSE_VALUE_STR(char *buff)
+__SC_PARSE_VALUE_STR(char *buff, uint32_t *len_return)
 {
     const char *delimeter = "=";
     char *token = NULL;
@@ -125,7 +128,7 @@ __SC_PARSE_VALUE_STR(char *buff)
     
     token = strtok(buff, delimeter);
     if(token)
-    {   ret = __REMOVE_WHITE_SPACE(token, strnlen(token, maxlen));
+    {   ret = __REMOVE_WHITE_SPACE(token, strnlen(token, maxlen), len_return);
     }
     return ret;
 }
@@ -377,7 +380,7 @@ SCParserWrite(
         if(item->data && item->name)
         {   
             const char *const format = __SC_GET_FORMAT_FROM_TYPE(item->type);
-            fprintf(fw, "%s=", item->name);
+            fprintf(fw, "%s = ", item->name);
             if(format)
             {   
                 switch(item->type)
@@ -441,7 +444,6 @@ SCParserWrite(
     fclose(fw);
     return SUCCESS;
 }
-
 
 SCParser * 
 SCPParserCreate(
@@ -520,6 +522,7 @@ SCParserReadFile(
     char *name = NULL;
     char *typename = NULL;
 
+    uint32_t typenamelen = 0;
     SCItem *item;
     while(running)
     {
@@ -535,8 +538,8 @@ SCParserReadFile(
             default:
                 continue;
         }
-        name = __SC_PARSE_NAME(buff);
-        typename = __SC_PARSE_VALUE_STR(NULL);
+        name = __SC_PARSE_NAME(buff, NULL);
+        typename = __SC_PARSE_VALUE_STR(NULL, &typenamelen);
         if(!name || !typename)
         {   
             free(name);
@@ -554,7 +557,7 @@ SCParserReadFile(
             {   free(item->typename);
             }
             item->typename = typename;
-            item->type_len = strlen(typename);
+            item->type_len = typenamelen;
         }
         else
         {   free(typename);
@@ -726,5 +729,6 @@ SCParserSaveVar(
     memcpy(item->data, data, item->size);
     return SUCCESS;
 }
+
 
 
