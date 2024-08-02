@@ -11,7 +11,7 @@
 #include "getprop.h"
 #include "main.h"
 
-#define QUEUE_SIZE 1024
+#define QUEUE_SIZE 256
 /* realistically you wont ever need more than 64 as most of these threads are just waiting for data. */
 #define MAX_THREADS 64
 
@@ -71,6 +71,8 @@ static void UpdateWMName(XCBDisplay *display, __Property__Cookie__ *cookie, XCBC
 static void UpdatePid(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
 static void UpdateIcon(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
 static void UpdateMotifHints(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
+static void UpdateManage(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
+static void UpdateUnmanage(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
 
 enum PropMode
 {
@@ -96,6 +98,9 @@ static PropHandler __prop_handler[PropLAST] =
     [PropPid] =         { GetPidCookie,         UpdatePid         },
     [PropIcon] =        { GetIconCookie,        UpdateIcon        },
     [PropMotifHints] =  { GetMotifHintsCookie,  UpdateMotifHints  },
+    [PropManage] =      { GetInvalidCookie,     UpdateManage      },
+    [PropUnmanage] =    { GetInvalidCookie,     UpdateUnmanage    },
+
     [PropExitThread] =  { GetInvalidCookie,     UpdateInvalid     },
 };
 
@@ -367,6 +372,62 @@ UpdateMotifHints(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _X
 }
 
 static void
+UpdateManage(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE)
+{
+    const XCBWindow win = cookie->win;
+    Client *c;
+    XCBCookie requests[ManageClientLAST];
+    void *replies[ManageClientLAST];
+
+    (void)_XCB_COOKIE;
+
+    managerequest(win, requests);
+    managereplies(requests, replies);
+
+    LockMainThread();
+
+    c = manage(win, replies);
+    if(c)
+    {
+        focus(c);
+        arrange(c->desktop);
+    }
+    else if(_wm.selmon->bar && _wm.selmon->bar->win == win)
+    {
+        focus(NULL);
+        arrange(_wm.selmon->desksel);
+    }
+    XCBFlush(_wm.dpy);
+    UnlockMainThread();
+}
+
+static void
+UpdateUnmanage(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE)
+{
+    XCBWindow win = cookie->win;
+    Client *c;
+    Desktop *desk;
+    (void)display;
+    (void)_XCB_COOKIE;
+    LockMainThread();
+
+    c = wintoclient(win);
+    if(c)
+    {   
+        desk = c->desktop;
+        unmanage(c, 0);
+        if(desk->mon->desksel == desk)
+        {   
+            focus(NULL);
+            arrange(desk);
+        }
+        XCBFlush(_wm.dpy);
+    }
+
+    UnlockMainThread();
+}
+
+static void
 UpdateProperty(XCBDisplay *display, __Property__Cookie__ *cookie)
 {
     /* get the cookie */
@@ -532,9 +593,8 @@ PropListen(XCBDisplay *display, XCBWindow win, enum PropertyType type)
     if(usethreads && !full)
     {   CQueueAdd(&__threads.queue, (void *)&cookie);
     }
-    /* single thread operation */
-    if(!usethreads || full)
-    {   
+    else
+    {   /* single thread operation */
         UpdateProperty(display, &cookie);
         Debug("Using single threads, full: %d", full);
     }

@@ -70,27 +70,28 @@ enum KillType
 };
 
 /* Manage cookies */
-enum ManageCookies
+/* Manage cookies */
+enum ManageClientProperties
 {
-    ManageCookieAttributes,
-    ManageCookieGeometry,
-    ManageCookieTransient,
-    ManageCookieWType,
-    ManageCookieWState,
-    ManageCookieSizeHint,
-    ManageCookieWMHints,
-    ManageCookieClass,
-    ManageCookieWMProtocol,
-    ManageCookieStrutP,
-    ManageCookieStrut,
-    ManageCookieNetWMName,
-    ManageCookieWMName,
-    ManageCookiePid,
-    ManageCookieIcon,
-    ManageCookieMotif,
+    ManageClientAttributes,
+    ManageClientGeometry,
+    ManageClientTransient,
+    ManageClientWType,
+    ManageClientWState,
+    ManageClientSizeHint,
+    ManageClientWMHints,
+    ManageClientClass,
+    ManageClientWMProtocol,
+    ManageClientStrutP,
+    ManageClientStrut,
+    ManageClientNetWMName,
+    ManageClientWMName,
+    ManageClientPid,
+    ManageClientIcon,
+    ManageClientMotif,
     
 
-    ManageCookieLAST
+    ManageClientLAST
 };
 
 enum BarSides
@@ -100,7 +101,6 @@ enum BarSides
 
 
 typedef struct Client Client;
-
 /* extern structs */
 struct Desktop;
 struct Monitor;
@@ -173,7 +173,6 @@ struct Client
     enum XCBBitGravity gravity; /* Client gravity   */
     XCBColormap colormap;   /* Clients colormap     */
 };
-
 
 /* Applies the gravity shifts specified by the gravity onto the x and y coordinates.
 */
@@ -252,14 +251,16 @@ Client *laststack(struct Desktop *desk);
  */
 Client *lastrstack(struct Desktop *desk);
 /* requests for clients cookies. */
-void managerequest(XCBWindow win, XCBCookie requests[ManageCookieLAST]);
+void managecleanup(void *replies[ManageClientLAST]);
+void managerequest(XCBWindow win, XCBCookie requests[ManageClientLAST]);
+void managereplies(XCBCookie requests[ManageClientLAST], void *replies[ManageClientLAST]);
 /* Part of main event loop "run()"
  * Manages AKA adds the window to our current or windows specified desktop.
  * Applies size checks, bounds, layout, etc...
  * RETURN: Client * on Success.
  * RETURN: NULL on Failure.
  */
-Client *managereply(XCBWindow window, XCBCookie requests[ManageCookieLAST]);
+Client *manage(XCBWindow window, void *replies[ManageClientLAST]);
 /* Maximizes a client if unmaxed, Sets flag.
  */
 void maximize(Client *c);

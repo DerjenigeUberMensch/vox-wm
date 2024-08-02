@@ -757,9 +757,7 @@ restoremonsession(char *buff, u16 len)
                 {   
                     XCBWindow win = pullm->bar->win;
                     unmanage(pullm->bar, 0);
-                    XCBCookie cookies[ManageCookieLAST];
-                    managerequest(win, cookies);
-                    managereply(win, cookies);
+                    PropListen(_wm.dpy, win, PropManage);
                 }
                 setupbar(pullm, b);
             }
@@ -1019,21 +1017,24 @@ scan(void)
         if(wins)
         {
             const size_t countsz = sizeof(XCBCookie ) * num;
-            const size_t managecookiesz = sizeof(XCBCookie) * ManageCookieLAST;
+            const size_t managecookiesz = sizeof(XCBCookie) * ManageClientLAST;
+            const size_t managerepliesz = sizeof(void *) * ManageClientLAST;
             XCBCookie *wa = malloc(countsz);
             XCBCookie *wastates = malloc(countsz);
             XCBCookie *tfh = malloc(countsz);
             XCBCookie *managecookies = malloc(managecookiesz * num);
+            void **managereplys = malloc(managerepliesz * num);
             XCBGetWindowAttributes **replies = malloc(sizeof(XCBGetWindowAttributes *) * num);
             XCBGetWindowAttributes **replystates = malloc(sizeof(XCBGetWindowAttributes *) * num);
             XCBWindow *trans = malloc(sizeof(XCBWindow) * num);
 
-            if(!wa || !wastates || !tfh || !managecookies || !replies || !replystates || !trans)
+            if(!wa || !wastates || !tfh || !managecookies || !managereplys || !replies || !replystates || !trans)
             {   
                 free(wa);
                 free(wastates);
                 free(tfh);
                 free(managecookies);
+                free(managereplys);
                 free(replies);
                 free(replystates);
                 free(trans);
@@ -1046,30 +1047,39 @@ scan(void)
                 /* this specifically queries for the state which wa[i] might fail to provide */
                 wastates[i] = XCBGetWindowPropertyCookie(_wm.dpy, wins[i], wmatom[WMState], 0L, 2L, False, wmatom[WMState]);
                 tfh[i] = XCBGetTransientForHintCookie(_wm.dpy, wins[i]);
-                managerequest(wins[i], &managecookies[i * ManageCookieLAST]);
+                managerequest(wins[i], &managecookies[i * ManageClientLAST]);
             }
             
             uint8_t hastrans = 0;
+            uint64_t index;
             /* get them replies back */
             for(i = 0; i < num; ++i)
             {
                 replies[i] = XCBGetWindowAttributesReply(_wm.dpy, wa[i]);
                 replystates[i] = XCBGetWindowAttributesReply(_wm.dpy, wastates[i]);
                 hastrans = XCBGetTransientForHintReply(_wm.dpy, tfh[i], &trans[i]);
+                index = ManageClientLAST * i;
+                managereplies(managecookies + index, managereplys + index);
 
                 if(!hastrans)
                 {   trans[i] = 0;
                 }
+            }
+
+            /* Manage the Windows */
+            for(i = 0; i < num; ++i)
+            {
                 /* override_redirect only needed to be handled for old windows */
                 /* X auto redirects when running wm so no need to do anything else */
                 if(replies[i]->override_redirect || trans[i]) 
                 {   continue;
                 }
+                index = ManageClientLAST * i;
                 if(replies[i] && replies[i]->map_state == XCB_MAP_STATE_VIEWABLE)
-                {   managereply(wins[i], &managecookies[i * ManageCookieLAST]);
+                {   manage(wins[i], managereplys + index);
                 }
                 else if(replystates[i] && replystates[i]->map_state == XCB_WINDOW_ICONIC_STATE)
-                {   managereply(wins[i], &managecookies[i * ManageCookieLAST]);
+                {   manage(wins[i], managereplys + index);
                 }
             }
 
@@ -1080,9 +1090,10 @@ scan(void)
                 {
                     if(replies[i]->map_state == XCB_MAP_STATE_VIEWABLE && replystates[i] && replystates[i]->map_state == XCB_WINDOW_ICONIC_STATE)
                     {
+                        index = ManageClientLAST * i;
                         /* technically we shouldnt have to do this but just in case */
                         if(!wintoclient(wins[i]))
-                        {   managereply(wins[i], &managecookies[i * ManageCookieLAST]);
+                        {   manage(wins[i], managereplys + i);
                         }
                     }
                 }
@@ -1097,6 +1108,7 @@ scan(void)
             free(wastates);
             free(tfh);
             free(managecookies);
+            free(managereplys);
             free(replies);
             free(replystates);
             free(trans);

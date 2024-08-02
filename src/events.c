@@ -824,30 +824,11 @@ maprequest(XCBGenericEvent *event)
     (void)parent;
 
     u8 sync = 0;
-    Client *c = NULL;
 
-    if(!wintoclient(win))
-    {
-        /* only sync if we successfully managed the window */   
-        XCBCookie cookies[ManageCookieLAST];
-        managerequest(win, cookies);
-        c = managereply(win, cookies);
-        sync = 1;
-    }
-    /* map window before input focus is set cause we just get errors other wise. */
+    /* map window first (illusion of responsiveness) */
     XCBMapWindow(_wm.dpy, win);
-    if(c)
-    {   
-        focus(c);
-        arrange(c->desktop);
-    }
-    /* check if we managed a new bar */
-    else if(_wm.selmon->bar && _wm.selmon->bar->win == win)
-    {   
-        focus(NULL);
-        arrange(_wm.selmon->desksel);
-    }
-    sync = 1;
+    PropListen(_wm.dpy, win, PropManage);
+
     if(sync)
     {   XCBFlush(_wm.dpy);
     }
@@ -988,20 +969,10 @@ destroynotify(XCBGenericEvent *event)
 
     (void)eventwin;
 
-    Client *c = NULL;
     u8 sync = 0;
-    /* destroyed windows no longer need to be managed */
-    if((c = wintoclient(win)))
-    {   
-        Desktop *desk = c->desktop;
-        unmanage(c, 1);
-        if(desk->mon->desksel == desk)
-        {
-            focus(NULL);
-            arrange(desk);
-        }
-        sync = 1;
-    }
+
+    PropListen(_wm.dpy, win, PropUnmanage);
+
     if(sync)
     {   XCBFlush(_wm.dpy);
     }
@@ -1070,19 +1041,9 @@ unmapnotify(XCBGenericEvent *event)
     (void)eventwin;
     (void)isconfigure;
 
-    Client *c;
     u8 sync = 0;
-    if((c = wintoclient(win)))
-    {   
-        Desktop *desk = c->desktop;
-        unmanage(c, 0);
-        if(desk->mon->desksel == desk)
-        {
-            focus(NULL);
-            arrange(desk);
-        }
-        sync = 1;
-    }
+
+    PropListen(_wm.dpy, win, PropUnmanage);
 
     if(sync)
     {   XCBFlush(_wm.dpy);
