@@ -21,6 +21,8 @@ enum PropertyType
     PropPid,
     PropIcon,
     PropMotifHints,
+    PropManage,
+    PropUnmanage,
 
     /* special */
     PropExitThread,

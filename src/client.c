@@ -854,104 +854,207 @@ lastrstack(Desktop *desk)
     return desk->rlast;
 }
 
-void
-managerequest(XCBWindow win, XCBCookie requests[ManageCookieLAST])
+void 
+managecleanup(void *replies[ManageClientLAST])
 {
-    requests[ManageCookieAttributes] = XCBGetWindowAttributesCookie(_wm.dpy, win);
-    requests[ManageCookieGeometry] = XCBGetWindowGeometryCookie(_wm.dpy, win);
-    requests[ManageCookieTransient] = GetTransientCookie(_wm.dpy, win);
-    requests[ManageCookieWType] = GetWindowTypeCookie(_wm.dpy, win);
-    requests[ManageCookieWState] = GetWindowStateCookie(_wm.dpy, win);
-    requests[ManageCookieSizeHint] = GetSizeHintsCookie(_wm.dpy, win);
-    requests[ManageCookieWMHints] = GetWMHintsCookie(_wm.dpy, win);
-    requests[ManageCookieClass] = GetWMClassCookie(_wm.dpy, win);
-    requests[ManageCookieWMProtocol] = GetWMProtocolCookie(_wm.dpy, win);
-    requests[ManageCookieStrut] = GetStrutCookie(_wm.dpy, win);
-    requests[ManageCookieStrutP] = GetStrutpCookie(_wm.dpy, win);
-    requests[ManageCookieNetWMName] = GetNetWMNameCookie(_wm.dpy, win);
-    requests[ManageCookieWMName] = GetWMNameCookie(_wm.dpy, win);
-    requests[ManageCookiePid] = GetPidCookie(_wm.dpy, win);
-    requests[ManageCookieIcon] = GetIconCookie(_wm.dpy, win);
-    requests[ManageCookieMotif] = GetMotifHintsCookie(_wm.dpy, win);
+    /* Remove *_reply from structures 
+     * 'Wipe'
+     */
+    if(replies[ManageClientClass])
+    {   XCBWipeGetWMClass(replies[ManageClientClass]);
+    }
+    if(replies[ManageClientWMProtocol])
+    {   XCBWipeGetWMProtocols(replies[ManageClientWMProtocol]);
+    }
+
+    i32 i;
+    for(i = 0; i < ManageClientLAST; ++i)
+    {   free(replies[i]);
+    }
 }
 
-Client *
-managereply(XCBWindow win, XCBCookie requests[ManageCookieLAST])
+void
+managerequest(XCBWindow win, XCBCookie requests[ManageClientLAST])
 {
+    requests[ManageClientAttributes] = XCBGetWindowAttributesCookie(_wm.dpy, win);
+    requests[ManageClientGeometry] = XCBGetWindowGeometryCookie(_wm.dpy, win);
+    requests[ManageClientTransient] = GetTransientCookie(_wm.dpy, win);
+    requests[ManageClientWType] = GetWindowTypeCookie(_wm.dpy, win);
+    requests[ManageClientWState] = GetWindowStateCookie(_wm.dpy, win);
+    requests[ManageClientSizeHint] = GetSizeHintsCookie(_wm.dpy, win);
+    requests[ManageClientWMHints] = GetWMHintsCookie(_wm.dpy, win);
+    requests[ManageClientClass] = GetWMClassCookie(_wm.dpy, win);
+    requests[ManageClientWMProtocol] = GetWMProtocolCookie(_wm.dpy, win);
+    requests[ManageClientStrut] = GetStrutCookie(_wm.dpy, win);
+    requests[ManageClientStrutP] = GetStrutpCookie(_wm.dpy, win);
+    requests[ManageClientNetWMName] = GetNetWMNameCookie(_wm.dpy, win);
+    requests[ManageClientWMName] = GetWMNameCookie(_wm.dpy, win);
+    requests[ManageClientPid] = GetPidCookie(_wm.dpy, win);
+    requests[ManageClientIcon] = GetIconCookie(_wm.dpy, win);
+    requests[ManageClientMotif] = GetMotifHintsCookie(_wm.dpy, win);
+}
+
+void
+managereplies(XCBCookie requests[ManageClientLAST], void *replies[ManageClientLAST])
+{
+    XCBWindowGeometry *wg;
+    XCBGetWindowAttributes *waattributes;
+    XCBWindowProperty *wtypeunused;
+    XCBWindowProperty *stateunused;
+    XCBSizeHints hints;
+    u8 hintstatus = 0;
+    XCBWMHints *wmh;
+    XCBWMClass cls = { ._reply = NULL };
+    u8 clsstatus = 0;
+    XCBWMProtocols wmprotocols = { ._reply = NULL, .atoms_len = 0 };
+    u8 wmprotocolsstatus = 0;
+    XCBWindowProperty *strutpreply;
+    XCBWindowProperty *strutreply;
+    XCBWindowProperty *netwmnamereply;
+    XCBWindowProperty *wmnamereply;
+    XCBWindowProperty *iconreply;
+    pid_t pid = 0;
+    XCBWindowProperty *motifreply;
+    XCBWindow trans;
+    u8 transstatus;
+
+    /* wait for replies */
+    waattributes = XCBGetWindowAttributesReply(_wm.dpy, requests[ManageClientAttributes]);
+    wg = XCBGetWindowGeometryReply(_wm.dpy, requests[ManageClientGeometry]);
+    transstatus = XCBGetTransientForHintReply(_wm.dpy, requests[ManageClientTransient], &trans); 
+    wtypeunused = XCBGetWindowPropertyReply(_wm.dpy, requests[ManageClientWType]);
+    stateunused = XCBGetWindowPropertyReply(_wm.dpy, requests[ManageClientWState]);
+    hintstatus = XCBGetWMNormalHintsReply(_wm.dpy, requests[ManageClientSizeHint], &hints);
+    wmh = XCBGetWMHintsReply(_wm.dpy, requests[ManageClientWMHints]);
+    clsstatus = XCBGetWMClassReply(_wm.dpy, requests[ManageClientClass], &cls);
+    wmprotocolsstatus = XCBGetWMProtocolsReply(_wm.dpy, requests[ManageClientWMProtocol], &wmprotocols);
+    strutreply = XCBGetWindowPropertyReply(_wm.dpy, requests[ManageClientStrut]);
+    strutpreply = XCBGetWindowPropertyReply(_wm.dpy, requests[ManageClientStrutP]);
+    netwmnamereply = XCBGetWindowPropertyReply(_wm.dpy, requests[ManageClientNetWMName]);
+    wmnamereply = XCBGetWindowPropertyReply(_wm.dpy, requests[ManageClientWMName]);
+    iconreply = XCBGetWindowPropertyReply(_wm.dpy, requests[ManageClientIcon]);
+    pid = XCBGetPidReply(_wm.dpy, requests[ManageClientPid]);
+    motifreply = XCBGetWindowPropertyReply(_wm.dpy, requests[ManageClientMotif]);
+
+
+    XCBWindow *transreply = NULL;
+    XCBSizeHints *sizehintsreply = NULL;
+    XCBWMClass *classreply = NULL;
+    XCBWMProtocols *wmprotocolsreply = NULL;
+    int32_t *pidreply = NULL;
+
+    if(transstatus)
+    {   
+        transreply = malloc(sizeof(XCBWindow ));
+        if(transreply)
+        {   *transreply = trans;
+        }
+    }
+    if(hintstatus)
+    {
+        sizehintsreply = malloc(sizeof(XCBSizeHints ));
+        if(sizehintsreply)
+        {   *sizehintsreply = hints;
+        }
+    }
+    if(clsstatus)
+    {   
+        classreply = malloc(sizeof(XCBWMClass ));
+        if(classreply)
+        {   *classreply = cls;
+        }
+        else
+        {   XCBWipeGetWMClass(&cls);
+        }
+    }
+    if(wmprotocolsstatus)
+    {   
+        wmprotocolsreply = malloc(sizeof(XCBWMProtocols ));
+        if(wmprotocolsreply)
+        {   *wmprotocolsreply = wmprotocols;
+        }
+        else
+        {   XCBWipeGetWMProtocols(&wmprotocols);
+        }
+    }
+
+    const int PID_FAILURE = -1;
+    if(pid != PID_FAILURE)
+    {   
+        pidreply = malloc(sizeof(pid_t ));
+        if(pidreply)
+        {   *pidreply = pid;
+        }
+    }
+
+    replies[ManageClientAttributes] = waattributes;
+    replies[ManageClientGeometry] = wg;
+    replies[ManageClientTransient] = transreply;
+    replies[ManageClientWType] = wtypeunused;
+    replies[ManageClientWState] = stateunused;
+    replies[ManageClientSizeHint] = sizehintsreply;
+    replies[ManageClientWMHints] = wmh;
+    replies[ManageClientClass] = classreply;
+    replies[ManageClientWMProtocol] = wmprotocolsreply;
+    replies[ManageClientStrut] = strutreply;
+    replies[ManageClientStrutP] = strutpreply;
+    replies[ManageClientNetWMName] = netwmnamereply;
+    replies[ManageClientWMName] = wmnamereply;
+    replies[ManageClientPid] = pidreply;
+    replies[ManageClientIcon] = iconreply;
+    replies[ManageClientMotif] = motifreply;
+}
+
+
+Client *
+manage(XCBWindow win, void *replies[ManageClientLAST])
+{
+    Monitor *m = NULL;
+    Client *c = NULL;
     /* checks */
     if(win == _wm.root)
     {   Debug("%s", "Cannot manage() root window.");
-        goto DISCARD;
+        goto FAILURE;
     }
     else if(wintoclient(win))
     {   Debug("Window already managed????: [%u]", win);
-        goto DISCARD;
+        goto FAILURE;
     } 
     
     const u16 bw = 0;
     const u32 bcol = 0;
     const u8 showdecor = 1;
 
-    Monitor *m = NULL;
-    Client *c = NULL;
-    XCBWindow trans = 0;
-    u8 transstatus = 0;
     const u32 inputmask = XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_FOCUS_CHANGE|XCB_EVENT_MASK_PROPERTY_CHANGE|XCB_EVENT_MASK_STRUCTURE_NOTIFY;
-    XCBWindowGeometry *wg = NULL;
-
-    XCBGetWindowAttributes *waattributes = NULL;
-    XCBWindowProperty *wtypeunused = NULL;
-    XCBWindowProperty *stateunused = NULL;
-    XCBSizeHints hints;
-    u8 hintstatus = 0;
-    XCBWMHints *wmh = NULL;
-    XCBWMClass cls = { ._reply = NULL };
-    u8 clsstatus = 0;
-    XCBWMProtocols wmprotocols = { ._reply = NULL, .atoms_len = 0 };
-    u8 wmprotocolsstatus = 0;
-    XCBWindowProperty *strutpreply = NULL;
-    XCBWindowProperty *strutreply = NULL;
-    u32 *strutp = NULL; 
-    u32 *strut = NULL;
-    XCBWindowProperty *netwmnamereply = NULL;
-    XCBWindowProperty *wmnamereply = NULL;
-    char *netwmname = NULL;
-    char *wmname = NULL;
-    XCBWindowProperty *iconreply = NULL;
-    pid_t pid = 0;
-    XCBWindowProperty *motifreply = NULL;
 
     /* we do it here before, because we are waiting for replies and for more memory. */
     c = createclient();
 
-    /* wait for replies */
-    waattributes = XCBGetWindowAttributesReply(_wm.dpy, requests[ManageCookieAttributes]);
-    wg = XCBGetWindowGeometryReply(_wm.dpy, requests[ManageCookieGeometry]);
-    transstatus = XCBGetTransientForHintReply(_wm.dpy, requests[ManageCookieTransient], &trans); trans *= !!transstatus;
-    wtypeunused = XCBGetWindowPropertyReply(_wm.dpy, requests[ManageCookieWType]);
-    stateunused = XCBGetWindowPropertyReply(_wm.dpy, requests[ManageCookieWState]);
-    hintstatus = XCBGetWMNormalHintsReply(_wm.dpy, requests[ManageCookieSizeHint], &hints);
-    wmh = XCBGetWMHintsReply(_wm.dpy, requests[ManageCookieWMHints]);
-    clsstatus = XCBGetWMClassReply(_wm.dpy, requests[ManageCookieClass], &cls);
-    wmprotocolsstatus = XCBGetWMProtocolsReply(_wm.dpy, requests[ManageCookieWMProtocol], &wmprotocols);
-    strutreply = XCBGetWindowPropertyReply(_wm.dpy, requests[ManageCookieStrut]);
-    strutpreply = XCBGetWindowPropertyReply(_wm.dpy, requests[ManageCookieStrutP]);
-    netwmnamereply = XCBGetWindowPropertyReply(_wm.dpy, requests[ManageCookieNetWMName]);
-    wmnamereply = XCBGetWindowPropertyReply(_wm.dpy, requests[ManageCookieWMName]);
-    iconreply = XCBGetWindowPropertyReply(_wm.dpy, requests[ManageCookieIcon]);
-    pid = XCBGetPidReply(_wm.dpy, requests[ManageCookiePid]);
-    motifreply = XCBGetWindowPropertyReply(_wm.dpy, requests[ManageCookieMotif]);
+    XCBWindowGeometry *wg = replies[ManageClientGeometry];
+    XCBGetWindowAttributes *waattributes = replies[ManageClientAttributes];
+    XCBWindowProperty *wtypeunused = replies[ManageClientWType];
+    XCBWindowProperty *stateunused = replies[ManageClientWState];
+    XCBSizeHints *hints = replies[ManageClientWState];
+    XCBWMHints *wmh = replies[ManageClientWMHints];
+    XCBWMClass *cls = replies[ManageClientClass]; 
+    XCBWMProtocols *wmprotocols = replies[ManageClientWMProtocol];
+    XCBWindowProperty *strutpreply = replies[ManageClientStrutP];
+    XCBWindowProperty *strutreply = replies[ManageClientStrut];
+    XCBWindowProperty *netwmnamereply = replies[ManageClientNetWMName];
+    XCBWindowProperty *wmnamereply = replies[ManageClientWMName];
+    XCBWindowProperty *iconreply = replies[ManageClientIcon];
+    pid_t *pid = replies[ManageClientPid];
+    XCBWindowProperty *motifreply = replies[ManageClientMotif];
+    XCBWindow *trans = replies[ManageClientTransient];
 
-    strutp = strutpreply ? XCBGetWindowPropertyValue(strutpreply) : NULL;
-    strut = strutreply ? XCBGetWindowPropertyValue(strutpreply) : NULL;
+    u32 *strutp = strutp = strutpreply ? XCBGetWindowPropertyValue(strutpreply) : NULL;
+    u32 *strut = strut = strutreply ? XCBGetWindowPropertyValue(strutpreply) : NULL;
+    
 
     if(!c)
     {   goto FAILURE;
     }
     c->win = win;
-
-    /* On Failure clear flag and ignore hints */
-    hints.flags *= !!hintstatus;    
 
     if(waattributes && waattributes->override_redirect)
     {   Debug("Override Redirect: [%d]", win);
@@ -961,25 +1064,21 @@ managereply(XCBWindow win, XCBCookie requests[ManageCookieLAST])
 
     /* this sets up the desktop which is quite important for some operations */
     clientinitcolormap(c, waattributes);
-    clientinittrans(c, trans);
+    clientinittrans(c, trans ? *trans : 0); 
     clientinitgeom(c, wg);
     clientinitwtype(c, wtypeunused);
     clientinitwstate(c, stateunused);
-    updatewindowprotocol(c, wmprotocolsstatus ? &wmprotocols : NULL);
-    netwmname = getnamefromreply(netwmnamereply);
-    wmname = getnamefromreply(wmnamereply);
+    updatewindowprotocol(c, wmprotocols);
     setfloating(c, !!trans);
     /* Custom stuff */
-    setclientpid(c, pid);
+    setclientpid(c, pid ? *pid : 0);
     setborderwidth(c, bw);
     setbordercolor32(c, bcol);
     setshowdecor(c, showdecor);
-    updatetitle(c, netwmname, wmname);
+    updatetitle(c, getnamefromreply(netwmnamereply), getnamefromreply(wmnamereply));
     updateborder(c);
-    updatesizehints(c, &hints);
-    if(clsstatus)
-    {   updateclass(c, &cls);
-    }
+    updatesizehints(c, hints);
+    updateclass(c, cls);
     updatewmhints(c, wmh);
     updatemotifhints(c, motifreply);
     updateicon(c, iconreply);
@@ -997,15 +1096,8 @@ managereply(XCBWindow win, XCBCookie requests[ManageCookieLAST])
 
     updateclientlist(win, ClientListAdd);
     setclientstate(c, XCB_WINDOW_NORMAL_STATE);
-
     /* add to hash */
     addclienthash(c);
-
-    /* inherit previous client state */
-    if(c->desktop && c->desktop->sel)
-    {   setfullscreen(c, ISFULLSCREEN(c->desktop->sel) || ISFULLSCREEN(c));
-    }
-
     /* propagates border_width, if size doesn't change */
     configure(c);
     /* if its a new bar we dont want to return it as the monitor now manages it */
@@ -1016,28 +1108,9 @@ managereply(XCBWindow win, XCBCookie requests[ManageCookieLAST])
 FAILURE:
     free(c);
     c = NULL;
-    goto CLEANUP;
 CLEANUP:
-    /* reply cleanup */
-    free(waattributes);
-    free(wg);
-    free(wtypeunused);
-    free(stateunused);
-    free(wmh);
-    XCBWipeGetWMClass(&cls);
-    XCBWipeGetWMProtocols(&wmprotocols);
-    free(strutreply);
-    free(strutpreply);
-    free(netwmnamereply);
-    free(wmnamereply);
-    free(iconreply);
-    free(motifreply);
+    managecleanup(replies);
     return c;
-DISCARD:
-    for(pid = 0; pid < ManageCookieLAST; ++pid)
-    {   XCBDiscardReply(_wm.dpy, requests[pid]);
-    }
-    return NULL;
 }
 
 void
