@@ -23,6 +23,7 @@ uint8_t checksticky(int64_t x);
 char *getnamefromreply(XCBWindowProperty *namerep);
 /* Gets the icon property from the specified XCBWindowProperty. */
 uint32_t *geticonprop(XCBWindowProperty *iconreply);
+void XCBSetAtomState(XCBDisplay *display, XCBWindow win, XCBAtom type, XCBAtom atom, XCBWindowProperty *prop, uint8_t _delete);
 char *GetAtomNameQuick(XCBDisplay *display, XCBAtom atom);
 
 #endif

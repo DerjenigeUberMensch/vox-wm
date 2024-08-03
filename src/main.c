@@ -553,12 +553,13 @@ restoreclientsession(Desktop *desk, char *buff, u16 len)
     XCBWindow WindowId;
     XCBWindow WindowIdFocus;
     XCBWindow WindowIdStack;
-    u32 Flags;
+    u32 _Flags;
     u32 __EWMHFlag;
     u32 BorderWidth;
     u32 BorderColor;
 
     x = y = ox = oy = w = h = ow = oh = WindowId = WindowIdFocus = WindowIdStack = BorderWidth = BorderColor = 0;
+    _Flags = __EWMHFlag = 0;
 
     check = sscanf(buff, 
                     "(x: %d, y: %d) (w: %u h: %u)" " "
@@ -574,7 +575,7 @@ restoreclientsession(Desktop *desk, char *buff, u16 len)
                     &WindowId,
                     &BorderWidth,
                     &BorderColor,
-                    &Flags,
+                    &_Flags,
                     &__EWMHFlag
                     );
 
@@ -600,7 +601,7 @@ restoreclientsession(Desktop *desk, char *buff, u16 len)
             cclient->y = y;
             cclient->w = w;
             cclient->h = h;
-            cclient->flags = Flags;
+            cclient->flags = _Flags;
             cclient->ewmhflags = __EWMHFlag;
         }
     }
