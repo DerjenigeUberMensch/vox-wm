@@ -116,6 +116,66 @@ geticonprop(XCBWindowProperty *iconreply)
     return ret;
 }
 
+
+void
+XCBSetAtomState(XCBDisplay *display, XCBWindow win, XCBAtom type, XCBAtom atom, XCBWindowProperty *prop, u8 _delete)
+{
+    if(!prop)
+    {   return;
+    }
+    void *data = NULL;
+    u32 len = 0;
+    u32 propmode = XCB_PROP_MODE_REPLACE;
+    XCBAtom *atoms = XCBGetPropertyValue(prop);
+    uint32_t ATOM_LENGTH = 0;
+    XCBGetPropertyValueLength(prop, sizeof(XCBAtom), &ATOM_LENGTH);
+
+    u32 i;
+    u32 offset = 0;
+    u8 set = 0;
+    for(i = 0; i < ATOM_LENGTH; ++i)
+    {
+        if(memcmp(atoms + i, &atom, sizeof(XCBAtom)))
+        {   
+            offset = i;
+            set = 1;
+            break;
+        }
+    }
+    if(set)
+    {
+        if(_delete)
+        {
+            data = atoms;
+            len = ATOM_LENGTH - 1;
+            /* Check if its not last, and shift every element back so we remove it */
+            if(offset != len)
+            {   memmove(&atoms[offset], &atoms[offset + 1], (ATOM_LENGTH - offset) * sizeof(XCBAtom));
+            }
+        }
+        /* atom already exists do nothing */
+        else
+        {   return;
+        }
+    }
+    else
+    {
+        /* prop not found mark as already deleted */
+        if(_delete)
+        {   return;
+        }
+        /* set propmode to append cause we didnt find it */
+        else
+        {   
+            propmode = XCB_PROP_MODE_APPEND;
+            len = 1;
+            data = &atom;
+        }
+    }
+    XCBChangeProperty(display, win, type, XCB_ATOM_ATOM, 32, propmode, (const char *)data, len);
+}
+
+
 char *
 GetAtomNameQuick(XCBDisplay *display, XCBAtom atom)
 {

@@ -3,6 +3,7 @@
 #include "main.h"
 #include "keybinds.h"
 #include "hashing.h"
+#include "getprop.h"
 
 #include <string.h>
 
@@ -1358,146 +1359,27 @@ setclientstate(Client *c, u8 state)
 void
 setclientwtype(Client *c, XCBAtom atom, u8 state)
 {
-    /* TODO manage race conditions without needing to lock the server */
-    const u8 _delete = !state;
-    const XCBWindow win = c->win;
-    const u32 NO_BYTE_OFFSET = 0L;
-    const u32 REQUEST_MAX_NEEDED_ITEMS = UINT32_MAX;
-
-    XCBCookie cookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMWindowType], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_ATOM);
-    XCBWindowProperty *prop = XCBGetWindowPropertyReply(_wm.dpy, cookie);
-    void *data = NULL;
-    u32 len = 0;
-    u32 propmode = XCB_PROP_MODE_REPLACE;
-    if(prop)
-    {
-        XCBAtom *atoms = XCBGetPropertyValue(prop);
-        uint32_t ATOM_LENGTH = 0;
-        XCBGetPropertyValueLength(prop, sizeof(XCBAtom), &ATOM_LENGTH);
-
-        u32 i;
-        u32 offset = 0;
-        u8 set = 0;
-        for(i = 0; i < ATOM_LENGTH; ++i)
-        {
-            if(atoms[i] == atom)
-            {   
-                offset = i;
-                set = 1;
-                break;
-            }
-        }
-
-        if(set)
-        {
-            if(_delete)
-            {
-                for(i = offset; i < ATOM_LENGTH - 1; ++i)
-                {   atoms[i] = atoms[i + 1];
-                }
-                data = atoms;
-                len = ATOM_LENGTH - 1;
-            }
-            else  /* atom already exists do nothing */
-            {   goto CLEANUP;   
-            }
-        }
-        else
-        {
-            if(_delete)     /* prop not found mark as already deleted */
-            {   goto CLEANUP;   
-            }
-            else    /* set propmode to append cause we didnt find it */
-            {   
-                propmode = XCB_PROP_MODE_APPEND;
-                len = 1;
-                data = &atom;
-            }
-        }
+    PropArg arg;
+    arg.ui[0] = atom;
+    if(state)
+    {   PropListenArg(_wm.dpy, c->win, PropSetWtype, arg);
     }
     else
-    {   
-        len = 1;
-        data = &atom;
+    {   PropListenArg(_wm.dpy, c->win, PropUnsetWtype, arg);
     }
-    XCBChangeProperty(_wm.dpy, win, netatom[NetWMWindowType], XCB_ATOM_ATOM, 32, propmode, (const char *)data, len);
-    goto CLEANUP;
-CLEANUP:
-    free(prop);
 }
 
 void
 setclientnetstate(Client *c, XCBAtom atom, u8 state)
 {
-    /* TODO manage race conditions without needing to lock the server */
-    const u8 _delete = !state;
-    const XCBWindow win = c->win;
-    const u32 NO_BYTE_OFFSET = 0L;
-    const u32 REQUEST_MAX_NEEDED_ITEMS = UINT32_MAX;
-
-    XCBCookie cookie = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMState], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_ATOM);
-    XCBWindowProperty *prop = XCBGetWindowPropertyReply(_wm.dpy, cookie);
-    void *data = NULL;
-    u32 len = 0;
-    u32 propmode = XCB_PROP_MODE_REPLACE;
-    if(prop)
-    {
-        XCBAtom *atoms = XCBGetPropertyValue(prop);
-        uint32_t ATOM_LENGTH = 0;
-        XCBGetPropertyValueLength(prop, sizeof(XCBAtom), &ATOM_LENGTH);
-
-        u32 i;
-        u32 offset = 0;
-        u8 set = 0;
-        for(i = 0; i < ATOM_LENGTH; ++i)
-        {
-            if(atoms[i] == atom)
-            {   
-                offset = i;
-                set = 1;
-                break;
-            }
-        }
-
-        if(set)
-        {
-            if(_delete)
-            {
-                /* this gets optimized to memmove, cool!
-                 * GCC v14.1.1 -O3
-                 */
-                for(i = offset; i < ATOM_LENGTH - 1; ++i)
-                {   atoms[i] = atoms[i + 1];
-                }
-                data = atoms;
-                len = ATOM_LENGTH - 1;
-            }
-            else  /* atom already exists do nothing */
-            {   goto CLEANUP;
-            }
-        }
-        else
-        {
-            if(_delete)     /* prop not found mark as already deleted */
-            {   goto CLEANUP;   
-            }
-            else    /* set propmode to append cause we didnt find it */
-            {   
-                propmode = XCB_PROP_MODE_APPEND;
-                len = 1;
-                data = &atom;
-            }
-        }
+    PropArg arg;
+    arg.ui[0] = atom;
+    if(state)
+    {   PropListenArg(_wm.dpy, c->win, PropSetWState, arg);
     }
     else
-    {   
-        len = 1;
-        data = &atom;
+    {   PropListenArg(_wm.dpy, c->win, PropUnsetWState, arg);
     }
-    XCBChangeProperty(_wm.dpy, win, netatom[NetWMState], XCB_ATOM_ATOM, 32, propmode, (const char *)data, len);
-    goto CLEANUP;
-CLEANUP:
-    free(prop);
 }
 
 void
