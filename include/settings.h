@@ -63,6 +63,55 @@ struct UserSettings
     SCParser *cfg;
 };
 
+enum USFlags
+{
+    USUseHoverFocus = 1 << 0,
+    USUseServerDecorations = 1 << 1,
+    USUseClientDecorations = 1 << 2,
+    USPreferClientDecorations = 1 << 3,
+};
+
+/* helper */
+#ifndef FIELD_SIZEOF
+#define FIELD_SIZEOF(t, f) (sizeof(((t*)0)->f))
+#endif
+
+enum
+{
+    Mfact,
+    GapRatio,
+    MCount,
+    Snap,
+    RefreshRate,
+    Flags,
+    MaxCC,
+
+
+    BarLX,
+    BarLY,
+    BarLW,
+    BarLH,
+
+    BarRX,
+    BarRY,
+    BarRW,
+    BarRH,
+
+    BarTX,
+    BarTY,
+    BarTW,
+    BarTH,
+
+    BarBX,
+    BarBY,
+    BarBW,
+    BarBH,
+
+    UserSettingsLAST,
+};
+
+
+
 /* Initialize Settings */
 void
 USInit(

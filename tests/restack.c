@@ -15,6 +15,11 @@ jzjmp(void)
     Atom dialog= XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DIALOG", False);
     Atom dock  = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DOCK", False);
     Atom below = XInternAtom(dpy, "_NET_WM_STATE_BELOW", False);
+
+
+    (void)modal;
+    (void)dialog;
+
     __test__start_basic();
 
 
