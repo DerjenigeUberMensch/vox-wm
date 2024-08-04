@@ -24,6 +24,7 @@ __Property__Cookie__
 {
     XCBWindow win;
     enum PropertyType type;
+    PropArg arg;
 };
 
 struct 
@@ -73,6 +74,10 @@ static void UpdateIcon(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCoo
 static void UpdateMotifHints(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
 static void UpdateManage(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
 static void UpdateUnmanage(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
+static void UpdateSetWType(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
+static void UpdateUnsetWType(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
+static void UpdateSetWState(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
+static void UpdateUnsetWState(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
 
 enum PropMode
 {
@@ -100,6 +105,14 @@ static PropHandler __prop_handler[PropLAST] =
     [PropMotifHints] =  { GetMotifHintsCookie,  UpdateMotifHints  },
     [PropManage] =      { GetInvalidCookie,     UpdateManage      },
     [PropUnmanage] =    { GetInvalidCookie,     UpdateUnmanage    },
+
+    /* Net setters */
+
+    [PropSetWtype] =    { GetWindowTypeCookie,  UpdateSetWType    },
+    [PropUnsetWtype] =  { GetWindowTypeCookie,  UpdateUnsetWType  },
+    [PropSetWState] =   { GetWindowStateCookie, UpdateSetWState   },
+    [PropUnsetWState] = { GetWindowStateCookie, UpdateUnsetWState },
+
 
     [PropExitThread] =  { GetInvalidCookie,     UpdateInvalid     },
 };
@@ -427,6 +440,62 @@ UpdateUnmanage(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB
     UnlockMainThread();
 }
 
+void 
+UpdateSetWType(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE)
+{
+    const XCBWindow win = cookie->win;
+    const XCBAtom atom = cookie->arg.i[0];
+    const XCBAtom type = netatom[NetWMWindowType];
+
+    /* TODO: Time based race condition */
+    XCBWindowProperty *prop = XCBGetWindowPropertyReply(display, _XCB_COOKIE);
+    XCBSetAtomState(display, win, type, atom, prop, 0);
+    XCBFlush(_wm.dpy);
+    free(prop);
+}
+
+void 
+UpdateUnsetWType(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE)
+{
+    const XCBWindow win = cookie->win;
+    const XCBAtom atom = cookie->arg.i[0];
+    const XCBAtom type = netatom[NetWMWindowType];
+
+    /* TODO: Time based race condition */
+    XCBWindowProperty *prop = XCBGetWindowPropertyReply(display, _XCB_COOKIE);
+    XCBSetAtomState(display, win, type, atom, prop, 1);
+    XCBFlush(_wm.dpy);
+    free(prop);
+}
+void 
+UpdateSetWState(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE)
+{
+    const XCBWindow win = cookie->win;
+    const XCBAtom atom = cookie->arg.i[0];
+    const XCBAtom type = netatom[NetWMState];
+
+    /* TODO: Time based race condition */
+    XCBWindowProperty *prop = XCBGetWindowPropertyReply(display, _XCB_COOKIE);
+    XCBSetAtomState(display, win, type, atom, prop, 0);
+    XCBFlush(_wm.dpy);
+    free(prop);
+
+}
+void 
+UpdateUnsetWState(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE)
+{
+    const XCBWindow win = cookie->win;
+    const XCBAtom atom = cookie->arg.i[0];
+    const XCBAtom type = netatom[NetWMState];
+
+    /* TODO: Time based race condition */
+    XCBWindowProperty *prop = XCBGetWindowPropertyReply(display, _XCB_COOKIE);
+    XCBSetAtomState(display, win, type, atom, prop, 1);
+    XCBFlush(_wm.dpy);
+    free(prop);
+}
+
+
 static void
 UpdateProperty(XCBDisplay *display, __Property__Cookie__ *cookie)
 {
@@ -584,12 +653,20 @@ PropDestroy(void)
 
 void 
 PropListen(XCBDisplay *display, XCBWindow win, enum PropertyType type)
+{   
+    PropArg arg = {0};
+    PropListenArg(display, win, type, arg);
+}
+
+void
+PropListenArg(XCBDisplay *display, XCBWindow win, enum PropertyType type, PropArg arg)
 {
     int full = CQueueIsFull(&__threads.queue);
     int usethreads = __threads.use_threads && _wm.use_threads;
     __Property__Cookie__ cookie;
     cookie.win = win;
     cookie.type = type;
+    cookie.arg = arg;
     if(usethreads && !full)
     {   CQueueAdd(&__threads.queue, (void *)&cookie);
     }
@@ -599,3 +676,6 @@ PropListen(XCBDisplay *display, XCBWindow win, enum PropertyType type)
         Debug("Using single threads, full: %d", full);
     }
 }
+
+
+
