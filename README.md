@@ -136,7 +136,8 @@ These are the default keybinds currently used within vox-wm, they are not curren
 | CTRL+ALT+q | Terminate Current Window |
 | SUPER+w | Maximize Current Window |
 | SUPER+SHIFT+p | Quit (exit window manager) |
-| SUPER+CTRL+p | Restart |
+| SUPER+CTRL+p | Soft Restart |
+| CTRL+ALT+p | Hard Restart |
 | SUPER+z | Change Layout To Tiling |
 | SUPER+x | Change Layout To Floating |
 | SUPER+c | Change Layout To Monocle |
