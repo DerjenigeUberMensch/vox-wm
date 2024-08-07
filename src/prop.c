@@ -12,12 +12,12 @@ extern XCBAtom wmatom[];
 extern XCBAtom motifatom;
 
 XCBCookie
-GetTransientCookie(XCBDisplay *display, XCBWindow win)
+PropGetTransientCookie(XCBDisplay *display, XCBWindow win)
 {   return XCBGetTransientForHintCookie(display, win);
 }
 
 XCBCookie
-GetWindowStateCookie(XCBDisplay *display, XCBWindow win)
+PropGetWindowStateCookie(XCBDisplay *display, XCBWindow win)
 {   
     const uint8_t NO_BYTE_OFFSET = 0;
     const uint32_t REQUEST_MAX_NEEDED_ITEMS = UINT32_MAX;
@@ -25,7 +25,7 @@ GetWindowStateCookie(XCBDisplay *display, XCBWindow win)
 }
 
 XCBCookie
-GetWindowTypeCookie(XCBDisplay *display, XCBWindow win)
+PropGetWindowTypeCookie(XCBDisplay *display, XCBWindow win)
 {   
     const uint8_t NO_BYTE_OFFSET = 0;
     const uint32_t REQUEST_MAX_NEEDED_ITEMS = UINT32_MAX;
@@ -33,27 +33,27 @@ GetWindowTypeCookie(XCBDisplay *display, XCBWindow win)
 }
 
 XCBCookie
-GetSizeHintsCookie(XCBDisplay *display, XCBWindow win)
+PropGetSizeHintsCookie(XCBDisplay *display, XCBWindow win)
 {   return XCBGetWMNormalHintsCookie(display, win);
 }
 
 XCBCookie
-GetWMHintsCookie(XCBDisplay *display, XCBWindow win)
+PropGetWMHintsCookie(XCBDisplay *display, XCBWindow win)
 {   return XCBGetWMHintsCookie(display, win);
 }
 
 XCBCookie
-GetWMClassCookie(XCBDisplay *display, XCBWindow win)
+PropGetWMClassCookie(XCBDisplay *display, XCBWindow win)
 {   return XCBGetWMClassCookie(display, win);
 }
 
 XCBCookie
-GetWMProtocolCookie(XCBDisplay *display, XCBWindow win)
+PropGetWMProtocolCookie(XCBDisplay *display, XCBWindow win)
 {   return XCBGetWMProtocolsCookie(display, win, wmatom[WMProtocols]);
 }
 
 XCBCookie
-GetStrutCookie(XCBDisplay *display, XCBWindow win)
+PropGetStrutCookie(XCBDisplay *display, XCBWindow win)
 {   
     const uint8_t NO_BYTE_OFFSET = 0;
     const uint8_t STRUT_LENGTH = 4;
@@ -61,7 +61,7 @@ GetStrutCookie(XCBDisplay *display, XCBWindow win)
 }
 
 XCBCookie
-GetStrutpCookie(XCBDisplay *display, XCBWindow win)
+PropGetStrutpCookie(XCBDisplay *display, XCBWindow win)
 {   
     const uint8_t NO_BYTE_OFFSET = 0;
     const uint8_t STRUT_P_LENGTH = 12;
@@ -69,7 +69,7 @@ GetStrutpCookie(XCBDisplay *display, XCBWindow win)
 }
 
 XCBCookie
-GetNetWMNameCookie(XCBDisplay *display, XCBWindow win)
+PropGetNetWMNameCookie(XCBDisplay *display, XCBWindow win)
 {   
     const uint8_t NO_BYTE_OFFSET = 0;
     const uint32_t REQUEST_MAX_NEEDED_ITEMS = UINT32_MAX;
@@ -77,7 +77,7 @@ GetNetWMNameCookie(XCBDisplay *display, XCBWindow win)
 }
 
 XCBCookie
-GetWMNameCookie(XCBDisplay *display, XCBWindow win)
+PropGetWMNameCookie(XCBDisplay *display, XCBWindow win)
 {   
     const uint8_t NO_BYTE_OFFSET = 0;
     const uint32_t REQUEST_MAX_NEEDED_ITEMS = UINT32_MAX;
@@ -85,12 +85,12 @@ GetWMNameCookie(XCBDisplay *display, XCBWindow win)
 }
 
 XCBCookie
-GetPidCookie(XCBDisplay *display, XCBWindow win)
+PropGetPidCookie(XCBDisplay *display, XCBWindow win)
 {   return XCBGetPidCookie(display, win, netatom[NetWMPid]);
 }
 
 XCBCookie
-GetIconCookie(XCBDisplay *display, XCBWindow win)
+PropGetIconCookie(XCBDisplay *display, XCBWindow win)
 {   
     const uint8_t NO_BYTE_OFFSET = 0;
     const uint32_t REQUEST_MAX_NEEDED_ITEMS = UINT32_MAX;
@@ -98,7 +98,7 @@ GetIconCookie(XCBDisplay *display, XCBWindow win)
 }
 
 XCBCookie
-GetMotifHintsCookie(XCBDisplay *display, XCBWindow win)
+PropGetMotifHintsCookie(XCBDisplay *display, XCBWindow win)
 {   
     const uint8_t NO_BYTE_OFFSET = 0;
     const uint8_t MOTIF_WM_HINT_LENGTH = 5;

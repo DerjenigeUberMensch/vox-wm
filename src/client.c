@@ -879,20 +879,20 @@ managerequest(XCBWindow win, XCBCookie requests[ManageClientLAST])
 {
     requests[ManageClientAttributes] = XCBGetWindowAttributesCookie(_wm.dpy, win);
     requests[ManageClientGeometry] = XCBGetWindowGeometryCookie(_wm.dpy, win);
-    requests[ManageClientTransient] = GetTransientCookie(_wm.dpy, win);
-    requests[ManageClientWType] = GetWindowTypeCookie(_wm.dpy, win);
-    requests[ManageClientWState] = GetWindowStateCookie(_wm.dpy, win);
-    requests[ManageClientSizeHint] = GetSizeHintsCookie(_wm.dpy, win);
-    requests[ManageClientWMHints] = GetWMHintsCookie(_wm.dpy, win);
-    requests[ManageClientClass] = GetWMClassCookie(_wm.dpy, win);
-    requests[ManageClientWMProtocol] = GetWMProtocolCookie(_wm.dpy, win);
-    requests[ManageClientStrut] = GetStrutCookie(_wm.dpy, win);
-    requests[ManageClientStrutP] = GetStrutpCookie(_wm.dpy, win);
-    requests[ManageClientNetWMName] = GetNetWMNameCookie(_wm.dpy, win);
-    requests[ManageClientWMName] = GetWMNameCookie(_wm.dpy, win);
-    requests[ManageClientPid] = GetPidCookie(_wm.dpy, win);
-    requests[ManageClientIcon] = GetIconCookie(_wm.dpy, win);
-    requests[ManageClientMotif] = GetMotifHintsCookie(_wm.dpy, win);
+    requests[ManageClientTransient] = PropGetTransientCookie(_wm.dpy, win);
+    requests[ManageClientWType] = PropGetWindowTypeCookie(_wm.dpy, win);
+    requests[ManageClientWState] = PropGetWindowStateCookie(_wm.dpy, win);
+    requests[ManageClientSizeHint] = PropGetSizeHintsCookie(_wm.dpy, win);
+    requests[ManageClientWMHints] = PropGetWMHintsCookie(_wm.dpy, win);
+    requests[ManageClientClass] = PropGetWMClassCookie(_wm.dpy, win);
+    requests[ManageClientWMProtocol] = PropGetWMProtocolCookie(_wm.dpy, win);
+    requests[ManageClientStrut] = PropGetStrutCookie(_wm.dpy, win);
+    requests[ManageClientStrutP] = PropGetStrutpCookie(_wm.dpy, win);
+    requests[ManageClientNetWMName] = PropGetNetWMNameCookie(_wm.dpy, win);
+    requests[ManageClientWMName] = PropGetWMNameCookie(_wm.dpy, win);
+    requests[ManageClientPid] = PropGetPidCookie(_wm.dpy, win);
+    requests[ManageClientIcon] = PropGetIconCookie(_wm.dpy, win);
+    requests[ManageClientMotif] = PropGetMotifHintsCookie(_wm.dpy, win);
 }
 
 void

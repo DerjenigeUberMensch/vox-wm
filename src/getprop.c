@@ -55,7 +55,7 @@ extern XCBAtom netatom[NetLast];
 extern XCBAtom wmatom[WMLast];
 extern XCBAtom motifatom;
 
-XCBCookie GetInvalidCookie(XCBDisplay *display, XCBWindow window);
+XCBCookie PropGetInvalidCookie(XCBDisplay *display, XCBWindow window);
 
 static void UpdateInvalid(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
 static void UpdateTrans(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
@@ -88,33 +88,33 @@ enum PropMode
 
 static PropHandler __prop_handler[PropLAST] =
 {
-    [PropNone] =        { GetInvalidCookie,     UpdateInvalid     },
-    [PropTransient] =   { GetTransientCookie,   UpdateTrans       },
-    [PropWindowState] = { GetWindowStateCookie, UpdateWindowState },
-    [PropWindowType] =  { GetWindowTypeCookie,  UpdateWindowType  },
-    [PropSizeHints] =   { GetSizeHintsCookie,   UpdateSizeHints   },
-    [PropWMHints] =     { GetWMHintsCookie,     UpdateWMHints     },
-    [PropWMClass] =     { GetWMClassCookie,     UpdateWMClass     },
-    [PropWMProtocol] =  { GetWMProtocolCookie,  UpdateWMProtocol  },
-    [PropStrut] =       { GetStrutCookie,       UpdateStrut       },
-    [PropStrutp] =      { GetStrutpCookie,      UpdateStrutP      },
-    [PropNetWMName] =   { GetNetWMNameCookie,   UpdateNetWMName   },
-    [PropWMName] =      { GetWMNameCookie,      UpdateWMName      },
-    [PropPid] =         { GetPidCookie,         UpdatePid         },
-    [PropIcon] =        { GetIconCookie,        UpdateIcon        },
-    [PropMotifHints] =  { GetMotifHintsCookie,  UpdateMotifHints  },
-    [PropManage] =      { GetInvalidCookie,     UpdateManage      },
-    [PropUnmanage] =    { GetInvalidCookie,     UpdateUnmanage    },
+    [PropNone] =        { PropGetInvalidCookie,     UpdateInvalid     },
+    [PropTransient] =   { PropGetTransientCookie,   UpdateTrans       },
+    [PropWindowState] = { PropGetWindowStateCookie, UpdateWindowState },
+    [PropWindowType] =  { PropGetWindowTypeCookie,  UpdateWindowType  },
+    [PropSizeHints] =   { PropGetSizeHintsCookie,   UpdateSizeHints   },
+    [PropWMHints] =     { PropGetWMHintsCookie,     UpdateWMHints     },
+    [PropWMClass] =     { PropGetWMClassCookie,     UpdateWMClass     },
+    [PropWMProtocol] =  { PropGetWMProtocolCookie,  UpdateWMProtocol  },
+    [PropStrut] =       { PropGetStrutCookie,       UpdateStrut       },
+    [PropStrutp] =      { PropGetStrutpCookie,      UpdateStrutP      },
+    [PropNetWMName] =   { PropGetNetWMNameCookie,   UpdateNetWMName   },
+    [PropWMName] =      { PropGetWMNameCookie,      UpdateWMName      },
+    [PropPid] =         { PropGetPidCookie,         UpdatePid         },
+    [PropIcon] =        { PropGetIconCookie,        UpdateIcon        },
+    [PropMotifHints] =  { PropGetMotifHintsCookie,  UpdateMotifHints  },
+    [PropManage] =      { PropGetInvalidCookie,     UpdateManage      },
+    [PropUnmanage] =    { PropGetInvalidCookie,     UpdateUnmanage    },
 
     /* Net setters */
 
-    [PropSetWtype] =    { GetWindowTypeCookie,  UpdateSetWType    },
-    [PropUnsetWtype] =  { GetWindowTypeCookie,  UpdateUnsetWType  },
-    [PropSetWState] =   { GetWindowStateCookie, UpdateSetWState   },
-    [PropUnsetWState] = { GetWindowStateCookie, UpdateUnsetWState },
+    [PropSetWtype] =    { PropGetWindowTypeCookie,  UpdateSetWType    },
+    [PropUnsetWtype] =  { PropGetWindowTypeCookie,  UpdateUnsetWType  },
+    [PropSetWState] =   { PropGetWindowStateCookie, UpdateSetWState   },
+    [PropUnsetWState] = { PropGetWindowStateCookie, UpdateUnsetWState },
 
 
-    [PropExitThread] =  { GetInvalidCookie,     UpdateInvalid     },
+    [PropExitThread] =  { PropGetInvalidCookie,     UpdateInvalid     },
 };
 
 
@@ -135,7 +135,7 @@ UnlockMainThread(void)
 }
 
 XCBCookie
-GetInvalidCookie(XCBDisplay *display, XCBWindow win)
+PropGetInvalidCookie(XCBDisplay *display, XCBWindow win)
 {   
     (void)display;
     (void)win;
