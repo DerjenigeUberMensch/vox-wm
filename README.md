@@ -153,7 +153,7 @@ These are the default keybinds currently used within vox-wm, they are not curren
 | SUPER+0 | Set Current Desktop To 10 |
 
 ### Base Calls
-These are actions are those expect supporting basic keyboard support.
+These are actions that expected supporting basic keyboard support.
 | Key | Action |
 | ----- | ----- |
 | F11 | Fullscreen On The Current Window |
