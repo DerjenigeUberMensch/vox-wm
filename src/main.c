@@ -836,9 +836,15 @@ restorestacksession(Desktop *desk, char *buff, uint16_t len)
 void
 restart(void)
 {
-    _wm.restart = 1;
-    Debug0("Restarting...");
-    quit();
+    _wm.restart = SoftRestart;
+    Debug("Flag set %s", M_STRINGIFY(SoftRestart));
+}
+
+void
+restarthard(void)
+{
+    _wm.restart = HardRestart;
+    Debug("Flag set %s", M_STRINGIFY(HardRestart));
 }
 
 void 
@@ -1327,7 +1333,7 @@ sighandler(void)
 void
 sighup(int signo) /* signal */
 {
-    restart();
+    restarthard();
 }
 
 void
@@ -1409,6 +1415,21 @@ specialconds(int argc, char *argv[])
      */
     if(_wm.dpy)
     {   cleanup();
+    }
+
+    /* Check if restart hard */
+    switch(_wm.restart)
+    {
+        case NoRestart:
+        case SoftRestart:
+            break;
+        case HardRestart:
+            if(argc)
+            {   execvp(argv[0], argv);
+            }
+            /* execvp failed, likely the binary no longer exists */
+            Debug("Failed to restart using execvp, defaulting to %s", M_STRINGIFY(SoftRestart));
+            break;
     }
 }
 

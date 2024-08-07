@@ -379,6 +379,13 @@ DragWindow(
 
 void
 Restart(const Arg *arg)
+{   
+    restarthard();
+    quit();
+}
+
+void
+RestartQ(const Arg *arg)
 {
     restart();
     quit();

@@ -14,8 +14,10 @@ void KillWindow(const Arg *arg);
 void TerminateWindow(const Arg *arg);
 /* keybind to move the current window where the mouse cursor is */
 void DragWindow(const Arg *arg);
-/* restarts wm */
+/* Hard restart, execvp() */
 void Restart(const Arg *arg);
+/* Soft restart, self hosted, ie: do {} while(restart) */
+void RestartQ(const Arg *arg);
 /* quits wm */
 void Quit(const Arg *arg);
 /* resizes the current window based on mouse position */

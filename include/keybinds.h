@@ -104,7 +104,8 @@ static const Key keys[] =
     { XCBKeyPress,         CTRL|ALT,                XK_q,	                TerminateWindow,    {0} },
     { XCBKeyPress,         SUPER,                   XK_w,                   MaximizeWindow,     {0} },
     { XCBKeyPress,         SUPER|SHIFT,             XK_p,                   Quit,               {0} },
-    { XCBKeyPress,         SUPER|CTRL,              XK_p,                   Restart,            {0} },  /* UNSAFE sscanf() */
+    { XCBKeyPress,         SUPER|CTRL,              XK_p,                   RestartQ,           {0} },  /* UNSAFE sscanf() */
+    { XCBKeyPress,         CTRL|ALT,                XK_p,                   Restart,            {0} },  /* UNSAFE sscanf() */
     { XCBKeyPress,         SUPER,                   XK_z,                   SetWindowLayout,    {Tiled} },
     { XCBKeyPress,         SUPER,                   XK_x,                   SetWindowLayout,    {Floating} },
     { XCBKeyPress,         SUPER,                   XK_c,                   SetWindowLayout,    {Monocle} },
