@@ -12,38 +12,21 @@
 #include "prop.h"
 #include "main.h"
 
-#define QUEUE_SIZE 256
-/* realistically you wont ever need more than 64 as most of these threads are just waiting for data. */
-#define MAX_THREADS 64
-
-typedef struct ThreadHandler ThreadHandler;
-
-
-struct 
-ThreadHandler
-{
-    CQueue queue;
-    uint32_t use_threads;
-    pthread_t threads[MAX_THREADS];
-    GetPropCookie queue_data[QUEUE_SIZE];
-};
-
-static ThreadHandler __threads;
-
 extern WM _wm;
-/* These dont require mutex for the following reasons:
- * - They are stack allocated.
- * - They are set during setup() before propertynotify is intialized.
- * - They are never changed afterwards.
- * - These threads are killed before exit, to prevent the stack from de-initializing these variables.
- */
-extern XCBAtom netatom[NetLast];
-extern XCBAtom wmatom[WMLast];
-extern XCBAtom motifatom;
+
+PropHandler __handler__;
+
+/* forward declartions */
+static void PropInitThreads(PropHandler *handler);
+static void PropInitQueue(PropHandler *handler);
+
 
 void *
-Worker(void *x)
+Worker(
+        void *x
+        )
 {
+    PropHandler *handler = x;
     int screen;
     XCBDisplay *display = XCBOpenDisplay(NULL, &screen);
     GetPropCookie cookie = { .win = 0, .type = 0 };
@@ -55,11 +38,11 @@ Worker(void *x)
     while(cookie.type != PropExitThread)
     {
         /* wait for stuff to happen */
-        pthread_mutex_lock(&__threads.queue.condmutex);
-        pthread_cond_wait(&__threads.queue.cond, &__threads.queue.condmutex);
-        pthread_mutex_unlock(&__threads.queue.condmutex);
+        pthread_mutex_lock(&handler->queue.condmutex);
+        pthread_cond_wait(&handler->queue.cond, &handler->queue.condmutex);
+        pthread_mutex_unlock(&handler->queue.condmutex);
         /* grab if any item */
-        CQueuePop(&__threads.queue, &cookie);
+        CQueuePop(&handler->queue, &cookie);
 
         if(cookie.win)
         {   
@@ -73,7 +56,9 @@ Worker(void *x)
 
 
 static int
-CreateWorkerAttr(pthread_attr_t *attr)
+CreateWorkerAttr(
+        pthread_attr_t *attr
+        )
 {
     int status = 0;
     status = pthread_attr_init(attr);
@@ -99,7 +84,10 @@ CreateWorkerAttr(pthread_attr_t *attr)
  * RETURN: pthread_create() return values.
  */
 static int
-CreateWorker(pthread_t *id_return)
+CreateWorker(
+        PropHandler *handler,
+        pthread_t *id_return
+        )
 {
     int ret;
     pthread_attr_t attr;
@@ -107,104 +95,175 @@ CreateWorker(pthread_t *id_return)
     if(ret)
     {   return ret;
     }
-    ret = pthread_create(id_return, &attr, Worker, NULL);
+    ret = pthread_create(id_return, &attr, Worker, handler);
     pthread_attr_destroy(&attr);
     return ret;
 }
 
-static uint32_t
-PropGetThreadCount(void)
+static void
+PropCreateWorkers(
+        PropHandler *handler,
+        uint32_t workers
+        )
 {
-    static uint32_t threads = 0;
-    if(threads)
-    {   return threads;
+    int64_t i;
+    int status;
+    for(i = 0; i < workers; ++i)
+    {   
+        status = CreateWorker(handler, &handler->threads[i]);
+        /* Restart postion, if failed */
+        if(status)
+        {   
+            Debug("Failed to create Worker thread, pthread status [%d]", status);
+            --i;
+            --workers;
+        }
     }
+}
+
+void
+PropDestroyWorkers(
+        PropHandler *handler
+        )
+{
+    while(!CQueueIsEmpty(&handler->queue))
+    {   CQueuePop(&handler->queue, NULL);
+    }
+    while(!CQueueIsFull(&handler->queue))
+    {   PropListen(handler, NULL, 0, PropExitThread);
+    }
+    /* Wakup any threads (if they didnt wakup already) */
+    pthread_cond_broadcast(&handler->queue.cond);
+    uint32_t i;
+    for(i = 0; i < handler->thread_length; ++i)
+    {   pthread_join(handler->threads[i], NULL);
+    }
+}
+
+
+PropHandler *
+PropCreateStatic(
+        void
+        )
+{   return &__handler__;
+}
+
+void 
+PropInit(
+        PropHandler *handler
+        )
+{
+    /* Make clean */
+    memset(handler, 0, sizeof(PropHandler));
+    if(!_wm.use_threads)
+    {   
+        handler->use_threads = 0;
+        return;
+    }
+    
+    PropInitQueue(handler);
+
+    if(!handler->queue_data)
+    {   
+        handler->use_threads = 0;
+        return;
+    }
+
+    u8 ret = CQueueCreate((void **)handler->queue_data, handler->queue_length, sizeof(GetPropCookie), &handler->queue);
+
+    handler->use_threads = !ret;
+
+    if(handler->use_threads)
+    {   
+        PropInitThreads(handler);
+        if(handler->thread_length)
+        {   PropCreateWorkers(handler, handler->thread_length);
+        }
+        else
+        {   
+            PropDestroy(handler);
+            handler->use_threads = 0;
+        }
+    }
+}
+
+static void
+PropInitThreads(
+        PropHandler *handler
+        )
+{
     /* default just use 4 */
-    uint32_t aloc_threads = 4;
+    u32 aloc_threads = 4;
+    u32 BASE_LINE_MAX = 500;  /* Anything past 500 threads wouldnt be particularly necessary. */
     long cores = sysconf(_SC_NPROCESSORS_ONLN);
     if(cores > aloc_threads)
     {   aloc_threads = cores * 2;   /* 2 threads per core */
     }
-    if(aloc_threads > MAX_THREADS)
-    {   aloc_threads = MAX_THREADS;
+    if(aloc_threads > BASE_LINE_MAX)
+    {   aloc_threads = BASE_LINE_MAX;
     }
-    threads = aloc_threads;
-    return aloc_threads;
-}
 
-static void
-PropCreateWorkers(uint32_t threads)
-{
-    int32_t i;
-    for(i = 0; i < threads; ++i)
-    {   CreateWorker(&__threads.threads[i]);
-    }
-}
-
-static void
-PropDestroyWorkers(uint32_t threads)
-{
-    while(!CQueueIsEmpty(&__threads.queue))
-    {   CQueuePop(&__threads.queue, NULL);
-    }
-    while(!CQueueIsFull(&__threads.queue))
-    {   PropListen(NULL, 0, PropExitThread);
-    }
-    /* Wakup any threads (if they didnt wakup already) */
-    pthread_cond_broadcast(&__threads.queue.cond);
-    uint32_t i;
-    for(i = 0; i < threads; ++i)
-    {   pthread_join(__threads.threads[i], NULL);
-    }
-}
-
-void 
-PropInit(void)
-{
-    /* Make clean */
-    memset(&__threads, 0, sizeof(ThreadHandler));
-    if(!_wm.use_threads)
+    void *threads = NULL;
+    size_t alloc_size = aloc_threads * sizeof(*handler->threads);
+    while(!threads && alloc_size)
     {   
-        __threads.use_threads = 0;
-        return;
+        threads = malloc(alloc_size);
+        alloc_size /= 2;
     }
-    uint8_t ret = CQueueCreate((void **)&__threads.queue_data, QUEUE_SIZE, sizeof(GetPropCookie), &__threads.queue);
-    __threads.use_threads = !ret;
-    if(!ret)
-    {   PropCreateWorkers(PropGetThreadCount());
-    }
+    handler->thread_length = aloc_threads;
+    handler->threads = threads;
 }
 
 void
-PropDestroy(void)
+PropInitQueue(
+        PropHandler *handler
+        )
 {
-    if(!_wm.use_threads)
-    {   return;
+    const u32 DEFAULT_SIZE = 256;
+    const size_t size = sizeof(GetPropCookie) * DEFAULT_SIZE;
+    handler->queue_data = malloc(size);
+    handler->queue_length = DEFAULT_SIZE;
+}
+
+void
+PropDestroy(
+        PropHandler *handler
+        )
+{
+    if(handler->use_threads)
+    {   PropDestroyWorkers(handler);
     }
-    if(__threads.use_threads)
-    {   PropDestroyWorkers(PropGetThreadCount());
-    }
-    CQueueDestroy(&__threads.queue);
+    CQueueDestroy(&handler->queue);
+    free(handler->queue_data);
+    free(handler->threads);
 }
 
 void 
-PropListen(XCBDisplay *display, XCBWindow win, enum PropertyType type)
+PropListen(
+        PropHandler *handler,
+        XCBDisplay *display, 
+        XCBWindow win, 
+        enum PropertyType type
+        )
 {   
     PropArg arg = {0};
-    PropListenArg(display, win, type, arg);
+    PropListenArg(handler, display, win, type, arg);
 }
 
 void
-PropListenArg(XCBDisplay *display, XCBWindow win, enum PropertyType type, PropArg arg)
+PropListenArg(
+        PropHandler *handler,
+        XCBDisplay *display, 
+        XCBWindow win, 
+        enum PropertyType type, 
+        PropArg arg
+        )
 {
-    int full = CQueueIsFull(&__threads.queue);
-    int usethreads = __threads.use_threads && _wm.use_threads;
-    GetPropCookie cookie;
-    cookie.win = win;
-    cookie.type = type;
-    cookie.arg = arg;
+    int full = CQueueIsFull(&handler->queue);
+    int usethreads = handler->use_threads && _wm.use_threads;
+    GetPropCookie cookie = { .win = win, .type = type, .arg = arg };
     if(usethreads && !full)
-    {   CQueueAdd(&__threads.queue, (void *)&cookie);
+    {   CQueueAdd(&handler->queue, (void *)&cookie);
     }
     else
     {   /* single thread operation */
@@ -212,6 +271,4 @@ PropListenArg(XCBDisplay *display, XCBWindow win, enum PropertyType type, PropAr
         Debug("Using single threads, full: %d", full);
     }
 }
-
-
 

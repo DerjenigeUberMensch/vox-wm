@@ -313,7 +313,7 @@ void
 cleanup(void)
 {
     savesession();
-    PropDestroy();
+    PropDestroy(_wm.handler);
     if(!_wm.dpy)
     {
         /* sometimes due to our own lack of competence we can call quit twice and segfault here */
@@ -758,7 +758,7 @@ restoremonsession(char *buff, u16 len)
                 {   
                     XCBWindow win = pullm->bar->win;
                     unmanage(pullm->bar, 0);
-                    PropListen(_wm.dpy, win, PropManage);
+                    PropListen(_wm.handler, _wm.dpy, win, PropManage);
                 }
                 setupbar(pullm, b);
             }
@@ -1148,6 +1148,8 @@ setup(void)
     setupcursors();
     setupcfg();
     setupwm();
+    /* Setup prop handler */
+    PropInit(_wm.handler);
     /* finds any monitor's */
     updategeom();
     updatedesktopnum();
@@ -1416,7 +1418,6 @@ startup(void)
     setupsys();
     startupwm();
     checkotherwm();
-    PropInit();
     atexit(exithandler);
 #ifndef Debug
     XCBSetErrorHandler(xerror);
@@ -1450,6 +1451,7 @@ startupwm(void)
         }
         DIECAT("FATAL: Cannot Connect to X Server. [%s]", display);
     }
+    _wm.handler = PropCreateStatic();
     /* This allows for execvp and exec to only spawn process on the specified display rather than the default varaibles */
     if(display)
     {   setenv("DISPLAY", display, 1);
