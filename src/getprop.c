@@ -9,23 +9,15 @@
 #include "XCB-TRL/xcb_winutil.h"
 #include "queue.h"
 #include "getprop.h"
+#include "prop.h"
 #include "main.h"
 
 #define QUEUE_SIZE 256
 /* realistically you wont ever need more than 64 as most of these threads are just waiting for data. */
 #define MAX_THREADS 64
 
-typedef struct __Property__Cookie__ __Property__Cookie__;
 typedef struct ThreadHandler ThreadHandler;
-typedef struct PropHandler PropHandler;
 
-struct  
-__Property__Cookie__
-{
-    XCBWindow win;
-    enum PropertyType type;
-    PropArg arg;
-};
 
 struct 
 ThreadHandler
@@ -33,13 +25,7 @@ ThreadHandler
     CQueue queue;
     uint32_t use_threads;
     pthread_t threads[MAX_THREADS];
-    __Property__Cookie__ queue_data[QUEUE_SIZE];
-};
-
-struct PropHandler
-{
-    XCBCookie (*cookie_getter)(XCBDisplay *display, XCBWindow window);
-    void (*reply_getter)(XCBDisplay *display, __Property__Cookie__ *, XCBCookie);
+    GetPropCookie queue_data[QUEUE_SIZE];
 };
 
 static ThreadHandler __threads;
@@ -55,462 +41,12 @@ extern XCBAtom netatom[NetLast];
 extern XCBAtom wmatom[WMLast];
 extern XCBAtom motifatom;
 
-XCBCookie PropGetInvalidCookie(XCBDisplay *display, XCBWindow window);
-
-static void UpdateInvalid(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
-static void UpdateTrans(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
-static void UpdateWindowState(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
-static void UpdateWindowType(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
-static void UpdateSizeHints(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
-static void UpdateWMHints(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
-static void UpdateWMClass(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
-static void UpdateWMProtocol(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
-static void UpdateStrut(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
-static void UpdateStrutP(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
-static void UpdateNetWMName(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
-static void UpdateWMName(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
-static void UpdatePid(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
-static void UpdateIcon(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
-static void UpdateMotifHints(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
-static void UpdateManage(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
-static void UpdateUnmanage(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
-static void UpdateSetWType(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
-static void UpdateUnsetWType(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
-static void UpdateSetWState(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
-static void UpdateUnsetWState(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE);
-
-enum PropMode
-{
-    __PropModeCookie,
-    __PropModeReply,
-    __PropModeLAST,
-};
-
-static PropHandler __prop_handler[PropLAST] =
-{
-    [PropNone] =        { PropGetInvalidCookie,     UpdateInvalid     },
-    [PropTransient] =   { PropGetTransientCookie,   UpdateTrans       },
-    [PropWindowState] = { PropGetWindowStateCookie, UpdateWindowState },
-    [PropWindowType] =  { PropGetWindowTypeCookie,  UpdateWindowType  },
-    [PropSizeHints] =   { PropGetSizeHintsCookie,   UpdateSizeHints   },
-    [PropWMHints] =     { PropGetWMHintsCookie,     UpdateWMHints     },
-    [PropWMClass] =     { PropGetWMClassCookie,     UpdateWMClass     },
-    [PropWMProtocol] =  { PropGetWMProtocolCookie,  UpdateWMProtocol  },
-    [PropStrut] =       { PropGetStrutCookie,       UpdateStrut       },
-    [PropStrutp] =      { PropGetStrutpCookie,      UpdateStrutP      },
-    [PropNetWMName] =   { PropGetNetWMNameCookie,   UpdateNetWMName   },
-    [PropWMName] =      { PropGetWMNameCookie,      UpdateWMName      },
-    [PropPid] =         { PropGetPidCookie,         UpdatePid         },
-    [PropIcon] =        { PropGetIconCookie,        UpdateIcon        },
-    [PropMotifHints] =  { PropGetMotifHintsCookie,  UpdateMotifHints  },
-    [PropManage] =      { PropGetInvalidCookie,     UpdateManage      },
-    [PropUnmanage] =    { PropGetInvalidCookie,     UpdateUnmanage    },
-
-    /* Net setters */
-
-    [PropSetWtype] =    { PropGetWindowTypeCookie,  UpdateSetWType    },
-    [PropUnsetWtype] =  { PropGetWindowTypeCookie,  UpdateUnsetWType  },
-    [PropSetWState] =   { PropGetWindowStateCookie, UpdateSetWState   },
-    [PropUnsetWState] = { PropGetWindowStateCookie, UpdateUnsetWState },
-
-
-    [PropExitThread] =  { PropGetInvalidCookie,     UpdateInvalid     },
-};
-
-
-static void
-LockMainThread(void)
-{   
-    if(__threads.use_threads)
-    {   pthread_mutex_lock(&_wm.mutex);
-    }
-}
-
-static void
-UnlockMainThread(void)
-{   
-    if(__threads.use_threads)
-    {   pthread_mutex_unlock(&_wm.mutex);
-    }
-}
-
-XCBCookie
-PropGetInvalidCookie(XCBDisplay *display, XCBWindow win)
-{   
-    (void)display;
-    (void)win;
-    return (XCBCookie) { .sequence = 0 };
-}
-
-static void
-UpdateInvalid(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE)
-{   
-    (void)display;
-    (void)cookie;
-    (void)_XCB_COOKIE;
-}
-
-static void
-UpdateTrans(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE)
-{
-    XCBWindow trans = 0;
-    uint8_t transstatus = XCBGetTransientForHintReply(display, _XCB_COOKIE, &trans);
-    if(transstatus)
-    {   
-        LockMainThread();
-        Client *c = wintoclient(cookie->win);
-        Client *ctrans = wintoclient(trans);
-        if(c)
-        {   
-            /* move to right desktop */
-            if(ctrans && ctrans->desktop != c->desktop)
-            {   setclientdesktop(c, ctrans->desktop);
-            }
-            /* set dialog flag(s) */
-            if(!ISFLOATING(c))
-            {   setfloating(c, 1);
-            }
-            setwtypedialog(c, 1);
-        }
-        UnlockMainThread();
-    }
-}
-
-static void
-UpdateWindowState(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE)
-{
-    XCBWindowProperty *prop = XCBGetWindowPropertyReply(_wm.dpy, _XCB_COOKIE);
-    if(prop)
-    {
-        LockMainThread();
-        Client *c = wintoclient(cookie->win);
-        if(c)
-        {
-            clientinitwstate(c, prop);
-        }
-        UnlockMainThread();
-    }
-    free(prop);
-}
-
-static void
-UpdateWindowType(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE)
-{
-    XCBWindowProperty *prop = XCBGetWindowPropertyReply(_wm.dpy, _XCB_COOKIE);
-    if(prop)
-    {
-        LockMainThread();
-        Client *c = wintoclient(cookie->win);
-        if(c)
-        {   
-            clientinitwtype(c, prop);
-        }
-        UnlockMainThread();
-    }
-    free(prop);
-}
-
-static void
-UpdateSizeHints(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE)
-{
-    XCBSizeHints hints;
-    int hintstatus = XCBGetWMNormalHintsReply(_wm.dpy, _XCB_COOKIE, &hints);
-    if(hintstatus)
-    {   
-        LockMainThread();
-        Client *c = wintoclient(cookie->win);
-        if(c)
-        {   updatesizehints(c, &hints);
-        }
-        UnlockMainThread();
-    }
-}
-
-static void
-UpdateWMHints(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE)
-{
-    XCBWMHints *prop = XCBGetWMHintsReply(_wm.dpy, _XCB_COOKIE);
-    if(prop)
-    {   
-        LockMainThread();
-        Client *c = wintoclient(cookie->win);
-        if(c)
-        {   updatewmhints(c, prop);
-        }
-        UnlockMainThread();
-    }
-    free(prop);
-}
-
-static void
-UpdateWMClass(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE)
-{
-    XCBWMClass prop;
-    int status = XCBGetWMClassReply(_wm.dpy, _XCB_COOKIE, &prop);
-    if(status)
-    {
-        LockMainThread();
-        Client *c = wintoclient(cookie->win);
-        if(c)
-        {   updateclass(c, &prop);
-        }
-        UnlockMainThread();
-        XCBWipeGetWMClass(&prop);
-    }
-}
-
-static void
-UpdateWMProtocol(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE)
-{
-    XCBWMProtocols prop;
-    int status = XCBGetWMProtocolsReply(_wm.dpy, _XCB_COOKIE, &prop);
-    if(status)
-    {   
-        LockMainThread();
-        Client *c = wintoclient(cookie->win);
-        if(c)
-        {   updatewindowprotocol(c, &prop);
-        }
-        UnlockMainThread();
-        XCBWipeGetWMProtocols(&prop);
-    }
-}
-
-static void
-UpdateStrut(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE)
-{
-    /* TODO */
-    XCBDiscardReply(display, _XCB_COOKIE);
-}
-
-static void
-UpdateStrutP(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE)
-{
-    /* TODO */
-    XCBDiscardReply(display, _XCB_COOKIE);
-}
-
-static void
-UpdateNetWMName(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE)
-{
-    XCBWindowProperty *prop = XCBGetWindowPropertyReply(_wm.dpy, _XCB_COOKIE);
-    char *netname = getnamefromreply(prop);
-    if(prop)
-    {
-        LockMainThread();
-        if(netname)
-        {
-            Client *c = wintoclient(cookie->win);
-            if(c)
-            {   updatetitle(c, netname, c->wmname);
-            }
-        }
-        UnlockMainThread();
-    }
-    free(prop);
-}
-
-static void
-UpdateWMName(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE)
-{
-    XCBWindowProperty *prop = XCBGetWindowPropertyReply(_wm.dpy, _XCB_COOKIE);
-    char *wmname = getnamefromreply(prop);
-    if(prop)
-    {
-        LockMainThread();
-        Client *c = wintoclient(cookie->win);
-        if(wmname)
-        {
-            if(c)
-            {   updatetitle(c, c->netwmname, wmname);
-            }
-        }
-        UnlockMainThread();
-    }
-    free(prop);
-}
-
-static void
-UpdatePid(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE)
-{
-    const int BAD_PID = -1;
-    pid_t prop = XCBGetPidReply(_wm.dpy, _XCB_COOKIE);
-    if(prop != BAD_PID)
-    {
-        LockMainThread();
-        Client *c = wintoclient(cookie->win);
-        if(c)
-        {   setclientpid(c, prop);
-        }
-        UnlockMainThread();
-    }
-}
-
-static void
-UpdateIcon(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE)
-{
-    XCBWindowProperty *prop = XCBGetWindowPropertyReply(_wm.dpy, _XCB_COOKIE);
-    uint32_t *icon = geticonprop(prop);
-    if(prop)
-    {
-        LockMainThread();
-        if(icon)
-        {
-            Client *c = wintoclient(cookie->win);
-            if(c)
-            {   
-                free(c->icon);
-                c->icon = icon;
-            }
-        }
-        UnlockMainThread();
-    }
-    free(prop);
-}
-
-static void
-UpdateMotifHints(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE)
-{
-    XCBWindowProperty *prop = XCBGetWindowPropertyReply(_wm.dpy, _XCB_COOKIE);
-    if(prop)
-    {
-        LockMainThread();
-        Client *c = wintoclient(cookie->win);
-        if(c)
-        {   updatemotifhints(c, prop);
-        }
-        UnlockMainThread();
-    }
-    free(prop);
-}
-
-static void
-UpdateManage(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE)
-{
-    const XCBWindow win = cookie->win;
-    Client *c;
-    XCBCookie requests[ManageClientLAST];
-    void *replies[ManageClientLAST];
-
-    (void)_XCB_COOKIE;
-
-    managerequest(win, requests);
-    managereplies(requests, replies);
-
-    LockMainThread();
-
-    c = manage(win, replies);
-    if(c)
-    {
-        focus(c);
-        arrange(c->desktop);
-    }
-    else if(_wm.selmon->bar && _wm.selmon->bar->win == win)
-    {
-        focus(NULL);
-        arrange(_wm.selmon->desksel);
-    }
-    XCBFlush(_wm.dpy);
-    UnlockMainThread();
-}
-
-static void
-UpdateUnmanage(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE)
-{
-    XCBWindow win = cookie->win;
-    Client *c;
-    Desktop *desk;
-    (void)display;
-    (void)_XCB_COOKIE;
-    LockMainThread();
-
-    c = wintoclient(win);
-    if(c)
-    {   
-        desk = c->desktop;
-        unmanage(c, 0);
-        if(desk->mon->desksel == desk)
-        {   
-            focus(NULL);
-            arrange(desk);
-        }
-        XCBFlush(_wm.dpy);
-    }
-
-    UnlockMainThread();
-}
-
-void 
-UpdateSetWType(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE)
-{
-    const XCBWindow win = cookie->win;
-    const XCBAtom atom = cookie->arg.i[0];
-    const XCBAtom type = netatom[NetWMWindowType];
-
-    /* TODO: Time based race condition */
-    XCBWindowProperty *prop = XCBGetWindowPropertyReply(display, _XCB_COOKIE);
-    XCBSetAtomState(display, win, type, atom, prop, 0);
-    XCBFlush(_wm.dpy);
-    free(prop);
-}
-
-void 
-UpdateUnsetWType(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE)
-{
-    const XCBWindow win = cookie->win;
-    const XCBAtom atom = cookie->arg.i[0];
-    const XCBAtom type = netatom[NetWMWindowType];
-
-    /* TODO: Time based race condition */
-    XCBWindowProperty *prop = XCBGetWindowPropertyReply(display, _XCB_COOKIE);
-    XCBSetAtomState(display, win, type, atom, prop, 1);
-    XCBFlush(_wm.dpy);
-    free(prop);
-}
-void 
-UpdateSetWState(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE)
-{
-    const XCBWindow win = cookie->win;
-    const XCBAtom atom = cookie->arg.i[0];
-    const XCBAtom type = netatom[NetWMState];
-
-    /* TODO: Time based race condition */
-    XCBWindowProperty *prop = XCBGetWindowPropertyReply(display, _XCB_COOKIE);
-    XCBSetAtomState(display, win, type, atom, prop, 0);
-    XCBFlush(_wm.dpy);
-    free(prop);
-
-}
-void 
-UpdateUnsetWState(XCBDisplay *display, __Property__Cookie__ *cookie, XCBCookie _XCB_COOKIE)
-{
-    const XCBWindow win = cookie->win;
-    const XCBAtom atom = cookie->arg.i[0];
-    const XCBAtom type = netatom[NetWMState];
-
-    /* TODO: Time based race condition */
-    XCBWindowProperty *prop = XCBGetWindowPropertyReply(display, _XCB_COOKIE);
-    XCBSetAtomState(display, win, type, atom, prop, 1);
-    XCBFlush(_wm.dpy);
-    free(prop);
-}
-
-
-static void
-UpdateProperty(XCBDisplay *display, __Property__Cookie__ *cookie)
-{
-    /* get the cookie */
-    const XCBCookie _XCB_COOKIE = __prop_handler[cookie->type].cookie_getter(display, cookie->win);
-    /* get the reply and update prop */
-    __prop_handler[cookie->type].reply_getter(display, cookie, _XCB_COOKIE);
-}
-
 void *
 Worker(void *x)
 {
     int screen;
     XCBDisplay *display = XCBOpenDisplay(NULL, &screen);
-    __Property__Cookie__ cookie = { .win = 0, .type = 0 };
+    GetPropCookie cookie = { .win = 0, .type = 0 };
     if(!display)
     {   
         Debug0("Failed to open display for worker");
@@ -527,7 +63,7 @@ Worker(void *x)
 
         if(cookie.win)
         {   
-            UpdateProperty(display, &cookie);
+            PropUpdateProperty(display, &cookie);
             cookie.win = 0;
         }
     }
@@ -632,7 +168,7 @@ PropInit(void)
         __threads.use_threads = 0;
         return;
     }
-    uint8_t ret = CQueueCreate((void **)&__threads.queue_data, QUEUE_SIZE, sizeof(__Property__Cookie__), &__threads.queue);
+    uint8_t ret = CQueueCreate((void **)&__threads.queue_data, QUEUE_SIZE, sizeof(GetPropCookie), &__threads.queue);
     __threads.use_threads = !ret;
     if(!ret)
     {   PropCreateWorkers(PropGetThreadCount());
@@ -663,7 +199,7 @@ PropListenArg(XCBDisplay *display, XCBWindow win, enum PropertyType type, PropAr
 {
     int full = CQueueIsFull(&__threads.queue);
     int usethreads = __threads.use_threads && _wm.use_threads;
-    __Property__Cookie__ cookie;
+    GetPropCookie cookie;
     cookie.win = win;
     cookie.type = type;
     cookie.arg = arg;
@@ -672,7 +208,7 @@ PropListenArg(XCBDisplay *display, XCBWindow win, enum PropertyType type, PropAr
     }
     else
     {   /* single thread operation */
-        UpdateProperty(display, &cookie);
+        PropUpdateProperty(display, &cookie);
         Debug("Using single threads, full: %d", full);
     }
 }
