@@ -1093,14 +1093,6 @@ reparentnotify(XCBGenericEvent *event)
     (void)y;
     (void)override_redirect;
 
-    if(!override_redirect)
-    {
-        Client *child = wintoclient(win);
-        Client *_parent = wintoclient(parent);
-        if(child && _parent)
-        {   unmanage(child, 0);
-        }
-    }
     Debug0("Reparent notify shenanigans occuring");
 }
 
