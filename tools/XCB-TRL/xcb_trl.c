@@ -1540,7 +1540,9 @@ XCBGetPropertyReply(
     if(reply && reply->type != XCB_NONE)
     {   
         if(!__XValidFormatThrow(display, cookie, reply) || !__XValidSizeThrow(display, cookie, reply))
-        {   reply = NULL;
+        {   
+            free(reply);
+            reply = NULL;
         }
     }
     return reply;
@@ -3584,6 +3586,7 @@ XCBWipeGetWMProtocols(
     _xcb_push_func(ret, _fn);
 #endif
     xcb_icccm_get_wm_protocols_reply_wipe(protocols);
+    protocols->_reply = NULL;
 }
 
 XCBCookie
@@ -3788,11 +3791,14 @@ XCBGetWMClassReply(
 #endif
     XCBGenericError *err = NULL;
     xcb_get_property_cookie_t cookie1 = { .sequence = cookie.sequence };
+    memset(class_return, 0, sizeof(XCBWMClass));
     u8 status = xcb_icccm_get_wm_class_reply(display, cookie1, class_return, &err);
     
     if(err)
     {
         _xcb_err_handler(display, err);
+        XCBWipeGetWMClass(class_return);
+        class_return->_reply = NULL;
         status = 0;
     }
 
@@ -3811,6 +3817,7 @@ XCBWipeGetWMClass(
     }
 #endif
     xcb_icccm_get_wm_class_reply_wipe(class);
+    class->_reply = NULL;
 }
 
 
