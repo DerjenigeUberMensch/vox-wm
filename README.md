@@ -132,7 +132,7 @@ These are the default keybinds currently used within vox-wm, they are not curren
 | SUPER+RETURN | exec st |
 | SUPER+e | exec thunar |
 | SUPER+b | Hide/Show Task bar (if applicable) |
-| SUPER+SHIFT+q | Exit To Current Window |
+| SUPER+SHIFT+q | Exit Current Window |
 | CTRL+ALT+q | Terminate Current Window |
 | SUPER+w | Maximize Current Window |
 | SUPER+SHIFT+p | Quit (exit window manager) |
