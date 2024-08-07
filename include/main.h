@@ -10,6 +10,7 @@
 #include "desktop.h"
 #include "monitor.h"
 #include "prop.h"
+#include "getprop.h"
 #include "x.h"
 #include "../tools/util.h"
 
@@ -111,6 +112,7 @@ struct WM
     Monitor *mons;                  /* Monitors             */
     XCBKeySymbols *syms;            /* keysym alloc         */
     char *wmname;                   /* WM_NAME              */
+    PropHandler *handler;           /* Prop Handler         */
 
     pthread_mutex_t mutex;          /* Mutex for main thread */
     uint8_t restart;                /* Restart flag         */

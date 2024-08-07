@@ -1362,10 +1362,10 @@ setclientwtype(Client *c, XCBAtom atom, u8 state)
     PropArg arg;
     arg.ui[0] = atom;
     if(state)
-    {   PropListenArg(_wm.dpy, c->win, PropSetWtype, arg);
+    {   PropListenArg(_wm.handler, _wm.dpy, c->win, PropSetWtype, arg);
     }
     else
-    {   PropListenArg(_wm.dpy, c->win, PropUnsetWtype, arg);
+    {   PropListenArg(_wm.handler, _wm.dpy, c->win, PropUnsetWtype, arg);
     }
 }
 
@@ -1375,10 +1375,10 @@ setclientnetstate(Client *c, XCBAtom atom, u8 state)
     PropArg arg;
     arg.ui[0] = atom;
     if(state)
-    {   PropListenArg(_wm.dpy, c->win, PropSetWState, arg);
+    {   PropListenArg(_wm.handler, _wm.dpy, c->win, PropSetWState, arg);
     }
     else
-    {   PropListenArg(_wm.dpy, c->win, PropUnsetWState, arg);
+    {   PropListenArg(_wm.handler, _wm.dpy, c->win, PropUnsetWState, arg);
     }
 }
 
