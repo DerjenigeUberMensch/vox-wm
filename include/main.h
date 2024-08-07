@@ -34,21 +34,21 @@
                                 * MAX(0, MIN((y)+(h),(m)->wy+(m)->wh) - MAX((y),(m)->wy)))
 #define LENGTH(X)               (sizeof X / sizeof X[0])
 #define MOUSEMASK               (BUTTONMASK | XCB_EVENT_MASK_POINTER_MOTION)
-#define TAGMASK                 ((1 << LENGTH(tags)) - 1)
-#define TAGSLENGTH              (LENGTH(tags))
 #define SESSION_FILE            "/tmp/dwm-session"
 #define SESSION_COLD_FILE       "/var/tmp/dwm-cold-session"
 #define CONFIG_FILE             "/var/tmp/dwm-config"   /* todo make dir .config/dwm/config or someting like that */
 #define BORKED                  "NOT_SET"
 
-enum SchemeType 
+enum 
+SchemeType 
 { 
     SchemeNorm, 
     SchemeSel 
 };
 
 /* clicks */
-enum ClkType 
+enum 
+ClkType 
 { 
     ClkTagBar, 
     ClkLtSymbol, 
@@ -59,6 +59,13 @@ enum ClkType
     ClkLast 
 };
 
+enum
+RestartType
+{
+    NoRestart,
+    SoftRestart,
+    HardRestart
+};
 
 typedef union  Arg Arg;
 typedef struct Key Key;
@@ -172,10 +179,13 @@ Monitor *restoremonsession(char *buff, uint16_t len);
 int restorestacksession(Desktop *desk, char *buff, uint16_t len);
 /* Searches through every monitor for a possible big enough size to fit rectangle parametors specified */
 Monitor *recttomon(int16_t x, int16_t y, uint16_t width, uint16_t height);
+/* Flags RESTART, and restarts using self hosting.
+ */
+void restart(void);
 /* Flags RESTART and sets running to 0;
  * results in execvp(self) and "restarts"
  */
-void restart(void);
+void restarthard(void);
 /* Main event loop */
 void run(void);
 /* Attemps to save session in for every monitor */
