@@ -2063,6 +2063,9 @@ updatemotifhints(Client *c, XCBWindowProperty *motifprop)
 void
 updatesizehints(Client *c, XCBSizeHints *size)
 {
+    if(!size)
+    {   return;
+    }
     const int UNINITIALIZED = 0;
     i32 basew = UNINITIALIZED;
     i32 baseh = UNINITIALIZED;
