@@ -263,7 +263,7 @@ setdesktopsel(Monitor *mon, Desktop *desksel)
         {
             if(desk != desksel)
             {
-                for(c = startstack(desk); c; c = nextstack(c))
+                for(c = laststack(desk); c; c = prevstack(c))
                 {   showhide(c);
                 }
             }
