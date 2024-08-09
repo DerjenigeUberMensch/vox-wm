@@ -1034,6 +1034,8 @@ scan(void)
             XCBGetWindowAttributes **replies = malloc(sizeof(XCBGetWindowAttributes *) * num);
             XCBGetWindowAttributes **replystates = malloc(sizeof(XCBGetWindowAttributes *) * num);
             XCBWindow *trans = malloc(sizeof(XCBWindow) * num);
+            uint64_t index;
+
 
             if(!wa || !wastates || !tfh || !managecookies || !managereplys || !replies || !replystates || !trans)
             {   
@@ -1054,11 +1056,11 @@ scan(void)
                 /* this specifically queries for the state which wa[i] might fail to provide */
                 wastates[i] = XCBGetWindowPropertyCookie(_wm.dpy, wins[i], wmatom[WMState], 0L, 2L, False, wmatom[WMState]);
                 tfh[i] = XCBGetTransientForHintCookie(_wm.dpy, wins[i]);
-                managerequest(wins[i], &managecookies[i * ManageClientLAST]);
+                index = i * ManageClientLAST;
+                managerequest(wins[i], managecookies + index);
             }
             
             uint8_t hastrans = 0;
-            uint64_t index;
             /* get them replies back */
             for(i = 0; i < num; ++i)
             {
@@ -1100,7 +1102,7 @@ scan(void)
                         index = ManageClientLAST * i;
                         /* technically we shouldnt have to do this but just in case */
                         if(!wintoclient(wins[i]))
-                        {   manage(wins[i], managereplys + i);
+                        {   manage(wins[i], managereplys + index);
                         }
                     }
                 }
@@ -1108,6 +1110,8 @@ scan(void)
             /* cleanup */
             for(i = 0; i < num; ++i)
             {
+                index = ManageClientLAST * i;
+                managecleanup(managereplys + index);
                 free(replies[i]);
                 free(replystates[i]);
             }

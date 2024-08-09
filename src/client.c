@@ -1110,7 +1110,6 @@ FAILURE:
     free(c);
     c = NULL;
 CLEANUP:
-    managecleanup(replies);
     return c;
 }
 
