@@ -463,6 +463,7 @@ PropUpdateManage(
     }
     XCBFlush(_wm.dpy);
     UnlockMainThread();
+    managecleanup(replies);
 }
 
 void
