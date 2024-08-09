@@ -146,11 +146,13 @@ XCBSetAtomState(XCBDisplay *display, XCBWindow win, XCBAtom type, XCBAtom atom, 
     {
         if(_delete)
         {
+            const int NO_ATOMS = 0;
             data = atoms;
-            len = ATOM_LENGTH - 1;
             /* Check if its not last, and shift every element back so we remove it */
-            if(offset != len)
-            {   memmove(&atoms[offset], &atoms[offset + 1], (ATOM_LENGTH - offset) * sizeof(XCBAtom));
+            if(ATOM_LENGTH - 1 > NO_ATOMS)
+            {   
+                memmove(&atoms[offset], &atoms[offset + 1], (ATOM_LENGTH - offset - 1) * sizeof(XCBAtom));
+                len = ATOM_LENGTH - 1;
             }
         }
         /* atom already exists do nothing */
