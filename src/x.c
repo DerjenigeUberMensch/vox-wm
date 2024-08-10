@@ -117,6 +117,7 @@ geticonprop(XCBWindowProperty *iconreply)
 }
 
 
+
 void
 XCBSetAtomState(XCBDisplay *display, XCBWindow win, XCBAtom type, XCBAtom atom, XCBWindowProperty *prop, u8 _delete)
 { 
@@ -182,7 +183,6 @@ XCBSetAtomState(XCBDisplay *display, XCBWindow win, XCBAtom type, XCBAtom atom, 
     }
     XCBChangeProperty(display, win, type, XCB_ATOM_ATOM, 32, propmode, (const char *)data, len);
 }
-
 
 char *
 GetAtomNameQuick(XCBDisplay *display, XCBAtom atom)

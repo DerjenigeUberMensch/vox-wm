@@ -511,7 +511,7 @@ PropUpdateSetWType(
     LockMainThread();
 
     XCBSetAtomState(display, win, type, atom, prop, 0);
-    XCBFlush(_wm.dpy);
+    XCBFlush(display);
 
     UnlockMainThread();
     free(prop);
@@ -533,7 +533,7 @@ PropUpdateUnsetWType(
     LockMainThread();
 
     XCBSetAtomState(display, win, type, atom, prop, 1);
-    XCBFlush(_wm.dpy);
+    XCBFlush(display);
 
     UnlockMainThread();
 
@@ -556,7 +556,7 @@ PropUpdateSetWState(
     LockMainThread();
 
     XCBSetAtomState(display, win, type, atom, prop, 0);
-    XCBFlush(_wm.dpy);
+    XCBFlush(display);
 
     UnlockMainThread();
 
@@ -580,7 +580,7 @@ PropUpdateUnsetWState(
     LockMainThread();
 
     XCBSetAtomState(display, win, type, atom, prop, 1);
-    XCBFlush(_wm.dpy);
+    XCBFlush(display);
 
     UnlockMainThread();
 
