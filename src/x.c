@@ -119,60 +119,66 @@ geticonprop(XCBWindowProperty *iconreply)
 
 void
 XCBSetAtomState(XCBDisplay *display, XCBWindow win, XCBAtom type, XCBAtom atom, XCBWindowProperty *prop, u8 _delete)
-{
-    if(!prop)
-    {   return;
-    }
+{ 
     void *data = NULL;
     u32 len = 0;
     u32 propmode = XCB_PROP_MODE_REPLACE;
-    XCBAtom *atoms = XCBGetPropertyValue(prop);
-    uint32_t ATOM_LENGTH = 0;
-    XCBGetPropertyValueLength(prop, sizeof(XCBAtom), &ATOM_LENGTH);
+    if(prop)
+    {
+        XCBAtom *atoms = XCBGetPropertyValue(prop);
+        uint32_t ATOM_LENGTH = 0;
+        XCBGetPropertyValueLength(prop, sizeof(XCBAtom), &ATOM_LENGTH);
 
-    u32 i;
-    u32 offset = 0;
-    u8 set = 0;
-    for(i = 0; i < ATOM_LENGTH; ++i)
-    {
-        if(memcmp(atoms + i, &atom, sizeof(XCBAtom)))
-        {   
-            offset = i;
-            set = 1;
-            break;
-        }
-    }
-    if(set)
-    {
-        if(_delete)
+        u32 i;
+        u32 offset = 0;
+        u8 set = 0;
+        for(i = 0; i < ATOM_LENGTH; ++i)
         {
-            const int NO_ATOMS = 0;
-            data = atoms;
-            /* Check if its not last, and shift every element back so we remove it */
-            if(ATOM_LENGTH - 1 > NO_ATOMS)
+            if(atoms[i] == atom)
             {   
-                memmove(&atoms[offset], &atoms[offset + 1], (ATOM_LENGTH - offset - 1) * sizeof(XCBAtom));
-                len = ATOM_LENGTH - 1;
+                offset = i;
+                set = 1;
+                break;
             }
         }
-        /* atom already exists do nothing */
+
+        if(set)
+        {
+            if(_delete)
+            {
+                /* this gets optimized to memmove, cool!
+                 * GCC v14.1.1 -O3
+                 */
+                /* this is a bottleneck on debug builds, 
+                 * But not on release as this is optimized as a memmove.
+                 */
+                for(i = offset; i < ATOM_LENGTH - 1; ++i)
+                {   atoms[i] = atoms[i + 1];
+                }
+                data = atoms;
+                len = ATOM_LENGTH - 1;
+            }
+            else  /* atom already exists do nothing */
+            {   return;
+            }
+        }
         else
-        {   return;
+        {
+            if(_delete)     /* prop not found mark as already deleted */
+            {   return;
+            }
+            else    /* set propmode to append cause we didnt find it */
+            {   
+                propmode = XCB_PROP_MODE_APPEND;
+                len = 1;
+                data = &atom;
+            }
         }
     }
     else
-    {
-        /* prop not found mark as already deleted */
-        if(_delete)
-        {   return;
-        }
-        /* set propmode to append cause we didnt find it */
-        else
-        {   
-            propmode = XCB_PROP_MODE_APPEND;
-            len = 1;
-            data = &atom;
-        }
+    {   
+        len = 1;
+        data = &atom;
     }
     XCBChangeProperty(display, win, type, XCB_ATOM_ATOM, 32, propmode, (const char *)data, len);
 }

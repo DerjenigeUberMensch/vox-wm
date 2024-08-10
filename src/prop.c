@@ -502,13 +502,18 @@ PropUpdateSetWType(
         )
 {
     const XCBWindow win = cookie->win;
-    const XCBAtom atom = cookie->arg.i[0];
+    const XCBAtom atom = cookie->arg.ui[0];
     const XCBAtom type = netatom[NetWMWindowType];
 
     /* TODO: Time based race condition */
     XCBWindowProperty *prop = XCBGetWindowPropertyReply(display, cookie->cookie);
+
+    LockMainThread();
+
     XCBSetAtomState(display, win, type, atom, prop, 0);
     XCBFlush(_wm.dpy);
+
+    UnlockMainThread();
     free(prop);
 }
 
@@ -519,13 +524,19 @@ PropUpdateUnsetWType(
         )
 {
     const XCBWindow win = cookie->win;
-    const XCBAtom atom = cookie->arg.i[0];
+    const XCBAtom atom = cookie->arg.ui[0];
     const XCBAtom type = netatom[NetWMWindowType];
 
     /* TODO: Time based race condition */
     XCBWindowProperty *prop = XCBGetWindowPropertyReply(display, cookie->cookie);
+
+    LockMainThread();
+
     XCBSetAtomState(display, win, type, atom, prop, 1);
     XCBFlush(_wm.dpy);
+
+    UnlockMainThread();
+
     free(prop);
 }
 
@@ -536,13 +547,19 @@ PropUpdateSetWState(
         )
 {
     const XCBWindow win = cookie->win;
-    const XCBAtom atom = cookie->arg.i[0];
+    const XCBAtom atom = cookie->arg.ui[0];
     const XCBAtom type = netatom[NetWMState];
 
     /* TODO: Time based race condition */
     XCBWindowProperty *prop = XCBGetWindowPropertyReply(display, cookie->cookie);
+
+    LockMainThread();
+
     XCBSetAtomState(display, win, type, atom, prop, 0);
     XCBFlush(_wm.dpy);
+
+    UnlockMainThread();
+
     free(prop);
 
 }
@@ -554,13 +571,19 @@ PropUpdateUnsetWState(
         )
 {
     const XCBWindow win = cookie->win;
-    const XCBAtom atom = cookie->arg.i[0];
+    const XCBAtom atom = cookie->arg.ui[0];
     const XCBAtom type = netatom[NetWMState];
 
     /* TODO: Time based race condition */
     XCBWindowProperty *prop = XCBGetWindowPropertyReply(display, cookie->cookie);
+
+    LockMainThread();
+
     XCBSetAtomState(display, win, type, atom, prop, 1);
     XCBFlush(_wm.dpy);
+
+    UnlockMainThread();
+
     free(prop);
 }
 
