@@ -63,20 +63,34 @@ u32 DOCKED(Client *c)           { return DOCKEDVERT(c) & DOCKEDHORZ(c); }
  * We could maybe have a timer or something that would make all configure requests apply this also.
  * Still dont know why, they do this (firefox), wouldnt it look better to do it before? IDK.
  */
-uint32_t COULDBEFLOATINGGEOM(Client *c)  
+enum FloatType COULDBEFLOATINGGEOM(Client *c)  
                                 {
                                     const Monitor *m = c->desktop->mon;
-                                    /* If the window didnt have any states, steam... 
-                                    * Check if its resonably small enough to be a floating window 
-                                    */
-                                    const float FLOAT_SIZE_MIN_W = .65f;
-                                    const float FLOAT_SIZE_MIN_H = .65f;
                                     float floatw;
                                     float floath;
                                     u8 retw;
                                     u8 reth;
                                     u8 retx;
                                     u8 rety;
+
+                                    const float FLOAT_SIZE_MIN_DEFINITE_W = .45f;
+                                    const float FLOAT_SIZE_MIN_DEFINITE_H = .45f;
+
+                                    floatw = m->mw * FLOAT_SIZE_MIN_DEFINITE_W;
+                                    floath = m->mh * FLOAT_SIZE_MIN_DEFINITE_H;
+
+                                    retw = (c->w <= floatw);
+                                    reth = (c->h <= floath);
+
+                                    if(retw || reth)
+                                    {   return IsFloating;
+                                    }
+
+                                    /* If the window didnt have any states, steam... 
+                                    * Check if its resonably small enough to be a floating window 
+                                    */
+                                    const float FLOAT_SIZE_MIN_W = .65f;
+                                    const float FLOAT_SIZE_MIN_H = .65f;
 
                                     floatw = m->mw * FLOAT_SIZE_MIN_W;
                                     floath = m->mh * FLOAT_SIZE_MIN_H;
@@ -85,8 +99,9 @@ uint32_t COULDBEFLOATINGGEOM(Client *c)
                                     reth = (c->h <= floath);
 
                                     if(retw || reth)
-                                    {   return 1;
+                                    {   return ShouldbeFloating;
                                     }
+
 
                                     /* If its not resonably small check a much stricter guideline,
                                      * But plausible if say they moved it off to the bottom of the screen or something 
@@ -114,62 +129,98 @@ uint32_t COULDBEFLOATINGGEOM(Client *c)
                                     const i32 mhf = m->mh * FLOAT_SIZE_RADIUS + 1;
                                     retx = !BETWEEN(cx, ccx - mwf, ccx + mwf);
                                     rety = !BETWEEN(cy, ccy - mhf, ccy + mhf);
-                                    return (retx || rety) && retw && reth;
+                                    if((retx || rety) && retw && reth)
+                                    {   return CouldBeFloating;
+                                    }
+                                    return NotFloating;
                                 }
-u32 COULDBEFLOATINGHINTS(Client *c)
+enum FloatType COULDBEFLOATINGHINTS(Client *c)
                                 {
                                     /* This check is mostly for (some) popup windows 
                                      * Mainly those which dont matter, like steams startup display, but are nice to have's.
                                      */
                                     if(ISSPLASH(c))
-                                    {   Debug0("Splash Window.");
+                                    {   
+                                        Debug0("Splash Window.");
+                                        return CouldBeFloating;
                                     }
                                     else if(ISMODAL(c))
-                                    {   Debug0("Modal Window.");
+                                    {   
+                                        Debug0("Modal Window.");
+                                        return ShouldbeFloating;
                                     }
                                     else if(ISPOPUPMENU(c))
-                                    {   Debug0("Popup Menu");
+                                    {   
+                                        Debug0("Popup Menu");
+                                        return ShouldbeFloating;
                                     }
                                     else if(ISDIALOG(c))
-                                    {   Debug0("Dialog Menu");
+                                    {   
+                                        Debug0("Dialog Menu");
+                                        return ShouldbeFloating;
                                     }
                                     else if(ISNOTIFICATION(c))
-                                    {   Debug0("Notification.");
+                                    {   
+                                        Debug0("Notification.");
+                                        return ShouldbeFloating;
                                     }
                                     else if(ISCOMBO(c))
-                                    {   Debug0("Combo Menu,");
+                                    {   
+                                        Debug0("Combo Menu,");
+                                        return ShouldbeFloating;
                                     }
                                     /* This check is mostly as to not soft lock the window to always be above others */
                                     else if(ISABOVE(c))
-                                    {   Debug0("AlwaysOnTop Window detected.");
+                                    {   
+                                        Debug0("AlwaysOnTop Window detected.");
+                                        return CouldBeFloating;
                                     }
                                     /* This checks for other non dialog types that sort of work like dialog(s) if not maximized. */
                                     else if(ISUTILITY(c))
-                                    {   Debug0("Util Window detected, maybe picture-in-picture?");
+                                    {   
+                                        Debug0("Util Window detected, maybe picture-in-picture?");
+                                        return CouldBeFloating;
                                     }
-                                    /* Ignore normal windows */
                                     else if(ISNORMAL(c))
-                                    {   return 0;
+                                    {   return ProbablyNotFloating;
                                     }
-                                    /* Ignore "maximized" or requested maximized windows. */
                                     else if(ISMAXIMIZEDVERT(c) && ISMAXIMIZEDHORZ(c))
-                                    {   return 0;
+                                    {   return NotFloating;
                                     }
                                     /* No special attributes return */
-                                    else
-                                    {   return 0;
-                                    }
-                                    return !DOCKEDINITIAL(c);
+                                    return ProbablyNotFloating;
                                 }
 u32 SHOULDBEFLOATING(Client *c) 
                                 {
-                                    u32 ret = 0;
-                                    if(COULDBEFLOATINGHINTS(c))
-                                    {   return 1;
-                                    }
+                                    u32 ret = 1;
                                     /* Note dont check if ISFIXED(c) as games often set that option */
-                                    if(COULDBEFLOATINGGEOM(c))
-                                    {   ret = 1;
+                                    enum FloatType htype = COULDBEFLOATINGHINTS(c);
+                                    enum FloatType type = COULDBEFLOATINGGEOM(c);
+
+                                    switch(htype)
+                                    {
+                                        case NotFloating:
+                                            return 0;
+                                        case IsFloating:
+                                            /* FALLTHROUGH */
+                                        case ShouldbeFloating:
+                                            if(type == NotFloating)
+                                            {   break;
+                                            }
+                                            return 1;
+                                        case CouldBeFloating:
+                                            if(type == CouldBeFloating)
+                                            {   break;
+                                            }
+                                            if(type == IsFloating || type == ShouldbeFloating)
+                                            {   return 1;
+                                            }
+                                            /* FALLTHROUGH */
+                                        case ProbablyNotFloating:
+                                            if(type == NotFloating || type == ProbablyNotFloating)
+                                            {   return 0;
+                                            }
+                                            break;
                                     }
                                     /* extra checks to make sure its floating */
                                     if(ret)
