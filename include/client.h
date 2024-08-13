@@ -99,6 +99,16 @@ enum BarSides
     BarSideLeft, BarSideRight, BarSideTop, BarSideBottom
 };
 
+enum
+FloatType
+{
+    NotFloating,
+    IsFloating,
+    ShouldbeFloating,
+    CouldBeFloating,
+    ProbablyNotFloating
+};
+
 
 typedef struct Client Client;
 /* extern structs */
@@ -530,8 +540,8 @@ uint32_t DISABLEBORDER(Client *c);
 uint32_t DOCKEDVERT(Client *c);
 uint32_t DOCKEDHORZ(Client *c);
 uint32_t DOCKED(Client *c);
-uint32_t COULDBEFLOATINGGEOM(Client *c);
-uint32_t COULDBEFLOATINGHINTS(Client *c);
+enum FloatType COULDBEFLOATINGGEOM(Client *c);
+enum FloatType COULDBEFLOATINGHINTS(Client *c);
 uint32_t SHOULDBEFLOATING(Client *c);
 uint32_t SHOULDMAXIMIZE(Client *c);
 uint32_t DOCKEDINITIAL(Client *c);
