@@ -102,13 +102,14 @@ enum BarSides
 enum
 FloatType
 {
-    NotFloating,
-    IsFloating,
-    ShouldbeFloating,
+    DefinitelyFloating,
+    ProbablyFloating,
     CouldBeFloating,
-    ProbablyNotFloating
-};
+    ProbablyNotFloating,
+    DefinitelyNotFloating,
 
+    FLOATINGLAST,
+};
 
 typedef struct Client Client;
 /* extern structs */

@@ -6,6 +6,7 @@
 #include "getprop.h"
 
 #include <string.h>
+#include <math.h>
 
 extern WM _wm;
 extern UserSettings _cfg;
@@ -43,7 +44,7 @@ u32 WASDOCKEDHORZ(Client *c)    {   const i16 wx = c->desktop->mon->wx;
                                     return (wx == x) && (ww == w);
                                 }
 
-u32 WASDOCKED(Client *c)        { return WASDOCKEDVERT(c) & WASDOCKEDHORZ(c); }
+u32 WASDOCKED(Client *c)        { return WASDOCKEDVERT(c) && WASDOCKEDHORZ(c); }
 
 u32 DOCKEDVERT(Client *c)       {   const i16 wy = c->desktop->mon->wy;
                                     const u16 wh = c->desktop->mon->wh;
@@ -58,191 +59,536 @@ u32 DOCKEDHORZ(Client *c)       {   const i16 wx = c->desktop->mon->wx;
                                     const u16 w = WIDTH(c);
                                     return (wx == x) && (ww == w);
                                 }
-u32 DOCKED(Client *c)           { return DOCKEDVERT(c) & DOCKEDHORZ(c); }
+u32 DOCKED(Client *c)           { return DOCKEDVERT(c) && DOCKEDHORZ(c); }
+
+
+
+static const unsigned int
+__COULD__BE__FLOATING__GEOM__FITS(Client *c, const float WIDTH_RATIO, const float HEIGHT_RATIO)
+{
+    const Monitor *m = c->desktop->mon;
+    return c->w <= (m->mw * WIDTH_RATIO) || c->h <= (m->mh * HEIGHT_RATIO);
+}
+
+static float __SIGMOID__SCALING(int i , float k, float z0)
+{   return 1.0f / (1.0f + expf(-k * (i - z0)));
+}
+
 /* Unfortunatly this seems to kinda not work with some applications, mainly because some set their location AFTER being mapped.
  * We could maybe have a timer or something that would make all configure requests apply this also.
  * Still dont know why, they do this (firefox), wouldnt it look better to do it before? IDK.
  */
 enum FloatType COULDBEFLOATINGGEOM(Client *c)  
                                 {
-                                    const Monitor *m = c->desktop->mon;
-                                    float floatw;
-                                    float floath;
-                                    u8 retw;
-                                    u8 reth;
-                                    u8 retx;
-                                    u8 rety;
+                                    const float k = 1.3f;
+                                    const float z0 = 1.7f;
 
-                                    const float FLOAT_SIZE_MIN_DEFINITE_W = .45f;
-                                    const float FLOAT_SIZE_MIN_DEFINITE_H = .45f;
-
-                                    floatw = m->mw * FLOAT_SIZE_MIN_DEFINITE_W;
-                                    floath = m->mh * FLOAT_SIZE_MIN_DEFINITE_H;
-
-                                    retw = (c->w <= floatw);
-                                    reth = (c->h <= floath);
-
-                                    if(retw || reth)
-                                    {   return IsFloating;
+                                    float scale;
+                                    i32 i;
+                                    for(i = 0; i < FLOATINGLAST; ++i)
+                                    {   
+                                        /* Roughly as follows (k = 1.5f, z0 = 1.5f)
+                                         * DefinitelyFloating,      10 %
+                                         * ProbablyFloating,        30 %
+                                         * CouldBeFloating,         67 %
+                                         * ProbablyNotFloating,     90 %
+                                         * DefinitelyNotFloating,   97 %
+                                         */
+                                        scale = __SIGMOID__SCALING(i, k, z0);
+                                        /* Debug("%f", scale); */
+                                        if(__COULD__BE__FLOATING__GEOM__FITS(c, scale, scale))
+                                        {   return (enum FloatType)i;
+                                        }
                                     }
+                                    return ProbablyNotFloating;
+                                }
+u32 
+__COULD__BE__FLOATING__POSITION__FITS(const Client *c, float width_ratio, float height_ratio)
+{
+    const Monitor *m = c->desktop->mon;
 
-                                    /* If the window didnt have any states, steam... 
-                                    * Check if its resonably small enough to be a floating window 
-                                    */
-                                    const float FLOAT_SIZE_MIN_W = .65f;
-                                    const float FLOAT_SIZE_MIN_H = .65f;
+    /* Calculate from center */
+    const i32 x = c->x + c->w / 2;
+    const i32 y = c->y + c->h / 2;
 
-                                    floatw = m->mw * FLOAT_SIZE_MIN_W;
-                                    floath = m->mh * FLOAT_SIZE_MIN_H;
+    /* Calculate center point */
+    const i32 cx = m->mx + m->mw / 2;
+    const i32 cy = m->my + m->mh / 2;
 
-                                    retw = (c->w <= floatw);
-                                    reth = (c->h <= floath);
+    /* Calculate Distance */
+    const i32 cdx = labs(cx - x);
+    const i32 cdy = labs(cy - y);
 
-                                    if(retw || reth)
-                                    {   return ShouldbeFloating;
+    const u8 isratiox = (cdx / (float)(cx + !cx)) >= width_ratio;
+    const u8 isratioy = (cdy / (float)(cy + !cy)) >= height_ratio;
+
+    /*
+    Debug0("----------------------------");
+    Debug("(%d, %d)", x, y);
+    Debug("(%d, %d)", cx, cy);
+    Debug("(%d, %d)", cdx, cdy);
+    Debug("(%f, %f)", cdx / (float)cx, cdy / (float)cy);
+    Debug("(%u, %u)", isratiox, isratioy);
+    Debug("SS: %f", width_ratio);
+    */
+    return isratiox || isratioy;
+}
+enum FloatType COULDBEFLOATINGPOSITION(Client *c)
+                                {
+                                    const float k = 0.8f;
+                                    const float z0 = 3.6f;
+
+                                    i32 i;
+                                    float scale;
+                                    for(i = 0; i < FLOATINGLAST; ++i)
+                                    {
+                                        scale = __SIGMOID__SCALING(i, k, z0);
+                                        if(__COULD__BE__FLOATING__POSITION__FITS(c, scale, scale))
+                                        {   return (enum FloatType)i;
+                                        }
                                     }
-
-
-                                    /* If its not resonably small check a much stricter guideline,
-                                     * But plausible if say they moved it off to the bottom of the screen or something 
-                                     */
-                                    const float FLOAT_SIZE_STRICT_MIN_W = .95f;
-                                    const float FLOAT_SIZE_STRICT_MIN_H = .9f;
-                                    const float FLOAT_SIZE_RADIUS = .075f;
-
-                                    floatw = (float)m->mw * FLOAT_SIZE_STRICT_MIN_W;
-                                    floath = (float)m->mh * FLOAT_SIZE_STRICT_MIN_H;
-
-                                    const i32 cx = c->x + (c->w / 2);
-                                    const i32 cy = c->y + (c->h / 2);
-
-                                    const i32 ccx = m->mx + m->mw / 2;
-                                    const i32 ccy = m->my + m->mh / 2;
-
-                                    retw = (c->w <= floatw);
-                                    reth = (c->h <= floath);
-
-                                    /* Check if Client is within center radius of screen
-                                     * TODO: Probably should use a rectangle 
-                                     */
-                                    const i32 mwf = m->mw * FLOAT_SIZE_RADIUS + 1;
-                                    const i32 mhf = m->mh * FLOAT_SIZE_RADIUS + 1;
-                                    retx = !BETWEEN(cx, ccx - mwf, ccx + mwf);
-                                    rety = !BETWEEN(cy, ccy - mhf, ccy + mhf);
-                                    if((retx || rety) && retw && reth)
-                                    {   return CouldBeFloating;
-                                    }
-                                    return NotFloating;
+                                    return ProbablyNotFloating;
                                 }
 enum FloatType COULDBEFLOATINGHINTS(Client *c)
                                 {
                                     /* This check is mostly for (some) popup windows 
                                      * Mainly those which dont matter, like steams startup display, but are nice to have's.
                                      */
+                                    
+                                    /* Splash windows are like those "intro" logos they display on some applications, ex: audacity */
                                     if(ISSPLASH(c))
                                     {   
                                         Debug0("Splash Window.");
-                                        return CouldBeFloating;
+                                        return ProbablyFloating;
                                     }
+                                    /* Modal dialog boxes are just persistent dialog boxes (aka dont focus anything else as they are important) */
                                     else if(ISMODAL(c))
                                     {   
                                         Debug0("Modal Window.");
-                                        return ShouldbeFloating;
+                                        return ProbablyFloating;
                                     }
+                                    /* Popup menus see above */
                                     else if(ISPOPUPMENU(c))
                                     {   
                                         Debug0("Popup Menu");
-                                        return ShouldbeFloating;
+                                        return ProbablyFloating;
                                     }
+                                    /* Dialog boxes are usually floating */
                                     else if(ISDIALOG(c))
                                     {   
                                         Debug0("Dialog Menu");
-                                        return ShouldbeFloating;
+                                        return ProbablyFloating;
                                     }
+                                    /* Notification boxes like "changed music" things ussualy arent too important, but should still be floating */
                                     else if(ISNOTIFICATION(c))
                                     {   
                                         Debug0("Notification.");
-                                        return ShouldbeFloating;
+                                        return ProbablyFloating;
                                     }
+                                    /* These are like modal boxes but less important */
                                     else if(ISCOMBO(c))
                                     {   
                                         Debug0("Combo Menu,");
-                                        return ShouldbeFloating;
+                                        return DefinitelyFloating;
                                     }
-                                    /* This check is mostly as to not soft lock the window to always be above others */
+                                    /* Above windows ussually are small utility boxes, that shouldnt cover other content completly */
                                     else if(ISABOVE(c))
                                     {   
                                         Debug0("AlwaysOnTop Window detected.");
-                                        return CouldBeFloating;
+                                        return DefinitelyFloating;
                                     }
                                     /* This checks for other non dialog types that sort of work like dialog(s) if not maximized. */
                                     else if(ISUTILITY(c))
                                     {   
                                         Debug0("Util Window detected, maybe picture-in-picture?");
-                                        return CouldBeFloating;
-                                    }
-                                    else if(ISNORMAL(c))
-                                    {   return ProbablyNotFloating;
+                                        return ProbablyFloating;
                                     }
                                     else if(ISMAXIMIZEDVERT(c) && ISMAXIMIZEDHORZ(c))
-                                    {   return NotFloating;
+                                    {   
+                                        Debug0("Maximized Window detected.");
+                                        return DefinitelyNotFloating;
                                     }
+                                    else if(ISNORMAL(c))
+                                    {   
+                                        Debug0("Normal Window detected.");
+                                        return CouldBeFloating;
+                                    }
+                                    Debug0("Window has no special attributes.");
                                     /* No special attributes return */
-                                    return ProbablyNotFloating;
+                                    return CouldBeFloating;
                                 }
-u32 SHOULDBEFLOATING(Client *c) 
-                                {
-                                    u32 ret = 1;
-                                    /* Note dont check if ISFIXED(c) as games often set that option */
-                                    enum FloatType htype = COULDBEFLOATINGHINTS(c);
-                                    enum FloatType type = COULDBEFLOATINGGEOM(c);
 
-                                    switch(htype)
+static bool NOINLINE
+__FLOAT__TYPE__IS__FLOATING(
+        const enum FloatType hints, 
+        const enum FloatType geom, 
+        const enum FloatType pos
+        )
+{
+    switch(hints)
+    {
+        case DefinitelyFloating:
+        {
+            switch(geom)
+            {
+                case DefinitelyFloating:
+                case ProbablyFloating:
+                    return 1;
+                case CouldBeFloating:
+                    switch(pos)
+                    {
+                        case DefinitelyFloating:
+                        case ProbablyFloating:
+                        case CouldBeFloating:
+                        case ProbablyNotFloating:
+                            return 1;
+
+                            /* unused */
+                        case FLOATINGLAST:
+                        case DefinitelyNotFloating:
+                            break;
+                    }
+                    break;
+                case ProbablyNotFloating:
+                    switch(pos)
+                    {
+                        case DefinitelyFloating:
+                        case ProbablyFloating:
+                        case CouldBeFloating:
+                            return 1;
+                            /* unused */
+                        case FLOATINGLAST:
+                        case ProbablyNotFloating:
+                        case DefinitelyNotFloating:
+                            break;
+                    }
+                    break;
+                case DefinitelyNotFloating:
+                    switch(pos)
+                    {
+                        case DefinitelyFloating:
+                        case ProbablyFloating:
+                        case CouldBeFloating:
+                            return 1;
+
+                            /* unused */
+                        case FLOATINGLAST:
+                        case ProbablyNotFloating:
+                        case DefinitelyNotFloating:
+                            break;
+                    }
+                    break;
+
+                    /* unused */
+                case FLOATINGLAST:
+                    break;
+            }
+            break;
+        }
+        case ProbablyFloating:
+        {
+            switch(geom)
+            {
+                case DefinitelyFloating:
+                case ProbablyFloating:
+                    return 1;
+                case CouldBeFloating:
+                    switch(pos)
+                    {
+                        case DefinitelyFloating:
+                        case ProbablyFloating:
+                        case CouldBeFloating:
+                            return 1;
+                            /* unused */
+                        case FLOATINGLAST:
+                        case ProbablyNotFloating:
+                        case DefinitelyNotFloating:
+                            break;
+                    }
+                    break;
+                case ProbablyNotFloating:
+                    switch(pos)
+                    {
+                        case DefinitelyFloating:
+                        case ProbablyFloating:
+                            return 1;
+                            /* unused */
+                        case FLOATINGLAST:
+                        case CouldBeFloating:
+                        case ProbablyNotFloating:
+                        case DefinitelyNotFloating:
+                            break;
+                    }
+                    break;
+                case DefinitelyNotFloating:
+                    switch(pos)
+                    {
+                        case DefinitelyFloating:
+                            return 1;
+                            /* unused */
+                        case FLOATINGLAST:
+                        case ProbablyFloating:
+                        case CouldBeFloating:
+                        case ProbablyNotFloating:
+                        case DefinitelyNotFloating:
+                            break;
+                    }
+                    break;
+
+                    /* unused */
+                case FLOATINGLAST:
+                    break;
+            }
+        }
+        case CouldBeFloating:
+        {
+            switch(geom)
+            {
+                case DefinitelyFloating:
+                    return 1;
+                case ProbablyFloating:
+                    switch(pos)
+                    {   
+                        case DefinitelyFloating:
+                        case ProbablyFloating:
+                        case CouldBeFloating:
+                            return 1;
+                            /* unused */
+                        case FLOATINGLAST:
+                        case ProbablyNotFloating:
+                        case DefinitelyNotFloating:
+                            break;
+                    }
+                    break;
+                case CouldBeFloating:
+                    switch(pos)
+                    {   
+                        case DefinitelyFloating:
+                        case ProbablyFloating:
+                            return 1;
+                            /* unused */
+                        case FLOATINGLAST:
+                        case ProbablyNotFloating:
+                        case DefinitelyNotFloating:
+                        case CouldBeFloating:
+                            break;
+                    }
+                    break;
+                case ProbablyNotFloating:
+                    switch(pos)
+                    {   
+                        case DefinitelyFloating:
+                            return 1;
+                            /* unused */
+                        case FLOATINGLAST:
+                        case ProbablyFloating:
+                        case CouldBeFloating:
+                        case ProbablyNotFloating:
+                        case DefinitelyNotFloating:
+                            break;
+                    }
+                    break;
+                    /* unused */
+                case FLOATINGLAST:
+                case DefinitelyNotFloating:
+                    break;
+
+            }
+            break;
+        }
+        case ProbablyNotFloating:
+        {
+            switch(geom)
+            {
+                case DefinitelyFloating:
+                    return 1;
+                case ProbablyFloating:
+                    switch(pos)
+                    {
+                        case DefinitelyFloating:
+                        case ProbablyFloating:
+                        case CouldBeFloating:
+                        case ProbablyNotFloating:
+                            return 1;
+
+                            /* unused */
+                        case FLOATINGLAST:
+                        case DefinitelyNotFloating:
+                            break;
+                    }
+                    break;
+                case CouldBeFloating:
+                    switch(pos)
+                    {
+                        case DefinitelyFloating:
+                        case ProbablyFloating:
+                            return 1;
+                            /* unused */
+                        case FLOATINGLAST:
+                        case DefinitelyNotFloating:
+                        case ProbablyNotFloating:
+                        case CouldBeFloating:
+                            break;
+                    }
+                case ProbablyNotFloating:
+                    switch(pos)
+                    {
+                        case DefinitelyFloating:
+                        case ProbablyFloating:
+                            return 1;
+                            /* unused */
+                        case FLOATINGLAST:
+                        case DefinitelyNotFloating:
+                        case ProbablyNotFloating:
+                        case CouldBeFloating:
+                            break;
+                    }
+                    break;
+                case DefinitelyNotFloating:
+                    switch(pos)
+                    {   
+                        case DefinitelyFloating:
+                            return 1;
+                            /* unused */
+                        case FLOATINGLAST:
+                        case ProbablyFloating:
+                        case DefinitelyNotFloating:
+                        case ProbablyNotFloating:
+                        case CouldBeFloating:
+                            break;
+                    }
+                    break;
+                case FLOATINGLAST:
+                    break;
+            }
+            break;
+        }
+
+        case DefinitelyNotFloating:
+        {
+            switch(geom)
+            {
+                case DefinitelyFloating:
+                    return 1;
+                case ProbablyFloating:
+                    switch(pos)
+                    {
+                        case DefinitelyFloating:
+                        case ProbablyFloating:
+                        case CouldBeFloating:
+                            return 1;
+
+                            /* unused */
+                        case FLOATINGLAST:
+                        case ProbablyNotFloating:
+                        case DefinitelyNotFloating:
+                            break;
+                    }
+                    break;
+                case CouldBeFloating:
+                    switch(pos)
+                    {
+                        case DefinitelyFloating:
+                        case ProbablyFloating:
+                            return 1;
+
+                            /* unused */
+                        case FLOATINGLAST:
+                        case CouldBeFloating:
+                        case ProbablyNotFloating:
+                        case DefinitelyNotFloating:
+                            break;
+                    }
+                    break;
+                case ProbablyNotFloating:
+                case DefinitelyNotFloating:
+                    switch(pos)
+                    {
+                        case DefinitelyFloating:
+                            return 1;
+
+                            /* unused */
+                        case FLOATINGLAST:
+                        case ProbablyFloating:
+                        case CouldBeFloating:
+                        case ProbablyNotFloating:
+                        case DefinitelyNotFloating:
+                            break;
+                    }
+                    break;
+
+                    /* unused */
+                case FLOATINGLAST:
+                    break;
+            }
+        }
+
+        /* unused */
+        case FLOATINGLAST:
+        {   break;
+        }
+    }
+    return 0;   
+}
+
+
+
+
+u32 NOINLINE
+SHOULDBEFLOATING(Client *c) 
+                                {
+                                    /* Note dont check if ISFIXED(c) as games often set that option */
+                                    const enum FloatType htype = COULDBEFLOATINGHINTS(c);
+                                    const enum FloatType gtype = COULDBEFLOATINGGEOM(c);
+                                    const enum FloatType ptype = COULDBEFLOATINGPOSITION(c);
+
+                                    Debug("%d", __FLOAT__TYPE__IS__FLOATING(htype, gtype, ptype));
+
+                                    return __FLOAT__TYPE__IS__FLOATING(htype, gtype, ptype);
+
+                                    const enum FloatType avg = (htype + gtype + ptype) / 3;
+
+                                    switch(avg)
                                     {
-                                        case NotFloating:
-                                            return 0;
-                                        case IsFloating:
-                                            /* FALLTHROUGH */
-                                        case ShouldbeFloating:
-                                            if(type == NotFloating)
-                                            {   break;
-                                            }
+                                        case DefinitelyFloating:
+                                            Debug0("DefinitelyFloating");
                                             return 1;
+                                        case ProbablyFloating:
+                                            Debug0("ProbablyFloating");
+                                            break;
                                         case CouldBeFloating:
-                                            if(type == CouldBeFloating)
-                                            {   break;
-                                            }
-                                            if(type == IsFloating || type == ShouldbeFloating)
-                                            {   return 1;
-                                            }
-                                            /* FALLTHROUGH */
+                                            Debug0("CouldBeFloating");
+                                            break;
                                         case ProbablyNotFloating:
-                                            if(type == NotFloating || type == ProbablyNotFloating)
-                                            {   return 0;
-                                            }
+                                            Debug0("ProbablyNotFloating");
+                                            break;
+                                        case DefinitelyNotFloating:
+                                            Debug0("DefinitelyNotFloating");
+                                            return 0;
+
+                                        /* Unused */
+                                        case FLOATINGLAST:
                                             break;
                                     }
+
                                     /* extra checks to make sure its floating */
-                                    if(ret)
-                                    {
-                                        /* If they dont have a classname/instancename then likely they are single instance windows */
-                                        if(!c->classname || !c->instancename)
-                                        {   ret = 0;
-                                        }
-                                        /* Some windows do set their classname/instancename but to the same string which means one of the following.
-                                         * A.) Its the main window, which we shouldnt make floating (duh).
-                                         * B.) It has subwindows but again see above.
-                                         * C.) It sets this to all windows and doesnt have any subwindows.
-                                         * D.) (rarely) Its broken, but probably will be fixed later if their developer cares enough.
-                                         */
-                                        else if(!strcmp(c->classname, c->instancename))
-                                        {   ret = 0;
-                                        }
-                                        else
-                                        {   Debug0("Client is small enough to be floating, but should use hints...");
-                                        }
+                                    /* If they dont have a classname/instancename then likely they are single instance windows */
+                                    if(!c->classname || !c->instancename)
+                                    {   return 0;
                                     }
-                                    return ret;
+                                    /* Some windows do set their classname/instancename but to the same string which means one of the following.
+                                     * A.) Its the main window, which we shouldnt make floating (duh).
+                                     * B.) It has subwindows but again see above.
+                                     * C.) It sets this to all windows and doesnt have any subwindows.
+                                     * D.) (rarely) Its broken, but probably will be fixed later if their developer cares enough.
+                                     */
+                                    else if(!strcmp(c->classname, c->instancename))
+                                    {   return 0;
+                                    }
+                                    else
+                                    {   Debug0("Client is small enough to be floating, but should use hints...");
+                                    }
+                                    return 1;
                                 }
 /* This covers some apps being able to DragWindow/ResizeWindow, in toggle.c
  * (semi-frequently) a user might "accidentally" click on them (me) and basically we dont want that window to be floating because of that user error.
@@ -569,25 +915,6 @@ clientinitfloat(Client *c)
 {
     if(!SHOULDBEFLOATING(c))
     {   return;
-    }
-    const Monitor *m = c->desktop->mon;
-    const u32 bw = WIDTH(c) - c->w;
-    const u32 bh = HEIGHT(c) - c->h;
-    /* If the window is docked for whatever reason, center it and shrink it down */
-    if(DOCKEDINITIAL(c))
-    {
-        i32 w = m->ww / 2 - bw;
-        i32 h = m->wh / 2 - bh;
-        i32 x = m->wx + (w / 2) + bw;
-        i32 y = m->my + (h / 2) + bh;
-        resize(c, x, y, w, h, 0);
-    }
-    /* if its in the corner move it to center */
-    else if((c->x == m->wx && c->y == m->wy) || (c->x == m->mx && c->y == m->my))
-    {
-        i32 x = m->wx + ((m->ww - WIDTH(c)) / 2);
-        i32 y = m->wy + ((m->wh - HEIGHT(c)) / 2);
-        resize(c, x, y, c->w, c->h, 0);
     }
     if(!ISFLOATING(c))
     {   setfloating(c, 1);
