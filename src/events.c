@@ -1252,14 +1252,57 @@ clientmessage(XCBGenericEvent *event)
         }
         else if(atom == netatom[NetMoveResizeWindow])
         {
-            i32 gravity = l0;
-            i32 x = l1;
-            i32 y = l2;
-            i32 w = l3;
-            i32 h = l4;
-            applygravity(gravity, &x, &y, w, h, c->bw);
-            resize(c, x, y, w, h, 0);
-            sync = 1;
+            Debug0("NetMoveResizeWindow 'ed");
+            /* specified as first 7 bits: 
+             * https://specifications.freedesktop.org/wm-spec/latest/ar01s04.html
+             */
+            const u8 GRAVITY_BITS = UINT8_MAX - 1;
+            const u32 FLAG_BITS = ~(GRAVITY_BITS);
+            const i32 x = l1;
+            const i32 y = l2;
+            const i32 w = l3;
+            const i32 h = l4;
+            const u16 __NET_WM_MOVE_WINDOW_X = 1 << 8;
+            const u16 __NET_WM_MOVE_WINDOW_Y = 1 << 9;
+            const u16 __NET_WM_MOVE_WINDOW_WIDTH = 1 << 10;
+            const u16 __NET_WM_MOVE_WINDOW_HEIGHT = 1 << 11;
+            const u16 __NET_WM_MOVE_WINDOW_APPLICATION_FLAG = 1 << 12;
+            const u16 __NET_WM_MOVE_WINDOW_PAGER_FLAG = 1 << 13;
+
+            const enum XCBBitGravity gravity = l0 & GRAVITY_BITS;
+
+            const u32 flags = l0 & FLAG_BITS;
+
+            u32 tmpgravity = c->gravity;
+            if(c->gravity != gravity)
+            {   c->gravity = gravity;
+            }
+
+            u32 mask = 0;
+            if(flags & __NET_WM_MOVE_WINDOW_X)
+            {   mask |= XCB_CONFIG_WINDOW_X;
+            }
+            if(flags & __NET_WM_MOVE_WINDOW_Y)
+            {   mask |= XCB_CONFIG_WINDOW_Y;
+            }
+            if(flags & __NET_WM_MOVE_WINDOW_WIDTH)
+            {   mask |= XCB_CONFIG_WINDOW_WIDTH;
+            }
+            if(flags & __NET_WM_MOVE_WINDOW_HEIGHT)
+            {   mask |= XCB_CONFIG_WINDOW_HEIGHT;
+            }
+
+            XCBGenericEvent _ev;
+            XCBConfigureRequestEvent *gev = (XCBConfigureRequestEvent *)&_ev;
+            gev->x = x;
+            gev->y = y;
+            gev->width = w;
+            gev->height = h;
+            gev->value_mask = mask;
+            /* Should automatically flush. */ 
+            configurerequest(&_ev);
+            /* revert back to old gravity. */
+            c->gravity = tmpgravity;
         }
         else if(atom == netatom[NetRestackWindow])
         {   
