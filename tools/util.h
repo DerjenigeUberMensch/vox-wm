@@ -136,23 +136,6 @@ void debug(char *fmt, ...);
 
 double functime(void (*_timefunction)(void));
 
-
-#ifndef False
-#define False 0
-#endif
-
-#ifndef True
-#define True 1
-#endif
-
-#ifndef None
-#define None 0
-#endif
-
-#ifndef Nill
-#define Nill ((void *)0)
-#endif
-
 #define ASSUME(cond) do { if (!(cond)) __builtin_unreachable(); } while (0)
 
 /* Original implementation: Simon Tatham 

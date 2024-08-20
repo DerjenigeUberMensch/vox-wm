@@ -3,6 +3,7 @@
 
 #include "../tools/XCB-TRL/xcb_trl.h"
 #include "decorations.h"
+#include "safebool.h"
 
 #include <stdint.h>
 /* EWMH window types */
@@ -543,7 +544,7 @@ uint32_t DOCKEDHORZ(Client *c);
 uint32_t DOCKED(Client *c);
 enum FloatType COULDBEFLOATINGGEOM(Client *c);
 enum FloatType COULDBEFLOATINGHINTS(Client *c);
-uint32_t SHOULDBEFLOATING(Client *c);
+bool SHOULDBEFLOATING(Client *c);
 uint32_t SHOULDMAXIMIZE(Client *c);
 uint32_t DOCKEDINITIAL(Client *c);
 uint32_t WASDOCKEDVERT(Client *c);

@@ -4,8 +4,6 @@
 #include "desktop.h"
 #include "main.h"
 
-
-
 extern WM _wm;
 extern UserSettings _cfg;
 extern XCBAtom netatom[];

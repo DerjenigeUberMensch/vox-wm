@@ -12,6 +12,7 @@
 #include "prop.h"
 #include "getprop.h"
 #include "x.h"
+#include "safebool.h"
 #include "../tools/util.h"
 
 

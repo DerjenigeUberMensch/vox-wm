@@ -218,13 +218,35 @@ enum FloatType COULDBEFLOATINGHINTS(Client *c)
                                     return CouldBeFloating;
                                 }
 
-static bool NOINLINE
+static bool 
+__FLOAT__TYPE__EXTRA__CHECKS(Client *c)
+{
+    const char *const classname = c->classname;
+    const char *const instance = c->instancename;
+
+    /* If they dont have a classname/instancename then likely they are single instance windows */
+    if(!classname || !instance)
+    {   return false;
+    }
+
+    /* Some windows do set their classname/instancename but to the same string which means one of the following.
+     * A.) Its the main window, which we shouldnt make floating (duh).
+     * B.) It has subwindows but again see above.
+     * C.) It sets this to all windows and doesnt have any subwindows.
+     * D.) (rarely) Its broken, but probably will be fixed later if their developer cares enough.
+     */
+    return strcmp(classname, instance);
+}
+
+
+static bool
 __FLOAT__TYPE__IS__FLOATING(
         const enum FloatType hints, 
         const enum FloatType geom, 
         const enum FloatType pos
         )
 {
+    bool ret = false;
     switch(hints)
     {
         case DefinitelyFloating:
@@ -233,7 +255,7 @@ __FLOAT__TYPE__IS__FLOATING(
             {
                 case DefinitelyFloating:
                 case ProbablyFloating:
-                    return 1;
+                    ret = true;
                 case CouldBeFloating:
                     switch(pos)
                     {
@@ -241,7 +263,7 @@ __FLOAT__TYPE__IS__FLOATING(
                         case ProbablyFloating:
                         case CouldBeFloating:
                         case ProbablyNotFloating:
-                            return 1;
+                            ret = true;
 
                             /* unused */
                         case FLOATINGLAST:
@@ -255,7 +277,7 @@ __FLOAT__TYPE__IS__FLOATING(
                         case DefinitelyFloating:
                         case ProbablyFloating:
                         case CouldBeFloating:
-                            return 1;
+                            ret = true;
                             /* unused */
                         case FLOATINGLAST:
                         case ProbablyNotFloating:
@@ -269,7 +291,7 @@ __FLOAT__TYPE__IS__FLOATING(
                         case DefinitelyFloating:
                         case ProbablyFloating:
                         case CouldBeFloating:
-                            return 1;
+                            ret = true;
 
                             /* unused */
                         case FLOATINGLAST:
@@ -291,14 +313,14 @@ __FLOAT__TYPE__IS__FLOATING(
             {
                 case DefinitelyFloating:
                 case ProbablyFloating:
-                    return 1;
+                    ret = true;
                 case CouldBeFloating:
                     switch(pos)
                     {
                         case DefinitelyFloating:
                         case ProbablyFloating:
                         case CouldBeFloating:
-                            return 1;
+                            ret = true;
                             /* unused */
                         case FLOATINGLAST:
                         case ProbablyNotFloating:
@@ -311,7 +333,7 @@ __FLOAT__TYPE__IS__FLOATING(
                     {
                         case DefinitelyFloating:
                         case ProbablyFloating:
-                            return 1;
+                            ret = true;
                             /* unused */
                         case FLOATINGLAST:
                         case CouldBeFloating:
@@ -324,7 +346,7 @@ __FLOAT__TYPE__IS__FLOATING(
                     switch(pos)
                     {
                         case DefinitelyFloating:
-                            return 1;
+                            ret = true;
                             /* unused */
                         case FLOATINGLAST:
                         case ProbablyFloating:
@@ -345,14 +367,14 @@ __FLOAT__TYPE__IS__FLOATING(
             switch(geom)
             {
                 case DefinitelyFloating:
-                    return 1;
+                    ret = true;
                 case ProbablyFloating:
                     switch(pos)
                     {   
                         case DefinitelyFloating:
                         case ProbablyFloating:
                         case CouldBeFloating:
-                            return 1;
+                            ret = true;
                             /* unused */
                         case FLOATINGLAST:
                         case ProbablyNotFloating:
@@ -365,7 +387,7 @@ __FLOAT__TYPE__IS__FLOATING(
                     {   
                         case DefinitelyFloating:
                         case ProbablyFloating:
-                            return 1;
+                            ret = true;
                             /* unused */
                         case FLOATINGLAST:
                         case ProbablyNotFloating:
@@ -378,7 +400,7 @@ __FLOAT__TYPE__IS__FLOATING(
                     switch(pos)
                     {   
                         case DefinitelyFloating:
-                            return 1;
+                            ret = true;
                             /* unused */
                         case FLOATINGLAST:
                         case ProbablyFloating:
@@ -401,7 +423,7 @@ __FLOAT__TYPE__IS__FLOATING(
             switch(geom)
             {
                 case DefinitelyFloating:
-                    return 1;
+                    ret = true;
                 case ProbablyFloating:
                     switch(pos)
                     {
@@ -409,7 +431,7 @@ __FLOAT__TYPE__IS__FLOATING(
                         case ProbablyFloating:
                         case CouldBeFloating:
                         case ProbablyNotFloating:
-                            return 1;
+                            ret = true;
 
                             /* unused */
                         case FLOATINGLAST:
@@ -422,7 +444,7 @@ __FLOAT__TYPE__IS__FLOATING(
                     {
                         case DefinitelyFloating:
                         case ProbablyFloating:
-                            return 1;
+                            ret = true;
                             /* unused */
                         case FLOATINGLAST:
                         case DefinitelyNotFloating:
@@ -435,7 +457,7 @@ __FLOAT__TYPE__IS__FLOATING(
                     {
                         case DefinitelyFloating:
                         case ProbablyFloating:
-                            return 1;
+                            ret = true;
                             /* unused */
                         case FLOATINGLAST:
                         case DefinitelyNotFloating:
@@ -448,7 +470,7 @@ __FLOAT__TYPE__IS__FLOATING(
                     switch(pos)
                     {   
                         case DefinitelyFloating:
-                            return 1;
+                            ret = true;
                             /* unused */
                         case FLOATINGLAST:
                         case ProbablyFloating:
@@ -469,14 +491,14 @@ __FLOAT__TYPE__IS__FLOATING(
             switch(geom)
             {
                 case DefinitelyFloating:
-                    return 1;
+                    ret = true;
                 case ProbablyFloating:
                     switch(pos)
                     {
                         case DefinitelyFloating:
                         case ProbablyFloating:
                         case CouldBeFloating:
-                            return 1;
+                            ret = true;
 
                             /* unused */
                         case FLOATINGLAST:
@@ -490,7 +512,7 @@ __FLOAT__TYPE__IS__FLOATING(
                     {
                         case DefinitelyFloating:
                         case ProbablyFloating:
-                            return 1;
+                            ret = true;
 
                             /* unused */
                         case FLOATINGLAST:
@@ -505,7 +527,7 @@ __FLOAT__TYPE__IS__FLOATING(
                     switch(pos)
                     {
                         case DefinitelyFloating:
-                            return 1;
+                            ret = true;
 
                             /* unused */
                         case FLOATINGLAST:
@@ -528,67 +550,21 @@ __FLOAT__TYPE__IS__FLOATING(
         {   break;
         }
     }
-    return 0;   
+    return ret;   
 }
 
 
 
 
-u32 NOINLINE
+bool NOINLINE
 SHOULDBEFLOATING(Client *c) 
                                 {
                                     /* Note dont check if ISFIXED(c) as games often set that option */
                                     const enum FloatType htype = COULDBEFLOATINGHINTS(c);
                                     const enum FloatType gtype = COULDBEFLOATINGGEOM(c);
                                     const enum FloatType ptype = COULDBEFLOATINGPOSITION(c);
-
                                     Debug("%d", __FLOAT__TYPE__IS__FLOATING(htype, gtype, ptype));
-
                                     return __FLOAT__TYPE__IS__FLOATING(htype, gtype, ptype);
-
-                                    const enum FloatType avg = (htype + gtype + ptype) / 3;
-
-                                    switch(avg)
-                                    {
-                                        case DefinitelyFloating:
-                                            Debug0("DefinitelyFloating");
-                                            return 1;
-                                        case ProbablyFloating:
-                                            Debug0("ProbablyFloating");
-                                            break;
-                                        case CouldBeFloating:
-                                            Debug0("CouldBeFloating");
-                                            break;
-                                        case ProbablyNotFloating:
-                                            Debug0("ProbablyNotFloating");
-                                            break;
-                                        case DefinitelyNotFloating:
-                                            Debug0("DefinitelyNotFloating");
-                                            return 0;
-
-                                        /* Unused */
-                                        case FLOATINGLAST:
-                                            break;
-                                    }
-
-                                    /* extra checks to make sure its floating */
-                                    /* If they dont have a classname/instancename then likely they are single instance windows */
-                                    if(!c->classname || !c->instancename)
-                                    {   return 0;
-                                    }
-                                    /* Some windows do set their classname/instancename but to the same string which means one of the following.
-                                     * A.) Its the main window, which we shouldnt make floating (duh).
-                                     * B.) It has subwindows but again see above.
-                                     * C.) It sets this to all windows and doesnt have any subwindows.
-                                     * D.) (rarely) Its broken, but probably will be fixed later if their developer cares enough.
-                                     */
-                                    else if(!strcmp(c->classname, c->instancename))
-                                    {   return 0;
-                                    }
-                                    else
-                                    {   Debug0("Client is small enough to be floating, but should use hints...");
-                                    }
-                                    return 1;
                                 }
 /* This covers some apps being able to DragWindow/ResizeWindow, in toggle.c
  * (semi-frequently) a user might "accidentally" click on them (me) and basically we dont want that window to be floating because of that user error.
