@@ -769,6 +769,7 @@ configurerequest(XCBGenericEvent *event)
             }
             restack = 1;
         }
+        geom = mask & (XCB_CONFIG_WINDOW_X|XCB_CONFIG_WINDOW_Y|XCB_CONFIG_WINDOW_WIDTH|XCB_CONFIG_WINDOW_HEIGHT);
         if(geom)
         {
             applygravity(c->gravity, &rx, &ry, rw, rh, c->bw);
