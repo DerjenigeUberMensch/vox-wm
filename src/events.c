@@ -1123,18 +1123,21 @@ clientmessage(XCBGenericEvent *event)
 
 
     /* move resize */
-    #define _NET_WM_MOVERESIZE_SIZE_TOPLEFT      0
-    #define _NET_WM_MOVERESIZE_SIZE_TOP          1
-    #define _NET_WM_MOVERESIZE_SIZE_TOPRIGHT     2
-    #define _NET_WM_MOVERESIZE_SIZE_RIGHT        3
-    #define _NET_WM_MOVERESIZE_SIZE_BOTTOMRIGHT  4
-    #define _NET_WM_MOVERESIZE_SIZE_BOTTOM       5
-    #define _NET_WM_MOVERESIZE_SIZE_BOTTOMLEFT   6
-    #define _NET_WM_MOVERESIZE_SIZE_LEFT         7
-    #define _NET_WM_MOVERESIZE_MOVE              8   /* movement only */
-    #define _NET_WM_MOVERESIZE_SIZE_KEYBOARD     9   /* size via keyboard */
-    #define _NET_WM_MOVERESIZE_MOVE_KEYBOARD    10   /* move via keyboard */
-    #define _NET_WM_MOVERESIZE_CANCEL           11   /* cancel operation */
+    enum
+    {
+        _NET_WM_MOVERESIZE_SIZE_TOPLEFT,
+        _NET_WM_MOVERESIZE_SIZE_TOP,
+        _NET_WM_MOVERESIZE_SIZE_TOPRIGHT,
+        _NET_WM_MOVERESIZE_SIZE_RIGHT,
+        _NET_WM_MOVERESIZE_SIZE_BOTTOMRIGHT,
+        _NET_WM_MOVERESIZE_SIZE_BOTTOM,
+        _NET_WM_MOVERESIZE_SIZE_BOTTOMLEFT,
+        _NET_WM_MOVERESIZE_SIZE_LEFT,
+        _NET_WM_MOVERESIZE_MOVE,            /* movement only */
+        _NET_WM_MOVERESIZE_SIZE_KEYBOARD,   /* size via keyboard */
+        _NET_WM_MOVERESIZE_MOVE_KEYBOARD,   /* move via keyboard */
+        _NET_WM_MOVERESIZE_CANCEL,          /* cancel operation */
+    };
 
     /* These cover most of the important message's */
     /*
