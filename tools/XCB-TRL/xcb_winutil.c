@@ -225,7 +225,7 @@ XCBInitWMAtomsCookie(
 {
     unsigned int i;
     for(i = 0; i < WMLast; ++i)
-    {   net_cookie_return[i] = (XCBCookie) { .sequence = xcb_intern_atom(display, False, WM_ATOM_LEN[i], WM_ATOM_NAMES[i]).sequence };
+    {   net_cookie_return[i] = (XCBCookie) { .sequence = xcb_intern_atom(display, 0, WM_ATOM_LEN[i], WM_ATOM_NAMES[i]).sequence };
     }
 }
 
@@ -265,7 +265,7 @@ XCBInitNetWMAtomsCookie(
 {
     unsigned int i;
     for(i = 0; i < NetLast; ++i)
-    {   net_cookie_return[i] = (XCBCookie) { .sequence = xcb_intern_atom(display, False, NET_WM_ATOM_LEN[i], NET_WM_ATOM_NAMES[i]).sequence };
+    {   net_cookie_return[i] = (XCBCookie) { .sequence = xcb_intern_atom(display, 0, NET_WM_ATOM_LEN[i], NET_WM_ATOM_NAMES[i]).sequence };
     }
 }
 
@@ -377,7 +377,7 @@ XCBGetPidCookie(
 {
     const uint8_t INITAL_BYTE_OFFSET = 0;
     const uint8_t LENGTH = 1;   /* Pid is just 1 uint32_t */
-    XCBCookie ret = XCBGetWindowPropertyCookie(display, win, _NET_WM_PID_ID, INITAL_BYTE_OFFSET, LENGTH, False, XCB_ATOM_CARDINAL);
+    XCBCookie ret = XCBGetWindowPropertyCookie(display, win, _NET_WM_PID_ID, INITAL_BYTE_OFFSET, LENGTH, 0, XCB_ATOM_CARDINAL);
 
     return ret;
 }

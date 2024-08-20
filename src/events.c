@@ -769,6 +769,7 @@ configurerequest(XCBGenericEvent *event)
             }
             restack = 1;
         }
+        geom = mask & (XCB_CONFIG_WINDOW_X|XCB_CONFIG_WINDOW_Y|XCB_CONFIG_WINDOW_WIDTH|XCB_CONFIG_WINDOW_HEIGHT);
         if(geom)
         {
             applygravity(c->gravity, &rx, &ry, rw, rh, c->bw);
@@ -1123,18 +1124,21 @@ clientmessage(XCBGenericEvent *event)
 
 
     /* move resize */
-    #define _NET_WM_MOVERESIZE_SIZE_TOPLEFT      0
-    #define _NET_WM_MOVERESIZE_SIZE_TOP          1
-    #define _NET_WM_MOVERESIZE_SIZE_TOPRIGHT     2
-    #define _NET_WM_MOVERESIZE_SIZE_RIGHT        3
-    #define _NET_WM_MOVERESIZE_SIZE_BOTTOMRIGHT  4
-    #define _NET_WM_MOVERESIZE_SIZE_BOTTOM       5
-    #define _NET_WM_MOVERESIZE_SIZE_BOTTOMLEFT   6
-    #define _NET_WM_MOVERESIZE_SIZE_LEFT         7
-    #define _NET_WM_MOVERESIZE_MOVE              8   /* movement only */
-    #define _NET_WM_MOVERESIZE_SIZE_KEYBOARD     9   /* size via keyboard */
-    #define _NET_WM_MOVERESIZE_MOVE_KEYBOARD    10   /* move via keyboard */
-    #define _NET_WM_MOVERESIZE_CANCEL           11   /* cancel operation */
+    enum
+    {
+        _NET_WM_MOVERESIZE_SIZE_TOPLEFT,
+        _NET_WM_MOVERESIZE_SIZE_TOP,
+        _NET_WM_MOVERESIZE_SIZE_TOPRIGHT,
+        _NET_WM_MOVERESIZE_SIZE_RIGHT,
+        _NET_WM_MOVERESIZE_SIZE_BOTTOMRIGHT,
+        _NET_WM_MOVERESIZE_SIZE_BOTTOM,
+        _NET_WM_MOVERESIZE_SIZE_BOTTOMLEFT,
+        _NET_WM_MOVERESIZE_SIZE_LEFT,
+        _NET_WM_MOVERESIZE_MOVE,            /* movement only */
+        _NET_WM_MOVERESIZE_SIZE_KEYBOARD,   /* size via keyboard */
+        _NET_WM_MOVERESIZE_MOVE_KEYBOARD,   /* move via keyboard */
+        _NET_WM_MOVERESIZE_CANCEL,          /* cancel operation */
+    };
 
     /* These cover most of the important message's */
     /*
@@ -1252,14 +1256,57 @@ clientmessage(XCBGenericEvent *event)
         }
         else if(atom == netatom[NetMoveResizeWindow])
         {
-            i32 gravity = l0;
-            i32 x = l1;
-            i32 y = l2;
-            i32 w = l3;
-            i32 h = l4;
-            applygravity(gravity, &x, &y, w, h, c->bw);
-            resize(c, x, y, w, h, 0);
-            sync = 1;
+            Debug0("NetMoveResizeWindow 'ed");
+            /* specified as first 7 bits: 
+             * https://specifications.freedesktop.org/wm-spec/latest/ar01s04.html
+             */
+            const u8 GRAVITY_BITS = UINT8_MAX - 1;
+            const u32 FLAG_BITS = ~(GRAVITY_BITS);
+            const i32 x = l1;
+            const i32 y = l2;
+            const i32 w = l3;
+            const i32 h = l4;
+            const u16 __NET_WM_MOVE_WINDOW_X = 1 << 8;
+            const u16 __NET_WM_MOVE_WINDOW_Y = 1 << 9;
+            const u16 __NET_WM_MOVE_WINDOW_WIDTH = 1 << 10;
+            const u16 __NET_WM_MOVE_WINDOW_HEIGHT = 1 << 11;
+            const u16 __NET_WM_MOVE_WINDOW_APPLICATION_FLAG = 1 << 12;
+            const u16 __NET_WM_MOVE_WINDOW_PAGER_FLAG = 1 << 13;
+
+            const enum XCBBitGravity gravity = l0 & GRAVITY_BITS;
+
+            const u32 flags = l0 & FLAG_BITS;
+
+            u32 tmpgravity = c->gravity;
+            if(c->gravity != gravity)
+            {   c->gravity = gravity;
+            }
+
+            u32 mask = 0;
+            if(flags & __NET_WM_MOVE_WINDOW_X)
+            {   mask |= XCB_CONFIG_WINDOW_X;
+            }
+            if(flags & __NET_WM_MOVE_WINDOW_Y)
+            {   mask |= XCB_CONFIG_WINDOW_Y;
+            }
+            if(flags & __NET_WM_MOVE_WINDOW_WIDTH)
+            {   mask |= XCB_CONFIG_WINDOW_WIDTH;
+            }
+            if(flags & __NET_WM_MOVE_WINDOW_HEIGHT)
+            {   mask |= XCB_CONFIG_WINDOW_HEIGHT;
+            }
+
+            XCBGenericEvent _ev;
+            XCBConfigureRequestEvent *gev = (XCBConfigureRequestEvent *)&_ev;
+            gev->x = x;
+            gev->y = y;
+            gev->width = w;
+            gev->height = h;
+            gev->value_mask = mask;
+            /* Should automatically flush. */ 
+            configurerequest(&_ev);
+            /* revert back to old gravity. */
+            c->gravity = tmpgravity;
         }
         else if(atom == netatom[NetRestackWindow])
         {   

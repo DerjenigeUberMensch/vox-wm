@@ -5,17 +5,6 @@
 
 #include "xcb_trl.h"
 
-
-
-#ifndef False
-#define False 0
-#endif
-
-#ifndef True
-#define True 1
-#endif
-
-
 enum NETWMPROTOCOLS
 {
     /* Root window properties */

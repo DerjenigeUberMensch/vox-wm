@@ -219,7 +219,7 @@ DragWindow(
     const i64 detail = ((XCBButtonPressEvent *)arg->v)->detail;
     nx = ny = x = y = oldx = oldy = oldw = oldh = 0;
 
-    XCBCookie GrabPointerCookie = XCBGrabPointerCookie(_wm.dpy, _wm.root, False, MOUSEMASK, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, None, cur, XCB_CURRENT_TIME);
+    XCBCookie GrabPointerCookie = XCBGrabPointerCookie(_wm.dpy, _wm.root, False, MOUSEMASK, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE, cur, XCB_CURRENT_TIME);
     XCBGrabPointer *GrabPointer = XCBGrabPointerReply(_wm.dpy, GrabPointerCookie);
 
     /* FIXME this looks horrible */
@@ -523,7 +523,7 @@ ResizeWindow(const Arg *arg)
         }
     }
 
-    XCBCookie GrabPointerCookie = XCBGrabPointerCookie(_wm.dpy, _wm.root, False, MOUSEMASK, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, None, cur, XCB_CURRENT_TIME);
+    XCBCookie GrabPointerCookie = XCBGrabPointerCookie(_wm.dpy, _wm.root, False, MOUSEMASK, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE, cur, XCB_CURRENT_TIME);
     XCBGrabPointer *GrabPointer = XCBGrabPointerReply(_wm.dpy, GrabPointerCookie);
 
     if(!GrabPointer || GrabPointer->status != XCB_GRAB_STATUS_SUCCESS)
@@ -742,7 +742,7 @@ ResizeWindowAlt(const Arg *arg)
         }
     }
 
-    XCBCookie GrabPointerCookie = XCBGrabPointerCookie(_wm.dpy, _wm.root, False, MOUSEMASK, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, None, cur, XCB_CURRENT_TIME);
+    XCBCookie GrabPointerCookie = XCBGrabPointerCookie(_wm.dpy, _wm.root, False, MOUSEMASK, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE, cur, XCB_CURRENT_TIME);
     XCBGrabPointer *GrabPointer = XCBGrabPointerReply(_wm.dpy, GrabPointerCookie);
 
     if(!GrabPointer || GrabPointer->status != XCB_GRAB_STATUS_SUCCESS)

@@ -13,7 +13,7 @@ MANPREFIX = ${PREFIX}/share/man
 # fallback
 XCBLIST = xcb xcb-util xcb-aux xcb-xinerama xcb-event xcb-keysyms xcb-xinput xcb-image xcb-errors
 INCLUDE_LIST = tools include ${XCBLIST}
-INCS = $(foreach dir, ${INCLUDE_LIST}, -I${dir}) 
+INCS = $(foreach dir, ${INCLUDE_LIST}, -I${dir})
 #${INCLUDE_INCS} ${TOOLS} 
 #-lxcb-util -lxcb-icccm -lxcb-keysyms
 LIBS = ${XCBLIST} x11
@@ -27,7 +27,10 @@ STATICLINK = -static
 DYNAMICLINK= -ldl
 SECTIONCODE= -ffunction-sections -fdata-sections
 LINKMODE = ${DYNAMICLINK}
-MEMFLAGS = -fsanitize=address -fno-omit-frame-pointer
+MEMFLAGSALWAYS = -fno-omit-frame-pointer
+MEMFLAGSDEBUG = -fsanitize=address 
+MEMFLAGS = ${MEMFLAGSALWAYS}
+MEMFLAGS += ${MEMFLAGSDEBUG}
 
 WARNINGDEFAULT = -pedantic -Wall -Wno-deprecated-declarations -Wshadow -Wuninitialized -Werror=format-security 
 WARNINGEXTRAS = -Wunreachable-code -Waggregate-return -Wstrict-overflow=4 -Wpointer-arith
@@ -46,8 +49,10 @@ INLINELIMIT = 15
 # can conflict with adress sanatizer if used (clang)
 NO_SANATIZE_FLAGS =  -Wl,-z,relro
 
-LINKFLAGS = ${LINKMODE} -Wl,--as-needed,--relax,-z,now,-z,noexecstack,-z,defs,-pie -finline-limit=${INLINELIMIT}  ${LINKTIMEOPTIMIZATIONS} 
-LINKRELEASE = ${NO_SANATIZE_FLAGS} -Wl,--strip-all 
+LINKLIBS = -lpthread -lm
+LINKFLAGS = ${LINKMODE} -Wl,--as-needed,--relax,-z,now,-z,noexecstack,-z,defs,-pie -finline-limit=${INLINELIMIT}  ${LINKTIMEOPTIMIZATIONS} ${LINKLIBS}
+LINKRELEASE = ${NO_SANATIZE_FLAGS} 
+#-Wl,--strip-all 
 LINKDEBUG = -Wl,--gc-sections ${MEMFLAGS}
 
 CPPFLAGS = -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L ${XINERAMAFLAGS}
