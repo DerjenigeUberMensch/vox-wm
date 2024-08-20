@@ -80,8 +80,8 @@ static float __SIGMOID__SCALING(int i , float k, float z0)
  */
 enum FloatType COULDBEFLOATINGGEOM(Client *c)  
                                 {
-                                    const float k = 1.3f;
-                                    const float z0 = 1.7f;
+                                    const float k = .8f;
+                                    const float z0 = 0x0;
 
                                     float scale;
                                     i32 i;
@@ -98,6 +98,13 @@ enum FloatType COULDBEFLOATINGGEOM(Client *c)
                                         /* Debug("%f", scale); */
                                         if(__COULD__BE__FLOATING__GEOM__FITS(c, scale, scale))
                                         {   return (enum FloatType)i;
+                                        }
+                                    }
+                                    if(ISFIXED(c))
+                                    {
+                                        const float MIN_W_RATIO = .67f;
+                                        if(c->maxw <= c->desktop->mon->mw * MIN_W_RATIO || c->maxh <= c->desktop->mon->mh * MIN_W_RATIO)
+                                        {   return ProbablyFloating;
                                         }
                                     }
                                     return ProbablyNotFloating;
@@ -241,6 +248,7 @@ __FLOAT__TYPE__EXTRA__CHECKS(Client *c)
 
 static bool
 __FLOAT__TYPE__IS__FLOATING(
+        Client *c,
         const enum FloatType hints, 
         const enum FloatType geom, 
         const enum FloatType pos
@@ -255,21 +263,8 @@ __FLOAT__TYPE__IS__FLOATING(
             {
                 case DefinitelyFloating:
                 case ProbablyFloating:
-                    ret = true;
                 case CouldBeFloating:
-                    switch(pos)
-                    {
-                        case DefinitelyFloating:
-                        case ProbablyFloating:
-                        case CouldBeFloating:
-                        case ProbablyNotFloating:
-                            ret = true;
-
-                            /* unused */
-                        case FLOATINGLAST:
-                        case DefinitelyNotFloating:
-                            break;
-                    }
+                    ret = true;
                     break;
                 case ProbablyNotFloating:
                     switch(pos)
@@ -277,10 +272,10 @@ __FLOAT__TYPE__IS__FLOATING(
                         case DefinitelyFloating:
                         case ProbablyFloating:
                         case CouldBeFloating:
+                        case ProbablyNotFloating:
                             ret = true;
                             /* unused */
                         case FLOATINGLAST:
-                        case ProbablyNotFloating:
                         case DefinitelyNotFloating:
                             break;
                     }
@@ -321,10 +316,14 @@ __FLOAT__TYPE__IS__FLOATING(
                         case ProbablyFloating:
                         case CouldBeFloating:
                             ret = true;
+                            break;
                             /* unused */
                         case FLOATINGLAST:
                         case ProbablyNotFloating:
                         case DefinitelyNotFloating:
+                            if(__FLOAT__TYPE__EXTRA__CHECKS(c))
+                            {   ret = true; 
+                            }
                             break;
                     }
                     break;
@@ -334,11 +333,15 @@ __FLOAT__TYPE__IS__FLOATING(
                         case DefinitelyFloating:
                         case ProbablyFloating:
                             ret = true;
+                            break;
                             /* unused */
                         case FLOATINGLAST:
                         case CouldBeFloating:
                         case ProbablyNotFloating:
                         case DefinitelyNotFloating:
+                            if(__FLOAT__TYPE__EXTRA__CHECKS(c))
+                            {   ret = true; 
+                            }
                             break;
                     }
                     break;
@@ -352,6 +355,9 @@ __FLOAT__TYPE__IS__FLOATING(
                         case ProbablyFloating:
                         case CouldBeFloating:
                         case ProbablyNotFloating:
+                            if(__FLOAT__TYPE__EXTRA__CHECKS(c))
+                            {   ret = true; 
+                            }
                         case DefinitelyNotFloating:
                             break;
                     }
@@ -375,10 +381,14 @@ __FLOAT__TYPE__IS__FLOATING(
                         case ProbablyFloating:
                         case CouldBeFloating:
                             ret = true;
+                            break;
                             /* unused */
                         case FLOATINGLAST:
                         case ProbablyNotFloating:
                         case DefinitelyNotFloating:
+                            if(__FLOAT__TYPE__EXTRA__CHECKS(c))
+                            {   ret = true; 
+                            }
                             break;
                     }
                     break;
@@ -388,11 +398,15 @@ __FLOAT__TYPE__IS__FLOATING(
                         case DefinitelyFloating:
                         case ProbablyFloating:
                             ret = true;
+                            break;
                             /* unused */
                         case FLOATINGLAST:
+                        case CouldBeFloating:
                         case ProbablyNotFloating:
                         case DefinitelyNotFloating:
-                        case CouldBeFloating:
+                            if(__FLOAT__TYPE__EXTRA__CHECKS(c))
+                            {   ret = true; 
+                            }
                             break;
                     }
                     break;
@@ -401,10 +415,32 @@ __FLOAT__TYPE__IS__FLOATING(
                     {   
                         case DefinitelyFloating:
                             ret = true;
+                            break;
                             /* unused */
                         case FLOATINGLAST:
                         case ProbablyFloating:
                         case CouldBeFloating:
+                        case ProbablyNotFloating:
+                            if(__FLOAT__TYPE__EXTRA__CHECKS(c))
+                            {   ret = true; 
+                            }
+                        case DefinitelyNotFloating:
+                            break;
+                    }
+                    break;
+                case DefinitelyNotFloating:
+                    switch(pos)
+                    {   
+                        case DefinitelyFloating:
+                            ret = true;
+                            break;
+                            /* unused */
+                        case FLOATINGLAST:
+                        case ProbablyFloating:
+                        case CouldBeFloating:
+                            if(__FLOAT__TYPE__EXTRA__CHECKS(c))
+                            {   ret = true; 
+                            }
                         case ProbablyNotFloating:
                         case DefinitelyNotFloating:
                             break;
@@ -412,7 +448,6 @@ __FLOAT__TYPE__IS__FLOATING(
                     break;
                     /* unused */
                 case FLOATINGLAST:
-                case DefinitelyNotFloating:
                     break;
 
             }
@@ -429,12 +464,15 @@ __FLOAT__TYPE__IS__FLOATING(
                     {
                         case DefinitelyFloating:
                         case ProbablyFloating:
-                        case CouldBeFloating:
-                        case ProbablyNotFloating:
                             ret = true;
-
+                            break;
                             /* unused */
                         case FLOATINGLAST:
+                        case CouldBeFloating:
+                        case ProbablyNotFloating:
+                            if(__FLOAT__TYPE__EXTRA__CHECKS(c))
+                            {   ret = true; 
+                            }
                         case DefinitelyNotFloating:
                             break;
                     }
@@ -442,37 +480,40 @@ __FLOAT__TYPE__IS__FLOATING(
                 case CouldBeFloating:
                     switch(pos)
                     {
+                        case FLOATINGLAST:
                         case DefinitelyFloating:
                         case ProbablyFloating:
-                            ret = true;
-                            /* unused */
-                        case FLOATINGLAST:
-                        case DefinitelyNotFloating:
-                        case ProbablyNotFloating:
                         case CouldBeFloating:
+                            if(__FLOAT__TYPE__EXTRA__CHECKS(c))
+                            {   ret = true; 
+                            }
+                        case ProbablyNotFloating:
+                        case DefinitelyNotFloating:
                             break;
                     }
                 case ProbablyNotFloating:
                     switch(pos)
                     {
+                        case FLOATINGLAST:
                         case DefinitelyFloating:
                         case ProbablyFloating:
-                            ret = true;
-                            /* unused */
-                        case FLOATINGLAST:
-                        case DefinitelyNotFloating:
-                        case ProbablyNotFloating:
+                            if(__FLOAT__TYPE__EXTRA__CHECKS(c))
+                            {   ret = true; 
+                            }
                         case CouldBeFloating:
+                        case ProbablyNotFloating:
+                        case DefinitelyNotFloating:
                             break;
                     }
                     break;
                 case DefinitelyNotFloating:
                     switch(pos)
                     {   
-                        case DefinitelyFloating:
-                            ret = true;
-                            /* unused */
                         case FLOATINGLAST:
+                        case DefinitelyFloating:
+                            if(__FLOAT__TYPE__EXTRA__CHECKS(c))
+                            {   ret = true; 
+                            }
                         case ProbablyFloating:
                         case DefinitelyNotFloating:
                         case ProbablyNotFloating:
@@ -504,6 +545,9 @@ __FLOAT__TYPE__IS__FLOATING(
                         case FLOATINGLAST:
                         case ProbablyNotFloating:
                         case DefinitelyNotFloating:
+                            if(__FLOAT__TYPE__EXTRA__CHECKS(c))
+                            {   ret = true; 
+                            }
                             break;
                     }
                     break;
@@ -518,6 +562,9 @@ __FLOAT__TYPE__IS__FLOATING(
                         case FLOATINGLAST:
                         case CouldBeFloating:
                         case ProbablyNotFloating:
+                            if(__FLOAT__TYPE__EXTRA__CHECKS(c))
+                            {   ret = true; 
+                            }
                         case DefinitelyNotFloating:
                             break;
                     }
@@ -532,13 +579,15 @@ __FLOAT__TYPE__IS__FLOATING(
                             /* unused */
                         case FLOATINGLAST:
                         case ProbablyFloating:
+                            if(__FLOAT__TYPE__EXTRA__CHECKS(c))
+                            {   ret = true; 
+                            }
                         case CouldBeFloating:
                         case ProbablyNotFloating:
                         case DefinitelyNotFloating:
                             break;
                     }
                     break;
-
                     /* unused */
                 case FLOATINGLAST:
                     break;
@@ -563,8 +612,14 @@ SHOULDBEFLOATING(Client *c)
                                     const enum FloatType htype = COULDBEFLOATINGHINTS(c);
                                     const enum FloatType gtype = COULDBEFLOATINGGEOM(c);
                                     const enum FloatType ptype = COULDBEFLOATINGPOSITION(c);
-                                    Debug("%d", __FLOAT__TYPE__IS__FLOATING(htype, gtype, ptype));
-                                    return __FLOAT__TYPE__IS__FLOATING(htype, gtype, ptype);
+
+                                    bool ret = __FLOAT__TYPE__IS__FLOATING(c, htype, gtype, ptype);
+                                    if(!ret)
+                                    {
+                                        Debug("(%d, %d, %d)", htype, gtype, ptype);
+                                        Debug("[%s] Was Not Floating", c->wmname ? c->wmname : c->netwmname ? c->netwmname : "NULL");
+                                    }
+                                    return ret;
                                 }
 /* This covers some apps being able to DragWindow/ResizeWindow, in toggle.c
  * (semi-frequently) a user might "accidentally" click on them (me) and basically we dont want that window to be floating because of that user error.
@@ -890,7 +945,8 @@ void
 clientinitfloat(Client *c)
 {
     if(!SHOULDBEFLOATING(c))
-    {   return;
+    {   
+        return;
     }
     if(!ISFLOATING(c))
     {   setfloating(c, 1);
