@@ -774,11 +774,22 @@ configurerequest(XCBGenericEvent *event)
         {
             applygravity(c->gravity, &rx, &ry, rw, rh, c->bw);
             resizeclient(c, rx, ry, rw, rh);
-            /* these checks are so we maintain wasfloating correctly without messing everything up */
-            if(!ISFLOATING(c) && !DOCKED(c))
-            {   
-                setfloating(c, 1);
-                restack = 1;
+            if(!SHOULDBEFLOATING(c))
+            {
+                if(ISFLOATING(c))
+                {   
+                    setfloating(c, 0);
+                    restack = 1;
+                }
+            }
+            else
+            {
+                /* these checks are so we maintain wasfloating correctly without messing everything up */
+                if(!ISFLOATING(c) && !DOCKED(c))
+                {   
+                    setfloating(c, 1);
+                    restack = 1;
+                }
             }
         }
 
