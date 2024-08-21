@@ -599,6 +599,20 @@ __FLOAT__TYPE__IS__FLOATING(
         {   break;
         }
     }
+    if(ret)
+    {
+        const Monitor *m = c->desktop->mon;
+        if((hints != DefinitelyFloating && hints != ProbablyFloating) && geom != DefinitelyFloating)
+        {
+            /* check if in the corner */
+            if(c->x == 0 && c->y == 0)
+            {   ret = false;
+            }
+            else if(c->x == m->mx && c->y == m->my)
+            {   ret = false;
+            }
+        }
+    }
     return ret;   
 }
 
@@ -614,10 +628,9 @@ SHOULDBEFLOATING(Client *c)
                                     const enum FloatType ptype = COULDBEFLOATINGPOSITION(c);
 
                                     bool ret = __FLOAT__TYPE__IS__FLOATING(c, htype, gtype, ptype);
+                                    Debug("(%d, %d, %d)", htype, gtype, ptype);
                                     if(!ret)
-                                    {
-                                        Debug("(%d, %d, %d)", htype, gtype, ptype);
-                                        Debug("[%s] Was Not Floating", c->wmname ? c->wmname : c->netwmname ? c->netwmname : "NULL");
+                                    {   Debug("[%s] Was Not Floating", c->wmname ? c->wmname : c->netwmname ? c->netwmname : "NULL");
                                     }
                                     return ret;
                                 }
@@ -945,8 +958,7 @@ void
 clientinitfloat(Client *c)
 {
     if(!SHOULDBEFLOATING(c))
-    {   
-        return;
+    {   return;
     }
     if(!ISFLOATING(c))
     {   setfloating(c, 1);
@@ -1681,6 +1693,9 @@ resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
         if(mask)
         {   XCBConfigureWindow(_wm.dpy, c->win, mask, &changes);
         }
+    }
+    else
+    {   Debug("[%u] Not visible", c->win);
     }
     /* only send config if changed */
     if(mask)
