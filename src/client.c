@@ -602,15 +602,9 @@ __FLOAT__TYPE__IS__FLOATING(
     if(ret)
     {
         const Monitor *m = c->desktop->mon;
-        if((hints != DefinitelyFloating && hints != ProbablyFloating) && geom != DefinitelyFloating)
-        {
-            /* check if in the corner */
-            if(c->x == 0 && c->y == 0)
-            {   ret = false;
-            }
-            else if(c->x == m->mx && c->y == m->my)
-            {   ret = false;
-            }
+        /* check if in the corner */
+        if(c->x == m->mx && c->y == m->my)
+        {   ret = false;
         }
     }
     return ret;   
