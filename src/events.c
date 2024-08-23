@@ -987,9 +987,18 @@ destroynotify(XCBGenericEvent *event)
 
     if(c)
     {   
+        u32 sticky = ISSTICKY(c);
+        Desktop *desk = c->desktop;
         unmanage(c, 1);
+        /* if desktop was selected re arrange (no need to waste resources if not visbile) */
+        if(desk->mon->desksel == desk || sticky)
+        {
+            focus(NULL);
+            arrange(desk);
+        }
         /* unused due to race conditions */
         /* PropListen(_wm.handler, _wm.dpy, win, PropUnmanage); */
+        sync = 1;
     }
 
     if(sync)
@@ -1066,9 +1075,18 @@ unmapnotify(XCBGenericEvent *event)
 
     if(c)
     {   
+        u32 sticky = ISSTICKY(c);
+        Desktop *desk = c->desktop;
         unmanage(c, 1);
+        /* if desktop was selected re arrange (no need to waste resources if not visbile) */
+        if(desk->mon->desksel == desk || sticky)
+        {
+            focus(NULL);
+            arrange(desk);
+        }
         /* unused due to race conditions */
         /* PropListen(_wm.handler, _wm.dpy, win, PropUnmanage); */
+        sync = 1;
     }
 
     if(sync)
