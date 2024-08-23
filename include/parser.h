@@ -116,12 +116,26 @@ SCParserWrite(
  * RETURN: NULL on Failure.
  */
 SCParser *
-SCPParserCreate(
+SCParserCreate(
         const uint32_t BASE_VAR_COUNT
         );
+/*
+ * 
+ * RETURN: EXIT_SUCCESS on Success.
+ * RETURN: EXIT_FAILURE on Failure.
+ */
+int
+SCParserCreateFilled(
+    SCParser *parser_return,
+    const uint32_t BASE_VAR_COUNT
+    );
+
 
 /*
- * Frees parser data, and itself, any references should be terminated.
+ * Frees parser data, any references should be terminated.
+ *
+ * NOTE: Parser is not freed user must free "parser" if allocated.
+ *
  */
 void
 SCParserDestroy(

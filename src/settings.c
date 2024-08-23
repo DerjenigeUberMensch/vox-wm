@@ -315,7 +315,7 @@ USInit(
         return;
     }
     memset(settings_init, 0, sizeof(UserSettings));
-    settings_init->cfg = SCPParserCreate(UserSettingsLAST);
+    settings_init->cfg = SCParserCreate(UserSettingsLAST);
     if(settings_init->cfg)
     {
         USSetupCFGVars(settings_init);
