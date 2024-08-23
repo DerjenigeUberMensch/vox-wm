@@ -446,31 +446,46 @@ SCParserWrite(
 }
 
 SCParser * 
-SCPParserCreate(
+SCParserCreate(
         const uint32_t BASE_VAR_COUNT
         )
 {
     SCParser *p = malloc(sizeof(SCParser));
     if(p)
     {
-        p->strtable = kh_init(__STR__TABLE__);
-
-        if(!p->strtable)
+        const int status = SCParserCreateFilled(p, BASE_VAR_COUNT);
+        if(status == EXIT_FAILURE)
         {   
             free(p);
-            return NULL;
+            p = NULL;
         }
-        p->items = malloc(BASE_VAR_COUNT * sizeof(SCItem));
-        if(!p->items)
-        {
-            kh_destroy(__STR__TABLE__, p->strtable);
-            free(p);
-            return NULL;
-        }
-        p->item_len = BASE_VAR_COUNT;
-        p->index = 0;
     }
     return p;
+}
+
+int
+SCParserCreateFilled(
+    SCParser *parser_return,
+    const uint32_t BASE_VAR_COUNT
+    )
+{
+    if(!parser_return)
+    {   return EXIT_FAILURE;
+    }
+    parser_return->strtable = kh_init(__STR__TABLE__);
+
+    if(!parser_return->strtable)
+    {   return EXIT_FAILURE;
+    }
+    parser_return->items = malloc(BASE_VAR_COUNT * sizeof(SCItem));
+    if(!parser_return->items)
+    {
+        kh_destroy(__STR__TABLE__, parser_return->strtable);
+        return EXIT_FAILURE;
+    }
+    parser_return->item_len = BASE_VAR_COUNT;
+    parser_return->index = 0;
+    return EXIT_SUCCESS;
 }
 
 void
@@ -627,7 +642,7 @@ SCParserNewVar(
 
     if(READONLY_SECTION)
     {
-        item->name = VAR_NAME;
+        item->name = (char *)VAR_NAME;
         item->allocated = 0;
     }
     else
