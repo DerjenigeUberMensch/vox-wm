@@ -983,7 +983,14 @@ destroynotify(XCBGenericEvent *event)
 
     u8 sync = 0;
 
-    PropListen(_wm.handler, _wm.dpy, win, PropUnmanage);
+    Client *c = wintoclient(win);
+
+    if(c)
+    {   
+        unmanage(c, 1);
+        /* unused due to race conditions */
+        /* PropListen(_wm.handler, _wm.dpy, win, PropUnmanage); */
+    }
 
     if(sync)
     {   XCBFlush(_wm.dpy);
@@ -1055,7 +1062,14 @@ unmapnotify(XCBGenericEvent *event)
 
     u8 sync = 0;
 
-    PropListen(_wm.handler, _wm.dpy, win, PropUnmanage);
+    Client *c = wintoclient(win);
+
+    if(c)
+    {   
+        unmanage(c, 1);
+        /* unused due to race conditions */
+        /* PropListen(_wm.handler, _wm.dpy, win, PropUnmanage); */
+    }
 
     if(sync)
     {   XCBFlush(_wm.dpy);
