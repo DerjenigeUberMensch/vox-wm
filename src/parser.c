@@ -240,7 +240,7 @@ SCParserSearch(
         const char *const NAME
         )
 {
-    if(!parser)
+    if(!parser || !NAME)
     {   return NULL;
     }
     khint_t k = kh_get(__STR__TABLE__, parser->strtable, NAME);
@@ -553,7 +553,9 @@ SCParserReadFile(
         }
         memcpy(typename, buff + namelen + 1, typenamelen);
         typename[typenamelen - 1] = '\0';
-        item = SCParserSearch(parser, name);
+        /* assuming its '=' */
+        buff[namelen] = '\0';
+        item = SCParserSearch(parser, buff);
         if(!item)
         {   item = SCParserSearchSlow(parser, name);
         }
