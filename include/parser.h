@@ -33,6 +33,7 @@
 enum SCType
 {
     SCTypeNoType,
+    SCTypeBOOL,
     SCTypeUCHAR,
     SCTypeCHAR,
     SCTypeUSHORT,
