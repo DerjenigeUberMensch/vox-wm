@@ -24,22 +24,15 @@ static void
 LockMainThread(
         void
         )
-{   
-    pthread_mutex_lock(&_wm.mutex);
+{   pthread_mutex_lock(&_wm.mutex);
 }
 
 static void
 UnlockMainThread(
         void
         )
-{   
-    pthread_mutex_unlock(&_wm.mutex);
+{   pthread_mutex_unlock(&_wm.mutex);
 }
-
-
-
-
-
 
 XCBCookie
 PropGetInvalidCookie(
@@ -199,8 +192,7 @@ PropUpdateWindowState(
         LockMainThread();
         Client *c = wintoclient(cookie->win);
         if(c)
-        {
-            clientinitwstate(c, prop);
+        {   clientinitwstate(c, prop);
         }
         UnlockMainThread();
     }
@@ -219,8 +211,7 @@ PropUpdateWindowType(
         LockMainThread();
         Client *c = wintoclient(cookie->win);
         if(c)
-        {   
-            clientinitwtype(c, prop);
+        {   clientinitwtype(c, prop);
         }
         UnlockMainThread();
     }
