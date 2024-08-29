@@ -425,6 +425,9 @@ USSave(
         {   SCParserWrite(cfg, __CONFIG__NAME__);
         }
     }
+    else
+    {   SCParserWrite(cfg, __CONFIG__NAME__);
+    }
 }
 
 void
