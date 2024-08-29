@@ -316,6 +316,8 @@ checkotherwm(void)
 void
 cleanup(void)
 {
+    /* save setting data. */
+    USSave(&_cfg);
     savesession();
     PropDestroy(_wm.handler);
     if(!_wm.dpy)
@@ -904,8 +906,6 @@ savesession(void)
     {   savemonsession(fw, m);
     }
     fclose(fw);
-    /* save setting data. */
-    USSave(&_cfg);
 }
 
 void
