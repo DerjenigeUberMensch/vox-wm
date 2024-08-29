@@ -291,6 +291,10 @@ checkotherwm(void)
 {
     XCBGenericEvent *ev = NULL;
     i32 response;
+    /* display could sometimes could have events if too slow 
+     * (Issue when using nested enviroments like Xephyr.)
+     */
+    XCBSyncf(_wm.dpy);
     XCBSelectInput(_wm.dpy, XCBRootWindow(_wm.dpy, _wm.screen), XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT);
     XCBSync(_wm.dpy);  /* XCBFlush has different behaviour suprisingly, its undesired though */
     /* XCBPollForEvent calls the XServer itself for the event, So if we get a reply then a type of Window manager must be running */
@@ -900,7 +904,6 @@ savesession(void)
     {   savemonsession(fw, m);
     }
     fclose(fw);
-
     /* save setting data. */
     USSave(&_cfg);
 }
