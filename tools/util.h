@@ -411,16 +411,3 @@ union ARGB
                             }                                                           \
                         } while(0)
 #endif
-
-
-
-
-
-
-
-
-
-
-
-
-double functime(void (*_timefunction)(void));
