@@ -48,15 +48,14 @@ struct BarSettings
 
 struct UserSettings
 {
-    float mfact;
-    float gapratio;
-
-    uint16_t mcount;        /* tiling master count */
-    uint16_t snap;
-    uint16_t refreshrate;
+    float mfact;            /* factor of master area size [0.05..0.95]                          */
+    float gapratio;         /* invisible border pixel of windows (CFG_BORDER_PX not affected)   */
+    uint16_t mcount;        /* number of clients in master area                                 */
+    uint16_t snap;          /* snap window to border in pixels; 0 to disable (NOT RECOMMENDED)  */
+    uint16_t refreshrate;   /* max refresh rate when resizing, moving windows;  0 to disable    */
 
     uint16_t flags;
-    uint16_t maxcc;
+    uint16_t maxcc;         /* max number of clients (XOrg Default is 256)                      */
 
     /* bar stuff */
     BarSettings bar;
