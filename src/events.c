@@ -838,6 +838,7 @@ maprequest(XCBGenericEvent *event)
     u8 sync = 0;
 
     /* map window first (illusion of responsiveness) */
+    sync = 1;
     XCBMapWindow(_wm.dpy, win);
     PropListen(_wm.handler, _wm.dpy, win, PropManage);
 
@@ -1484,25 +1485,26 @@ propertynotify(XCBGenericEvent *event)
     {   return;
     }
 
+    enum PropertyType type = PropNone;
     switch(atom)
     {
         case XCB_ATOM_WM_TRANSIENT_FOR:
-            PropListen(_wm.handler, _wm.dpy, win, PropTransient);
+            type = PropTransient;
             break;
         case XCB_ATOM_WM_HINTS:
-            PropListen(_wm.handler, _wm.dpy, win, PropWMHints);
+            type = PropWMHints;
             break;
         case XCB_ATOM_WM_NORMAL_HINTS:
-            PropListen(_wm.handler, _wm.dpy, win, PropSizeHints);
+            type = PropSizeHints;
             break;
         case XCB_ATOM_WM_NAME:
-            PropListen(_wm.handler, _wm.dpy, win, PropWMName);
+            type = PropWMName;
             break;
         case XCB_ATOM_WM_ICON_NAME:
             /* ignore */
-            break;
+            return;
         case XCB_ATOM_WM_CLASS:
-            PropListen(_wm.handler, _wm.dpy, win, PropWMClass);
+            type = PropWMClass;
             break;
         case XCB_ATOM_WM_CLIENT_MACHINE:
             /* ignore */
@@ -1510,37 +1512,42 @@ propertynotify(XCBGenericEvent *event)
         default:
             /* other atoms */
             if(atom == motifatom)
-            {   PropListen(_wm.handler, _wm.dpy, win, PropMotifHints);
+            {   type = PropMotifHints;
             }
             else if(atom == netatom[NetWMName])
-            {   PropListen(_wm.handler, _wm.dpy, win, PropNetWMName);
+            {   type = PropNetWMName;
             }
             else if(atom == netatom[NetWMWindowType])
-            {   PropListen(_wm.handler, _wm.dpy, win, PropWindowType);
+            {   type = PropWindowType;
             }
             else if(atom == netatom[NetWMState])
-            {   PropListen(_wm.handler, _wm.dpy, win, PropWindowState);
+            {   type = PropWindowState;
             }
             else if(atom == wmatom[WMProtocols])
-            {   PropListen(_wm.handler, _wm.dpy, win, PropWMProtocol);
+            {   type = PropWMProtocol;
             }
             else if(atom == netatom[NetWMStrut])
-            {   PropListen(_wm.handler, _wm.dpy, win, PropStrut);
+            {   type = PropStrut;
             }
             else if(atom == netatom[NetWMStrutPartial])
-            {   PropListen(_wm.handler, _wm.dpy, win, PropStrutp);
+            {   type = PropStrutp;
             }
             else if(atom == netatom[NetWMPid])
-            {   PropListen(_wm.handler, _wm.dpy, win, PropPid);
+            {   type = PropPid;
             }
             else if(atom == netatom[NetWMIcon])
-            {   PropListen(_wm.handler, _wm.dpy, win, PropIcon);
+            {   type = PropIcon;
             }
-            else if(atom == motifatom)
-            {   PropListen(_wm.handler, _wm.dpy, win, PropMotifHints);
-            }
-            break;
+            /* not found return */
+            return;
     }
+    /* encase we fuck up later down the line */
+    if(type == PropNone || type >= PropLAST)
+    {   
+        Debug0("Prop is invalid FIXME");
+        return;
+    }
+    PropListen(_wm.handler, _wm.dpy, win, type);
 }
 
 void
