@@ -1316,6 +1316,9 @@ clientmessage(XCBGenericEvent *event)
             const u16 __NET_WM_MOVE_WINDOW_APPLICATION_FLAG = 1 << 12;
             const u16 __NET_WM_MOVE_WINDOW_PAGER_FLAG = 1 << 13;
 
+            (void)__NET_WM_MOVE_WINDOW_APPLICATION_FLAG;
+            (void)__NET_WM_MOVE_WINDOW_PAGER_FLAG;
+
             const enum XCBBitGravity gravity = l0 & GRAVITY_BITS;
 
             const u32 flags = l0 & FLAG_BITS;

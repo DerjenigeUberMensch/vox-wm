@@ -665,7 +665,7 @@ SCParserNewVar(
 
     if(READONLY_SECTION)
     {
-        item->name = VAR_NAME;
+        item->name = (char *)VAR_NAME;
         item->allocated = 0;
     }
     else

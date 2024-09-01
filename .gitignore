@@ -3,6 +3,8 @@ bin/
 build/
 # Sometimes build leaves this
 *_time
+*.release_time
+*.debug_time
 
 
 # Clang leftovers
