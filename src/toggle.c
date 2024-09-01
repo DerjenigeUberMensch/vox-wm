@@ -51,6 +51,7 @@ UserStats(const Arg *arg)
     if(c)
     {   
         argb.argb = c->bcol;
+        (void)argb;
         Debug("(x: %d, y: %d, w: %u, h: %u)", c->x, c->y, c->w, c->h);
         Debug("(ox: %d, oy: %d, ow: %u, oh: %u)", c->oldx, c->oldy, c->oldw, c->oldh);
         Debug("NETNAME:     %s", c->netwmname);
