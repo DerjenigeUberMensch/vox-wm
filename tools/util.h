@@ -66,28 +66,83 @@ union ARGB
     uint32_t argb;  /* ARGB 32bit value */
 };
 
-#define M_STRINGIFY(x)  #x
-#define M_CONCAT(a, b)  a##b
+#ifndef __C__LEGACY__ 
+#define __C__LEGACY__ #ifdef __cplusplus extern "C" { #endif
+#endif
 
+#ifndef __C__LEGACY__END__
+#define __C__LEGACY__END__ #ifdef __cplusplus } #endif
+#endif
+
+#ifndef M_STRINGIFY
+#define M_STRINGIFY(x)  #x
+#endif
+
+#ifndef M_CONCAT
+#define M_CONCAT(a, b)  a##b
+#endif
+
+#ifndef SIZEOF_VAR
+#define SIZEOF_VAR(VAR)     ((char*)(&VAR + 1) - (char*)(&VAR))
+#endif
+
+#ifndef SIZEOF_TYPE
+#define SIZEOF_TYPE(TYPE)   ((char*)((TYPE*)0 + 1) - (char*)((TYPE*)0))
+#endif
+
+#ifndef FIELD_SIZEOF
+#define FIELD_SIZEOF(type, member) (sizeof( ((type *)0)->member))
+#endif
+
+#ifndef MAX
 #define MAX(A, B)               ((A) > (B) ? (A) : (B))
+#endif
+
+#ifndef MIN
 #define MIN(A, B)               ((A) < (B) ? (A) : (B))
+#endif
+
+#ifndef BETWEEN
 #define BETWEEN(X, A, B)        ((A) <= (X) && (X) <= (B))
+#endif
+
+#ifndef MOD
 #define MOD(N,M)                ((N)%(M) < 0 ? (N)%(M) + (M) : (N)%(M))
+#endif
+
+#ifndef TRUNC
 #define TRUNC(X,A,B)            (MAX((A), MIN((X), (B))))
+#endif
+
+#ifndef FREE
 #define FREE(F)                 do              \
                                 {               \
                                     free(F);    \
                                     F = NULL;   \
                                 } while(0)
+#endif
+
+#ifndef CLEARFLAG
 #define CLEARFLAG(FLAGS, FLAG)            (((FLAGS) &= (~FLAG)))
+#endif
+
+#ifndef SETFLAG
 #define SETFLAG(FLAGS, FLAG, STATE)       do                                        \
                                           {                                         \
                                               ((FLAGS) &= (~FLAG));                 \
                                               ((FLAGS) |= ((FLAG * !!(STATE))));    \
                                           } while(0)
-#define FLAGSET(FLAGS, FLAG)            (((FLAGS & FLAG)))
+#endif
 
+#ifndef FLAGSET
+#define FLAGSET(FLAGS, FLAG)            (((FLAGS & FLAG)))
+#endif
+
+#ifndef DIE
 #define DIE(fmt, ...)           do { fprintf(stderr, "[%s:%d] by %s(): " fmt "\n", __FILE__,__LINE__,__func__,__VA_ARGS__); exit(EXIT_FAILURE); } while (0)
+#endif
+
+#ifndef DIECAT
 #define DIECAT(fmt, ...)        do { fprintf(stderr, "[%s:%d] by %s()\n"                \
                                     "________________________________\n"                \
                                     "|                    /)        |\n"                \
@@ -96,47 +151,106 @@ union ARGB
                                     "|           {_:Y:.}_//         |\n"                \
                                     "|-----------{_}^-'{_}----------|\n"                \
                                     "\n", __FILE__,__LINE__,__func__,__VA_ARGS__); exit(EXIT_FAILURE); } while (0)
+#endif
+
 #ifdef DEBUG
+
+#ifndef Debug
 #define Debug(fmt, ...) (fprintf(stderr, "[%s:%d] by %s(): " fmt "\n", __FILE__,__LINE__,__func__,__VA_ARGS__))
+#endif
+
+#ifndef Debug0
 #define Debug0(X) (fprintf(stderr, "[%s:%d] by %s(): " X "\n", __FILE__, __LINE__, __func__))
+#endif
+
 #else
+
+#ifndef Debug
 #define Debug(fmt, ...) ((void)0)
+#endif
+
+#ifndef Debug0
 #define Debug0(X)       ((void)0)
 #endif
 
-/* gcc */
-#ifdef __GNUC__
-#define ASM(X)                          (__asm__(X))
-#define asm __asm__
-#define __HOT__                         __attribute__((hot))
-#define __COLD__                        __attribute__((cold))
-#define NOINLINE                        __attribute__ ((noinline))
-#define _PRAGMA_ONCE
-#elif __clang__
-#define ASM(X)                          (__asm__(X))
-#define asm __asm__
-#define __HOT__                         __attribute__((hot))
-#define __COLD__                        __attribute__((cold))
-#define NOINLINE                        __attribute__ ((noinline))
-#define _PRAGMA_ONCE
-#else
-#define ASM(X)                          ((void)X)
-#defube asm(X)                          ((void)X)
-#define __HOT__
-#define __COLD__
-#define NOINLINE                        
 #endif
 
+/* gcc */
+#if defined(__GNUC__) || defined(__clang__)
 
+#ifndef ASM
+#define ASM(X)                          (__asm__(X))
+#endif
 
+#ifndef asm
+#define asm __asm__
+#endif
 
-void *ecalloc(size_t nmemb, size_t size);
-char *smprintf(char *fmt, ...);
-void debug(char *fmt, ...);
+#ifndef __HOT__
+#define __HOT__                         __attribute__((hot))
+#endif
 
-double functime(void (*_timefunction)(void));
+#ifndef __COLD__
+#define __COLD__                        __attribute__((cold))
+#endif
 
+#ifndef NOINLINE
+#define NOINLINE                        __attribute__ ((noinline))
+#endif
+
+#ifndef _PRAGMA_ONCE_
+#define _PRAGMA_ONCE_                   #pragma once
+#endif
+
+#ifndef ASSUME
 #define ASSUME(cond) do { if (!(cond)) __builtin_unreachable(); } while (0)
+#endif
+
+#ifndef likely
+#define likely(X)    __builtin_expect(!!(X), 1)
+#endif
+
+#ifndef unlikely
+#define unlikely(X) __builtin_expect(!!(X), 0)
+#endif
+#else
+#ifndef ASM
+#define ASM(X)                          ((void)0)
+#endif
+
+#ifndef asm
+#define asm 
+#endif
+
+#ifndef __HOT__
+#define __HOT__
+#endif
+
+#ifndef __COLD__
+#define __COLD__
+#endif
+
+#ifndef NOINLINE
+#define NOINLINE
+#endif
+
+#ifndef _PRAGMA_ONCE_
+#define _PRAGMA_ONCE_
+#endif
+
+#ifndef ASSUME
+#define ASSUME(X)   ((void)0)
+#endif
+
+#ifndef likely
+#define likely(X)    ((void)0)
+#endif
+
+#ifndef unlikely
+#define unlikely(X) ((void)0)
+#endif
+#endif
+
 
 /* Original implementation: Simon Tatham 
  * https://www.chiark.greenend.org.uk/~sgtatham/algorithms/listsort.html 
@@ -297,3 +411,16 @@ double functime(void (*_timefunction)(void));
                             }                                                           \
                         } while(0)
 #endif
+
+
+
+
+
+
+
+
+
+
+
+
+double functime(void (*_timefunction)(void));
