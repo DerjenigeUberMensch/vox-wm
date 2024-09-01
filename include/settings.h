@@ -70,11 +70,6 @@ enum USFlags
     USPreferClientDecorations = 1 << 3,
 };
 
-/* helper */
-#ifndef FIELD_SIZEOF
-#define FIELD_SIZEOF(t, f) (sizeof(((t*)0)->f))
-#endif
-
 enum
 {
     Mfact,
