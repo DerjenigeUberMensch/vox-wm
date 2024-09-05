@@ -9,170 +9,70 @@
 #include "settings.h"
 #include "util.h"
 
-static char *const _DATA_ENTRY_NAME[UserSettingsLAST] = 
+struct 
+USSettingData
 {
-    [Mfact] = "Mfact",
-    [GapRatio] = "GapRatio",
-    [MCount] = "MCount",
-    [Snap] = "Snap",
-    [RefreshRate] = "RefreshRate",
-    [Flags] = "Flags",
-    [MaxCC] = "MaxCC",
-
-    [BarLX] = "BarLX",
-    [BarLY] = "BarLY",
-    [BarLW] = "BarLW",
-    [BarLH] = "BarLH",
-
-    [BarRX] = "BarRX",
-    [BarRY] = "BarRY",
-    [BarRW] = "BarRW",
-    [BarRH] = "BarRH",
-
-    [BarTX] = "BarTX",
-    [BarTY] = "BarTY",
-    [BarTW] = "BarTW",
-    [BarTH] = "BarTH",
-
-    [BarBX] = "BarBX",
-    [BarBY] = "BarBY",
-    [BarBW] = "BarBW",
-    [BarBH] = "BarBH",
+    const char *const names[UserSettingsLAST];
+    const u8 name_len[UserSettingsLAST];
+    const u8 field_size[UserSettingsLAST];
+    const u16 field_offset[UserSettingsLAST];
+    const enum SCType type[UserSettingsLAST];
 };
 
-static unsigned int _DATA_ENTRY_NAME_LEN[UserSettingsLAST] = 
+#ifdef ADD_MEMBER
+#define ADD_MEMBER1456 ADD_MEMBER
+#undef ADD_MEMBER
+#endif
+
+#define ADD_MEMBER(STRUCT, NAME, STRUCT_NAME, TYPE) \
+        .names[NAME] = #NAME, \
+        .name_len[NAME] = sizeof(#NAME), \
+        .field_size[NAME] = FIELD_SIZEOF(STRUCT, STRUCT_NAME), \
+        .field_offset[NAME] = offsetof(STRUCT, STRUCT_NAME), \
+        .type[NAME] = TYPE \
+
+static const struct USSettingData
+__USER__SETTINGS__DATA__ = 
 {
-    /* make all of these sizeof */
-    [Mfact] = sizeof("Mfact"),
-    [GapRatio] = sizeof("GapRatio"),
-    [MCount] = sizeof("MCount"),
-    [Snap] = sizeof("Snap"),
-    [RefreshRate] = sizeof("RefreshRate"),
-    [Flags] = sizeof("Flags"),
-    [MaxCC] = sizeof("MaxCC"),
+    ADD_MEMBER(UserSettings, MFact, mfact, SCTypeFLOAT),
+    ADD_MEMBER(UserSettings, GapRatio, gapratio, SCTypeFLOAT),
+    ADD_MEMBER(UserSettings, MCount, mcount, SCTypeUSHORT),
+    ADD_MEMBER(UserSettings, Snap, snap, SCTypeUSHORT),
+    ADD_MEMBER(UserSettings, RefreshRate, refreshrate, SCTypeUSHORT),
+    ADD_MEMBER(UserSettings, Flags, flags, SCTypeUSHORT),
+    ADD_MEMBER(UserSettings, MaxCC, maxcc, SCTypeUSHORT),
 
-    [BarLX] = sizeof("BarLX"),
-    [BarLY] = sizeof("BarLY"),
-    [BarLW] = sizeof("BarLW"),
-    [BarLH] = sizeof("BarLH"),
+    /* bar data */
+    ADD_MEMBER(UserSettings, BarLX, lx, SCTypeFLOAT),
+    ADD_MEMBER(UserSettings, BarLY, ly, SCTypeFLOAT),
+    ADD_MEMBER(UserSettings, BarLW, lw, SCTypeFLOAT),
+    ADD_MEMBER(UserSettings, BarLH, lh, SCTypeFLOAT),
 
-    [BarRX] = sizeof("BarRX"),
-    [BarRY] = sizeof("BarRY"),
-    [BarRW] = sizeof("BarRW"),
-    [BarRH] = sizeof("BarRH"),
+    ADD_MEMBER(UserSettings, BarRX, rx, SCTypeFLOAT),
+    ADD_MEMBER(UserSettings, BarRY, ry, SCTypeFLOAT),
+    ADD_MEMBER(UserSettings, BarRW, rw, SCTypeFLOAT),
+    ADD_MEMBER(UserSettings, BarRH, rh, SCTypeFLOAT),
 
-    [BarTX] = sizeof("BarTX"),
-    [BarTY] = sizeof("BarTY"),
-    [BarTW] = sizeof("BarTW"),
-    [BarTH] = sizeof("BarTH"),
+    ADD_MEMBER(UserSettings, BarTX, tx, SCTypeFLOAT),
+    ADD_MEMBER(UserSettings, BarTY, ty, SCTypeFLOAT),
+    ADD_MEMBER(UserSettings, BarTW, tw, SCTypeFLOAT),
+    ADD_MEMBER(UserSettings, BarTH, th, SCTypeFLOAT),
 
-    [BarBX] = sizeof("BarBX"),
-    [BarBY] = sizeof("BarBY"),
-    [BarBW] = sizeof("BarBW"),
-    [BarBH] = sizeof("BarBH")
+    ADD_MEMBER(UserSettings, BarBX, bx, SCTypeFLOAT),
+    ADD_MEMBER(UserSettings, BarBY, by, SCTypeFLOAT),
+    ADD_MEMBER(UserSettings, BarBW, bw, SCTypeFLOAT),
+    ADD_MEMBER(UserSettings, BarBH, bh, SCTypeFLOAT),
 };
 
-static const unsigned int _DATA_ENTRY_SIZE[UserSettingsLAST] = 
-{
-    [Mfact] = FIELD_SIZEOF(UserSettings, mfact),
-    [GapRatio] = FIELD_SIZEOF(UserSettings, gapratio),
-    [MCount] = FIELD_SIZEOF(UserSettings, mcount),
-    [Snap] = FIELD_SIZEOF(UserSettings, snap),
-    [RefreshRate] = FIELD_SIZEOF(UserSettings, refreshrate),
-    [Flags] = FIELD_SIZEOF(UserSettings, flags),
-    [MaxCC] = FIELD_SIZEOF(UserSettings, maxcc),
 
-    /* TODO */
-    [BarLX] = FIELD_SIZEOF(BarSettings, lx),
-    [BarLY] = FIELD_SIZEOF(BarSettings, ly),
-    [BarLW] = FIELD_SIZEOF(BarSettings, lw),
-    [BarLH] = FIELD_SIZEOF(BarSettings, lh),
+#undef ADD_MEMBER
 
-    [BarRX] = FIELD_SIZEOF(BarSettings, rx),
-    [BarRY] = FIELD_SIZEOF(BarSettings, ry),
-    [BarRW] = FIELD_SIZEOF(BarSettings, rw),
-    [BarRH] = FIELD_SIZEOF(BarSettings, rh),
+#ifdef ADD_MEMBER1456
+#define ADD_MEMBER ADD_MEMBER1456
+#undef ADD_MEMBER1456
+#endif
 
-    [BarTX] = FIELD_SIZEOF(BarSettings, tx),
-    [BarTY] = FIELD_SIZEOF(BarSettings, ty),
-    [BarTW] = FIELD_SIZEOF(BarSettings, tw),
-    [BarTH] = FIELD_SIZEOF(BarSettings, th),
 
-    [BarBX] = FIELD_SIZEOF(BarSettings, bx),
-    [BarBY] = FIELD_SIZEOF(BarSettings, by),
-    [BarBW] = FIELD_SIZEOF(BarSettings, bw),
-    [BarBH] = FIELD_SIZEOF(BarSettings, bh),
-
-};
-
-#define __BAR_OFFSET  (offsetof(UserSettings, bar))
-#define __BAR_OFFSET_INNER(NAME)  (offsetof(BarSettings, NAME))
-
-#define BAR_OFFSET(ITEM_NAME) (__BAR_OFFSET + (__BAR_OFFSET_INNER(ITEM_NAME)))
-
-static const unsigned int _DATA_ENTRY_OFFSET[UserSettingsLAST] = 
-{
-    [Mfact] = offsetof(UserSettings, mfact),
-    [GapRatio] = offsetof(UserSettings, gapratio),
-    [MCount] = offsetof(UserSettings, mcount),
-    [Snap] = offsetof(UserSettings, snap),
-    [RefreshRate] = offsetof(UserSettings, refreshrate),
-    [Flags] = offsetof(UserSettings, flags),
-    [MaxCC] = offsetof(UserSettings, maxcc),
-
-    /* TODO */
-    [BarLX] = BAR_OFFSET(lx),
-    [BarLY] = BAR_OFFSET(ly),
-    [BarLW] = BAR_OFFSET(lw),
-    [BarLH] = BAR_OFFSET(lh),
-
-    [BarRX] = BAR_OFFSET(rx),
-    [BarRY] = BAR_OFFSET(ry),
-    [BarRW] = BAR_OFFSET(rw),
-    [BarRH] = BAR_OFFSET(rh),
-
-    [BarTX] = BAR_OFFSET(tx),
-    [BarTY] = BAR_OFFSET(ty),
-    [BarTW] = BAR_OFFSET(tw),
-    [BarTH] = BAR_OFFSET(th),
-
-    [BarBX] = BAR_OFFSET(bx),
-    [BarBY] = BAR_OFFSET(by),
-    [BarBW] = BAR_OFFSET(bw),
-    [BarBH] = BAR_OFFSET(bh),
-};
-
-static const enum SCType _DATA_ENTRY_TYPE[UserSettingsLAST] = 
-{
-    [Mfact] = SCTypeFLOAT,
-    [GapRatio] = SCTypeFLOAT,
-    [MCount] = SCTypeUSHORT,
-    [Snap] = SCTypeUSHORT,
-    [RefreshRate] = SCTypeUSHORT,
-    [Flags] = SCTypeUSHORT,
-    [MaxCC] = SCTypeUSHORT,
-
-    /* TODO */
-    [BarLX] = SCTypeFLOAT,
-    [BarLY] = SCTypeFLOAT,
-    [BarLW] = SCTypeFLOAT,
-    [BarLH] = SCTypeFLOAT,
-
-    [BarRX] = SCTypeFLOAT,
-    [BarRY] = SCTypeFLOAT,
-    [BarRW] = SCTypeFLOAT,
-    [BarRH] = SCTypeFLOAT,
-
-    [BarTX] = SCTypeFLOAT,
-    [BarTY] = SCTypeFLOAT,
-    [BarTW] = SCTypeFLOAT,
-    [BarTH] = SCTypeFLOAT,
-
-    [BarBX] = SCTypeFLOAT,
-    [BarBY] = SCTypeFLOAT,
-    [BarBW] = SCTypeFLOAT,
-    [BarBH] = SCTypeFLOAT
-};
 
 static char *__CONFIG__NAME__ = NULL;
 
@@ -232,11 +132,13 @@ USSetupCFGVars(
     i32 i;
     u8 err = 0;
     const int READONLY = 1;
+    const struct USSettingData *const usdata = &__USER__SETTINGS__DATA__;
+    /* global settings */
     for(i = 0; i < UserSettingsLAST; ++i)
     {   
-        err = SCParserNewVar(cfg, _DATA_ENTRY_NAME[i], _DATA_ENTRY_NAME_LEN[i], READONLY, _DATA_ENTRY_SIZE[i], _DATA_ENTRY_TYPE[i]);
+        err = SCParserNewVar(cfg, usdata->names[i], usdata->name_len[i], READONLY, usdata->field_size[i], usdata->type[i]);
         if(err)
-        {   Debug("Failed to create: \"%s\"", _DATA_ENTRY_NAME[i]);
+        {   Debug("Failed to create: \"%s\"", usdata->names[i]);
         }
     }
 }
@@ -278,27 +180,26 @@ USSetupCFGDefaults(
     SETFLAG(s->flags, USUseClientDecorations, clientdecor);
     SETFLAG(s->flags, USPreferClientDecorations, preferclientdecor);
 
-    BarSettings *bs = &us->bar;
     /* Left Stuff */
-    bs->lw = 0.15f;
-    bs->lh = 1.0f;
-    bs->lx = 0.0f;
-    bs->ly = 0.0f;
+    s->lw = 0.15f;
+    s->lh = 1.0f;
+    s->lx = 0.0f;
+    s->ly = 0.0f;
     /* Right Stuff */
-    bs->rw = 0.15f;
-    bs->rh = 1.0f;
-    bs->rx = 1.0f - bs->rw;
-    bs->ry = 0.0f;
+    s->rw = 0.15f;
+    s->rh = 1.0f;
+    s->rx = 1.0f - s->rw;
+    s->ry = 0.0f;
     /* Top Stuff */
-    bs->tw = 1.0f;
-    bs->th = 0.15f;
-    bs->tx = 0.0f;
-    bs->ty = 0.0f;
+    s->tw = 1.0f;
+    s->th = 0.15f;
+    s->tx = 0.0f;
+    s->ty = 0.0f;
     /* Bottom Stuff */
-    bs->bw = 1.0f;
-    bs->bh = 0.15f;
-    bs->bx = 0.0f;
-    bs->by = 1.0f - bs->bh;
+    s->bw = 1.0f;
+    s->bh = 0.15f;
+    s->bx = 0.0f;
+    s->by = 1.0f - s->bh;
 }
 
 void
@@ -384,18 +285,19 @@ USLoad(
     }
     i32 i;
     void *data;
+    const struct USSettingData *const usdata = &__USER__SETTINGS__DATA__;
     for(i = 0; i < UserSettingsLAST; ++i)
     {
-        data = ((uint8_t *)settings) + _DATA_ENTRY_OFFSET[i];
-        item = SCParserSearch(cfg, _DATA_ENTRY_NAME[i]);
+        data = ((uint8_t *)settings) + usdata->field_offset[i];
+        item = SCParserSearch(cfg, usdata->names[i]);
         if(!item)
-        {   item = SCParserSearchSlow(cfg, _DATA_ENTRY_NAME[i]);
+        {   item = SCParserSearchSlow(cfg, usdata->names[i]);
         }
         if(item)
-        {   SCParserLoad(item, data, _DATA_ENTRY_SIZE[i], _DATA_ENTRY_TYPE[i]);
+        {   SCParserLoad(item, data, usdata->field_size[i], usdata->type[i]);
         }
         else
-        {   Debug("Failed to load, \"%s\"", _DATA_ENTRY_NAME[i]);
+        {   Debug("Failed to load, \"%s\"", usdata->names[i]);
         }
     }
 }
@@ -411,8 +313,9 @@ USSave(
     SCParser *cfg = settings->cfg;
     UserSettings *s = settings;
     i32 i;
+    const struct USSettingData *const usdata = &__USER__SETTINGS__DATA__;
     for(i = 0; i < UserSettingsLAST; ++i)
-    {   SCParserSaveVar(cfg, _DATA_ENTRY_NAME[i], ((uint8_t *)s) + _DATA_ENTRY_OFFSET[i]);
+    {   SCParserSaveVar(cfg, usdata->names[i], ((uint8_t *)s) + usdata->field_offset[i]);
     }
     FILE *fp = fopen(__CONFIG__NAME__, "r");
     if(fp)

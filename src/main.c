@@ -1598,7 +1598,6 @@ updatebargeom(Monitor *m)
     if(ISFIXED(bar))
     {   return;
     }
-    BarSettings *bs = &_cfg.bar;
 
     f32 bxr;
     f32 byr;
@@ -1611,31 +1610,31 @@ updatebargeom(Monitor *m)
         switch(side)
         {   
             case BarSideLeft:
-                bxr = bs->lx;
-                byr = bs->ly;
-                bwr = bs->lw;
-                bhr = bs->lh;
+                bxr = _cfg.lx;
+                byr = _cfg.ly;
+                bwr = _cfg.lw;
+                bhr = _cfg.lh;
                 resize(bar, m->mx + (m->mw * bxr), m->my + (m->mh * byr), m->mw * bwr, m->mh * bhr, 1);
                 break;
             case BarSideRight:
-                bxr = bs->rx;
-                byr = bs->ry;
-                bwr = bs->rw;
-                bhr = bs->rh;
+                bxr = _cfg.rx;
+                byr = _cfg.ry;
+                bwr = _cfg.rw;
+                bhr = _cfg.rh;
                 resize(bar, m->mx + (m->mw * bxr), m->my + (m->mh * byr), m->mw * bwr, m->mh * bhr, 1);
                 break;
             case BarSideTop:
-                bxr = bs->tx;
-                byr = bs->ty;
-                bwr = bs->tw;
-                bhr = bs->th;
+                bxr = _cfg.tx;
+                byr = _cfg.ty;
+                bwr = _cfg.tw;
+                bhr = _cfg.th;
                 resize(bar, m->mx + (m->mw * bxr), m->my + (m->mh * byr), m->mw * bwr, m->mh * bhr, 1);
                 break;
             case BarSideBottom:
-                bxr = bs->bx;
-                byr = bs->by;
-                bwr = bs->bw;
-                bhr = bs->bh;
+                bxr = _cfg.bx;
+                byr = _cfg.by;
+                bwr = _cfg.bw;
+                bhr = _cfg.bh;
                 resize(bar, m->mx + (m->mw * bxr), m->my + (m->mh * byr), m->mw * bwr, m->mh * bhr, 1);
                 break;
         }
@@ -1645,28 +1644,28 @@ updatebargeom(Monitor *m)
         switch(side)
         {
             case BarSideLeft:
-                bs->lx = bar->x;
-                bs->ly = bar->y;
-                bs->lw = bar->w;
-                bs->lh = bar->h;
+                _cfg.lx = bar->x;
+                _cfg.ly = bar->y;
+                _cfg.lw = bar->w;
+                _cfg.lh = bar->h;
                 break;
             case BarSideRight:
-                bs->rx = bar->x;
-                bs->ry = bar->y;
-                bs->rw = bar->w;
-                bs->rh = bar->h;
+                _cfg.rx = bar->x;
+                _cfg.ry = bar->y;
+                _cfg.rw = bar->w;
+                _cfg.rh = bar->h;
                 break;
             case BarSideTop:
-                bs->tx = bar->x;
-                bs->ty = bar->y;
-                bs->tw = bar->w;
-                bs->th = bar->h;
+                _cfg.tx = bar->x;
+                _cfg.ty = bar->y;
+                _cfg.tw = bar->w;
+                _cfg.th = bar->h;
                 break;
             case BarSideBottom:
-                bs->bx = bar->x;
-                bs->by = bar->y;
-                bs->bw = bar->w;
-                bs->bh = bar->h;
+                _cfg.bx = bar->x;
+                _cfg.by = bar->y;
+                _cfg.bw = bar->w;
+                _cfg.bh = bar->h;
                 break;
         }
     }

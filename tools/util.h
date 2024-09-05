@@ -91,7 +91,7 @@ union ARGB
 #endif
 
 #ifndef FIELD_SIZEOF
-#define FIELD_SIZEOF(type, member) (sizeof( ((type *)0)->member))
+#define FIELD_SIZEOF(type, member) (sizeof(((type *)0)->member))
 #endif
 
 #ifndef MAX
