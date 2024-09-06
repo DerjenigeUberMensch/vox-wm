@@ -24,44 +24,51 @@ USSettingData
 #undef ADD_MEMBER
 #endif
 
-#define ADD_MEMBER(STRUCT, NAME, STRUCT_NAME, TYPE) \
+#define ADD_MEMBER(NAME, STRUCT_NAME, TYPE) \
         .names[NAME] = #NAME, \
         .name_len[NAME] = sizeof(#NAME), \
-        .field_size[NAME] = FIELD_SIZEOF(STRUCT, STRUCT_NAME), \
-        .field_offset[NAME] = offsetof(STRUCT, STRUCT_NAME), \
+        .field_size[NAME] = FIELD_SIZEOF(UserSettings, STRUCT_NAME), \
+        .field_offset[NAME] = offsetof(UserSettings, STRUCT_NAME), \
         .type[NAME] = TYPE \
+        , \
 
 static const struct USSettingData
 __USER__SETTINGS__DATA__ = 
 {
-    ADD_MEMBER(UserSettings, MFact, mfact, SCTypeFLOAT),
-    ADD_MEMBER(UserSettings, GapRatio, gapratio, SCTypeFLOAT),
-    ADD_MEMBER(UserSettings, MCount, mcount, SCTypeUSHORT),
-    ADD_MEMBER(UserSettings, Snap, snap, SCTypeUSHORT),
-    ADD_MEMBER(UserSettings, RefreshRate, refreshrate, SCTypeUSHORT),
-    ADD_MEMBER(UserSettings, Flags, flags, SCTypeUSHORT),
-    ADD_MEMBER(UserSettings, MaxCC, maxcc, SCTypeUSHORT),
+    ADD_MEMBER(MFact, mfact, SCTypeFLOAT)
+    ADD_MEMBER(GapRatio, gapratio, SCTypeFLOAT)
+    ADD_MEMBER(MCount, mcount, SCTypeUSHORT)
+    ADD_MEMBER(Snap, snap, SCTypeUSHORT)
+    ADD_MEMBER(RefreshRate, refreshrate, SCTypeUSHORT)
+    ADD_MEMBER(MaxCC, maxcc, SCTypeUSHORT)
+
+    /* BOOL Types */
+    ADD_MEMBER(HoverFocus, hoverfocus, SCTypeBOOL)
+    ADD_MEMBER(UseDecorations, usedecorations, SCTypeBOOL)
+    ADD_MEMBER(UseClientSideDecorations, useclientdecorations, SCTypeBOOL)
+    ADD_MEMBER(PreferClientSideDecorations, preferclientdecorations, SCTypeBOOL)
+
 
     /* bar data */
-    ADD_MEMBER(UserSettings, BarLX, lx, SCTypeFLOAT),
-    ADD_MEMBER(UserSettings, BarLY, ly, SCTypeFLOAT),
-    ADD_MEMBER(UserSettings, BarLW, lw, SCTypeFLOAT),
-    ADD_MEMBER(UserSettings, BarLH, lh, SCTypeFLOAT),
+    ADD_MEMBER(BarLX, lx, SCTypeFLOAT)
+    ADD_MEMBER(BarLY, ly, SCTypeFLOAT)
+    ADD_MEMBER(BarLW, lw, SCTypeFLOAT)
+    ADD_MEMBER(BarLH, lh, SCTypeFLOAT)
 
-    ADD_MEMBER(UserSettings, BarRX, rx, SCTypeFLOAT),
-    ADD_MEMBER(UserSettings, BarRY, ry, SCTypeFLOAT),
-    ADD_MEMBER(UserSettings, BarRW, rw, SCTypeFLOAT),
-    ADD_MEMBER(UserSettings, BarRH, rh, SCTypeFLOAT),
+    ADD_MEMBER(BarRX, rx, SCTypeFLOAT)
+    ADD_MEMBER(BarRY, ry, SCTypeFLOAT)
+    ADD_MEMBER(BarRW, rw, SCTypeFLOAT)
+    ADD_MEMBER(BarRH, rh, SCTypeFLOAT)
 
-    ADD_MEMBER(UserSettings, BarTX, tx, SCTypeFLOAT),
-    ADD_MEMBER(UserSettings, BarTY, ty, SCTypeFLOAT),
-    ADD_MEMBER(UserSettings, BarTW, tw, SCTypeFLOAT),
-    ADD_MEMBER(UserSettings, BarTH, th, SCTypeFLOAT),
+    ADD_MEMBER(BarTX, tx, SCTypeFLOAT)
+    ADD_MEMBER(BarTY, ty, SCTypeFLOAT)
+    ADD_MEMBER(BarTW, tw, SCTypeFLOAT)
+    ADD_MEMBER(BarTH, th, SCTypeFLOAT)
 
-    ADD_MEMBER(UserSettings, BarBX, bx, SCTypeFLOAT),
-    ADD_MEMBER(UserSettings, BarBY, by, SCTypeFLOAT),
-    ADD_MEMBER(UserSettings, BarBW, bw, SCTypeFLOAT),
-    ADD_MEMBER(UserSettings, BarBH, bh, SCTypeFLOAT),
+    ADD_MEMBER(BarBX, bx, SCTypeFLOAT)
+    ADD_MEMBER(BarBY, by, SCTypeFLOAT)
+    ADD_MEMBER(BarBW, bw, SCTypeFLOAT)
+    ADD_MEMBER(BarBH, bh, SCTypeFLOAT)
 };
 
 
@@ -156,16 +163,17 @@ USSetupCFGDefaults(
     UserSettings *s = us;
     const u16 nmaster = 1;
 
-    const u8 hoverfocus = 0;            /* bool */
-    const u8 serverdecor = 1;           /* bool */
-    const u8 clientdecor = 1;           /* bool */
-    const u8 preferclientdecor = 1;     /* bool */
-
     const u16 refreshrate = 60;
     const float bgw = 0.95f;
     const u16 winsnap = 10;
     const u16 maxcc = 256;      /* Xorg default is 255 or 256, I dont remember */
     const float mfact = 0.55f;
+
+    /* These are bools, due to possible difference in compiler implementation they are u8's */
+    const u8 hoverfocus = 0;
+    const u8 usedecor = 0;
+    const u8 clientdecor = 1;
+    const u8 preferclientdecor = 1;
 
     s->mcount = nmaster;
     s->mfact = mfact;
@@ -174,11 +182,10 @@ USSetupCFGDefaults(
     s->snap = winsnap;
     s->maxcc = maxcc;
 
-    /* flags */
-    SETFLAG(s->flags, USUseHoverFocus, hoverfocus);
-    SETFLAG(s->flags, USUseServerDecorations, serverdecor);
-    SETFLAG(s->flags, USUseClientDecorations, clientdecor);
-    SETFLAG(s->flags, USPreferClientDecorations, preferclientdecor);
+    s->hoverfocus = hoverfocus;
+    s->usedecorations = usedecor;
+    s->useclientdecorations = clientdecor;
+    s->preferclientdecorations = preferclientdecor;
 
     /* Left Stuff */
     s->lw = 0.15f;
@@ -294,10 +301,14 @@ USLoad(
         {   item = SCParserSearchSlow(cfg, usdata->names[i]);
         }
         if(item)
-        {   SCParserLoad(item, data, usdata->field_size[i], usdata->type[i]);
+        {   
+            status = SCParserLoad(item, data, usdata->field_size[i], usdata->type[i]);
+            if(status)
+            {   Debug("Failed to LOAD, \"%s\"", usdata->names[i]);
+            }
         }
         else
-        {   Debug("Failed to load, \"%s\"", usdata->names[i]);
+        {   Debug("Failed to FIND, \"%s\"", usdata->names[i]);
         }
     }
 }
@@ -325,11 +336,15 @@ USSave(
         fclose(fp);
         /* Only overwrite file if empty */
         if(len == 0)
-        {   SCParserWrite(cfg, __CONFIG__NAME__);
+        {   
+            Debug0("Empty file found, writing base config...");
+            SCParserWrite(cfg, __CONFIG__NAME__);
         }
     }
     else
-    {   SCParserWrite(cfg, __CONFIG__NAME__);
+    {   
+        Debug0("No file found, writing base config...");
+        SCParserWrite(cfg, __CONFIG__NAME__);
     }
 }
 
@@ -347,31 +362,3 @@ USWipe(
     free(__CONFIG__NAME__);
 }
 
-
-
-u32 HASHOVERFOCUS(UserSettings *settings)       { return settings->flags & USUseHoverFocus; }
-u32 HASSERVERDECOR(UserSettings *settings)      { return settings->flags & USUseServerDecorations; }    
-u32 HASCLIENTDECOR(UserSettings *settings)      { return settings->flags & USUseClientDecorations; }    
-u32 PREFERCLIENTDECOR(UserSettings *settings)   { return settings->flags & USPreferClientDecorations; }    
-
-
-
-void
-USSetHoverFocus(UserSettings *settings, u8 state)
-{   SETFLAG(settings->flags, USUseHoverFocus, !!state);
-}
-
-void
-USSetUseServerDecor(UserSettings *settings, u8 state)
-{   SETFLAG(settings->flags, USUseHoverFocus, !!state);
-}
-
-void
-USSetUseClientDecor(UserSettings *settings, u8 state)
-{   SETFLAG(settings->flags, USUseHoverFocus, !!state);
-}
-
-void
-USSetPreferClientDecor(UserSettings *settings, u8 state)
-{   SETFLAG(settings->flags, USUseHoverFocus, !!state);
-}

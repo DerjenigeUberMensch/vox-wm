@@ -20,8 +20,13 @@ UserSettings
     uint16_t snap;          /* snap window to border in pixels; 0 to disable (NOT RECOMMENDED)  */
     uint16_t refreshrate;   /* max refresh rate when resizing, moving windows;  0 to disable    */
 
-    uint16_t flags;
     uint16_t maxcc;         /* max number of clients (XOrg Default is 256)                      */
+
+    /* Not bool or bitfield for portability */
+    uint8_t hoverfocus;
+    uint8_t usedecorations;
+    uint8_t useclientdecorations;
+    uint8_t preferclientdecorations;            /* This option is to disable server side decorations and prefer client side if applicable */
 
 
     /* Bar Setting Data */
@@ -58,15 +63,6 @@ UserSettings
     float bh;    /* Ratio of Monitor h size      */
 };
 
-enum 
-USFlags
-{
-    USUseHoverFocus = 1 << 0,
-    USUseServerDecorations = 1 << 1,
-    USUseClientDecorations = 1 << 2,
-    USPreferClientDecorations = 1 << 3,
-};
-
 enum
 {
     MFact,
@@ -74,8 +70,14 @@ enum
     MCount,
     Snap,
     RefreshRate,
-    Flags,
     MaxCC,
+
+
+    HoverFocus,
+    UseDecorations,
+    UseClientSideDecorations,
+    PreferClientSideDecorations,
+
 
 
     BarLX,
