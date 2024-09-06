@@ -57,6 +57,23 @@ _SP_PARSER_ITEM
     uint16_t size;
 };
 
+
+void
+__REMOVE__CHAR__FROM__STRING__(char *str, const char remove)
+{
+    if(!str || !remove)
+    {   return;
+    }
+    char *d = str;
+    do
+    {
+        while(*d == remove)
+        {   ++d;
+        }
+    } while((*str++ = *d++));
+}
+
+
 /*
  * RETURN: EXIT_SUCCESS on Success.
  * RETURN: EXIT_FAILURE on Failure.
@@ -71,37 +88,32 @@ __REMOVE__EXTRAS__STRING(
     if(!buff || !buff_length)
     {   return EXIT_FAILURE;
     }
-    int ret = EXIT_SUCCESS;
     enum
     {
         WHITESPACE = ' ',
         COMMENT = '#',
-        ENDLINE = '\0',
     };
-    uint32_t i = 0;
-    uint32_t j = 0;
-    for(i = 0; i < buff_length; ++i)
+
+    uint32_t len = 0;
+
+    __REMOVE__CHAR__FROM__STRING__(buff, WHITESPACE);
+
+    /* set length if reached comment */
+    while(*buff++)
     {
-        switch(buff[i])
+        switch(*buff)
         {
-            case ENDLINE:
             case COMMENT:
                 goto RETURN;
-                break;
-            case WHITESPACE:
-                break;
-            default:
-                buff[j++] = buff[i];
-                break;
         }
+        ++len;
     }
-    /* we reached the end of the buffer, so i - 1 to get a valid index.*/
-    --i;
+
 RETURN:
     if(len_return)
-    {   *len_return = i;
+    {   *len_return = len;
     }
-    return ret;
+    return EXIT_SUCCESS;
 }
 
 static int
@@ -155,7 +167,7 @@ __SC_GET_FORMAT_FROM_TYPE(const enum SCType t)
         case SCTypeNoType:
             return NULL;
         case SCTypeBOOL:
-            return "%d";
+            return "%s";
         case SCTypeCHAR:
             return "%c";
         case SCTypeUCHAR:
@@ -290,6 +302,8 @@ SCParserLoad(
     {   return FAILURE;
     }
 
+    const char *const TRUE_STRING = "true";
+    const char *const FALSE_STRING = "false";
     const char *const format = __SC_GET_FORMAT_FROM_TYPE(_optional_type);
     const int SSCANF_CHECKSUM = 1;
     const int DATA_SIZE = 32;
@@ -307,10 +321,25 @@ SCParserLoad(
     if(_optional_type == SCTypeSTRING)
     {   goto STRINGTYPE;
     }
+    if(_optional_type == SCTypeBOOL)
+    {   goto BOOLTYPE;
+    }
     if(!format)
     {   goto NOTYPE;
     }
     goto SINGLETYPE;
+BOOLTYPE:
+    if(!strcmp(item->typename, TRUE_STRING))
+    {   
+        *(char *)_return = 1;
+        return SUCCESS;
+    }
+    if(!strcmp(item->typename, FALSE_STRING))
+    {   
+        memset(_return, 0, sizeof(uint8_t));
+        return SUCCESS;
+    }
+    /* FALLTHROUGH */
 SINGLETYPE:
     check = sscanf(item->typename, format, &data);
     if(check == SSCANF_CHECKSUM)
@@ -361,7 +390,8 @@ SCParserWriteVarData(
         switch(type)
         {
             case SCTypeBOOL:
-                fprintf(fw, format, *(uint8_t *)data);
+                fprintf(fw, format, *(uint8_t *)data ? "true" : "false");
+                break;
             case SCTypeCHAR:
                 fprintf(fw, format, *(int8_t *)data);
                 break;
@@ -552,7 +582,6 @@ SCParserReadFile(
     uint32_t typenamelen = 0;
     SCItem *item;
     /* Make sure null byte is set */
-    buff[BUFF_LIMIT - 1] = '\0';
     memset(buff, 0, BUFF_LIMIT);
     while(running)
     {
@@ -577,12 +606,12 @@ SCParserReadFile(
         if(namestatus != EXIT_SUCCESS)
         {   continue;
         }
-        typename = malloc(typenamelen);
+        typename = malloc(typenamelen + 1);
         if(!typename)
         {   continue;
         }
         memcpy(typename, buff + namelen + 1, typenamelen);
-        typename[typenamelen - 1] = '\0';
+        typename[typenamelen] = '\0';
         /* assuming its '=' */
         buff[namelen] = '\0';
         item = SCParserSearch(parser, buff);
@@ -600,7 +629,7 @@ SCParserReadFile(
         else
         {   free(typename);
         }
-        memset(buff, 0, BUFF_LIMIT);
+        memset(buff, 0, bufflenreal);
     }
 
     fclose(fr);
