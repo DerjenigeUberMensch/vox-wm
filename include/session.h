@@ -43,7 +43,7 @@ SessionBarSaveID
 struct
 SessionBarSave
 {
-    BarSettings bars;
+    int x;
 };
 
 
