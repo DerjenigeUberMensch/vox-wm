@@ -1053,6 +1053,7 @@ scan(void)
                 free(tree);
                 return;
             }
+
             for(i = 0; i < num; ++i)
             {   
                 wa[i] = XCBGetWindowAttributesCookie(_wm.dpy, wins[i]);
