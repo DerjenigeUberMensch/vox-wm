@@ -139,9 +139,6 @@ struct MotifWmHints
     uint32_t status;
 };
 
-
-/* Handles the main(int argc, char **argv) arguments. */
-void argcvhandler(int argc, char *argv[]);
 /* Checks given the provided information if a window is eligible to be a new bar.
  * if it is then it becomes the new bar.
  * RETURN: 0 on Success.
