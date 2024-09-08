@@ -8,6 +8,7 @@
 #include <locale.h>
 #include <string.h>
 #include <errno.h>
+#include <ctype.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <xcb/xcb.h>
@@ -23,6 +24,7 @@
 #include <X11/keysym.h>
 
 #include "util.h"
+#include "argcv.h"
 #include "main.h"
 #include "hashing.h"
 #include "getprop.h"
@@ -192,86 +194,6 @@ enum BarSides GETBARSIDE(Monitor *m, Client *bar, uint8_t get_prev)
 
                                     return side;
                                 }
-
-void
-argcvhandler(int argc, char *argv[])
-{
-    int i;
-    for(i = 0; i < argc; ++i)
-    {
-        if(!strcmp(argv[i], "-h"))
-        {
-            printf( "Usage: dwm [options]\n"
-                    "  -h           Help Information.\n"
-                    "  -v           Compiler Information.\n"
-                    );
-            exit(EXIT_SUCCESS);
-        }
-        else if (!strcmp(argv[i], "-v"))
-        {
-            char *compiler = "UNKNOWN";
-            i16 majorversion = -1;
-            i16 minorversion = -1;
-            i16 patchversion = -1;
-            #if __GNUC__
-            compiler = "GCC";
-            majorversion = __GNUC__;
-            minorversion = __GNUC_MINOR__;
-            patchversion = __GNUC_PATCHLEVEL__;
-            #endif
-            #if __clang__
-            compiler = "CLANG";
-            majorversion = __clang_major__;
-            minorversion = __clang_minor__;
-            patchversion = __clang_patchlevel__;
-            #endif
-            printf( "Compiler Information.\n"
-                    "  Compiled:        %s %s\n"
-                    "  Compiler:        [%s v%d.%d.%d]\n" 
-                    "  STDC:            [%d] [%lu]\n"
-                    "  BYTE_ORDER:      [%d]\n"
-                    "  POINTER_SIZE:    [%d]\n"
-                    "Version Information.\n"
-                    "  VERSION:         [%s]\n"
-                    "  MARK:            [%s]\n"
-                    ,
-                   /* TODO __DATE__ has an extra space for some reason? */ 
-                    __DATE__, __TIME__,
-                    compiler, majorversion, minorversion, patchversion,
-                    __STDC_HOSTED__, __STDC_VERSION__,
-                    __BYTE_ORDER__,
-                    __SIZEOF_POINTER__,
-                    VERSION,
-                    MARK
-                    );
-            exit(EXIT_SUCCESS);
-        }
-        else
-        {   
-            const char exec1 = '.';
-            const char exec2 = '/';
-            const char execcount = 3; /* not 2 because we need \0 */ /* +1 for the possible 1 letter name and +1 again for \0   */
-            if(argv[0] != NULL && strnlen(argv[0], execcount + 2) >= execcount && argv[0][0] == exec1 && argv[0][1] == exec2)
-            {   
-                /* We can call die because it is very likely this was run manually */
-                if(i > 0)
-                {
-                    printf("%s%s%s", "UNKNOWN COMMAND: '", argv[i], "'\n");
-                    printf( "Usage: dwm [options]\n"
-                            "  -h           Help Information.\n"
-                            "  -v           Compiler Information.\n"
-                          );
-                    exit(EXIT_SUCCESS);
-                }
-            }
-            else
-            {
-                /* We dont die because likely this command was run using some form of exec */
-                printf("%s%s%s", "UNKNOWN COMMAND: '", argv[i], "'\n");
-            }
-        }
-    }
-}
 
 uint8_t
 checknewbar(Monitor *m, Client *c, uint8_t has_strut_or_strutp)
@@ -1716,11 +1638,11 @@ xerror(XCBDisplay *display, XCBGenericError *err)
 }
 
 int
-main(int argc, char *argv[])
+main(int argc, char **argv)
 {
     do
     {
-        argcvhandler(argc, argv);
+        ArgcvHandler(argc, argv);
         startup();
         setup();
         scan();
