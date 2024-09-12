@@ -224,17 +224,12 @@ DragWindow(
     XCBGrabPointer *GrabPointer = XCBGrabPointerReply(_wm.dpy, GrabPointerCookie);
 
     /* FIXME this looks horrible */
-    if(GrabPointer)
-    {
-        if(GrabPointer->status != XCB_GRAB_STATUS_SUCCESS)
-        {   free(GrabPointer);
-            return;
-        }
+    if(!GrabPointer || GrabPointer->status != XCB_GRAB_STATUS_SUCCESS)
+    {   
         free(GrabPointer);
+        return;
     }
-    else
-    {   return;
-    }
+    free(GrabPointer);
 
     XCBCookie QueryPointerCookie = XCBQueryPointerCookie(_wm.dpy, win);
     XCBQueryPointer *pointer = XCBQueryPointerReply(_wm.dpy, QueryPointerCookie);
@@ -306,7 +301,7 @@ DragWindow(
                     if(_cfg.refreshrate)
                     {
                         if((mev->time - lasttime) <= FRAME_TIME)
-                        {   continue;
+                        {   break;
                         }
                         lasttime = mev->time;
                     }
@@ -531,6 +526,7 @@ ResizeWindow(const Arg *arg)
     {   free(GrabPointer);
         return;
     }
+    free(GrabPointer);
     /* Prevent it from being detected as non floating */
     if(c)
     {
@@ -558,7 +554,7 @@ ResizeWindow(const Arg *arg)
                     if(_cfg.refreshrate)
                     {
                         if((mev->time - lasttime) <= FRAME_TIME)
-                        {   continue;
+                        {   break;
                         }
                         lasttime = mev->time;
                     }
