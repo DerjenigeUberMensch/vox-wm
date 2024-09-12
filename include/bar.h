@@ -3,37 +3,39 @@
 
 #include <stdint.h>
 
-/* struct externs */
-struct Client;
-struct Desktop;
-struct Monitor;
+#include "XCB-TRL/xcb_trl.h"
 
-enum 
-BarSides
+
+
+#define _SHOW_BAR           ((1 << 1))
+
+#define SHOWBAR(B)          (((B)->flags & _SHOW_BAR))
+
+
+typedef struct Bar Bar;
+
+struct Bar
 {
-    BarSideLeft, 
-    BarSideRight, 
-    BarSideTop, 
-    BarSideBottom,
-    BarSideLAST,
+    int16_t x;
+    int16_t y;
+    uint16_t w;
+    uint16_t h;
+
+    uint8_t flags;
+    uint8_t pad[3];
+
+    XCBWindow win;
+    XCBPixmap pix;
+    XCBGC gc;
+    XCBDisplay *dpy;
+    unsigned int screen;
+
+    size_t buffsize;
+    uint32_t *writebuff;
 };
 
-/* Calculates which side the bar is currently on, in regards to geometry.
- * NOTE: get_prev, gets the previous side in which the bar was on, previously.
- */
-enum BarSides calculatebarside(struct Monitor *m, struct Client *bar, uint8_t get_prev);
-/* Checks given the provided information if a window is eligible to be a new bar.
- * if it is then it becomes the new bar.
- * RETURN: 0 on Success.
- * RETURN: 1 on no new bar (Failure).
-*/
-uint8_t checknewbar(struct Monitor *m, struct Client *c, uint8_t has_strut_or_strutp);
-/* Sets up special data. */
-void setupbar(struct Monitor *m, struct Client *c);
-/* updates the bar geometry from the given monitor */
-void updatebargeom(struct Monitor *m);
-/* updates the Status Bar Position from given monitor */
-void updatebarpos(struct Monitor *m);
 
+void setshowbar(Bar *bar, uint8_t state);
+void resizebar(Bar *bar, int32_t x, int32_t y, int32_t w, int32_t h);
 
 #endif
