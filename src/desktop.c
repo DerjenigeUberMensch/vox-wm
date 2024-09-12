@@ -3,7 +3,6 @@
 #include "monitor.h"
 #include "desktop.h"
 #include "main.h"
-#include "bar.h"
 
 extern WM _wm;
 extern UserSettings _cfg;
