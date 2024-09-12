@@ -95,11 +95,6 @@ enum ManageClientProperties
     ManageClientLAST
 };
 
-enum BarSides
-{
-    BarSideLeft, BarSideRight, BarSideTop, BarSideBottom
-};
-
 enum
 FloatType
 {
@@ -530,8 +525,6 @@ void unmaximizevert(Client *c);
 
 /* MACROS */
 
-/* checks if a client could be a bar */
-uint32_t COULDBEBAR(Client *c, uint8_t strut);
 uint32_t ISALWAYSONTOP(Client *c);
 uint32_t ISALWAYSONBOTTOM(Client *c);
 uint32_t WASFLOATING(Client *c);
@@ -602,8 +595,6 @@ uint16_t OLDWIDTH(Client *c);
 uint16_t OLDHEIGHT(Client *c);
 uint16_t WIDTH(Client *c);
 uint16_t HEIGHT(Client *c);
-
-enum BarSides GETBARSIDE(struct Monitor *m, Client *bar, uint8_t get_prev_side);
 
 
 

@@ -1,9 +1,11 @@
 #include <math.h> /* fabsf() */
 
 #include "main.h"
+#include "client.h"
 #include "keybinds.h"
 #include "hashing.h"
 #include "getprop.h"
+#include "bar.h"
 
 #include <string.h>
 #include <math.h>
@@ -309,6 +311,7 @@ __FLOAT__TYPE__IS__FLOATING(
                 case DefinitelyFloating:
                 case ProbablyFloating:
                     ret = true;
+                    break;
                 case CouldBeFloating:
                     switch(pos)
                     {
@@ -350,6 +353,7 @@ __FLOAT__TYPE__IS__FLOATING(
                     {
                         case DefinitelyFloating:
                             ret = true;
+                            break;
                             /* unused */
                         case FLOATINGLAST:
                         case ProbablyFloating:
@@ -374,6 +378,7 @@ __FLOAT__TYPE__IS__FLOATING(
             {
                 case DefinitelyFloating:
                     ret = true;
+                    break;
                 case ProbablyFloating:
                     switch(pos)
                     {   
@@ -459,6 +464,7 @@ __FLOAT__TYPE__IS__FLOATING(
             {
                 case DefinitelyFloating:
                     ret = true;
+                    break;
                 case ProbablyFloating:
                     switch(pos)
                     {
@@ -533,6 +539,7 @@ __FLOAT__TYPE__IS__FLOATING(
             {
                 case DefinitelyFloating:
                     ret = true;
+                    break;
                 case ProbablyFloating:
                     switch(pos)
                     {
@@ -557,7 +564,7 @@ __FLOAT__TYPE__IS__FLOATING(
                         case DefinitelyFloating:
                         case ProbablyFloating:
                             ret = true;
-
+                            break;
                             /* unused */
                         case FLOATINGLAST:
                         case CouldBeFloating:
@@ -575,7 +582,7 @@ __FLOAT__TYPE__IS__FLOATING(
                     {
                         case DefinitelyFloating:
                             ret = true;
-
+                            break;
                             /* unused */
                         case FLOATINGLAST:
                         case ProbablyFloating:
@@ -722,13 +729,6 @@ u32 ISVISIBLE(Client *c)        { return (c->desktop->mon->desksel == c->desktop
 u32 SHOWDECOR(Client *c)        { return c->flags & ClientFlagShowDecor; }
 u32 ISSELECTED(Client *c)       { return c->desktop->sel == c; }
         
-u32 COULDBEBAR(Client *c, uint8_t strut) 
-                                {
-                                    const u8 sticky = !!ISSTICKY(c);
-                                    const u8 isdock = !!(ISDOCK(c));
-                                    const u8 above = !!ISABOVE(c); 
-                                    return (sticky && strut && (above || isdock));
-                                }
 /* EWMH Window types */
 u32 ISDESKTOP(Client *c)        { return c->ewmhflags & WTypeFlagDesktop; }
 u32 ISDOCK(Client *c)           { return c->ewmhflags & WTypeFlagDock; }
