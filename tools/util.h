@@ -194,6 +194,47 @@ union ARGB
 #define __COLD__                        __attribute__((cold))
 #endif
 
+#ifndef __RETURN__NEVER__NULL__
+#define __RETURN__NEVER__NULL__ __attribute__((returns_nonnull));
+#endif
+
+#ifndef __DEPRECATED__
+#define __DEPRECATED__ __attribute__((deprecated));
+#endif
+
+/* Indicates that a function never returns (includes void).
+ * What does this mean?;
+ * A.) This function always results in a infinite loop;
+ * b.) This function calls a variation of exit();
+ */
+#ifndef __FUNC__EXIT__POINT__
+#define __FUNC__EXIT__POINT__ __attribute__((noreturn));
+#endif
+
+#ifndef __FUNC__ALLOC__POINT__
+#define __FUNC__ALLOC__POINT__ __attribute__((malloc));
+#endif
+
+#ifndef __FUNC__ARG__ALLOC__SIZE__
+#define __FUNC__ARG__ALLOC__SIZE__  __attribute__((alloc_size(1)));
+#endif
+
+#ifndef __cplusplus
+#define fallthrough __attribute__((fallthrough));
+#endif
+
+#ifndef __FUNC__NO__OTHER__CALL__
+#define  __FUNC__NO__OTHER__CALL__ __attribute__((leaf));
+#endif
+
+#ifndef __FUNC__ARG__NON__NULL__
+#define __FUNC__ARG__NON__NULL__ __attribute__((nonnull(1)));
+#endif 
+
+#ifndef __FUNC__VAR__USED__
+#define __FUNC__VAR__USED__ __attribute__((used));
+#endif
+
 #ifndef NOINLINE
 #define NOINLINE                        __attribute__ ((noinline))
 #endif
