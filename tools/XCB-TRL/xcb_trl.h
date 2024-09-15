@@ -3693,7 +3693,24 @@ XCBStoreName(
 
 /* 
  *
- * NOTE: This operation makes use of "malloc"
+ * NOTE: instance_name_length must be strlen(mystring);
+ * NOTE: class_name_length must be strlen(mystring);
+ *
+ * RETURN: 0 on Success.
+ * RETURN: 1 on Failure.
+ */
+int
+XCBSetClassHintFast(
+        XCBDisplay *display,
+        XCBWindow window,
+        uint16_t instance_name_length,
+        uint16_t class_name_length,
+        XCBClassHint *hint
+        );
+
+/* 
+ *
+ * NOTE: This operation makes use of "strlen"
  *
  * RETURN: 0 on Success.
  * RETURN: 1 on Failure.
