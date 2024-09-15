@@ -3254,45 +3254,100 @@ XCBStoreName(
 }
 
 int
+XCBSetClassHintFast(
+        XCBDisplay *display,
+        XCBWindow window,
+        uint16_t instance_name_length,
+        uint16_t class_name_length,
+        XCBClassHint *class_hint
+        )
+{
+    const uint8_t NULL_BYTE_COUNT = 2;
+
+    char mem[USHRT_MAX];
+    char *src;
+    char *dest;
+
+    uint16_t MAX_LEN = USHRT_MAX - NULL_BYTE_COUNT;
+    size_t size;
+
+    XCBCookie ret;
+
+    if(instance_name_length > MAX_LEN)
+    {   instance_name_length = MAX_LEN;
+    }
+
+    if(class_name_length > MAX_LEN)
+    {   class_name_length = MAX_LEN;
+    }
+
+    if(class_hint->instance_name && instance_name_length)
+    {
+        /* shrink next posible cpy size */
+        MAX_LEN -= instance_name_length;
+
+        src = class_hint->instance_name;
+        dest = mem;
+        size = instance_name_length;
+        memcpy(mem, src, size);
+    }
+    mem[instance_name_length] = '\0';
+
+    size = 0;
+    if(class_hint->instance_name && class_name_length)
+    {
+        src = class_hint->class_name;
+        dest = mem + instance_name_length + 1;
+        /* get smallest */
+        size = class_name_length > MAX_LEN ? MAX_LEN : class_name_length;
+        memcpy(dest, src, size);
+    }
+
+    mem[instance_name_length + size + 1] = '\0';
+
+    ret = xcb_icccm_set_wm_class(display, window, instance_name_length + class_name_length + NULL_BYTE_COUNT, mem);
+
+#ifdef DBG
+    _xcb_push_func(ret, _fn);
+#else
+    (void)ret;
+#endif
+    return 0;
+}
+
+int
 XCBSetClassHint(
         XCBDisplay *display, 
         XCBWindow window, 
         XCBClassHint *class_hint
         )
 {
-    uint32_t ilen = 0;
-    uint32_t clen = 0;
-    const uint8_t NULL_BYTE_COUNT = 2;
-    uint32_t MAX_LEN = USHRT_MAX - NULL_BYTE_COUNT;
-    char *mem = NULL;
+    uint16_t ilen = 0;
+    uint16_t clen = 0;
+
     XCBCookie ret;
+
     if(class_hint->instance_name)
-    {   ilen = strnlen(class_hint->instance_name, MAX_LEN);
-        MAX_LEN -= ilen;
+    {   ilen = strnlen(class_hint->instance_name, USHRT_MAX);
     }
+
     if(class_hint->class_name)
-    {   clen = strnlen(class_hint->class_name, MAX_LEN);
+    {   clen = strnlen(class_hint->class_name, USHRT_MAX);
     }
-    mem = malloc(sizeof(char) * (ilen + clen + NULL_BYTE_COUNT));
-    if(mem)
-    {
-        if(ilen)
-        {   strncpy(mem, class_hint->instance_name, ilen);
-        }
-        mem[ilen] = '\0';
-        if(clen)
-        {   strncpy(mem + (sizeof(char) * (ilen + 1)), class_hint->class_name, clen);
-        }
-        mem[ilen + clen + 1] = '\0';
-        ret = xcb_icccm_set_wm_class(display, window, clen + ilen + 2, mem);
-        free(mem);
-    }
+
 #ifdef DBG
     _xcb_push_func(ret, _fn);
 #else
     (void)ret;
 #endif
-    return !mem;
+    return 
+        XCBSetClassHintFast(
+            display, 
+            window,
+            ilen,
+            clen,
+            class_hint
+            );
 }
 
 
