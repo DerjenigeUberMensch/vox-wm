@@ -15,7 +15,7 @@ struct CQueue
     void *data;
     uint32_t datalen;
     size_t datasize;
-    pthread_mutex_t mutex;
+    pthread_rwlock_t mutex;
     pthread_mutex_t condmutex;
     pthread_cond_t cond;
 };
