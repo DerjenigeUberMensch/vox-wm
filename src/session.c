@@ -19,7 +19,8 @@ extern WM _wm;
 
 
 static int
-__SESSION__CREATE__PATH(
+SessionGetConfigPath
+(
         char *buff,
         unsigned int buff_len,
         unsigned int *len_return
@@ -28,6 +29,7 @@ __SESSION__CREATE__PATH(
     /* \0 */
     const int nullbytesize = sizeof(char);
     const unsigned int WM_DIR_NAME_LENGTH = sizeof(_WM_DIR_NAME_) - 1;
+    const unsigned int WM_FILE_NAME_LENGTH = sizeof(_WM_SESSION_FILE_NAME_) - 1;
 
     unsigned int len = 0;
     unsigned int usablelen = 0;
@@ -45,54 +47,56 @@ __SESSION__CREATE__PATH(
     {   return EXIT_FAILURE;
     }
 
-    strncat(buff, _WM_DIR_NAME_, usablelen);
+    memcpy(buff + len, _WM_DIR_NAME_, WM_DIR_NAME_LENGTH);
     usablelen -= WM_DIR_NAME_LENGTH;
+    len += WM_DIR_NAME_LENGTH;
 
-    status = FFCreateDir(buff);
-
-    if(status == EXIT_FAILURE)
+    if(usablelen - WM_FILE_NAME_LENGTH - sizeof('/') - sizeof('\0')< 0)
     {   return EXIT_FAILURE;
     }
+
+    /* get correct path ie: home/user/xxx/ */
+    buff[len] = '/';
+    ++len;
+    --usablelen;
+    memcpy(buff + len, _WM_SESSION_FILE_NAME_, WM_FILE_NAME_LENGTH);
+    len += WM_FILE_NAME_LENGTH;
+    usablelen -= WM_FILE_NAME_LENGTH;
+    buff[len] = '\0';
 
     *len_return = buff_len - usablelen;
 
     return EXIT_SUCCESS;
 }
 
-static int
-__SESSION__GET__PATH(
-        char *buff,
-        unsigned int buff_len,
-        unsigned int *len_return
-        )
-{
-    return __SESSION__CREATE__PATH(buff, buff_len, len_return);
-}
-
-static const inline unsigned int 
-__GET__CONFIG__BUFF__SIZE(
-        void
-        )
-{
-    /* *Most filenames can only have upto 255 characters */
-    const unsigned int MAX_FILENAME = 255;
-    /* Assuming /home/user/.config/mydir/dirname/filename
-     * x * 2 to allow for upto x2 layers of config directories (incase the user does some wacky stuff)
-     */
-    const unsigned int PROBABLE_DEPTH = 6;
-    const unsigned int MAX_LAYERS = PROBABLE_DEPTH * 2;
-    const unsigned int ret = MAX_FILENAME * MAX_LAYERS * sizeof(char);
-    return ret;
-}
-
-
 void
 SessionSave(
         void
         )
 {
-    const unsigned int BUFF_SIZE = __GET__CONFIG__BUFF__SIZE();
+    const unsigned int BUFF_SIZE = FFSysGetConfigPathLengthMAX();
+
     char buff[BUFF_SIZE];
+    unsigned int length = 0;
+    int status;
+
+    status = SessionGetConfigPath(buff, BUFF_SIZE, &length);
+
+    if(status == EXIT_FAILURE)
+    {   
+        Debug0("Failed to save data FIXME");
+        return;
+    }
+    Debug("%s", buff);
+
+    status = FFCreateFile(buff);
+
+    if(status != EXIT_SUCCESS)
+    {   
+        /* This should not occur, but may due to out of memory, low storage, etc... */
+        Debug0("Failed to create session save file.");
+        return;
+    }
 }
 
 int

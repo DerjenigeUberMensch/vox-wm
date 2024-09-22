@@ -8,6 +8,8 @@
 #include <errno.h>
 
 
+
+
 /* 
  *
  * NOTE: Recomended buff length atleast 2550 bytes
@@ -48,21 +50,25 @@ FFGetSysConfigPath(
     return EXIT_FAILURE;
 }
 
+/* pray to god the compiler inlines this */
 static inline const unsigned int
 FFSysGetConfigPathLengthMAX(
         void
         )
 {
-    
-    const unsigned int MAX_FILENAME = 255;
+    enum
+    {
+        MAX_FILENAME = 255,
 #ifdef __linux__
-    /* Assuming /home/user/.config/mydir/dirname/filename
-     * x * 2 to allow for upto x2 layers of config directories for wacky stuff
-     */
-    const unsigned int PROBABLE_DEPTH = 6;
-    const unsigned int MAX_LAYERS = PROBABLE_DEPTH * 2;
-    const unsigned int ret = MAX_FILENAME * MAX_LAYERS * sizeof(char);
+        /* Assuming /home/user/.config/mydir/dirname/filename
+         * x * 2 to allow for upto x2 layers of config directories for wacky stuff
+         */
+        PROBABLE_DEPTH = 6,
+#else
+    #error "Unknown operating system type"
 #endif
+        ret =  MAX_FILENAME * PROBABLE_DEPTH * sizeof(char),
+    };
     return ret;
 }
 /*
@@ -117,14 +123,40 @@ FFCreateDir(
     return EXIT_SUCCESS;
 }
 
+static int
+FFCreatePath(
+        const char *const FULL_PATH
+        )
+{
+    return FFCreateDir(FULL_PATH);
+}
+
+static int
+FFPathExists(
+        const char *const FULL_PATH
+        )
+{
+    return FFDirExists(FULL_PATH);
+}
 
 
+static int
+FFCreateFile(
+        const char *const FILE_NAME
+        )
+{
+    int ret = EXIT_SUCCESS;
 
-
-
-
-
-
+    if(!FFPathExists(FILE_NAME))
+    {
+        FILE *f = fopen(FILE_NAME, "ab+");
+        if(!f)
+        {   ret = EXIT_FAILURE;
+        }
+        fclose(f);
+    }
+    return ret;
+}
 
 
 
