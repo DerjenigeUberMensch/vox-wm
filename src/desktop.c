@@ -170,6 +170,22 @@ detach(Client *c)
 void
 detachcompletely(Client *c)
 {
+    if(c)
+    {   
+        Desktop *desk = c->desktop;
+        if(desk)
+        {
+            Monitor *m = desk->mon;
+            if(m->bar == c)
+            {   
+                m->bar = NULL;
+                Debug0("Detaching bar? Potential memory leak");
+            }
+            if(desk->sel == c)
+            {   desk->sel = NULL;
+            }
+        }
+    }
     detach(c);
     detachstack(c);
     detachfocus(c);
