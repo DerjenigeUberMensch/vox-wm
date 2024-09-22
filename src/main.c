@@ -28,6 +28,7 @@
 #include "main.h"
 #include "hashing.h"
 #include "getprop.h"
+#include "session.h"
 #include "keybinds.h"
 /* for HELP/DebugGING see under main() or the bottom */
 
@@ -240,6 +241,7 @@ cleanup(void)
 {
     /* save setting data. */
     USSave(&_cfg);
+    SessionSave();
     savesession();
     PropDestroy(_wm.handler);
     if(!_wm.dpy)

@@ -153,6 +153,7 @@ union ARGB
                                     "\n", __FILE__,__LINE__,__func__,__VA_ARGS__); exit(EXIT_FAILURE); } while (0)
 #endif
 
+
 #ifdef DEBUG
 
 #ifndef Debug
@@ -161,6 +162,11 @@ union ARGB
 
 #ifndef Debug0
 #define Debug0(X) (fprintf(stderr, "[%s:%d] by %s(): " X "\n", __FILE__, __LINE__, __func__))
+#endif
+
+#ifndef ASSERT
+#include <assert.h>
+#define ASSERT(X) (assert(X))
 #endif
 
 #else
@@ -172,6 +178,11 @@ union ARGB
 #ifndef Debug0
 #define Debug0(X)       ((void)0)
 #endif
+
+#ifndef ASSERT
+#define ASSERT(X)       ((void)0)
+#endif
+
 
 #endif
 

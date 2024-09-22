@@ -2197,16 +2197,9 @@ unmanage(Client *c, uint8_t destroyed)
     if(!c)
     {   return;
     }
-    Desktop *desk = c->desktop;
     const XCBWindow win = c->win;
 
-    if(desk->mon->bar == c)
-    {   desk->mon->bar = NULL;
-    }
     /* prevent dangling pointer here woops */
-    if(desk->sel == c)
-    {   desk->sel = NULL;
-    }
     if(!destroyed)
     {   
         /* TODO causes alot of errors for some reason even if its not "destroyed" */
