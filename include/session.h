@@ -8,7 +8,8 @@
 #include "settings.h"
 #include "parser.h"
 
-#define _WM_DIR_NAME_ "vox-wm"
+#define _WM_DIR_NAME_           "vox-wm"
+#define _WM_SESSION_FILE_NAME_  "session.cfg"
 
 
 typedef struct SessionMonSaveID SessionMonSaveID;
@@ -120,6 +121,13 @@ SessionClientSave
     /* ID */
     SessionClientSaveID id;
 };
+
+
+
+void
+SessionSave(
+        void
+        );
 
 
 
