@@ -3,7 +3,7 @@
 
 #include "dynamic_array.h"
 
-typedef struct __GArray__ GArrray32;
+typedef struct __GArray__ GArray32;
 
 
 GArray *
