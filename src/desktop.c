@@ -461,6 +461,12 @@ stackpriority(Client *c1, Client *c2)
     const u32 ewmhflags = ewmhflag1 ^ ewmhflag2;
     const u32 flags = flags1 ^ flags2;
 
+    /* Due to the lack of virtual desktop handling this is no used by default.
+     */
+    if(ewmhflags & WTypeFlagDesktop)
+    {   ASSUME(false);
+    }
+
     if(ewmhflags & WStateFlagBelow)
     {   return __stack_priority_helper_below(ewmhflag1, WStateFlagBelow);
     }
@@ -483,9 +489,11 @@ stackpriority(Client *c1, Client *c2)
     if(ewmhflags & WStateFlagAbove)
     {   return __stack_priority_helper_above(ewmhflag1, WStateFlagAbove);
     }
-    if(c1->desktop->layout != Floating && c2->desktop->layout != Floating)
-    {
-        if(flags & ClientFlagFloating)
+
+    if(flags & ClientFlagFloating)
+    {   
+        /* possible cache miss if reverse order due to desktop pointer indirection */
+        if(c1->desktop->layout != Floating && c2->desktop->layout != Floating)
         {   return __stack_priority_helper_above(flags1, ClientFlagFloating);
         }
     }
