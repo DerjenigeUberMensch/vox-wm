@@ -228,6 +228,12 @@ Client *createclient(void);
  * NOTE: if NULL provided first visible client in stack is choosen as focus specifier.
  */
 void focus(Client *c);
+/* updates focus order to specified client, DOES NOT however, set X11 focus, only updates internal list.
+ * Which in turn desktop->sel IS NOT updated, and focus() MUST be called after.
+ * NOTE: This should NOT be used aside from manual visual optimizations.
+ * NOTE: if NULL provided first visible client in stack is choosen as focus specifier.
+ */
+Client *focusrealize(Client *c);
 /* Grabs a win buttons. 
  * Basically this just allows us to receive button press/release events from windows.
  */
