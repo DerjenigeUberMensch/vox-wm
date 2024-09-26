@@ -781,6 +781,11 @@ applygravity(const enum XCBBitGravity gravity, int32_t *x, int32_t *y, const uin
             *x += w >> 1;
             *y -= bw;
             break;
+        /* ICCCM standard states that we should assume XCBNorthWestGravity if gravity not set */
+        default:
+            /* FALLTHROUGH */
+        case XCBForgetGravity:
+            /* FALLTHROUGH */
         case XCBNorthWestGravity:
             *x -= bw;
             *y -= bw;
@@ -813,12 +818,13 @@ applygravity(const enum XCBBitGravity gravity, int32_t *x, int32_t *y, const uin
             *x += w >> 1;
             *y += h >> 1;
             break;
-        case XCBForgetGravity:
-            /* FALLTHROUGH */
         case XCBStaticGravity:
-            /* FALLTHROUGH */
-        default:
-            Debug("Window has no gravity. [%d]", gravity);
+            /* Im not sure how to implement this, but it seems that this only applies to framed windows, (reparented).
+             * And would simply just not move them relative to the frame? unless requests to move or something.
+             * But since frames arent implemented this doesnt really do anything
+             */
+            Debug0("Static gravity present?");
+            break;
     }
 }
 
@@ -2754,6 +2760,7 @@ updatewindowstate(Client *c, XCBAtom state, uint8_t add_remove_toggle)
     }
     else if (state == netatom[NetWMStateHidden])
     {   
+        /* assume window means to be iconic */
         if(toggle)
         {   sethidden(c, !ISHIDDEN(c));
         }
@@ -3008,12 +3015,17 @@ updatewmhints(Client *c, XCBWMHints *wmh)
             switch(wmh->initial_state)
             {   
                 case XCB_WINDOW_ICONIC_STATE:
-                    sethidden(c, 1);
+                    if(!ISHIDDEN(c))
+                    {   sethidden(c, 1);
+                    }
                     break;
                 case XCB_WINDOW_WITHDRAWN_STATE:
-                    Debug("Window Specified is Widthdrawn? %d", c->win);
+                    Debug0("Window is 'withdrawn' this is not handled by the window manager.");
                     break;
                 case XCB_WINDOW_NORMAL_STATE:
+                    if(ISHIDDEN(c))
+                    {   sethidden(c, 0);
+                    }
                     break;
                 default:
                     break;
