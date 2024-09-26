@@ -837,9 +837,6 @@ maprequest(XCBGenericEvent *event)
 
     u8 sync = 0;
 
-    /* map window first (illusion of responsiveness) */
-    sync = 1;
-    XCBMapWindow(_wm.dpy, win);
     PropListen(_wm.handler, _wm.dpy, win, PropManage);
 
     if(sync)

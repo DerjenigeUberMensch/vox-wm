@@ -1089,27 +1089,15 @@ focus(Client *c)
 {
     Monitor *selmon = _wm.selmon;
     Desktop *desk  = selmon->desksel;
-    if(!c || !ISVISIBLE(c) || NEVERHOLDFOCUS(c))
-    {   for(c = startfocus(desk); c && !ISVISIBLE(c) && !KEEPFOCUS(c); c = nextfocus(c));
-    }
+    c = focusrealize(c);
     if(desk->sel && desk->sel != c)
     {   unfocus(desk->sel, 0);
     }
     if(c)
     {
-        if(c->desktop->mon != _wm.selmon)
-        {   _wm.selmon = c->desktop->mon;
-        }
-        if(c->desktop != _wm.selmon->desksel)
-        {   setdesktopsel(_wm.selmon, c->desktop);
-        }
-
         if(ISURGENT(c))
         {   seturgent(c, 0);
         }
-
-        detachfocus(c);
-        attachfocus(c);
 
         grabbuttons(c, 1);
         XCBSetWindowBorder(_wm.dpy, c->win, c->bcol);
@@ -1122,6 +1110,29 @@ focus(Client *c)
     }
     desk->sel = c;
     Debug("Focused: [%d]", c ? c->win : 0);
+}
+
+Client *
+focusrealize(Client *c)
+{
+    Monitor *selmon = _wm.selmon;
+    Desktop *desk  = selmon->desksel;
+    if(!c || !ISVISIBLE(c) || NEVERHOLDFOCUS(c))
+    {   for(c = startfocus(desk); c && !ISVISIBLE(c) && !KEEPFOCUS(c); c = nextfocus(c));
+    }
+    if(c)
+    {
+        if(c->desktop->mon != _wm.selmon)
+        {   _wm.selmon = c->desktop->mon;
+        }
+        if(c->desktop != _wm.selmon->desksel)
+        {   setdesktopsel(_wm.selmon, c->desktop);
+        }
+        detachfocus(c);
+        attachfocus(c);
+    }
+    Debug("Focus Realized: [%d]", c ? c->win : 0);
+    return c;
 }
 
 void

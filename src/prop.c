@@ -433,6 +433,7 @@ PropUpdateManage(
 {
     const XCBWindow win = cookie->win;
     Client *c;
+    Client *cf = NULL;     /* client focus */
     XCBCookie requests[ManageClientLAST];
     void *replies[ManageClientLAST];
 
@@ -444,14 +445,17 @@ PropUpdateManage(
     c = manage(win, replies);
     if(c)
     {
-        focus(c);
+        cf = focusrealize(c);
         arrange(c->desktop);
     }
     else if(_wm.selmon->bar && _wm.selmon->bar->win == win)
     {
-        focus(NULL);
+        cf = focusrealize(NULL);
         arrange(_wm.selmon->desksel);
     }
+    XCBMapWindow(_wm.dpy, win);
+    focus(cf);
+
     XCBFlush(_wm.dpy);
     UnlockMainThread();
     managecleanup(replies);
