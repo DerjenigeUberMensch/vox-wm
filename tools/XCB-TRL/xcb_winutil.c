@@ -23,7 +23,8 @@ static const char *const WM_ATOM_NAMES[WMLast]=
     [WMSaveYourself]      = "WM_SAVE_YOURSELF", /* (deprecated) */
     [WMDeleteWindow]      = "WM_DELETE_WINDOW", 
     [WMProtocols]         = "WM_PROTOCOLS",
-    [WMState]             = "WM_STATE"
+    [WMState]             = "WM_STATE",
+    [WMChangeState]       = "WM_CHANGE_STATE"
 };
 
 static const unsigned int WM_ATOM_LEN[WMLast] = 
@@ -42,7 +43,8 @@ static const unsigned int WM_ATOM_LEN[WMLast] =
     [WMSaveYourself]      = sizeof("WM_SAVE_YOURSELF") - 1, /* (deprecated) */
     [WMDeleteWindow]      = sizeof("WM_DELETE_WINDOW") - 1,
     [WMProtocols]         = sizeof("WM_PROTOCOLS") - 1,
-    [WMState]             = sizeof("WM_STATE") - 1
+    [WMState]             = sizeof("WM_STATE") - 1,
+    [WMChangeState]       = sizeof("WM_CHANGE_STATE") - 1
 };
 
 static const char *const NET_WM_ATOM_NAMES[NetLast] =

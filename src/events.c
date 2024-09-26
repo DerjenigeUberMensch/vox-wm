@@ -1227,6 +1227,24 @@ clientmessage(XCBGenericEvent *event)
         const i32 l2 = data.data32[2];
         const i32 l3 = data.data32[3];
         const i32 l4 = data.data32[4];
+        
+        /* ICCCM */
+        if(atom == wmatom[WMChangeState])
+        {
+            /* Ok, barely any sensible app does this that isnt something like wine, so yeah basic handling */
+            const enum XCBWMWindowState state = l0;
+            const u32 neverfocus = NEVERFOCUS(c);
+            const u32 inputflags = neverfocus ? XCB_WM_HINT_INPUT : 0;
+            XCBWMHints wmh = 
+            {
+                .flags = 0|XCB_WM_HINT_STATE|inputflags,
+                .input = !neverfocus,
+                .initial_state = state
+            };
+            updatewmhints(c, &wmh);
+        }
+
+        /* NET_WM */
         if(atom == netatom[NetWMState])
         {
             const u8 action = l0;   /* remove: 0 
