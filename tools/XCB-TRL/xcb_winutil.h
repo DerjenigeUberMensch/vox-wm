@@ -86,6 +86,7 @@ enum WMPROTOCOLS {
     WMTakeFocus, WMSaveYourself, WMDeleteWindow, 
 
     WMState, 
+    WMChangeState,
     WMLast 
 };
 
