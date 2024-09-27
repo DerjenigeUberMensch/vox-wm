@@ -1,12 +1,6 @@
-
-
-
-
-
 #include "XCB-TRL/xcb_winutil.h"
 #include "main.h"
 #include "prop.h"
-
 
 extern WM _wm;
 
@@ -19,6 +13,57 @@ extern WM _wm;
 extern XCBAtom netatom[NetLast];
 extern XCBAtom wmatom[WMLast];
 extern XCBAtom motifatom;
+
+
+struct
+__PropHandler__
+{
+    void (*const setup)(XCBDisplay *display, GetPropCookie *cookie);
+    XCBCookie (*const get_cookie)(XCBDisplay *display, XCBWindow window);
+    void (*const get_reply)(XCBDisplay *display, GetPropCookie *cookie);
+};
+
+const static struct 
+__PropHandler__ __prophandler__[PropLAST] = 
+{                       
+    [PropNone] =        { NULL,     NULL,                       NULL                    },
+    [PropTransient] =   { NULL,     PropGetTransientCookie,     PropUpdateTrans         },
+    [PropWindowState] = { NULL,     PropGetWindowStateCookie,   PropUpdateWindowState   },
+    [PropWindowType] =  { NULL,     PropGetWindowTypeCookie,    PropUpdateWindowType    },
+    [PropSizeHints] =   { NULL,     PropGetSizeHintsCookie,     PropUpdateSizeHints     },
+    [PropWMHints] =     { NULL,     PropGetWMHintsCookie,       PropUpdateWMHints       },
+    [PropWMClass] =     { NULL,     PropGetWMClassCookie,       PropUpdateWMClass       },
+    [PropWMProtocol] =  { NULL,     PropGetWMProtocolCookie,    PropUpdateWMProtocol    },
+    [PropStrut] =       { NULL,     PropGetStrutCookie,         PropUpdateStrut         },
+    [PropStrutp] =      { NULL,     PropGetStrutpCookie,        PropUpdateStrutP        },
+    [PropNetWMName] =   { NULL,     PropGetNetWMNameCookie,     PropUpdateNetWMName     },
+    [PropWMName] =      { NULL,     PropGetWMNameCookie,        PropUpdateWMName        },
+    [PropPid] =         { NULL,     PropGetPidCookie,           PropUpdatePid           },
+    [PropIcon] =        { NULL,     PropGetIconCookie,          PropUpdateIcon          },
+    [PropMotifHints] =  { NULL,     PropGetMotifHintsCookie,    PropUpdateMotifHints    },
+    [PropManage] =      { NULL,     NULL,                       PropUpdateManage        },
+    [PropUnmanage] =    { NULL,     NULL,                       PropUpdateUnmanage      },
+
+    /* Net setters */
+
+    [PropSetWtype] =    { NULL,     PropGetWindowTypeCookie,    PropUpdateSetWType      },
+    [PropUnsetWtype] =  { NULL,     PropGetWindowTypeCookie,    PropUpdateUnsetWType    },
+    [PropSetWState] =   { NULL,     PropGetWindowStateCookie,   PropUpdateSetWState     },
+    [PropUnsetWState] = { NULL,     PropGetWindowStateCookie,   PropUpdateUnsetWState   },
+
+    /* END */
+    [PropExitThread] =  { NULL,     NULL,                       NULL                    },
+};
+
+
+static uint8_t
+PropValidType(
+    const enum PropertyType type
+    )
+{
+    return (type >= PropNone) & (type < PropLAST);
+}
+
 
 static void
 LockMainThread(
@@ -159,13 +204,15 @@ PropUpdateTrans(
 {
     XCBWindow trans = 0;
     uint8_t transstatus = XCBGetTransientForHintReply(display, cookie->cookie, &trans);
+    Client *c;
+    Client *ctrans;
     if(transstatus)
     {   
         LockMainThread();
-        Client *c = wintoclient(cookie->win);
-        Client *ctrans = wintoclient(trans);
+        c = wintoclient(cookie->win);
         if(c)
         {   
+            ctrans = wintoclient(trans);
             /* move to right desktop */
             if(ctrans && ctrans->desktop != c->desktop)
             {   setclientdesktop(c, ctrans->desktop);
@@ -187,10 +234,11 @@ PropUpdateWindowState(
         )
 {
     XCBWindowProperty *prop = XCBGetWindowPropertyReply(_wm.dpy, cookie->cookie);
+    Client *c;
     if(prop)
     {
         LockMainThread();
-        Client *c = wintoclient(cookie->win);
+        c = wintoclient(cookie->win);
         if(c)
         {   clientinitwstate(c, prop);
         }
@@ -206,10 +254,11 @@ PropUpdateWindowType(
         )
 {
     XCBWindowProperty *prop = XCBGetWindowPropertyReply(_wm.dpy, cookie->cookie);
+    Client *c;
     if(prop)
     {
         LockMainThread();
-        Client *c = wintoclient(cookie->win);
+        c = wintoclient(cookie->win);
         if(c)
         {   clientinitwtype(c, prop);
         }
@@ -226,10 +275,11 @@ PropUpdateSizeHints(
 {
     XCBSizeHints hints;
     int hintstatus = XCBGetWMNormalHintsReply(_wm.dpy, cookie->cookie, &hints);
+    Client *c;
     if(hintstatus)
     {   
         LockMainThread();
-        Client *c = wintoclient(cookie->win);
+        c = wintoclient(cookie->win);
         if(c)
         {   updatesizehints(c, &hints);
         }
@@ -244,10 +294,11 @@ PropUpdateWMHints(
         )
 {
     XCBWMHints *prop = XCBGetWMHintsReply(_wm.dpy, cookie->cookie);
+    Client *c;
     if(prop)
     {   
         LockMainThread();
-        Client *c = wintoclient(cookie->win);
+        c = wintoclient(cookie->win);
         if(c)
         {   updatewmhints(c, prop);
         }
@@ -264,10 +315,11 @@ PropUpdateWMClass(
 {
     XCBWMClass prop;
     int status = XCBGetWMClassReply(_wm.dpy, cookie->cookie, &prop);
+    Client *c;
     if(status)
     {
         LockMainThread();
-        Client *c = wintoclient(cookie->win);
+        c = wintoclient(cookie->win);
         if(c)
         {   updateclass(c, &prop);
         }
@@ -284,10 +336,11 @@ PropUpdateWMProtocol(
 {
     XCBWMProtocols prop;
     int status = XCBGetWMProtocolsReply(_wm.dpy, cookie->cookie, &prop);
+    Client *c;
     if(status)
     {   
         LockMainThread();
-        Client *c = wintoclient(cookie->win);
+        c = wintoclient(cookie->win);
         if(c)
         {   updatewindowprotocol(c, &prop);
         }
@@ -324,17 +377,18 @@ PropUpdateNetWMName(
 {
     XCBWindowProperty *prop = XCBGetWindowPropertyReply(_wm.dpy, cookie->cookie);
     char *netname = getnamefromreply(prop);
+    Client *c;
     if(prop)
     {
-        LockMainThread();
         if(netname)
         {
-            Client *c = wintoclient(cookie->win);
+            LockMainThread();
+            c = wintoclient(cookie->win);
             if(c)
             {   updatetitle(c, netname, c->wmname);
             }
+            UnlockMainThread();
         }
-        UnlockMainThread();
     }
     free(prop);
 }
@@ -347,17 +401,18 @@ PropUpdateWMName(
 {
     XCBWindowProperty *prop = XCBGetWindowPropertyReply(_wm.dpy, cookie->cookie);
     char *wmname = getnamefromreply(prop);
+    Client *c;
     if(prop)
     {
-        LockMainThread();
-        Client *c = wintoclient(cookie->win);
         if(wmname)
         {
+            LockMainThread();
+            c = wintoclient(cookie->win);
             if(c)
             {   updatetitle(c, c->netwmname, wmname);
             }
+            UnlockMainThread();
         }
-        UnlockMainThread();
     }
     free(prop);
 }
@@ -370,10 +425,11 @@ PropUpdatePid(
 {
     const int BAD_PID = -1;
     pid_t prop = XCBGetPidReply(_wm.dpy, cookie->cookie);
+    Client *c;
     if(prop != BAD_PID)
     {
         LockMainThread();
-        Client *c = wintoclient(cookie->win);
+        c = wintoclient(cookie->win);
         if(c)
         {   setclientpid(c, prop);
         }
@@ -389,19 +445,20 @@ PropUpdateIcon(
 {
     XCBWindowProperty *prop = XCBGetWindowPropertyReply(_wm.dpy, cookie->cookie);
     uint32_t *icon = geticonprop(prop);
+    Client *c;
     if(prop)
     {
-        LockMainThread();
         if(icon)
         {
-            Client *c = wintoclient(cookie->win);
+            LockMainThread();
+            c = wintoclient(cookie->win);
             if(c)
             {   
                 free(c->icon);
                 c->icon = icon;
             }
+            UnlockMainThread();
         }
-        UnlockMainThread();
     }
     free(prop);
 }
@@ -413,10 +470,11 @@ PropUpdateMotifHints(
         )
 {
     XCBWindowProperty *prop = XCBGetWindowPropertyReply(_wm.dpy, cookie->cookie);
+    Client *c;
     if(prop)
     {
         LockMainThread();
-        Client *c = wintoclient(cookie->win);
+        c = wintoclient(cookie->win);
         if(c)
         {   updatemotifhints(c, prop);
         }
@@ -479,11 +537,14 @@ PropUpdateUnmanage(
     {   
         desk = c->desktop;
         unmanage(c, 0);
+        /* make sure no dangling pointers */
+        c = NULL;
         if(desk->mon->desksel == desk)
         {   
-            focus(NULL);
+            c = focusrealize(NULL);
             arrange(desk);
         }
+        focus(c);
         XCBFlush(_wm.dpy);
     }
 
@@ -583,59 +644,41 @@ PropUpdateUnsetWState(
 }
 
 void
+PropSetupUpdateProperty(
+    XCBDisplay *display,
+    GetPropCookie *cookie
+    )
+{
+    const enum PropertyType type = cookie->type;
+    const u8 validtype = PropValidType(type);
+    if(validtype)
+    {
+        if(__prophandler__[type].setup)
+        {   __prophandler__[type].setup(display, cookie);
+        }
+    }
+}
+
+void
 PropUpdateProperty(
         XCBDisplay *display,
         GetPropCookie *cookie
         )
 {
-    struct __PropHandler
-    {
-        XCBCookie (*cookie_getter)(XCBDisplay *display, XCBWindow window);
-        void (*prop_updater)(XCBDisplay *display, GetPropCookie *);
-    };
-    enum __PropMode
-    {
-        __PropModeCookie,
-        __PropModeReply,
-        __PropModeLAST,
-    };
-    const static struct __PropHandler __prop_handler[PropLAST] =
-    {
-        [PropNone] =        { PropGetInvalidCookie,     PropUpdateInvalid     },
-        [PropTransient] =   { PropGetTransientCookie,   PropUpdateTrans       },
-        [PropWindowState] = { PropGetWindowStateCookie, PropUpdateWindowState },
-        [PropWindowType] =  { PropGetWindowTypeCookie,  PropUpdateWindowType  },
-        [PropSizeHints] =   { PropGetSizeHintsCookie,   PropUpdateSizeHints   },
-        [PropWMHints] =     { PropGetWMHintsCookie,     PropUpdateWMHints     },
-        [PropWMClass] =     { PropGetWMClassCookie,     PropUpdateWMClass     },
-        [PropWMProtocol] =  { PropGetWMProtocolCookie,  PropUpdateWMProtocol  },
-        [PropStrut] =       { PropGetStrutCookie,       PropUpdateStrut       },
-        [PropStrutp] =      { PropGetStrutpCookie,      PropUpdateStrutP      },
-        [PropNetWMName] =   { PropGetNetWMNameCookie,   PropUpdateNetWMName   },
-        [PropWMName] =      { PropGetWMNameCookie,      PropUpdateWMName      },
-        [PropPid] =         { PropGetPidCookie,         PropUpdatePid         },
-        [PropIcon] =        { PropGetIconCookie,        PropUpdateIcon        },
-        [PropMotifHints] =  { PropGetMotifHintsCookie,  PropUpdateMotifHints  },
-        [PropManage] =      { PropGetInvalidCookie,     PropUpdateManage      },
-        [PropUnmanage] =    { PropGetInvalidCookie,     PropUpdateUnmanage    },
-
-        /* Net setters */
-
-        [PropSetWtype] =    { PropGetWindowTypeCookie,  PropUpdateSetWType    },
-        [PropUnsetWtype] =  { PropGetWindowTypeCookie,  PropUpdateUnsetWType  },
-        [PropSetWState] =   { PropGetWindowStateCookie, PropUpdateSetWState   },
-        [PropUnsetWState] = { PropGetWindowStateCookie, PropUpdateUnsetWState },
-
-
-        [PropExitThread] =  { PropGetInvalidCookie,     PropUpdateInvalid     },
-    };
-
     const enum PropertyType type = cookie->type;
     const XCBWindow win = cookie->win;
-    /* get the cookie */
-    cookie->cookie = __prop_handler[type].cookie_getter(display, win);
-    /* Update the property */
-    __prop_handler[type].prop_updater(display, cookie);
+    const u8 validtype = PropValidType(type);
+
+    if(validtype)
+    {
+        cookie->cookie.sequence = 0;
+        if(__prophandler__[type].get_cookie)
+        {   cookie->cookie = __prophandler__[type].get_cookie(display, win);
+        }
+        if(__prophandler__[type].get_reply)
+        {   __prophandler__[type].get_reply(display, cookie);
+        }
+    }
 }
 
 
