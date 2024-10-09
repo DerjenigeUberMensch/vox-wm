@@ -167,13 +167,14 @@ __FILE_GET_NEW_LINE(FILE *fr, char *buff, unsigned int bufflength)
 static int 
 __SC_GET_FORMAT_FROM_TYPE_FILL(const enum SCType t, char fill_buff[SC_PARSER_FORMAT_BUFF_FILL_SIZE])
 {
-
     int i = 0;
 
     fill_buff[i++] = '%';
     switch(t)
     {
-        case SCTypeNoType:  return EXIT_FAILURE;
+        default:
+        case SCTypeNoType:  fill_buff[i++] = 'd';
+                            return EXIT_FAILURE;
         case SCTypeBOOL:    fill_buff[i++] = 's';   break;
         case SCTypeCHAR:    fill_buff[i++] = 'c';   break;
         case SCTypeUCHAR:   fill_buff[i++] = 'd';   break;
@@ -329,6 +330,7 @@ SCParserLoad(
 
     /* clear memory */
     memset(data, 0, sizeof(uint8_t) * DATA_SIZE);
+    memset(format, 0, sizeof(char) * SC_PARSER_FORMAT_BUFF_FILL_SIZE);
     /* type handler */
     if(_optional_type == SCTypeNoType)
     {   goto NOTYPE;
