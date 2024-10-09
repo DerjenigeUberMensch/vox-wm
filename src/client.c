@@ -1468,7 +1468,7 @@ manage(XCBWindow win, void *replies[ManageClientLAST])
     XCBGetWindowAttributes *waattributes = replies[ManageClientAttributes];
     XCBWindowProperty *wtypeunused = replies[ManageClientWType];
     XCBWindowProperty *stateunused = replies[ManageClientWState];
-    XCBSizeHints *hints = replies[ManageClientWState];
+    XCBSizeHints *hints = replies[ManageClientSizeHint];
     XCBWMHints *wmh = replies[ManageClientWMHints];
     XCBWMClass *cls = replies[ManageClientClass]; 
     XCBWMProtocols *wmprotocols = replies[ManageClientWMProtocol];
@@ -1516,22 +1516,24 @@ manage(XCBWindow win, void *replies[ManageClientLAST])
     updatewmhints(c, wmh);
     updatemotifhints(c, motifreply);
     updateicon(c, iconreply);
-    /* check if should be floating after, all size hints and other things are set. */
-    clientinitfloat(c);
-    clientinitdecor(c);
     XCBSelectInput(_wm.dpy, win, inputmask);
-    grabbuttons(c, 0);
 
     m = c->desktop->mon;
 
+    addclienthash(c);
     attach(c);
     attachstack(c);
     attachfocus(c);
 
+    /* check if should be floating after, all size hints and other things are set. */
+    clientinitfloat(c);
     updateclientlist(win, ClientListAdd);
+    clientinitdecor(c);
+    grabbuttons(c, 0);
+
+    setwtypemapnormal(c, 1);
     setclientstate(c, XCB_WINDOW_NORMAL_STATE);
     /* add to hash */
-    addclienthash(c);
     /* propagates border_width, if size doesn't change */
     configure(c);
     /* if its a new bar we dont want to return it as the monitor now manages it */
@@ -2043,16 +2045,6 @@ setfocus(Client *c)
 void 
 sethidden(Client *c, uint8_t state)
 {
-    if(state)
-    {   
-        setclientstate(c, XCB_WINDOW_ICONIC_STATE);
-        setwtypemapiconic(c, 1);
-    }
-    else
-    {   
-        setclientstate(c, XCB_WINDOW_NORMAL_STATE);
-        setwtypemapnormal(c, 1);
-    }
     SETFLAG(c->ewmhflags, WStateFlagHidden, !!state);
 }
 
@@ -2494,23 +2486,18 @@ updatesizehints(Client *c, XCBSizeHints *size)
     if(!size)
     {   return;
     }
-    const int UNINITIALIZED = 0;
-    i32 basew = UNINITIALIZED;
-    i32 baseh = UNINITIALIZED;
-    i32 minw = UNINITIALIZED;
-    i32 minh = UNINITIALIZED;
-    i32 maxw = UNINITIALIZED;
-    i32 maxh = UNINITIALIZED;
-    i32 incw = UNINITIALIZED;
-    i32 inch = UNINITIALIZED;       
-    float mina = (float)UNINITIALIZED + 0.0f;   /* make sure sign is positive */
-    float maxa = (float)UNINITIALIZED + 0.0f;   /* make sure sign is positive */
-    i32 gravity = UNINITIALIZED;
+    i32 basew = c->basew;
+    i32 baseh = c->baseh;
+    i32 minw = c->minw;
+    i32 minh = c->minh;
+    i32 maxw = c->maxw;
+    i32 maxh = c->maxh;
+    i32 incw = c->incw;
+    i32 inch = c->inch;       
+    float mina = c->mina + 0.0f;   /* make sure sign is positive */
+    float maxa = c->maxa + 0.0f;   /* make sure sign is positive */
+    i32 gravity = c->gravity;
 
-    /* size is uninitialized, ensure that size.flags aren't used */
-    if(!size->flags)
-    {   size->flags = XCB_SIZE_HINT_P_SIZE;
-    }
     if(size->flags & XCB_SIZE_HINT_P_MIN_SIZE)
     {
         minw = size->min_width;
@@ -2529,8 +2516,8 @@ updatesizehints(Client *c, XCBSizeHints *size)
     }
     else if(size->flags & XCB_SIZE_HINT_P_MIN_SIZE)
     {   
-        minw = size->min_width;
-        minh = size->min_height;
+        basew = size->min_width;
+        baseh = size->min_height;
     }
 
     if(size->flags & XCB_SIZE_HINT_P_RESIZE_INC)
@@ -2592,6 +2579,30 @@ updatesizehints(Client *c, XCBSizeHints *size)
     c->inch = inch;
     c->incw = incw;
     c->gravity = gravity;
+
+    i32 x = c->x;
+    i32 y = c->y;
+    i32 w = c->w;
+    i32 h = c->h;
+    u8 geom = 0;
+    /* check for resize flags */
+    if(size->flags & XCB_SIZE_HINT_P_SIZE)
+    {
+        w = size->width;
+        h = size->height;
+        geom = 1;
+    }
+
+    if(size->flags & XCB_SIZE_HINT_P_POSITION)
+    {
+        x = size->x;
+        y = size->y;
+        geom = 1;
+    }
+
+    if(geom)
+    {   resize(c, x, y, w, h, 1);
+    }
 }
 
 void
@@ -2770,23 +2781,10 @@ updatewindowstate(Client *c, XCBAtom state, uint8_t add_remove_toggle)
         }
     }
     else if (state == netatom[NetWMStateHidden])
-    {   
-        /* assume window means to be iconic */
-        if(toggle)
-        {   sethidden(c, !ISHIDDEN(c));
-        }
-        else
-        {   sethidden(c, add_remove_toggle);
-        }
+    {   /* window manager sets this, ignore */
     }
     else if (state == netatom[NetWMStateFocused])
-    {
-        if(toggle)
-        {   SETFLAG(c->ewmhflags, WStateFlagFocused, !ISFOCUSED(c));
-        }
-        else
-        {   SETFLAG(c->ewmhflags, WStateFlagFocused, add_remove_toggle);
-        }
+    {   /* window manager sets this, ignore */
     }
     else if (state == netatom[NetWMStateShaded])
     {
@@ -3026,16 +3024,16 @@ updatewmhints(Client *c, XCBWMHints *wmh)
             switch(wmh->initial_state)
             {   
                 case XCB_WINDOW_ICONIC_STATE:
-                    if(!ISHIDDEN(c))
-                    {   sethidden(c, 1);
+                    if(!ISMAPICONIC(c))
+                    {   setwtypemapiconic(c, 1);
                     }
                     break;
                 case XCB_WINDOW_WITHDRAWN_STATE:
                     Debug0("Window is 'withdrawn' this is not handled by the window manager.");
                     break;
                 case XCB_WINDOW_NORMAL_STATE:
-                    if(ISHIDDEN(c))
-                    {   sethidden(c, 0);
+                    if(!ISMAPNORMAL(c))
+                    {   setwtypemapnormal(c, 1);
                     }
                     break;
                 default:
