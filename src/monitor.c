@@ -429,6 +429,12 @@ updateclientlist(XCBWindow win, uint8_t type)
     Monitor *m;
     Desktop *desk;
     Client *c;
+    
+    XCBWindow winstack[X11_DEFAULT_MAX_WINDOW_LIMIT];
+
+
+    i32 i = 0;
+    u32 first = 0;
     switch(type)
     {
         case ClientListAdd:
@@ -449,9 +455,30 @@ updateclientlist(XCBWindow win, uint8_t type)
                 for(desk = m->desktops; desk; desk = nextdesktop(desk))
                 {
                     for(c = startclient(desk); c; c = nextclient(c))
-                    {   XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientList], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&(c->win), 1);
+                    {   
+                        if(first)
+                        {   
+                            XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], 
+                                    XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)winstack, 1);
+                            first = 0;
+                        }
+                        else
+                        {
+                            winstack[i++] = c->win;
+                            if(i == X11_DEFAULT_MAX_WINDOW_LIMIT)
+                            {   
+                                XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], 
+                                        XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_APPEND, (unsigned char *)winstack, i);
+                                i = 0;
+                            }
+                        }
                     }
                 }
+            }
+            if(i)
+            {    
+                XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], 
+                    XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_APPEND, (unsigned char *)winstack, i);
             }
             break;
         default:

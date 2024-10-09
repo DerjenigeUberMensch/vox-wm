@@ -27,18 +27,32 @@
 #define __CLIENTS__ __CLIENTS__
 
 /* CONSTANTS */
-#define BUTTONMASK              (XCB_EVENT_MASK_BUTTON_PRESS|XCB_EVENT_MASK_BUTTON_RELEASE)
 #define CLEANMASK(mask)         (mask & ~(_wm.numlockmask|XCB_MOD_MASK_LOCK) & \
                                 (XCB_MOD_MASK_SHIFT|XCB_MOD_MASK_CONTROL| \
                                  XCB_MOD_MASK_1|XCB_MOD_MASK_2|XCB_MOD_MASK_3|XCB_MOD_MASK_4|XCB_MOD_MASK_5))
 #define INTERSECT(x,y,w,h,m)    (MAX(0, MIN((x)+(w),(m)->wx+(m)->ww) - MAX((x),(m)->wx)) \
                                 * MAX(0, MIN((y)+(h),(m)->wy+(m)->wh) - MAX((y),(m)->wy)))
 #define LENGTH(X)               (sizeof X / sizeof X[0])
-#define MOUSEMASK               (BUTTONMASK | XCB_EVENT_MASK_POINTER_MOTION)
 #define SESSION_FILE            "/tmp/dwm-session"
 #define SESSION_COLD_FILE       "/var/tmp/dwm-cold-session"
 #define CONFIG_FILE             "/var/tmp/dwm-config"   /* todo make dir .config/dwm/config or someting like that */
 #define BORKED                  "NOT_SET"
+
+enum { BUTTONMASK = (XCB_EVENT_MASK_BUTTON_PRESS|XCB_EVENT_MASK_BUTTON_RELEASE) };
+enum { MOUSEMASK = (BUTTONMASK | XCB_EVENT_MASK_POINTER_MOTION) };
+
+
+
+/* Modern X implementations allof some ~2000 clients
+ * But this would still only be roughly 10 xcb_change_property, \
+ * which is still nothing compared to previous implementaitons,
+ * Yes xcb_change_property is slow, very slow.
+ */
+enum 
+X11DefaultsWM 
+{ 
+    X11_DEFAULT_MAX_WINDOW_LIMIT = 256,
+};
 
 enum 
 SchemeType 
