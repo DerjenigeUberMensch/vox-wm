@@ -318,7 +318,7 @@ DragWindow(
                         ny = _wm.selmon->wy + _wm.selmon->wh - oldh;
 
                     if(c)
-                    {   resize(c, nx, ny, c->w, c->h, 1);
+                    {   resizemove(c, nx, ny, 1);
                     }
                     else
                     {   XCBMoveWindow(_wm.dpy, win, nx, ny);

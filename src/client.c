@@ -1717,6 +1717,21 @@ resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
 }
 
 void
+resizemove(Client *c, int16_t x, int16_t y, uint8_t interact)
+{
+    i32 _x = x;
+    i32 _y = y;
+    i32 width = c->w;
+    i32 height = c->h;
+    if(applysizehints(c, &_x, &_y, &width, &height, interact))
+    {   
+        (void)width;
+        (void)height;
+        resizeclient(c, _x, _y, c->w, c->h);
+    }
+}
+
+void
 sendprotocolevent(Client *c, XCBAtom proto)
 {
     XCBGenericEvent ev;

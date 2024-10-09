@@ -348,11 +348,17 @@ Client *prevvisible(Client *c);
  * {1, 0}
  * 1 -> dont confide resize to monitor dimentions 
  * 0 -> confide resize within monitor dimentions
- * */
+ */
 void resize(Client *c, int32_t x, int32_t y, int32_t width, int32_t height, uint8_t interact);
 /* resize a client given parametors without sizehints */
 void resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height);
-
+/* moves a client only if specified x/y is different 
+ * interact
+ * {1, 0}
+ * 1 -> dont confide resize to monitor dimentions 
+ * 0 -> confide resize within monitor dimentions
+ */
+void resizemove(Client *c, int16_t x, int16_t y, uint8_t interact);
 /* Sends a Protocol Event to specified client */
 void sendprotocolevent(Client *c, XCBAtom proto);
 /* Sets the flag "alwaysontop" to the provided Client */
