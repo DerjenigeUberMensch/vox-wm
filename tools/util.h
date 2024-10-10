@@ -210,7 +210,7 @@ union ARGB
 #endif
 
 #ifndef __DEPRECATED__
-#define __DEPRECATED__ __attribute__((deprecated));
+#define __DEPRECATED__ __attribute__((deprecated))
 #endif
 
 /* Indicates that a function never returns (includes void).
@@ -235,7 +235,7 @@ union ARGB
 #endif
 
 #ifndef __FUNC__NO__OTHER__CALL__
-#define  __FUNC__NO__OTHER__CALL__ __attribute__((leaf));
+#define __FUNC__NO__OTHER__CALL__ __attribute__((leaf));
 #endif
 
 #ifndef __FUNC__ARG__NON__NULL__
@@ -280,6 +280,45 @@ union ARGB
 
 #ifndef __COLD__
 #define __COLD__
+#endif
+
+#ifndef __RETURN__NEVER__NULL__
+#define __RETURN__NEVER__NULL__ 
+#endif
+
+#ifndef __DEPRECATED__
+#define __DEPRECATED__ 
+#endif
+
+ * A.) This function always results in a infinite loop;
+ * b.) This function calls a variation of exit();
+ */
+#ifndef __FUNC__EXIT__POINT__
+#define __FUNC__EXIT__POINT__ 
+#endif
+
+#ifndef __FUNC__ALLOC__POINT__
+#define __FUNC__ALLOC__POINT__ 
+#endif
+
+#ifndef __FUNC__ARG__ALLOC__SIZE__
+#define __FUNC__ARG__ALLOC__SIZE__  
+#endif
+
+#ifndef __cplusplus
+#define fallthrough 
+#endif
+
+#ifndef __FUNC__NO__OTHER__CALL__
+#define __FUNC__NO__OTHER__CALL__ 
+#endif
+
+#ifndef __FUNC__ARG__NON__NULL__
+#define __FUNC__ARG__NON__NULL__ 
+#endif 
+
+#ifndef __FUNC__VAR__USED__
+#define __FUNC__VAR__USED__ 
 #endif
 
 #ifndef NOINLINE
@@ -462,4 +501,50 @@ union ARGB
                                 __insize *= 2;                                          \
                             }                                                           \
                         } while(0)
+
+/* NOTE SLOWER THAN MERGE SORT, BY ALOT */
+
+/* ONLY NON-CIRCULAR, DOUBLE LINKED */
+#define INSERTION_SORT_LINKED_LIST(TYPE, CMP_FUNC, HEAD, TAIL, NEXT, PREV) \
+    if(!HEAD)                   \
+    {   TAIL = HEAD;            \
+    }                           \
+    TYPE *__s__ = NULL;         \
+    TYPE *__c__ = HEAD;         \
+    TYPE *__n__ = NULL;         \
+    TYPE *__cs__ = NULL;        \
+    while(__c__)                \
+    {                           \
+        __n__ = __c__->NEXT;    \
+        if(!__s__ || CMP_FUNC(__s__, __c__))    \
+        {                                       \
+            __c__->NEXT = __s__;                \
+            if(__s__)                           \
+            {   __s__->PREV = __c__;            \
+            }                                   \
+            __s__ = __c__;                      \
+            __s__->PREV = ((void *)0);          \
+        }                                       \
+        else                                    \
+        {                                       \
+            __cs__ = __s__;                     \
+            while(__cs__->NEXT && CMP_FUNC(__c__, __cs__)) \
+            {   __cs__ = __cs__->NEXT;          \
+            }                                   \
+            __c__->NEXT = __cs__->NEXT;         \
+            if(__cs__->NEXT)                    \
+            {   __cs__->NEXT->PREV = __c__;     \
+            }                                   \
+            __cs__->NEXT = __c__;               \
+            __c__->PREV = __cs__;               \
+        }                                       \
+        if(!__n__)                              \
+        {   TAIL = __c__;                       \
+        }                                       \
+        __c__ = __n__;                          \
+    }                                           \
+    HEAD = __s__;
+
+
+
 #endif
