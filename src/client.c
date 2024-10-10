@@ -254,7 +254,7 @@ __FLOAT__TYPE__IS__FLOATING(
         const enum FloatType pos
         )
 {
-    bool ret = false;
+    enum FloatType ret = DefinitelyNotFloating;
     switch(hints)
     {
         case DefinitelyFloating:
@@ -264,7 +264,7 @@ __FLOAT__TYPE__IS__FLOATING(
                 case DefinitelyFloating:
                 case ProbablyFloating:
                 case CouldBeFloating:
-                    ret = true;
+                    ret = DefinitelyFloating;
                     break;
                 case ProbablyNotFloating:
                     switch(pos)
@@ -273,7 +273,8 @@ __FLOAT__TYPE__IS__FLOATING(
                         case ProbablyFloating:
                         case CouldBeFloating:
                         case ProbablyNotFloating:
-                            ret = true;
+                            ret = ProbablyFloating;
+                            break;
                             /* unused */
                         case FLOATINGLAST:
                         case DefinitelyNotFloating:
@@ -286,8 +287,8 @@ __FLOAT__TYPE__IS__FLOATING(
                         case DefinitelyFloating:
                         case ProbablyFloating:
                         case CouldBeFloating:
-                            ret = true;
-
+                            ret = CouldBeFloating;
+                            break;
                             /* unused */
                         case FLOATINGLAST:
                         case ProbablyNotFloating:
@@ -308,21 +309,21 @@ __FLOAT__TYPE__IS__FLOATING(
             {
                 case DefinitelyFloating:
                 case ProbablyFloating:
-                    ret = true;
+                    ret = DefinitelyFloating;
                 case CouldBeFloating:
                     switch(pos)
                     {
                         case DefinitelyFloating:
                         case ProbablyFloating:
                         case CouldBeFloating:
-                            ret = true;
+                            ret = ProbablyFloating;
                             break;
                             /* unused */
                         case FLOATINGLAST:
                         case ProbablyNotFloating:
                         case DefinitelyNotFloating:
                             if(__FLOAT__TYPE__EXTRA__CHECKS(c))
-                            {   ret = true; 
+                            {   ret = CouldBeFloating; 
                             }
                             break;
                     }
@@ -332,7 +333,7 @@ __FLOAT__TYPE__IS__FLOATING(
                     {
                         case DefinitelyFloating:
                         case ProbablyFloating:
-                            ret = true;
+                            ret = ProbablyFloating;
                             break;
                             /* unused */
                         case FLOATINGLAST:
@@ -340,7 +341,7 @@ __FLOAT__TYPE__IS__FLOATING(
                         case ProbablyNotFloating:
                         case DefinitelyNotFloating:
                             if(__FLOAT__TYPE__EXTRA__CHECKS(c))
-                            {   ret = true; 
+                            {   ret = CouldBeFloating; 
                             }
                             break;
                     }
@@ -349,14 +350,14 @@ __FLOAT__TYPE__IS__FLOATING(
                     switch(pos)
                     {
                         case DefinitelyFloating:
-                            ret = true;
+                            ret = ProbablyFloating;
                             /* unused */
                         case FLOATINGLAST:
                         case ProbablyFloating:
                         case CouldBeFloating:
                         case ProbablyNotFloating:
                             if(__FLOAT__TYPE__EXTRA__CHECKS(c))
-                            {   ret = true; 
+                            {   ret = CouldBeFloating; 
                             }
                         case DefinitelyNotFloating:
                             break;
@@ -373,21 +374,22 @@ __FLOAT__TYPE__IS__FLOATING(
             switch(geom)
             {
                 case DefinitelyFloating:
-                    ret = true;
+                    ret = DefinitelyFloating;
+                    break;
                 case ProbablyFloating:
                     switch(pos)
                     {   
                         case DefinitelyFloating:
                         case ProbablyFloating:
                         case CouldBeFloating:
-                            ret = true;
+                            ret = ProbablyFloating;
                             break;
                             /* unused */
                         case FLOATINGLAST:
                         case ProbablyNotFloating:
                         case DefinitelyNotFloating:
                             if(__FLOAT__TYPE__EXTRA__CHECKS(c))
-                            {   ret = true; 
+                            {   ret = ProbablyFloating; 
                             }
                             break;
                     }
@@ -397,7 +399,7 @@ __FLOAT__TYPE__IS__FLOATING(
                     {   
                         case DefinitelyFloating:
                         case ProbablyFloating:
-                            ret = true;
+                            ret = ProbablyFloating;
                             break;
                             /* unused */
                         case FLOATINGLAST:
@@ -405,7 +407,7 @@ __FLOAT__TYPE__IS__FLOATING(
                         case ProbablyNotFloating:
                         case DefinitelyNotFloating:
                             if(__FLOAT__TYPE__EXTRA__CHECKS(c))
-                            {   ret = true; 
+                            {   ret = CouldBeFloating; 
                             }
                             break;
                     }
@@ -414,7 +416,7 @@ __FLOAT__TYPE__IS__FLOATING(
                     switch(pos)
                     {   
                         case DefinitelyFloating:
-                            ret = true;
+                            ret = ProbablyFloating;
                             break;
                             /* unused */
                         case FLOATINGLAST:
@@ -422,7 +424,7 @@ __FLOAT__TYPE__IS__FLOATING(
                         case CouldBeFloating:
                         case ProbablyNotFloating:
                             if(__FLOAT__TYPE__EXTRA__CHECKS(c))
-                            {   ret = true; 
+                            {   ret = CouldBeFloating; 
                             }
                         case DefinitelyNotFloating:
                             break;
@@ -432,14 +434,14 @@ __FLOAT__TYPE__IS__FLOATING(
                     switch(pos)
                     {   
                         case DefinitelyFloating:
-                            ret = true;
+                            ret = CouldBeFloating;
                             break;
                             /* unused */
                         case FLOATINGLAST:
                         case ProbablyFloating:
                         case CouldBeFloating:
                             if(__FLOAT__TYPE__EXTRA__CHECKS(c))
-                            {   ret = true; 
+                            {   ret = CouldBeFloating; 
                             }
                         case ProbablyNotFloating:
                         case DefinitelyNotFloating:
@@ -458,20 +460,20 @@ __FLOAT__TYPE__IS__FLOATING(
             switch(geom)
             {
                 case DefinitelyFloating:
-                    ret = true;
+                    ret = ProbablyFloating;
                 case ProbablyFloating:
                     switch(pos)
                     {
                         case DefinitelyFloating:
                         case ProbablyFloating:
-                            ret = true;
+                            ret = CouldBeFloating;
                             break;
                             /* unused */
                         case FLOATINGLAST:
                         case CouldBeFloating:
                         case ProbablyNotFloating:
                             if(__FLOAT__TYPE__EXTRA__CHECKS(c))
-                            {   ret = true; 
+                            {   ret = CouldBeFloating; 
                             }
                         case DefinitelyNotFloating:
                             break;
@@ -485,7 +487,7 @@ __FLOAT__TYPE__IS__FLOATING(
                         case ProbablyFloating:
                         case CouldBeFloating:
                             if(__FLOAT__TYPE__EXTRA__CHECKS(c))
-                            {   ret = true; 
+                            {   ret = CouldBeFloating; 
                             }
                         case ProbablyNotFloating:
                         case DefinitelyNotFloating:
@@ -498,7 +500,7 @@ __FLOAT__TYPE__IS__FLOATING(
                         case DefinitelyFloating:
                         case ProbablyFloating:
                             if(__FLOAT__TYPE__EXTRA__CHECKS(c))
-                            {   ret = true; 
+                            {   ret = CouldBeFloating; 
                             }
                         case CouldBeFloating:
                         case ProbablyNotFloating:
@@ -512,7 +514,7 @@ __FLOAT__TYPE__IS__FLOATING(
                         case FLOATINGLAST:
                         case DefinitelyFloating:
                             if(__FLOAT__TYPE__EXTRA__CHECKS(c))
-                            {   ret = true; 
+                            {   ret = CouldBeFloating; 
                             }
                         case ProbablyFloating:
                         case DefinitelyNotFloating:
@@ -532,22 +534,39 @@ __FLOAT__TYPE__IS__FLOATING(
             switch(geom)
             {
                 case DefinitelyFloating:
-                    ret = true;
-                case ProbablyFloating:
                     switch(pos)
                     {
                         case DefinitelyFloating:
                         case ProbablyFloating:
                         case CouldBeFloating:
-                            ret = true;
-
-                            /* unused */
-                        case FLOATINGLAST:
-                        case ProbablyNotFloating:
+                            ret = CouldBeFloating;
+                            break;
                         case DefinitelyNotFloating:
                             if(__FLOAT__TYPE__EXTRA__CHECKS(c))
-                            {   ret = true; 
+                            {   ret = CouldBeFloating; 
                             }
+                            break;
+                        case ProbablyNotFloating:
+                        case FLOATINGLAST:
+                        default:
+                            break;
+                    }
+                case ProbablyFloating:
+                    switch(pos)
+                    {
+                        case DefinitelyFloating:
+                        case ProbablyFloating:
+                            ret = CouldBeFloating;
+                            break;
+                        case CouldBeFloating:
+                            if(__FLOAT__TYPE__EXTRA__CHECKS(c))
+                            {   ret = CouldBeFloating; 
+                            }
+                            break;
+                        case DefinitelyNotFloating:
+                        case ProbablyNotFloating:
+                        case FLOATINGLAST:
+                        default:
                             break;
                     }
                     break;
@@ -555,17 +574,19 @@ __FLOAT__TYPE__IS__FLOATING(
                     switch(pos)
                     {
                         case DefinitelyFloating:
-                        case ProbablyFloating:
-                            ret = true;
-
+                            ret = CouldBeFloating;
+                            break;
                             /* unused */
-                        case FLOATINGLAST:
-                        case CouldBeFloating:
-                        case ProbablyNotFloating:
+                        case ProbablyFloating:
                             if(__FLOAT__TYPE__EXTRA__CHECKS(c))
-                            {   ret = true; 
+                            {   ret = CouldBeFloating; 
                             }
+                            break;
+                        case CouldBeFloating:
                         case DefinitelyNotFloating:
+                        case ProbablyNotFloating:
+                        case FLOATINGLAST:
+                        default:
                             break;
                     }
                     break;
@@ -574,17 +595,16 @@ __FLOAT__TYPE__IS__FLOATING(
                     switch(pos)
                     {
                         case DefinitelyFloating:
-                            ret = true;
-
-                            /* unused */
-                        case FLOATINGLAST:
-                        case ProbablyFloating:
                             if(__FLOAT__TYPE__EXTRA__CHECKS(c))
-                            {   ret = true; 
+                            {   ret = CouldBeFloating; 
                             }
+                            break;
+                        case ProbablyFloating:
                         case CouldBeFloating:
                         case ProbablyNotFloating:
                         case DefinitelyNotFloating:
+                        case FLOATINGLAST:
+                        default:
                             break;
                     }
                     break;
@@ -599,15 +619,51 @@ __FLOAT__TYPE__IS__FLOATING(
         {   break;
         }
     }
-    if(ret)
+    const Monitor *m = c->desktop->mon;
+    Debug("Float state: %d", ret);
+    switch(ret)
     {
-        const Monitor *m = c->desktop->mon;
-        /* check if in the corner */
-        if(c->x == m->mx && c->y == m->my)
-        {   ret = false;
-        }
+        case DefinitelyFloating:
+            if(geom == DefinitelyNotFloating)
+            {
+                /* check if in the corner */
+                if(c->x == m->mx && c->y == m->my)
+                {   ret = DefinitelyNotFloating;
+                }
+            }
+            break;
+        case ProbablyFloating:
+            if(geom == DefinitelyNotFloating || geom == ProbablyNotFloating)
+            {
+                /* check if in the corner */
+                if(c->x == m->mx && c->y == m->my)
+                {   ret = DefinitelyNotFloating;
+                }
+            }
+            break;
+        case CouldBeFloating:
+            if(geom != DefinitelyFloating && geom != ProbablyFloating)
+            {   /* check if in the corner */
+                if(c->x == m->mx && c->y == m->my)
+                {   ret = DefinitelyNotFloating;
+                }
+            }
+            break;
+        case ProbablyNotFloating:
+            /* check if in the corner */
+            if(c->x == m->mx && c->y == m->my)
+            {   ret = DefinitelyNotFloating;
+            }
+            break;
+        case DefinitelyNotFloating:
+            break;
+
+        case FLOATINGLAST:
+        default:
+            break;
     }
-    return ret;   
+    Debug("Is float: %s", ret != DefinitelyNotFloating ? "true" : "false");
+    return ret != DefinitelyNotFloating;   
 }
 
 
@@ -1517,7 +1573,11 @@ manage(XCBWindow win, void *replies[ManageClientLAST])
     updatewmhints(c, wmh);
     updatemotifhints(c, motifreply);
     updateicon(c, iconreply);
+    /* check if should be floating after, all size hints and other things are set. */
+    clientinitfloat(c);
+    clientinitdecor(c);
     XCBSelectInput(_wm.dpy, win, inputmask);
+    grabbuttons(c, 0);
 
     m = c->desktop->mon;
 
@@ -1526,12 +1586,7 @@ manage(XCBWindow win, void *replies[ManageClientLAST])
     attachstack(c);
     attachfocus(c);
 
-    /* check if should be floating after, all size hints and other things are set. */
-    clientinitfloat(c);
     updateclientlist(win, ClientListAdd);
-    clientinitdecor(c);
-    grabbuttons(c, 0);
-
     setwtypemapnormal(c, 1);
     setclientstate(c, XCB_WINDOW_NORMAL_STATE);
     /* add to hash */
@@ -2619,12 +2674,32 @@ updatesizehints(Client *c, XCBSizeHints *size)
     /* check for resize flags */
     if(size->flags & XCB_SIZE_HINT_P_SIZE)
     {
+        if(w != c->w || h != c->h)
+        {
+            w = size->width;
+            h = size->height;
+            geom = 1;
+        }
+    }
+
+    if(size->flags & XCB_SIZE_HINT_P_POSITION)
+    {
+        if(size->x || size->y)
+        {
+            x = size->x;
+            y = size->y;
+            geom = 1;
+        }
+    }
+
+    if(size->flags & XCB_SIZE_HINT_US_SIZE)
+    {
         w = size->width;
         h = size->height;
         geom = 1;
     }
 
-    if(size->flags & XCB_SIZE_HINT_P_POSITION)
+    if(size->flags & XCB_SIZE_HINT_US_POSITION)
     {
         x = size->x;
         y = size->y;
