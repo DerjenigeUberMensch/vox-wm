@@ -1067,6 +1067,12 @@ unmapnotify(XCBGenericEvent *event)
     (void)eventwin;
     (void)isconfigure;
 
+    if(isconfigure)
+    {   
+        Debug0("Window unmapped, but will be remaped, AKA: FROM_CONFIGURE");
+        return;
+    }
+
     u8 sync = 0;
 
     Client *c = wintoclient(win);
@@ -1232,6 +1238,7 @@ clientmessage(XCBGenericEvent *event)
             const enum XCBWMWindowState state = l0;
             const u32 neverfocus = NEVERFOCUS(c);
             const u32 inputflags = neverfocus ? XCB_WM_HINT_INPUT : 0;
+            u32 wasvisible = ISVISIBLE(c);
             XCBWMHints wmh = 
             {
                 .flags = 0|XCB_WM_HINT_STATE|inputflags,
@@ -1239,6 +1246,13 @@ clientmessage(XCBGenericEvent *event)
                 .initial_state = state
             };
             updatewmhints(c, &wmh);
+            /* arrange if needed, else hide if needed */
+            if(wasvisible && !ISVISIBLE(c))
+            {   arrange(c->desktop);
+            }
+            else if(!wasvisible && ISVISIBLE(c))
+            {   showhide(c);
+            }
         }
 
         /* NET_WM */
