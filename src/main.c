@@ -280,7 +280,7 @@ cleanup(void)
     }
 }
 
-void
+void __HOT__
 eventhandler(XCBGenericEvent *ev)
 {
     /* TODO: Remove references to other clients, and move _wm.use_threads to run() instead. */

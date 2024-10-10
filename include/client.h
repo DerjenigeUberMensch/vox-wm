@@ -4,6 +4,7 @@
 #include "../tools/XCB-TRL/xcb_trl.h"
 #include "decorations.h"
 #include "safebool.h"
+#include "util.h"
 
 #include <stdint.h>
 /* EWMH window types */
@@ -51,6 +52,11 @@ enum EWMHFlags
 /* Window map states, Widthdrawn, Iconic, Normal. */
 #define WStateFlagMapIconic     (1u << 31)
 
+enum WMMapState
+{
+    WMMapStateMapped,
+    WMMapStateUnmapped,
+};
 /* Client struct flags */
 enum ClientFlags
 {
@@ -60,6 +66,7 @@ enum ClientFlags
     ClientFlagKeepFocus = 1u << 4,
     ClientFlagDisableBorder = 1u << 5,
     ClientFlagOverrideRedirect = 1u << 6,
+    ClientFlagMapped = 1u << 7,   /* desktop optimizations */
 };
 
 /* kill client type */
@@ -385,6 +392,8 @@ void setdecorvisible(Client *c, uint8_t state);
 void setdisableborder(Client *c, uint8_t state);
 /* Sets the clients pid. */
 void setclientpid(Client *c, pid_t pid);
+/* Sets the flag mapstate, used in desktop optimizations */
+void setmapstate(Client *c, enum WMMapState state);
 /* Sets the Clients IS Desktop Flag. */
 void setwtypedesktop(Client *c, uint8_t state);
 /* Sets the Clients IS Dialog Flag. */
@@ -569,6 +578,8 @@ uint32_t NEVERFOCUS(Client *c);
 /* client state */
 uint32_t NEVERHOLDFOCUS(Client *c);
 uint32_t ISVISIBLE(Client *c);
+/* TODO: XServer race conditions makes this unsuitable for usage */
+ __DEPRECATED__ uint32_t ISMAPPED(Client *c); 
 uint32_t SHOWDECOR(Client *c);
 uint32_t ISSELECTED(Client *c);
 

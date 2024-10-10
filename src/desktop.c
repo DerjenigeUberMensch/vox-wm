@@ -16,7 +16,7 @@ arrangeq(Desktop *desk)
     restack(desk);
 }
 
-void
+void __HOT__
 arrange(Desktop *desk)
 {
     /* bar stuff */

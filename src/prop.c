@@ -492,6 +492,7 @@ PropUpdateManage(
     const XCBWindow win = cookie->win;
     Client *c;
     Client *cf = NULL;     /* client focus */
+    u32 hidden = 0;
     XCBCookie requests[ManageClientLAST];
     void *replies[ManageClientLAST];
 
@@ -503,16 +504,41 @@ PropUpdateManage(
     c = manage(win, replies);
     if(c)
     {
-        cf = focusrealize(c);
-        arrange(c->desktop);
+        /* Dont waste extra resources if not visible */
+        hidden = !ISVISIBLE(c);
+        if(!hidden)
+        {
+            cf = focusrealize(c);
+            arrange(c->desktop);
+        }
+        else
+        {   showhide(c);
+        }
     }
     else if(_wm.selmon->bar && _wm.selmon->bar->win == win)
     {
         cf = focusrealize(NULL);
         arrange(_wm.selmon->desksel);
+        hidden = 1;
     }
+
+    Monitor *selmon = _wm.selmon;
+    i16 mx = selmon->mx;
+    i16 my = selmon->my;
+    u16 mw = selmon->mw;
+    u16 mh = selmon->mh;
+
+    if(c && !hidden)
+    {   XCBMoveWindow(_wm.dpy, c->win, mx + mw, my + mh);
+    }
+
+    setmapstate(c, WMMapStateMapped);
     XCBMapWindow(_wm.dpy, win);
     focus(cf);
+
+    if(c && !hidden)
+    {   XCBMoveWindow(_wm.dpy, c->win, c->x, c->y);
+    }
 
     XCBFlush(_wm.dpy);
     UnlockMainThread();

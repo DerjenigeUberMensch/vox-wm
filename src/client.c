@@ -612,8 +612,7 @@ __FLOAT__TYPE__IS__FLOATING(
 
 
 
-
-bool NOINLINE
+bool 
 SHOULDBEFLOATING(Client *c) 
                                 {
                                     /* Note dont check if ISFIXED(c) as games often set that option */
@@ -719,6 +718,8 @@ u32 NEVERHOLDFOCUS(Client *c)   { return NEVERFOCUS(c) || ISDOCK(c);}
 u32 ISMAXHORZ(Client *c)        { return WIDTH(c) == c->desktop->mon->ww; }
 u32 ISMAXVERT(Client *c)        { return HEIGHT(c) == c->desktop->mon->wh; }
 u32 ISVISIBLE(Client *c)        { return (c->desktop->mon->desksel == c->desktop || ISSTICKY(c)) && !ISHIDDEN(c); }
+/* TODO: XServer race conditions makes this unsuitable for usage */
+__DEPRECATED__ u32 ISMAPPED(Client *c) { return c->flags & ClientFlagMapped; }
 u32 SHOWDECOR(Client *c)        { return c->flags & ClientFlagShowDecor; }
 u32 ISSELECTED(Client *c)       { return c->desktop->sel == c; }
         
@@ -1844,6 +1845,21 @@ void
 setclientpid(Client *c, pid_t pid)
 {
     c->pid = pid;
+}
+
+void
+setmapstate(Client *c, enum WMMapState state)
+{
+    switch(state)
+    {
+        default:
+        case WMMapStateMapped:
+            SETFLAG(c->flags, ClientFlagMapped, 1);
+            break;
+        case WMMapStateUnmapped:
+            SETFLAG(c->flags, ClientFlagMapped, 0);
+            break;
+    }
 }
 
 void
