@@ -383,27 +383,13 @@ restack(Desktop *desk)
     Client *slist = NULL;
     u8 config = 0;
     u8 instack = 0;
-    
-    c = startstack(desk);
-    /* Stacking List X11 */
-    slist = nextstack(c);
-
-    /* reset client list */
-    if(slist)
-    {   XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&slist->win, 1);
-    }
-    else
-    {   XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking]);
-    }
-
-
     i32 i = 0;
     XCBWindow winstack[X11_DEFAULT_MAX_WINDOW_LIMIT];
+    
+    c = startstack(desk);
 
     for(; c; c = nextstack(c))
     {
-        /* RESTACK ALGORITHM */
-
         instack = nextrstack(c) || prevrstack(c);
         /* Client holds both lists so we just check if the next's are the same if not configure it */
         config = nextrstack(c) != nextstack(c) || !instack;
@@ -416,27 +402,28 @@ restack(Desktop *desk)
         c->rprev = c->sprev;
         c->rnext = c->snext;
 
-        /* CLIENT STACK UPDATE ALGORITHM */
-        /*
-         * How it works?
-         *
-         * Fill a buffer to the MAX X11_DEFAULT_MAX_WINDOW_LIMIT.
-         * once full push changes to the XServer, and reset.
-         * else if not full push to changes at the end, with the check if(i) checking for any leftover clients.
-         */
+    }
+    desk->rstack = desk->stack;;
+    desk->rlast = desk->slast;
 
-        /* To avoid repeating ourselfs and jumping around in memory too much we must do the memory accesses here */
-        winstack[i++] = c->win;
+    slist = laststack(desk);
+    /* reset client list */
+    if(slist)
+    {   XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&slist->win, 1);
+    }
+    else
+    {   XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking]);
+    }
+
+    for(slist = prevstack(slist); slist; slist = prevstack(slist))
+    {
+        winstack[i++] = slist->win;
         if(i == X11_DEFAULT_MAX_WINDOW_LIMIT)
         {   
             XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_APPEND, (unsigned char *)winstack, i);
             i = 0;
         }
     }
-    /* RESTACK ALGORITHM */
-    desk->rstack = desk->stack;
-    desk->rlast = desk->slast;
-    /* CLIENT STACK UPDATE ALGORITHM */
     if(i)
     {    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_APPEND, (unsigned char *)winstack, i);
     }

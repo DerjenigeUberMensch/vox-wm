@@ -426,19 +426,9 @@ updategeom(void)
 void
 updateclientlist(XCBWindow win, uint8_t type)
 {
-    Monitor *m;
-    Desktop *desk;
-    Client *c;
-    
-    XCBWindow winstack[X11_DEFAULT_MAX_WINDOW_LIMIT];
-
-
-    i32 i = 0;
-    u32 first = 0;
     switch(type)
     {
         case ClientListAdd:
-            XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientList], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&(win), 1);
             /* This allows for restart() to keep windows mapped on exit, basically it reduces flicker greatly. */
             XCBAddToSaveSet(_wm.dpy, win);
             break;
@@ -447,43 +437,48 @@ updateclientlist(XCBWindow win, uint8_t type)
             if(wintoclient(win))
             {   XCBRemoveFromSaveSet(_wm.dpy, win);
             }
-            /* FALLTHROUGH */
         case ClientListReload:
-            XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetClientList]);
-            for(m = _wm.mons; m; m = nextmonitor(m))
-            {
-                for(desk = m->desktops; desk; desk = nextdesktop(desk))
+            break;
+    }
+
+    Monitor *m;
+    Desktop *desk;
+    Client *c;
+    
+    XCBWindow winlist[X11_DEFAULT_MAX_WINDOW_LIMIT];
+    i32 i = 0;
+    u32 first = 1;
+
+    XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetClientList]);
+    for(m = _wm.mons; m; m = nextmonitor(m))
+    {
+        for(desk = m->desktops; desk; desk = nextdesktop(desk))
+        {
+            for(c = startclient(desk); c; c = nextclient(c))
+            {   
+                if(first)
                 {
-                    for(c = startclient(desk); c; c = nextclient(c))
+                    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientList], 
+                            XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&c->win, 1);
+                    first = 0;
+                }
+                else
+                {
+                    winlist[i++] = c->win;
+                    if(i == X11_DEFAULT_MAX_WINDOW_LIMIT)
                     {   
-                        if(first)
-                        {   
-                            XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], 
-                                    XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)winstack, 1);
-                            first = 0;
-                        }
-                        else
-                        {
-                            winstack[i++] = c->win;
-                            if(i == X11_DEFAULT_MAX_WINDOW_LIMIT)
-                            {   
-                                XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], 
-                                        XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_APPEND, (unsigned char *)winstack, i);
-                                i = 0;
-                            }
-                        }
+                        XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientList], 
+                                XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_APPEND, (unsigned char *)winlist, i);
+                        i = 0;
                     }
                 }
             }
-            if(i)
-            {    
-                XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], 
-                    XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_APPEND, (unsigned char *)winstack, i);
-            }
-            break;
-        default:
-            Debug0("No type specified.");
-            break;
+        }
+    }
+    if(i)
+    {    
+        XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientList], 
+                XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_APPEND, (unsigned char *)winlist, i);
     }
 }
 /* this function is really slow, slower than malloc use only in startup or rare mapping changes */
