@@ -3310,7 +3310,7 @@ XCBSetClassHintFast(
         memcpy(dest, src, size);
     }
 
-    mem[instance_name_length + size + 1] = '\0';
+    mem[instance_name_length + size + sizeof('\0')] = '\0';
 
     ret = xcb_icccm_set_wm_class(display, window, instance_name_length + class_name_length + NULL_BYTE_COUNT, mem);
 
@@ -3328,17 +3328,21 @@ XCBSetClassHint(
         XCBClassHint *class_hint
         )
 {
+    enum { NULL_BYTE_COUNT = 2 };
+    uint32_t length_left = USHRT_MAX - NULL_BYTE_COUNT;
     uint16_t ilen = 0;
     uint16_t clen = 0;
 
     XCBCookie ret = { .sequence = 0 };
 
     if(class_hint->instance_name)
-    {   ilen = strnlen(class_hint->instance_name, USHRT_MAX);
+    {   
+        ilen = strnlen(class_hint->instance_name, length_left);
+        length_left -= ilen;
     }
 
     if(class_hint->class_name)
-    {   clen = strnlen(class_hint->class_name, USHRT_MAX);
+    {   clen = strnlen(class_hint->class_name, length_left);
     }
 
 
@@ -3956,8 +3960,3 @@ XCBWipeGetWMClass(
     xcb_icccm_get_wm_class_reply_wipe(class);
     class->_reply = NULL;
 }
-
-
-
-
-
