@@ -743,9 +743,11 @@ ResizeWindowAlt(const Arg *arg)
     XCBGrabPointer *GrabPointer = XCBGrabPointerReply(_wm.dpy, GrabPointerCookie);
 
     if(!GrabPointer || GrabPointer->status != XCB_GRAB_STATUS_SUCCESS)
-    {   free(GrabPointer);
+    {   
+        free(GrabPointer);
         return;
     }
+    free(GrabPointer);
     /* Prevent it from being detected as non floating */
     if(c)
     {
