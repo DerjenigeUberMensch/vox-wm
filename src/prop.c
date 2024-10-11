@@ -295,12 +295,20 @@ PropUpdateWMHints(
 {
     XCBWMHints *prop = XCBGetWMHintsReply(_wm.dpy, cookie->cookie);
     Client *c;
+    u8 wasvisible = 0;
     if(prop)
     {   
         LockMainThread();
         c = wintoclient(cookie->win);
+        wasvisible = ISVISIBLE(c);
         if(c)
         {   updatewmhints(c, prop);
+        }
+        /* arrange if needed, else hide if needed */
+        if((wasvisible && !ISVISIBLE(c)) || (!wasvisible && ISVISIBLE(c)))
+        {   
+            showhide(c);
+            arrange(c->desktop);
         }
         UnlockMainThread();
     }
