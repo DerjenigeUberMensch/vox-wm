@@ -667,7 +667,8 @@ union XCBARGB
 
 
 /* macros */
-enum XCBWMWindowState
+enum 
+XCBWMWindowState
 {
     XCB_WINDOW_NORMAL_STATE = XCB_ICCCM_WM_STATE_NORMAL,
     XCB_WINDOW_ICONIC_STATE = XCB_ICCCM_WM_STATE_ICONIC,
@@ -3861,17 +3862,12 @@ XCBKillClient(
 typedef xcb_icccm_get_wm_protocols_reply_t XCBWMProtocols;
 typedef xcb_icccm_wm_hints_t XCBWMHints;
 typedef xcb_icccm_get_wm_class_reply_t XCBWMClass;
-/*
- * min_aspect_num:          The minimum aspect ratios for the width.
- * min_aspect_den:          The minimum aspect ratios for the height.
- * max_aspect_num:          The maximum aspect ratios for the width.
- * max_aspect_den:          The maximum aspect ratios for the height.
- */
 typedef xcb_size_hints_t XCBSizeHints;
 
 
 
 enum
+XCBWMHintsFlags
 {
     XCB_WM_HINT_INPUT = XCB_ICCCM_WM_HINT_INPUT ,
     XCB_WM_HINT_STATE = XCB_ICCCM_WM_HINT_STATE ,
@@ -3881,19 +3877,28 @@ enum
     XCB_WM_HINT_ICON_MASK = XCB_ICCCM_WM_HINT_ICON_MASK ,
     XCB_WM_HINT_WINDOW_GROUP = XCB_ICCCM_WM_HINT_WINDOW_GROUP ,
     XCB_WM_HINT_URGENCY = XCB_ICCCM_WM_HINT_X_URGENCY,
+    XCB_WM_HINT_ALL_HINTS = (XCB_ICCCM_WM_HINT_INPUT|
+                            XCB_ICCCM_WM_HINT_STATE|
+                            XCB_ICCCM_WM_HINT_ICON_PIXMAP|
+                            XCB_ICCCM_WM_HINT_ICON_WINDOW|
+                            XCB_ICCCM_WM_HINT_ICON_POSITION|
+                            XCB_ICCCM_WM_HINT_ICON_MASK
+                            |XCB_ICCCM_WM_HINT_WINDOW_GROUP
+                            )
 };
 
 enum
+XCBSizeHintsFlags
 {
-    XCB_SIZE_HINT_P_SIZE = XCB_ICCCM_SIZE_HINT_P_SIZE,
+    XCB_SIZE_HINT_US_POSITION = XCB_ICCCM_SIZE_HINT_US_POSITION,
     XCB_SIZE_HINT_US_SIZE = XCB_ICCCM_SIZE_HINT_US_SIZE,
+    XCB_SIZE_HINT_P_POSITION = XCB_ICCCM_SIZE_HINT_P_POSITION,
+    XCB_SIZE_HINT_P_SIZE = XCB_ICCCM_SIZE_HINT_P_SIZE,
+    XCB_SIZE_HINT_P_MIN_SIZE = XCB_ICCCM_SIZE_HINT_P_MIN_SIZE,
+    XCB_SIZE_HINT_P_MAX_SIZE = XCB_ICCCM_SIZE_HINT_P_MAX_SIZE,
+    XCB_SIZE_HINT_P_RESIZE_INC = XCB_ICCCM_SIZE_HINT_P_RESIZE_INC,
     XCB_SIZE_HINT_P_ASPECT = XCB_ICCCM_SIZE_HINT_P_ASPECT,
     XCB_SIZE_HINT_P_BASE_SIZE = XCB_ICCCM_SIZE_HINT_BASE_SIZE,
-    XCB_SIZE_HINT_P_MAX_SIZE = XCB_ICCCM_SIZE_HINT_P_MAX_SIZE,
-    XCB_SIZE_HINT_P_MIN_SIZE = XCB_ICCCM_SIZE_HINT_P_MIN_SIZE,
-    XCB_SIZE_HINT_P_POSITION = XCB_ICCCM_SIZE_HINT_P_POSITION,
-    XCB_SIZE_HINT_US_POSITION = XCB_ICCCM_SIZE_HINT_US_POSITION,
-    XCB_SIZE_HINT_P_RESIZE_INC = XCB_ICCCM_SIZE_HINT_P_RESIZE_INC,
     XCB_SIZE_HINT_P_WIN_GRAVITY = XCB_ICCCM_SIZE_HINT_P_WIN_GRAVITY,
 };
 
