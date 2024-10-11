@@ -1984,15 +1984,16 @@ XCBSetErrorHandler(
             )
         )
 {   
-
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret);
 
     if(error_handler)
     {   _handler = error_handler;
-        return 1;
     }
-    return 0;
+    else
+    {   _handler = _xcb_handler;
+    }
+    return 1;
 }
 
 void
@@ -3679,51 +3680,50 @@ XCBGetWMHintsReply(
     XCBGenericError *err = NULL;
 
     XCBWindowProperty *reply = XCBGetPropertyReply(display, cookie);
-    XCBWMHints *data = NULL;
+
+    if(reply)
+    {
+        const uint32_t VALID_FORMAT = 32;
+        const uint32_t DATA_FIELD_SIZE = 4;
+
+        XCBWMHints *data = xcb_get_property_value(reply);
+        int length = xcb_get_property_value_length(reply);
+        unsigned int num_elem = abs(length) / DATA_FIELD_SIZE;
+
+        u8 bad_format = reply->format != VALID_FORMAT;
+        u8 bad_atom = reply->type != XCB_ATOM_WM_HINTS;
+        u8 no_data = !data;
+
+        if(bad_format || bad_atom || no_data || num_elem < XCB_ICCCM_NUM_WM_HINTS_ELEMENTS - 1)
+        {   
+            __XCBThrowError(display, cookie, XCBBadImplementation, X_GetProperty, XCB_NONE);
+            goto USER_ERROR;
+        }
+
+        if(length > sizeof(xcb_size_hints_t))
+        {   length = sizeof(xcb_size_hints_t);
+        }
+        memmove(reply, data, length);
+
+        if(num_elem == XCB_ICCCM_NUM_WM_SIZE_HINTS_ELEMENTS - 1)
+        {   
+            /* dont ask me what this does but its a suppose to be here */
+            ((xcb_icccm_wm_hints_t *)reply)->window_group = 0;
+        }
+    }
 
     /* error handling */
     if(err)
     {   
         _xcb_err_handler(display, err);
-        goto FAILURE;
+USER_ERROR:
+        if(reply)
+        {   free(reply);
+        }
+        reply = NULL;
     }
-    /* make sure data matches */
-    if(!reply || reply->type != XCB_ATOM_WM_HINTS || reply->format != 32)
-    {   goto FAILURE;   
-    }
-
-    data = xcb_get_property_value(reply);
-    if(!data)
-    {   goto FAILURE;
-    }
-
-    /* doesnt use our(s) cause we check for format != 32 */
-    u32 length = xcb_get_property_value_length(reply);
-    u32 num_elem = length / (reply->format / 8);
-    
-    if(num_elem < XCB_ICCCM_NUM_WM_HINTS_ELEMENTS - 1)
-    {   goto FAILURE;
-    }
-
-    if(num_elem < XCB_ICCCM_NUM_WM_HINTS_ELEMENTS)
-    {   data->window_group = XCB_NONE;
-    }
-
-    /* yes this this is xcb_size_hints_t no its not a mistake */
-    if(length > sizeof(xcb_size_hints_t))
-    {   length = sizeof(xcb_size_hints_t);
-    }
-
-    /* yes this this is xcb_size_hints_t no its not a mistake */
-    xcb_size_hints_t safedata;
-
-    memcpy(&safedata, (xcb_size_hints_t *)data, length);
-    memcpy(reply, (xcb_size_hints_t *)&safedata, length);
 
     return (XCBWMHints *)reply;
-FAILURE:
-    free(reply);
-    return NULL;
 }
 
 XCBCookie
@@ -3823,6 +3823,80 @@ XCBGetWMNormalHintsReply(
         status = 0;
     }
     return status;
+}
+
+XCBSizeHints *
+XCBGetWMNormalHintsReplyNoFill(
+        XCBDisplay *display,
+        XCBCookie cookie
+        )
+{
+    XCBGenericError *err = NULL;
+    XCBCookie ret = { .sequence = 0 };
+    _xcb_push_func(ret);
+
+    XCBWindowProperty *reply = XCBGetPropertyReply(display, cookie);
+
+    if(reply)
+    {
+        const uint32_t VALID_FORMAT = 32;
+
+        void *data = xcb_get_property_value(reply);
+        u8 bad_format = reply->format != VALID_FORMAT;
+        u8 bad_atom = reply->type != XCB_ATOM_WM_SIZE_HINTS;
+        u8 no_data = !data;
+
+        if(bad_format || bad_atom || no_data)
+        {   
+            __XCBThrowError(display, cookie, XCBBadImplementation, X_GetProperty, XCB_NONE);
+            goto USER_ERROR;
+        }
+
+        int length;
+
+        /* format is never 0 as we check for bad_format, so no DIV by 0 errs */
+        length = xcb_get_property_value_length(reply) / (reply->format / 8);
+
+        if(length > XCB_ICCCM_NUM_WM_SIZE_HINTS_ELEMENTS)
+        {   length = XCB_ICCCM_NUM_WM_SIZE_HINTS_ELEMENTS;
+        }
+
+        /* sizeof(uint32_t) is not could theoretically not be '4' */
+        const uint8_t DATA_FIELD_SIZE = 4;
+        const unsigned int bytes_copy = abs(length) * DATA_FIELD_SIZE;
+
+        memmove(reply, data, bytes_copy);
+
+        uint32_t VALID_FLAGS = (XCB_ICCCM_SIZE_HINT_US_POSITION|XCB_ICCCM_SIZE_HINT_US_SIZE|
+                                        XCB_ICCCM_SIZE_HINT_P_POSITION|XCB_ICCCM_SIZE_HINT_P_SIZE|
+                                        XCB_ICCCM_SIZE_HINT_P_MIN_SIZE|XCB_ICCCM_SIZE_HINT_P_MAX_SIZE|
+                                        XCB_ICCCM_SIZE_HINT_P_RESIZE_INC|XCB_ICCCM_SIZE_HINT_P_ASPECT
+                                        );
+
+        xcb_size_hints_t *hint = (xcb_size_hints_t *)reply;
+        /* NumPropSizeElements =- 18 (ICCCM ver. 1) */
+        if(length == XCB_ICCCM_NUM_WM_SIZE_HINTS_ELEMENTS)
+        {   VALID_FLAGS |= (XCB_ICCCM_SIZE_HINT_BASE_SIZE | XCB_ICCCM_SIZE_HINT_P_WIN_GRAVITY);
+        }
+        else
+        {
+            hint->base_width = 0;
+            hint->base_height = 0;
+            hint->win_gravity = 0;
+        }
+        hint->flags &= VALID_FLAGS;
+    }
+
+    if(err)
+    {   
+        _xcb_err_handler(display, err);
+USER_ERROR:
+        if(reply)
+        {   free(reply);
+        }
+        reply = NULL;
+    }
+    return (XCBSizeHints *)reply;
 }
 
 XCBCookie
