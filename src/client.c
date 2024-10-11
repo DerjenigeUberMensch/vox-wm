@@ -218,11 +218,11 @@ enum FloatType COULDBEFLOATINGHINTS(Client *c)
                                     else if(ISNORMAL(c))
                                     {   
                                         Debug0("Normal Window detected.");
-                                        return CouldBeFloating;
+                                        return ProbablyNotFloating;
                                     }
                                     Debug0("Window has no special attributes.");
                                     /* No special attributes return */
-                                    return CouldBeFloating;
+                                    return ProbablyNotFloating;
                                 }
 
 static bool 
@@ -528,7 +528,6 @@ __FLOAT__TYPE__IS__FLOATING(
             }
             break;
         }
-
         case DefinitelyNotFloating:
         {
             switch(geom)
@@ -621,46 +620,27 @@ __FLOAT__TYPE__IS__FLOATING(
     }
     const Monitor *m = c->desktop->mon;
     Debug("Float state: %d", ret);
+    /* UNUSED DUE TO unreliablity.
     switch(ret)
     {
         case DefinitelyFloating:
-            if(geom == DefinitelyNotFloating)
-            {
-                /* check if in the corner */
-                if(c->x == m->mx && c->y == m->my)
-                {   ret = DefinitelyNotFloating;
-                }
-            }
             break;
         case ProbablyFloating:
-            if(geom == DefinitelyNotFloating || geom == ProbablyNotFloating)
-            {
-                /* check if in the corner */
-                if(c->x == m->mx && c->y == m->my)
-                {   ret = DefinitelyNotFloating;
-                }
-            }
             break;
         case CouldBeFloating:
-            if(geom != DefinitelyFloating && geom != ProbablyFloating)
-            {   /* check if in the corner */
-                if(c->x == m->mx && c->y == m->my)
-                {   ret = DefinitelyNotFloating;
-                }
-            }
             break;
         case ProbablyNotFloating:
-            /* check if in the corner */
-            if(c->x == m->mx && c->y == m->my)
-            {   ret = DefinitelyNotFloating;
-            }
             break;
         case DefinitelyNotFloating:
             break;
-
         case FLOATINGLAST:
         default:
             break;
+    }
+    */
+    /* check if in the corner */
+    if(c->x == m->mx && c->y == m->my)
+    {   ret = DefinitelyNotFloating;
     }
     Debug("Is float: %s", ret != DefinitelyNotFloating ? "true" : "false");
     return ret != DefinitelyNotFloating;   
