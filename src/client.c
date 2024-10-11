@@ -753,7 +753,7 @@ u32 NEVERFOCUS(Client *c)       { return c->ewmhflags & WStateFlagNeverFocus; }
 u32 NEVERHOLDFOCUS(Client *c)   { return NEVERFOCUS(c) || ISDOCK(c);}
 u32 ISMAXHORZ(Client *c)        { return WIDTH(c) == c->desktop->mon->ww; }
 u32 ISMAXVERT(Client *c)        { return HEIGHT(c) == c->desktop->mon->wh; }
-u32 ISVISIBLE(Client *c)        { return (c->desktop->mon->desksel == c->desktop || ISSTICKY(c)) && !ISHIDDEN(c); }
+u32 ISVISIBLE(Client *c)        { return (c->desktop->mon->desksel == c->desktop || ISSTICKY(c)) && !(ISHIDDEN(c) || ISMAPICONIC(c)); }
 /* TODO: XServer race conditions makes this unsuitable for usage */
 __DEPRECATED__ u32 ISMAPPED(Client *c) { return c->flags & ClientFlagMapped; }
 u32 SHOWDECOR(Client *c)        { return c->flags & ClientFlagShowDecor; }
@@ -2184,16 +2184,10 @@ showhide(Client *c)
     const Monitor *m = c->desktop->mon;
     i16 x;
     if(ISVISIBLE(c))
-    {   
-        x = c->x;
-        setclientstate(c, XCB_WINDOW_NORMAL_STATE);
-        setwtypemapiconic(c, 0);
+    {   x = c->x;
     }
     else
-    {
-        x = -c->w - m->mx;
-        setclientstate(c, XCB_WINDOW_ICONIC_STATE);
-        setwtypemapiconic(c, 1);
+    {   x = -c->w - m->mx;
     }
     XCBMoveResizeWindow(_wm.dpy, c->win, x, c->y, c->w, c->h);
 }

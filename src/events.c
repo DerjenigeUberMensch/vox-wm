@@ -1247,11 +1247,10 @@ clientmessage(XCBGenericEvent *event)
             };
             updatewmhints(c, &wmh);
             /* arrange if needed, else hide if needed */
-            if(wasvisible && !ISVISIBLE(c))
-            {   arrange(c->desktop);
-            }
-            else if(!wasvisible && ISVISIBLE(c))
-            {   showhide(c);
+            if((wasvisible && !ISVISIBLE(c)) || (!wasvisible && ISVISIBLE(c)))
+            {   
+                showhide(c);
+                arrange(c->desktop);
             }
         }
 
