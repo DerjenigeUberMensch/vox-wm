@@ -8,6 +8,8 @@
 
 #include "settings.h"
 #include "util.h"
+#include "safebool.h"
+
 
 struct 
 USSettingData
@@ -17,6 +19,7 @@ USSettingData
     const u8 field_size[UserSettingsLAST];
     const u16 field_offset[UserSettingsLAST];
     const enum SCType type[UserSettingsLAST];
+    const Generic default_data[UserSettingsLAST];
 };
 
 #ifdef ADD_MEMBER
@@ -24,51 +27,71 @@ USSettingData
 #undef ADD_MEMBER
 #endif
 
-#define ADD_MEMBER(NAME, STRUCT_NAME, TYPE) \
+
+/* non-extension compliant 'switch' statment.
+ */
+#define ADD_MEMBER_SCTypeNoType(DEFAULT_SETTING)     { .data64 = { DEFAULT_SETTING } }
+#define ADD_MEMBER_SCTypeBOOL(DEFAULT_SETTING)       { .data8  = { DEFAULT_SETTING } }
+#define ADD_MEMBER_SCTypeUCHAR(DEFAULT_SETTING)      { .data8  = { DEFAULT_SETTING } }
+#define ADD_MEMBER_SCTypeCHAR(DEFAULT_SETTING)       { .data8i = { DEFAULT_SETTING } }
+#define ADD_MEMBER_SCTypeUSHORT(DEFAULT_SETTING)     { .data16 = { DEFAULT_SETTING } }
+#define ADD_MEMBER_SCTypeSHORT(DEFAULT_SETTING)      { .data16i= { DEFAULT_SETTING } }
+#define ADD_MEMBER_SCTypeUINT(DEFAULT_SETTING)       { .data32 = { DEFAULT_SETTING } }
+#define ADD_MEMBER_SCTypeINT(DEFAULT_SETTING)        { .data32i= { DEFAULT_SETTING } }
+#define ADD_MEMBER_SCTypeFLOAT(DEFAULT_SETTING)      { .dataf  = { DEFAULT_SETTING } }
+#define ADD_MEMBER_SCTypeDOUBLE(DEFAULT_SETTING)     { .datad  = { DEFAULT_SETTING } }
+#define ADD_MEMBER_SCTypeLONG(DEFAULT_SETTING)       { .data64i= { DEFAULT_SETTING } }
+#define ADD_MEMBER_SCTypeULONG(DEFAULT_SETTING)      { .data64 = { DEFAULT_SETTING } }
+#define ADD_MEMBER_SCTypeSTRING(DEFAULT_SETTING)     { .v      = { DEFAULT_SETTING } }
+
+#define ADD_MEMBER_TYPED43(TYPE, DEFAULT_SETTING) \
+        ADD_MEMBER_##TYPE(DEFAULT_SETTING)
+
+#define ADD_MEMBER(NAME, STRUCT_NAME, TYPE, DEFAULT_SETTING) \
         .names[NAME] = #NAME, \
         .name_len[NAME] = sizeof(#NAME), \
         .field_size[NAME] = FIELD_SIZEOF(UserSettings, STRUCT_NAME), \
         .field_offset[NAME] = offsetof(UserSettings, STRUCT_NAME), \
-        .type[NAME] = TYPE \
-        , \
+        .type[NAME] = TYPE, \
+        .default_data[NAME] = ADD_MEMBER_TYPED43(TYPE, DEFAULT_SETTING),
 
 static const struct USSettingData
 __USER__SETTINGS__DATA__ = 
 {
-    ADD_MEMBER(MFact, mfact, SCTypeFLOAT)
-    ADD_MEMBER(GapRatio, gapratio, SCTypeFLOAT)
-    ADD_MEMBER(MCount, mcount, SCTypeUSHORT)
-    ADD_MEMBER(Snap, snap, SCTypeUSHORT)
-    ADD_MEMBER(RefreshRate, refreshrate, SCTypeUSHORT)
-    ADD_MEMBER(MaxCC, maxcc, SCTypeUSHORT)
+    ADD_MEMBER(MFact, mfact, SCTypeFLOAT, 0.55f)
+    ADD_MEMBER(GapRatio, gapratio, SCTypeFLOAT, 0.95f)
+    ADD_MEMBER(MCount, mcount, SCTypeUSHORT, 1)
+    ADD_MEMBER(Snap, snap, SCTypeUSHORT, 10)
+    ADD_MEMBER(RefreshRate, refreshrate, SCTypeUSHORT, 60)
+    ADD_MEMBER(MaxCC, maxcc, SCTypeUSHORT, 256)
 
     /* BOOL Types */
-    ADD_MEMBER(HoverFocus, hoverfocus, SCTypeBOOL)
-    ADD_MEMBER(UseDecorations, usedecorations, SCTypeBOOL)
-    ADD_MEMBER(UseClientSideDecorations, useclientdecorations, SCTypeBOOL)
-    ADD_MEMBER(PreferClientSideDecorations, preferclientdecorations, SCTypeBOOL)
+    ADD_MEMBER(HoverFocus, hoverfocus, SCTypeBOOL, false)
+    ADD_MEMBER(UseDecorations, usedecorations, SCTypeBOOL, false)
+    ADD_MEMBER(UseClientSideDecorations, useclientdecorations, SCTypeBOOL, true)
+    ADD_MEMBER(PreferClientSideDecorations, preferclientdecorations, SCTypeBOOL, true)
 
 
     /* bar data */
-    ADD_MEMBER(BarLX, lx, SCTypeFLOAT)
-    ADD_MEMBER(BarLY, ly, SCTypeFLOAT)
-    ADD_MEMBER(BarLW, lw, SCTypeFLOAT)
-    ADD_MEMBER(BarLH, lh, SCTypeFLOAT)
+    ADD_MEMBER(BarLX, lx, SCTypeFLOAT, 0.0f)    /*   lx    */
+    ADD_MEMBER(BarLY, ly, SCTypeFLOAT, 0.0f)    /*   ly    */
+    ADD_MEMBER(BarLW, lw, SCTypeFLOAT, 0.15f)   /*   lw    */
+    ADD_MEMBER(BarLH, lh, SCTypeFLOAT, 1.0f)    /*   lh    */
 
-    ADD_MEMBER(BarRX, rx, SCTypeFLOAT)
-    ADD_MEMBER(BarRY, ry, SCTypeFLOAT)
-    ADD_MEMBER(BarRW, rw, SCTypeFLOAT)
-    ADD_MEMBER(BarRH, rh, SCTypeFLOAT)
+    ADD_MEMBER(BarRX, rx, SCTypeFLOAT, 0.85f)   /* rx - rw */
+    ADD_MEMBER(BarRY, ry, SCTypeFLOAT, 0.0f)    /*   ry    */
+    ADD_MEMBER(BarRW, rw, SCTypeFLOAT, 0.15f)   /*   rw    */
+    ADD_MEMBER(BarRH, rh, SCTypeFLOAT, 1.0f)    /*   rh    */
 
-    ADD_MEMBER(BarTX, tx, SCTypeFLOAT)
-    ADD_MEMBER(BarTY, ty, SCTypeFLOAT)
-    ADD_MEMBER(BarTW, tw, SCTypeFLOAT)
-    ADD_MEMBER(BarTH, th, SCTypeFLOAT)
+    ADD_MEMBER(BarTX, tx, SCTypeFLOAT, 0.0f)    /*   tx    */
+    ADD_MEMBER(BarTY, ty, SCTypeFLOAT, 0.0f)    /*   ty    */
+    ADD_MEMBER(BarTW, tw, SCTypeFLOAT, 1.0f)    /*   tw    */
+    ADD_MEMBER(BarTH, th, SCTypeFLOAT, 0.15f)   /*   th    */
 
-    ADD_MEMBER(BarBX, bx, SCTypeFLOAT)
-    ADD_MEMBER(BarBY, by, SCTypeFLOAT)
-    ADD_MEMBER(BarBW, bw, SCTypeFLOAT)
-    ADD_MEMBER(BarBH, bh, SCTypeFLOAT)
+    ADD_MEMBER(BarBX, bx, SCTypeFLOAT, 0.0f)    /*   bx    */
+    ADD_MEMBER(BarBY, by, SCTypeFLOAT, 0.85f)   /* bx - bh */
+    ADD_MEMBER(BarBW, bw, SCTypeFLOAT, 1.0f)    /*   bw    */
+    ADD_MEMBER(BarBH, bh, SCTypeFLOAT, 0.15f)   /*   bh    */
 };
 
 
@@ -159,54 +182,15 @@ USSetupCFGDefaults(
     {   return;
     }
 
-    /* Do note these settings are mostly arbitrary numbers that I (the creator) like */
     UserSettings *s = us;
-    const u16 nmaster = 1;
-
-    const u16 refreshrate = 60;
-    const float bgw = 0.95f;
-    const u16 winsnap = 10;
-    const u16 maxcc = 256;      /* Xorg default is 255 or 256, I dont remember */
-    const float mfact = 0.55f;
-
-    /* These are bools, due to possible difference in compiler implementation they are u8's */
-    const u8 hoverfocus = 0;
-    const u8 usedecor = 0;
-    const u8 clientdecor = 1;
-    const u8 preferclientdecor = 1;
-
-    s->mcount = nmaster;
-    s->mfact = mfact;
-    s->refreshrate = refreshrate;
-    s->gapratio = bgw;
-    s->snap = winsnap;
-    s->maxcc = maxcc;
-
-    s->hoverfocus = hoverfocus;
-    s->usedecorations = usedecor;
-    s->useclientdecorations = clientdecor;
-    s->preferclientdecorations = preferclientdecor;
-
-    /* Left Stuff */
-    s->lw = 0.15f;
-    s->lh = 1.0f;
-    s->lx = 0.0f;
-    s->ly = 0.0f;
-    /* Right Stuff */
-    s->rw = 0.15f;
-    s->rh = 1.0f;
-    s->rx = 1.0f - s->rw;
-    s->ry = 0.0f;
-    /* Top Stuff */
-    s->tw = 1.0f;
-    s->th = 0.15f;
-    s->tx = 0.0f;
-    s->ty = 0.0f;
-    /* Bottom Stuff */
-    s->bw = 1.0f;
-    s->bh = 0.15f;
-    s->bx = 0.0f;
-    s->by = 1.0f - s->bh;
+    void *data;
+    i32 i;
+    const struct USSettingData *const usdata = &__USER__SETTINGS__DATA__;
+    for(i = 0; i < UserSettingsLAST; ++i)
+    {
+        data = ((uint8_t *)s) + usdata->field_offset[i];
+        memcpy(data, &usdata->default_data[i], usdata->field_size[i]);
+    }
 }
 
 void
@@ -361,4 +345,3 @@ USWipe(
     memset(settings, 0, sizeof(UserSettings));
     free(__CONFIG__NAME__);
 }
-
