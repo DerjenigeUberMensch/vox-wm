@@ -685,6 +685,7 @@ PropUpdateProperty(
     const enum PropertyType type = cookie->type;
     const XCBWindow win = cookie->win;
     const u8 validtype = PropValidType(type);
+    u8 valid_client;
 
     if(validtype)
     {
@@ -692,8 +693,17 @@ PropUpdateProperty(
         if(__prophandler__[type].get_cookie)
         {   cookie->cookie = __prophandler__[type].get_cookie(display, win);
         }
-        if(__prophandler__[type].get_reply)
-        {   __prophandler__[type].get_reply(display, cookie);
+        LockMainThread();
+        valid_client = cookie->cookie.sequence == 0 || wintoclient(win);
+        UnlockMainThread();
+        if(valid_client)
+        {
+            if(__prophandler__[type].get_reply)
+            {   __prophandler__[type].get_reply(display, cookie);
+            }
+        }
+        else
+        {   XCBDiscardReply(display, cookie->cookie);
         }
     }
 }
