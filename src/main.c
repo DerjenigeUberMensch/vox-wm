@@ -1631,11 +1631,10 @@ xerror(XCBDisplay *display, XCBGenericError *err)
            err->error_code, err->major_code, err->minor_code, 
            err->sequence, err->response_type, err->resource_id, 
            err->full_sequence);
-#ifdef ENABLE_Debug
         XCBCookie id;
         id.sequence = err->sequence;
         Debug("%s()", XCBDebugGetNameFromId(id));
-#endif
+        (void)id;
     }
 }
 

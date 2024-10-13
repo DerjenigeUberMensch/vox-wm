@@ -13,81 +13,27 @@
 
 #include "parser.h"
 #include "session.h"
+#include "config.h"
 #include "file_util.h"
 
 extern WM _wm;
 
-
-static int
-SessionGetConfigPath
-(
-        char *buff,
-        unsigned int buff_len,
-        unsigned int *len_return
-        )
-{
-    /* \0 */
-    const int nullbytesize = sizeof(char);
-    const unsigned int WM_DIR_NAME_LENGTH = sizeof(_WM_DIR_NAME_) - 1;
-    const unsigned int WM_FILE_NAME_LENGTH = sizeof(_WM_SESSION_FILE_NAME_) - 1;
-
-    unsigned int len = 0;
-    unsigned int usablelen = 0;
-    int status;
-
-    status = FFGetSysConfigPath(buff, buff_len - nullbytesize, &len);
-
-    if(status == EXIT_FAILURE)
-    {   return EXIT_FAILURE;
-    }
-
-    usablelen = buff_len - len;
-
-    if(usablelen - WM_DIR_NAME_LENGTH < 0)
-    {   return EXIT_FAILURE;
-    }
-
-    memcpy(buff + len, _WM_DIR_NAME_, WM_DIR_NAME_LENGTH);
-    usablelen -= WM_DIR_NAME_LENGTH;
-    len += WM_DIR_NAME_LENGTH;
-
-    if(usablelen - WM_FILE_NAME_LENGTH - sizeof('/') - sizeof('\0')< 0)
-    {   return EXIT_FAILURE;
-    }
-
-    /* get correct path ie: home/user/xxx/ */
-    buff[len] = '/';
-    ++len;
-    --usablelen;
-    memcpy(buff + len, _WM_SESSION_FILE_NAME_, WM_FILE_NAME_LENGTH);
-    len += WM_FILE_NAME_LENGTH;
-    usablelen -= WM_FILE_NAME_LENGTH;
-    buff[len] = '\0';
-
-    *len_return = buff_len - usablelen;
-
-    return EXIT_SUCCESS;
-}
 
 void
 SessionSave(
         void
         )
 {
-    const unsigned int BUFF_SIZE = FFSysGetConfigPathLengthMAX();
-
-    char buff[BUFF_SIZE];
-    unsigned int length = 0;
+    char buff[FFSysGetConfigPathLengthMAX];
     int status;
 
-    status = SessionGetConfigPath(buff, BUFF_SIZE, &length);
+    status = WMConfigGetSessionPath(buff, FFSysGetConfigPathLengthMAX, NULL);
 
     if(status == EXIT_FAILURE)
     {   
         Debug0("Failed to save data FIXME");
         return;
     }
-    Debug("%s", buff);
 
     status = FFCreateFile(buff);
 
