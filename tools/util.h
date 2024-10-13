@@ -26,19 +26,25 @@ typedef long double f128;
 typedef union Generic Generic;
 typedef union ARGB ARGB;
 
-union Generic
+union 
+Generic
 {
-    void *datav;
-    void **datavl;
+    void *datav[1];
+    void **datavl[1];
 
-    int8_t data8[64];
-    int16_t data16[32];
-    int32_t data32[16];
-    int64_t data64[8];
+    uint8_t data8[8];
+    uint16_t data16[4];
+    uint32_t data32[2];
+    uint64_t data64[1];
 
-    float dataf[16];
-    double datad[8];
-    long double datadd[4];  /* compiler specified but should be at most 128 bits */
+    int8_t data8i[8];
+    int16_t data16i[4];
+    int32_t data32i[2];
+    int64_t data64i[1];
+
+
+    float dataf[2];
+    double datad[1];
 };
 
 /* ORDER.
