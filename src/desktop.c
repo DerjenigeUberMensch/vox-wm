@@ -468,42 +468,56 @@ int
 stackpriority(Client *c1, Client *c2)
 {
     const u32 ewmhflag1 = c1->ewmhflags;
-    const u32 ewmhflag2 = c2->ewmhflags;
     const u32 flags1 = c1->flags;
+    const u32 ewmhflag2 = c2->ewmhflags;
     const u32 flags2 = c2->flags;
 
     const u32 ewmhflags = ewmhflag1 ^ ewmhflag2;
     const u32 flags = flags1 ^ flags2;
 
-    /* Due to the lack of virtual desktop handling this is no used by default.
+    /* PRIORITY WHEN CHECKED: (IN ORDER)
+     * HIGHEST [0]
+     * MEDIUM  [1]
+     * LOWEST  [2]
      */
-    if(ewmhflags & WTypeFlagDesktop)
-    {   ASSUME(false);
-    }
+    static const u32 BELOW_PRIORTY[] = 
+    {
+        WStateFlagBelow,
+        WStateFlagHidden,
+    };
+    /* PRIORITY WHEN CHECKED: (IN ORDER)
+     * HIGHEST [0]
+     * MEDIUM  [1]
+     * LOWEST  [2]
+     */
+    static const u32 ABOVE_PRIORITY[] = 
+    {
+        /* Due to the lack of virtual desktop handling this is no used by default. */
+        /* WTypeFlagDesktop, */
 
-    if(ewmhflags & WStateFlagBelow)
-    {   return __stack_priority_helper_below(ewmhflag1, WStateFlagBelow);
-    }
-    if(ewmhflags & WStateFlagHidden)
-    {   return __stack_priority_helper_below(ewmhflag1, WStateFlagHidden);
-    }
+        WTypeFlagDock,
+        WTypeFlagSplash,
+        WTypeFlagNotification,
+        /* WStateFlagModal, */
+        WStateFlagAbove,
+        WTypeFlagDialog,
+    };
 
-    if(ewmhflags & WTypeFlagDock)
-    {   return __stack_priority_helper_above(ewmhflag1, WTypeFlagDock);
+    int i;
+    for(i = 0; i < LENGTH(BELOW_PRIORTY); ++i)
+    {
+        if(ewmhflags & BELOW_PRIORTY[i])
+        {   return __stack_priority_helper_below(ewmhflag1, BELOW_PRIORTY[i]);
+        }
     }
-    if(ewmhflags & WTypeFlagSplash)
-    {   return __stack_priority_helper_above(ewmhflag1, WTypeFlagSplash);
+    for(i = 0; i < LENGTH(ABOVE_PRIORITY); ++i)
+    {
+        if(ewmhflags & ABOVE_PRIORITY[i])
+        {   return __stack_priority_helper_above(ewmhflag1, ABOVE_PRIORITY[i]);
+        }
     }
-    if(ewmhflags & WTypeFlagNotification)
-    {   return __stack_priority_helper_above(ewmhflag1, WTypeFlagNotification);
-    }
-    if(ewmhflags & WStateFlagModal)
-    {   return __stack_priority_helper_above(ewmhflag1, WStateFlagModal);
-    }
-    if(ewmhflags & WStateFlagAbove)
-    {   return __stack_priority_helper_above(ewmhflag1, WStateFlagAbove);
-    }
-
+    
+    /* These are Special flags, they require extra handling :( */
     if(flags & ClientFlagFloating)
     {   
         /* possible cache miss if reverse order due to desktop pointer indirection */
@@ -511,6 +525,8 @@ stackpriority(Client *c1, Client *c2)
         {   return __stack_priority_helper_above(flags1, ClientFlagFloating);
         }
     }
+
+
     /* return correct focus order */
     return c1->rstacknum > c2->rstacknum;
 }
