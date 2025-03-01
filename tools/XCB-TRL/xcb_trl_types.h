@@ -2,6 +2,9 @@
 #define __XCB__TRL__TYPES__H__
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include <xcb/xcb.h>
 #include <xcb/xcb_atom.h>
@@ -1149,5 +1152,8 @@ enum XCBByteOrder
 };
 
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -45,22 +45,26 @@
 extern "C" {
 #endif
 
+typedef struct xcb_icccm_get_text_property_reply_t xcb_icccm_get_text_property_reply_t;
+
 /**
  * @brief TextProperty reply structure.
  */
-typedef struct {
-/** Store reply to avoid memory allocation, should normally not be
-    used directly */
-xcb_get_property_reply_t *_reply;
-/** Encoding used */
-xcb_atom_t encoding;
-/** Length of the name field above */
-uint32_t name_len;
-/** Property value */
-char *name;
-/** Format, may be 8, 16 or 32 */
-uint8_t format;
-} xcb_icccm_get_text_property_reply_t;
+struct 
+xcb_icccm_get_text_property_reply_t 
+{
+    /** Store reply to avoid memory allocation, should normally not be
+      used directly */
+    xcb_get_property_reply_t *_reply;
+    /** Encoding used */
+    xcb_atom_t encoding;
+    /** Length of the name field above */
+    uint32_t name_len;
+    /** Property value */
+    char *name;
+    /** Format, may be 8, 16 or 32 */
+    uint8_t format;
+};
 
 /**
  * @brief Deliver a GetProperty request to the X server.
@@ -248,18 +252,20 @@ xcb_void_cookie_t xcb_icccm_set_wm_colormap_windows(xcb_connection_t *c,
                                                       uint32_t list_len,
                                                       const xcb_window_t *list);
 
+typedef struct xcb_icccm_get_wm_colormap_windows_reply_t xcb_icccm_get_wm_colormap_windows_reply_t;
 /**
  * @brief WM_COLORMAP_WINDOWS structure.
  */
-typedef struct {
-/** Length of the windows list */
-uint32_t windows_len;
-/** Windows list */
-xcb_window_t *windows;
-/** Store reply to avoid memory allocation, should normally not be
-    used directly */
-xcb_get_property_reply_t *_reply;
-} xcb_icccm_get_wm_colormap_windows_reply_t;
+struct xcb_icccm_get_wm_colormap_windows_reply_t 
+{
+    /** Length of the windows list */
+    uint32_t windows_len;
+    /** Windows list */
+    xcb_window_t *windows;
+    /** Store reply to avoid memory allocation, should normally not be
+      used directly */
+    xcb_get_property_reply_t *_reply;
+};
 
 /**
  * @brief Send request to get WM_COLORMAP_WINDOWS property of a given window.
@@ -402,15 +408,18 @@ xcb_void_cookie_t xcb_icccm_set_wm_class(xcb_connection_t *c,
                                            uint32_t class_len,
                                            const char *class_name);
 
-typedef struct {
-/** Instance name */
-char *instance_name;
-/** Class of application */
-char *class_name;
-/** Store reply to avoid memory allocation, should normally not be
-    used directly */
-xcb_get_property_reply_t *_reply;
-} xcb_icccm_get_wm_class_reply_t;
+typedef struct xcb_icccm_get_wm_class_reply_t xcb_icccm_get_wm_class_reply_t;
+
+struct xcb_icccm_get_wm_class_reply_t 
+{
+    /** Instance name */
+    char *instance_name;
+    /** Class of application */
+    char *class_name;
+    /** Store reply to avoid memory allocation, should normally not be
+      used directly */
+    xcb_get_property_reply_t *_reply;
+};
 
 /**
  * @brief Deliver a GetProperty request to the X server for WM_CLASS.
@@ -539,34 +548,36 @@ XCB_ICCCM_SIZE_HINT_US_POSITION = 1 << 0,
   XCB_ICCCM_SIZE_HINT_P_WIN_GRAVITY = 1 << 9
   } xcb_icccm_size_hints_flags_t;
 
+typedef struct xcb_size_hints_t xcb_size_hints_t;
 /**
  * @brief Size hints structure.
  */
-typedef struct {
-/** User specified flags */
-uint32_t flags;
-/** User-specified position */
-int32_t x, y;
-/** User-specified size */
-int32_t width, height;
-/** Program-specified minimum size */
-int32_t min_width, min_height;
-/** Program-specified maximum size */
-int32_t max_width, max_height;
-/** Program-specified resize increments */
-int32_t width_inc, height_inc;
-/** Program-specified minimum aspect ratios */
-int32_t min_aspect_num, min_aspect_den;
-/** Program-specified maximum aspect ratios */
-int32_t max_aspect_num, max_aspect_den;
-/** Program-specified base size */
-int32_t base_width, base_height;
-/** Program-specified window gravity */
-uint32_t win_gravity;
-} xcb_size_hints_t;
+struct xcb_size_hints_t 
+{
+    /** User specified flags */
+    uint32_t flags;
+    /** User-specified position */
+    int32_t x, y;
+    /** User-specified size */
+    int32_t width, height;
+    /** Program-specified minimum size */
+    int32_t min_width, min_height;
+    /** Program-specified maximum size */
+    int32_t max_width, max_height;
+    /** Program-specified resize increments */
+    int32_t width_inc, height_inc;
+    /** Program-specified minimum aspect ratios */
+    int32_t min_aspect_num, min_aspect_den;
+    /** Program-specified maximum aspect ratios */
+    int32_t max_aspect_num, max_aspect_den;
+    /** Program-specified base size */
+    int32_t base_width, base_height;
+    /** Program-specified window gravity */
+    uint32_t win_gravity;
+};
 
 /** Number of elements in this structure */
-#define XCB_ICCCM_NUM_WM_SIZE_HINTS_ELEMENTS 18
+enum { XCB_ICCCM_NUM_WM_SIZE_HINTS_ELEMENTS = 18 };
 
 /**
  * @brief Set size hints to a given position.
@@ -786,7 +797,7 @@ int32_t flags;
 } xcb_icccm_wm_hints_t;
 
 /** Number of elements in this structure */
-#define XCB_ICCCM_NUM_WM_HINTS_ELEMENTS 9
+enum { XCB_ICCCM_NUM_WM_HINTS_ELEMENTS = 9 };
 
 /**
  * @brief WM_HINTS window states.
@@ -808,10 +819,10 @@ typedef enum {
   XCB_ICCCM_WM_HINT_X_URGENCY = (1L << 8)
 } xcb_icccm_wm_t;
 
-#define XCB_ICCCM_WM_ALL_HINTS (XCB_ICCCM_WM_HINT_INPUT | XCB_ICCCM_WM_HINT_STATE | \
+enum { XCB_ICCCM_WM_ALL_HINTS = (XCB_ICCCM_WM_HINT_INPUT | XCB_ICCCM_WM_HINT_STATE | \
                                 XCB_ICCCM_WM_HINT_ICON_PIXMAP | XCB_ICCCM_WM_HINT_ICON_WINDOW | \
                                 XCB_ICCCM_WM_HINT_ICON_POSITION | XCB_ICCCM_WM_HINT_ICON_MASK | \
-                                XCB_ICCCM_WM_HINT_WINDOW_GROUP)
+                                XCB_ICCCM_WM_HINT_WINDOW_GROUP) };
 
 /**
  * @brief Get urgency hint.

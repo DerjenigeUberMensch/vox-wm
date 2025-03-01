@@ -351,6 +351,11 @@
 #ifndef XCB_PTL_TYPEDEF_H_
 #define XCB_PTL_TYPEDEF_H_
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <xcb/xcb.h>
 #include <xcb/xcb_atom.h>
 #include <xcb/xcb_aux.h>
@@ -2764,83 +2769,6 @@ XCBWipeGetWMClass(
 
 
 
-
-
-
-
-
-
-
-
-
-/* Returns a null terminating string to the call stack seperate by a \0 byte to the next called function.
- * With the last 2 bytes being \0 bytes.
- *
- * NOTE: XCB_TRL_ENABLE_DEBUG must be defined for this function to return any meaningfull data.
- * NOTE: char * MUST be freed. when done.
- *
- * RETURN: char * On Success.
- * RETURN: NULL On Failure.
- */
-char *
-XCBDebugGetCallStack(
-        void
-        );
-
-/* Returns a null terminating string to the last called function.
- *
- * NOTE: XCB_TRL_ENABLE_DEBUG must be defined for this function to return any meaningfull data.
- * NOTE: char * should NOT be freed.
- *
- * RETURN: char * On Success.
- * RETURN: NULL On Failure.
- */
-char *
-XCBDebugGetLastCall(
-        void
-        );
-
-/* Returns a null terminating string to the previous last called function.
- *
- * NOTE: XCB_TRL_ENABLE_DEBUG must be defined for this function to return any meaningfull data.
- * NOTE: char * should NOT be freed.
- *
- * RETURN: char * On Success.
- * RETURN: NULL On Failure.
- */
-char *
-XCBDebugGetPreviousCall(
-        void
-        );
-/* Returns a null terminating string to the last called function.
- *
- * NOTE: XCB_TRL_ENABLE_DEBUG must be defined for this function to return any meaningfull data.
- * NOTE: char * should NOT be freed.
- *
- * RETURN: char * On Success.
- * RETURN: NULL On Failure.
- */
-char *
-XCBDebugGetFirstCall(
-        void
-        );
-
-char *
-XCBDebugGetNameFromId(
-        XCBCookie id
-        );
-
-
-
-
-
-
-
-
-
-
-
-
 /* 1356 xproto.h */
 /* MASKS */
 /*
@@ -3073,4 +3001,9 @@ XCBDebugGetNameFromId(
  * XCB_WINDOW_NONE = 0,
  *
 */
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

@@ -20,7 +20,6 @@
  * TODO: xcb for some reason doesnt have a 32bit version of alot of the xlib to xcb ports for some reason... so we have to do it ourselves
  */
 
-#include "xcb_trl.h"
 
 #include <xcb/xcb.h>
 #include <xcb/xcb_aux.h>
@@ -42,11 +41,11 @@
 #include <limits.h> /* UINT_MAX */
 #include <stdarg.h>
 
-/** Number of elements in this structure */
-#define XCB_ICCCM_NUM_WM_HINTS_ELEMENTS 9
 
 
-
+#include "xcb_trl.h"
+#include "__private__xcb__err__.h"
+#include "__private__xcb__utils__.h"
 
 typedef uint8_t  u8;
 typedef uint16_t u16;
@@ -57,38 +56,6 @@ typedef int8_t   i8;
 typedef int16_t  i16;
 typedef int32_t  i32;
 typedef int64_t  i64;
-
-/* #define XCB_TRL_ENABLE_DEBUG */
-
-#ifdef XCB_TRL_ENABLE_DEBUG
-#define DBG             1
-#define DGB             1
-#define GDB             1
-#define BDG             1
-#define GBD             1
-#define _fn             __func__
-#endif
-#define _XCB_MANUAL_DEBUG(fmt, ...)             (fprintf(stderr, "_XCB_DEBUG_ [%s:%d] by %s(): " fmt "\n", __FILE__,__LINE__,__func__,__VA_ARGS__))
-#define _XCB_MANUAL_DEBUG0(X)                   (fprintf(stderr, "_XCB_DEBUG_ [%s:%d] by %s(): " X "\n", __FILE__, __LINE__, __func__))
-
-/* HELPER FUNCTION */
-static XCBScreen *
-screen_of_display(
-        XCBDisplay *display, 
-        int screen
-        )
-{
-    xcb_screen_iterator_t iter;
-
-    iter = xcb_setup_roots_iterator(xcb_get_setup(display));
-    for(; iter.rem; --screen, xcb_screen_next(&iter))
-    {
-        if(screen == 0)
-        {   return iter.data;
-        }
-    }
-    return NULL;
-}
 
 static void
 color_parser_foreground(
@@ -135,313 +102,6 @@ color_parser_background(
 }
 
 
-#ifdef DBG
-#define _xcb_push_func(cookie)                                                          \
-    if(_xcb_full_func())                                                                \
-    {                                                                                   \
-        /* we dont care it will just wrap back but this might be useful in testing */   \
-        _XCB_MANUAL_DEBUG0("DEBUG Ran Out of Space wrapping data...");                  \
-    }                                                                                   \
-    front *= front != -1;                   \
-    rear = (rear + 1) % MAX_DEBUG_LIMIT;    \
-    _xcb_funcs[rear].name = (char *)_fn;         \
-    _xcb_ids_[rear] = cookie.sequence;      
-#else
-#define _xcb_push_func(cookie) ((void)cookie)
-#endif
-#ifdef DBG
-
-
-typedef struct _xcb_caller _xcb_caller;
-typedef unsigned int _xcb_caller_id_;
-
-struct _xcb_caller 
-{
-    /* TODO: make like a static char *table and just use a uint16_t and save some 6 bytes */
-    char *name;
-};
-
-#define MAX_DEBUG_LIMIT     ((32768 << 6))/* the number means nothing its just some random big enough number for most use cases */
- 
-_xcb_caller_id_ _xcb_ids_[MAX_DEBUG_LIMIT];
-_xcb_caller _xcb_funcs[MAX_DEBUG_LIMIT];
-long long rear = -1;
-long long front = -1;
-
-static int _xcb_full_func(void);
-static int _xcb_empty_func(void);
-
-/*
-static void _xcb_pop_func(XCBCookie cookie);
-
-static void
-_xcb_pop_func(XCBCookie cookie)
-{
-    if(_xcb_empty_func())
-    {   
-        _XCB_MANUAL_DEBUG0("Nothing to pop.");
-        return;
-    }
-
-    _xcb_ids_[front] = 0;
-    _xcb_funcs[front].name = NULL;
-    if(front == rear)
-    {
-        front = -1;
-        rear = -1;   
-    }
-    else
-    {   front = (front + 1) % MAX_DEBUG_LIMIT;
-    }
-}
-
-*/
-
-static int
-_xcb_full_func(void)
-{
-    return front == rear + 1 || (front == 0 && rear == MAX_DEBUG_LIMIT - 1);
-}
-
-static int
-_xcb_empty_func(void)
-{
-    return front == -1;
-}
-
-
-
-/*
-static void
-_xcb_show_call_stack(void)
-{
-    if(_xcb_empty_func())
-    {   _XCB_MANUAL_DEBUG0("No stack to show");
-    }
-    else
-    {
-        for(long long i = front; i != rear; i = (i + 1) % MAX_DEBUG_LIMIT)
-        {   _XCB_MANUAL_DEBUG("%s", _xcb_funcs[i].name);
-        }
-    }
-}
-
-*/
-
-void  
-XCBBreakPoint(void) 
-{   volatile int e; e = 2; if(e == 2) { return; }
-}
-#endif
-
-char *
-XCBDebugGetCallStack(void)
-{
-    char *stack = NULL;
-#ifdef DBG
-    long long size = 0;
-    long long charsize = 0;
-    /* yeah idk */
-    for(long long i = front; i != rear; i = (i + 1) % MAX_DEBUG_LIMIT, ++size)
-    {   charsize += strlen(_xcb_funcs[i].name);
-    }
-    /* +size cause we need spaces, and +1 cause we need \0 */
-    stack = calloc(1, charsize * sizeof(char) + size * sizeof(char) + 1);
-    if(stack)
-    {   
-        if(_xcb_empty_func())
-        {   
-            free(stack);
-            return NULL;
-        }
-        for(long long i = front; i != rear; i = (i + 1) % MAX_DEBUG_LIMIT)
-        {   strcat(stack, _xcb_funcs[i].name);
-            strcat(stack, "\n");
-        }
-        strcat(stack, "\0");
-    }
-#endif
-    return stack;
-}
-
-char *
-XCBDebugGetLastCall(void)
-{
-    const char *lastcall = NULL;
-#ifdef DBG
-    if(!_xcb_empty_func())
-    {
-        if(_xcb_funcs[rear].name)
-        {   lastcall = _xcb_funcs[rear].name;
-        }
-    }
-#endif
-    return (char *)lastcall;
-}
-
-char *
-XCBDebugGetFirstCall(void)
-{
-    char *firstcall = NULL;
-#if DBG
-    if(!_xcb_empty_func())
-    {
-        if(_xcb_funcs[front].name)
-        {   firstcall = _xcb_funcs[front].name;
-        }
-    }
-#endif
-    return firstcall;
-}
-
-/* TODO */
-char *
-XCBDebugGetAdjacentCallers(
-        XCBCookie cookie
-        )
-{
-    /* prob could use a hashmap or something */
-#ifdef DBG
-    unsigned int id = cookie.sequence;
-    for(long long i = front; i != rear; i = (i + 1) % MAX_DEBUG_LIMIT)
-    {
-        if(_xcb_ids_[i] == id)
-        {   
-        }
-    }
-#endif
-    return NULL;
-}
-
-char *
-XCBDebugGetNameFromId(
-        XCBCookie id
-        )
-{
-#ifdef XCB_TRL_ENABLE_DEBUG
-    for(long long i = front; i != rear; i = (i + 1) % MAX_DEBUG_LIMIT)
-    {   
-        if(_xcb_ids_[i] == id.sequence)
-        {   return _xcb_funcs[i].name;
-        }
-    }
-#endif
-    return NULL;
-}
-
-static void
-_xcb_handler(
-        XCBDisplay *display, 
-        XCBGenericError *err
-        )
-{
-#ifdef XCB_TRL_ENABLE_DEBUG
-    for(long long i = front; i != rear; i = (i + 1) % MAX_DEBUG_LIMIT)
-    {   
-        if(_xcb_ids_[i]== err->error_code)
-        {   _XCB_MANUAL_DEBUG("%s", _xcb_funcs[i].name);
-        }
-    }
-#endif
-}
-                                                        /* this saves a conditional check which isnt "expensive".
-                                                         * But is basically free no overhead aside from the function call which your gonna do anyway.
-                                                         */
-static void (*_handler)(XCBDisplay *, XCBGenericError *) = _xcb_handler;
-
-
-
-
-static void
-_xcb_err_handler(
-        XCBDisplay *display, 
-        XCBGenericError *err
-        )
-{
-    _handler(display, err);
-    /* this just for convinience also less lines of code I guess? */
-    free(err);
-#ifdef DBG
-    XCBBreakPoint();
-#endif
-}
-
-static void
-__XCBThrowError(
-        XCBDisplay *display,
-        XCBCookie cookie, 
-        uint8_t error, 
-        uint8_t major_code, 
-        uint16_t minor_code
-        )
-{
-    XCBGenericError _err;
-    memset(&_err, 0, sizeof(XCBGenericError));
-    _err.error_code = error;
-    _err.major_code = major_code;
-    _err.minor_code = minor_code;
-    _err.response_type = XCB_NONE;
-    _err.full_sequence = cookie.sequence;
-    _err.sequence = cookie.sequence;
-    _xcb_handler(display, &_err);
-}
-
-static const uint32_t
-__XValidFormat(uint8_t x) 
-{
-    switch(x)
-    {
-        case 32:
-        case 16:
-        case 8:
-            return 1;
-    }
-    return 0;
-}
-/* Automaticalyly frees data on error */
-static const uint32_t
-__XValidFormatThrow(
-        XCBDisplay *display, 
-        XCBCookie cookie,
-        XCBWindowProperty *prop
-        )
-{
-    const uint32_t ret = __XValidFormat(prop->format);
-    if(ret)
-    {   return 1;
-    }
-    __XCBThrowError(display, cookie, XCBBadImplementation, X_GetProperty, XCB_NONE);
-    free(prop);
-    return 0;
-}
-
-static const uint32_t
-__XValidSize(
-        uint32_t value_len
-        ) 
-{
-    /* X11, GetProp.c
-     * Protect against both integer overflow and just plain oversized
-     * memory allocation - no server should ever return this many props.
-     */
-    return value_len <= (INT32_MAX >> 4);
-}
-
-static const uint32_t
-__XValidSizeThrow(
-        XCBDisplay *display, 
-        XCBCookie cookie,
-        XCBWindowProperty *prop
-        )
-{
-    const uint32_t ret = __XValidSize(prop->value_len);
-    if(ret)
-    {   return 1;
-    }
-    __XCBThrowError(display, cookie, XCBBadImplementation, X_GetProperty, XCB_NONE);
-    return 0;
-}
-
 XCBDisplay *
 XCBOpenDisplay(
         const char *displayName, 
@@ -486,7 +146,7 @@ XCBCloseDisplay(
 {
     /* Closes connection and frees resulting data. */
 
-    XCBCookie ck = { .sequence = 9999999 };
+    XCBCookie ck = { .sequence = 0 };
     _xcb_push_func(ck);
 
     xcb_disconnect(display);
@@ -902,7 +562,7 @@ XCBSyncf(
     while(((ev = XCBPollForQueuedEvent(display))))
     {   
         if(!ev->response_type)
-        {   _xcb_err_handler(display, (xcb_generic_error_t *)ev);
+        {   __XValidateReply(display, NULL, (xcb_generic_error_t *)ev);
         }
         else
         {   free(ev);
@@ -1193,14 +853,10 @@ XCBGetWindowAttributesReply(
     XCBGetWindowAttributes *reply = NULL;
     const xcb_get_window_attributes_cookie_t cookie1 = { .sequence = cookie.sequence };
     reply = xcb_get_window_attributes_reply(display, cookie1, &err);
-    if(err)
-    {
-        _xcb_err_handler(display, err);
-        if(reply)
-        {   free(reply);
-        }
-        return NULL;
-    }
+
+    /* if theres an error reply is null so just handle err here. */
+    __XValidateReply(display, NULL, err);
+
     return reply;
 }
 
@@ -1232,14 +888,9 @@ XCBGetWindowGeometryReply(
     XCBGeometry *reply = NULL;
     const xcb_get_geometry_cookie_t cookie1 = { .sequence = cookie.sequence };
     reply = xcb_get_geometry_reply(display, cookie1, &err);
-    if(err)
-    {   
-        _xcb_err_handler(display, err);
-        if(reply)
-        {   free(reply);
-        }
-        return NULL;
-    }
+
+    __XValidateReply(display, NULL, err);
+
     return reply;
 }
 
@@ -1295,7 +946,7 @@ XCBInternAtomReply(XCBDisplay *display, XCBCookie cookie)
     _xcb_push_func(ret);
 
 
-#ifdef DBG
+#ifdef XCB_TRL_ENABLE_DEBUG
     if(reply && reply->length > 1)
     {
         _XCB_MANUAL_DEBUG0("There are several possible atoms for the provided cookie, this might be important.");
@@ -1304,14 +955,13 @@ XCBInternAtomReply(XCBDisplay *display, XCBCookie cookie)
 #endif
 
 
-    if(err)
-    {
-        _xcb_err_handler(display, err);
-        if(reply)
-        {   free(reply);
-        }
-        return 0;
+    /* if theres an error reply is null so just handle err here. */
+    __XValidateReply(display, NULL, err);
+
+    if(!reply || err)
+    {   return 0;
     }
+
     const xcb_atom_t atom = reply->atom;
     free(reply);
     return atom;
@@ -1357,7 +1007,7 @@ XCBGetTransientForHintReply(
         {   
             status = 0;
             
-            #ifdef DBG
+            #ifdef XCB_TRL_ENABLE_DEBUG
                 _XCB_MANUAL_DEBUG0("No adress specified in the 'win' field.");
                 XCBBreakPoint();
             #endif
@@ -1511,24 +1161,7 @@ XCBGetPropertyReply(
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret);
 
-
-    if(err)
-    {
-        _xcb_err_handler(display, err);
-        if(reply)
-        {   free(reply);
-        }
-        return NULL;
-    }
-    if(reply && reply->type != XCB_NONE)
-    {   
-        if(!__XValidFormatThrow(display, cookie, reply) || !__XValidSizeThrow(display, cookie, reply))
-        {   
-            free(reply);
-            reply = NULL;
-        }
-    }
-    return reply;
+    return __XValidateReply(display, reply, err);
 }
 
 void *
@@ -1855,17 +1488,21 @@ XCBFreeTextProperty(
 
     if(!prop)
     {
-    #ifdef DBG
+    #ifdef XCB_TRL_ENABLE_DEBUG
         _XCB_MANUAL_DEBUG0("No prop in context.");
         XCBBreakPoint();
     #endif
+        return 0;
     }
 
-
     XCBCookie ret = { .sequence = 0 };
+
     _xcb_push_func(ret);
 
     free(prop->_reply);
+
+    prop->_reply = NULL;
+
     return 1;
 }
 
@@ -1964,14 +1601,11 @@ XCBSetErrorHandler(
         )
 {   
     XCBCookie ret = { .sequence = 0 };
+
     _xcb_push_func(ret);
 
-    if(error_handler)
-    {   _handler = error_handler;
-    }
-    else
-    {   _handler = _xcb_handler;
-    }
+    __XCBSetErrorHandler(error_handler);
+
     return 1;
 }
 
@@ -2017,7 +1651,7 @@ XCBGetEventNameFromEvent(
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret);
 
-    const char *const evs[36] = 
+    static const char *const evs[36] = 
     {
         [XCB_NONE] = NULL,
         [XCB_KEY_PRESS] = "XCB_KEY_PRESS", 
@@ -2260,7 +1894,7 @@ XCBGetErrorDisplayText(
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret);
 
-    const char *const errs[7] = 
+    static const char *const errs[7] = 
     {
         [0] = NULL,
         [XCB_CONN_ERROR] = "DisplayError",
@@ -2351,7 +1985,7 @@ XCBSendError(
         XCBGenericError *err
         )
 {
-    _xcb_handler(display, err);
+    __XCheckReply(display, NULL, err);
 }
 
 void
@@ -2360,7 +1994,7 @@ XCBSendErrorP(
         XCBGenericError *err
         )
 {
-    _xcb_err_handler(display, err);
+    __XValidateReply(display, NULL, err);
 }
 
 int 
@@ -2413,15 +2047,7 @@ XCBCheckReply(
     void *reply = NULL;
     xcb_poll_for_reply(display, request.sequence, &reply, &err);
 
-    if(err)
-    {    
-        _xcb_err_handler(display, err);
-        if(reply)
-        {   free(reply);
-        }
-        return NULL;
-    }
-    return reply;
+    return __XValidateReply(display, reply, err);
 }
 
 void *
@@ -2437,15 +2063,7 @@ XCBCheckReply64(
     void *reply = NULL;
     xcb_poll_for_reply64(display, request.sequence, &reply, &err);
 
-    if(err)
-    {    
-        _xcb_err_handler(display, err);
-        if(reply)
-        {   free(reply);
-        }
-        return NULL;
-    }
-    return reply;
+    return __XValidateReply(display, reply, err);
 }
 
 
@@ -2457,19 +2075,13 @@ XCBWaitForReply(
 {
 
     XCBCookie ret = { .sequence = 0 };
+
     _xcb_push_func(ret);
 
     XCBGenericError *err = NULL;
     void *reply = xcb_wait_for_reply(display, cookie.sequence, &err);
-    if(err)
-    {   
-        _xcb_err_handler(display, err);
-        if(reply)
-        {   free(reply);
-        }
-        return NULL;
-    }
-    return reply;
+
+    return __XValidateReply(display, reply, err);
 }
 
 void *
@@ -2484,15 +2096,8 @@ XCBWaitForReply64(
 
     XCBGenericError *err = NULL;
     void *reply = xcb_wait_for_reply64(display, cookie.sequence, &err);
-    if(err)
-    {   
-        _xcb_err_handler(display, err);
-        if(reply)
-        {   free(reply);
-        }
-        return NULL;
-    }
-    return reply;
+
+    return __XValidateReply(display, reply, err);
 }
 
 XCBCookie
@@ -2526,12 +2131,9 @@ XCBGrabKeyboardReply(
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret);
 
-    if(err)
-    {
-        _xcb_err_handler(display, err);
-        free(reply);
-        return NULL;
-    }
+    /* if theres an error reply is null so just handle err here. */
+    __XValidateReply(display, NULL, err);
+
     return reply;
 }
 
@@ -2655,17 +2257,13 @@ XCBGrabPointerReply(
     XCBGenericError *err = NULL;
     xcb_grab_pointer_reply_t *reply = xcb_grab_pointer_reply(display, cookie1, &err);
 
-    XCBCookie ret = { .sequence = cookie.sequence + 1};
+    XCBCookie ret = { .sequence = cookie.sequence };
+
     _xcb_push_func(ret);
 
-    if(err)
-    {   
-        _xcb_err_handler(display, err);
-        if(reply)
-        {   free(reply);
-        }
-        return NULL;
-    }
+    /* if theres an error reply is null so just handle err here. */
+    __XValidateReply(display, NULL, err);
+
     return reply;
 
 }
@@ -2757,14 +2355,10 @@ XCBGetKeyboardMappingReply(
     XCBGenericError *err = NULL;
     const xcb_get_keyboard_mapping_cookie_t cookie1 = { .sequence = cookie.sequence };
     XCBKeyboardMapping *reply = xcb_get_keyboard_mapping_reply(display, cookie1, &err);
-    if(err)
-    {   
-        _xcb_err_handler(display, err);
-        if(reply)
-        {   free(reply);
-        }
-        return NULL;
-    }
+
+    /* if theres an error reply is null so just handle err here. */
+    __XValidateReply(display, NULL, err);
+
     return reply;
 }
 
@@ -2795,14 +2389,10 @@ XCBQueryTreeReply(
     const xcb_query_tree_cookie_t cookie1 = { .sequence = cookie.sequence };
     XCBGenericError *err = NULL;
     xcb_query_tree_reply_t *reply = xcb_query_tree_reply(display, cookie1, &err);
-    if(err)
-    {   
-        _xcb_err_handler(display, err);
-        if(reply)
-        {   free(reply);
-        }
-        return NULL;
-    }
+
+    /* if theres an error reply is null so just handle err here. */
+    __XValidateReply(display, NULL, err);
+
     return reply;
 }
 
@@ -2847,14 +2437,10 @@ XCBQueryPointerReply(
     XCBGenericError *err = NULL;
     const xcb_query_pointer_cookie_t cookie1 = { .sequence = cookie.sequence };
     XCBQueryPointer *reply = xcb_query_pointer_reply(display, cookie1, &err);
-    if(err)
-    {   
-        _xcb_err_handler(display, err);
-        if(reply)
-        {   free(reply);
-        }
-        return NULL;
-    }
+
+    /* if theres an error reply is null so just handle err here. */
+    __XValidateReply(display, NULL, err);
+
     return reply;
 }
 
@@ -3133,8 +2719,8 @@ XCBStoreName(
 {
     const long int MAX_LEN = UINT32_MAX;
     const uint32_t len = strnlen(window_name, MAX_LEN);
-    XCBCookie ret = xcb_change_property(display, XCB_PROP_MODE_REPLACE, window, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, len, window_name);
 
+    XCBCookie ret = xcb_change_property(display, XCB_PROP_MODE_REPLACE, window, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, len, window_name);
 
     _xcb_push_func(ret);
 
@@ -3358,14 +2944,9 @@ XCBGetAtomNameReply(
     const xcb_get_atom_name_cookie_t cookie1 = { .sequence = cookie.sequence };
     xcb_get_atom_name_reply_t *reply = xcb_get_atom_name_reply(display, cookie1, &err);
 
-    if(err)
-    {
-        _xcb_err_handler(display, err);
-        if(reply)
-        {   free(reply);
-        }
-        return NULL;
-    }
+    /* if theres an error reply is null so just handle err here. */
+    __XValidateReply(display, NULL, err);
+
     return reply;
 }
 
@@ -3510,7 +3091,7 @@ XCBGetWMProtocolsReply(
     const int ret = xcb_icccm_get_wm_protocols_reply(display, cookie1, protocol_return, &err);
     if(err)
     {   
-        _xcb_err_handler(display, err);
+        __XValidateReply(display, NULL, err);
         return 0;
     }
     return ret;
@@ -3524,10 +3105,11 @@ XCBWipeGetWMProtocols(
 
     if(!protocols)
     {   
-#ifdef DBG
+#ifdef XCB_TRL_ENABLE_DEBUG
         _XCB_MANUAL_DEBUG0("No WMprotocols to wipe? this shouldnt be possible.");
         XCBBreakPoint();
 #endif
+        return;
     }
 
 
@@ -3535,6 +3117,7 @@ XCBWipeGetWMProtocols(
     _xcb_push_func(ret);
 
     xcb_icccm_get_wm_protocols_reply_wipe(protocols);
+
     protocols->_reply = NULL;
 }
 
@@ -3588,6 +3171,7 @@ XCBGetWMHintsReply(
         if(length > sizeof(xcb_size_hints_t))
         {   length = sizeof(xcb_size_hints_t);
         }
+
         memmove(reply, data, length);
 
         if(num_elem == XCB_ICCCM_NUM_WM_SIZE_HINTS_ELEMENTS - 1)
@@ -3600,7 +3184,7 @@ XCBGetWMHintsReply(
     /* error handling */
     if(err)
     {   
-        _xcb_err_handler(display, err);
+        __XValidateReply(display, NULL, err);
 USER_ERROR:
         if(reply)
         {   free(reply);
@@ -3652,9 +3236,10 @@ XCBGetWMNameReply(
 
     if(err)
     {   
-        _xcb_err_handler(display, err);
+        __XValidateReply(display, NULL, err);
         status = 0;
     }
+
     return status;
 }
 
@@ -3704,7 +3289,8 @@ XCBGetWMNormalHintsReply(
     u8 status = xcb_icccm_get_wm_normal_hints_reply(display, cookie1, hints_return, &err);
 
     if(err)
-    {   _xcb_err_handler(display, err);
+    {   
+        __XValidateReply(display, NULL, err);
         status = 0;
     }
     return status;
@@ -3774,7 +3360,7 @@ XCBGetWMNormalHintsReplyNoFill(
 
     if(err)
     {   
-        _xcb_err_handler(display, err);
+        __XValidateReply(display, NULL, err);
 USER_ERROR:
         if(reply)
         {   free(reply);
@@ -3793,9 +3379,7 @@ XCBGetWMClassCookie(
     const xcb_get_property_cookie_t cookie = xcb_icccm_get_wm_class(display, win);
     XCBCookie ret = { .sequence = cookie.sequence };
 
-
     _xcb_push_func(ret);
-
 
     return ret;
 }
@@ -3818,7 +3402,7 @@ XCBGetWMClassReply(
     
     if(err)
     {
-        _xcb_err_handler(display, err);
+        __XValidateReply(display, NULL, err);
         XCBWipeGetWMClass(class_return);
         class_return->_reply = NULL;
         status = 0;
@@ -3832,12 +3416,17 @@ XCBWipeGetWMClass(
         XCBWMClass *class
         )
 {
-#ifdef DBG
+    XCBCookie ret = { .sequence = 0 };
+    _xcb_push_func(ret);
+
     if(!class)
-    {   _XCB_MANUAL_DEBUG0("No class to wipe? this shouldnt be possible.");
+    {   
+#ifdef XCB_TRL_ENABLE_DEBUG
+        _XCB_MANUAL_DEBUG0("No class to wipe? this shouldnt be possible.");
         XCBBreakPoint();
-    }
 #endif
+        return;
+    }
     xcb_icccm_get_wm_class_reply_wipe(class);
     class->_reply = NULL;
 }

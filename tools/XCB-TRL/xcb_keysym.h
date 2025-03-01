@@ -2,10 +2,12 @@
 #define __XCB__TRL__KEYSYM__H__
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 #include "xcb_trl_types.h"
-
-
-typedef struct _XCBKeySymbolsFastTable XCBKeySymbolsFastTable;
 
 enum
 XCBKeysymColumn
@@ -17,17 +19,6 @@ XCBKeysymColumn
     XCBKeysymColLeftAltModifier = 4,
     XCBKeysymColLeftAltGrModifier = 5,
 };
-
-
-XCBKeySymbolsFastTable *
-XCBKeySymbolsFastTableCreate(  
-        XCBDisplay *display,
-        XCBKeySymbols *symbols
-        );
-
-
-
-
 
 /* This gets the keycodes of the specfied display.
  *
@@ -129,6 +120,9 @@ XCBKeySymbolsFree(
 
 
 
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif

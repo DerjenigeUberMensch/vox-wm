@@ -113,6 +113,9 @@ int main() {
 	* Added destructor
 */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifndef __AC_KHASH_H
 #define __AC_KHASH_H
@@ -625,3 +628,6 @@ typedef const char *kh_cstr_t;
 	KHASH_INIT(name, kh_cstr_t, khval_t, 1, kh_str_hash_func, kh_str_hash_equal)
 
 #endif /* __AC_KHASH_H */
+#ifdef __cplusplus
+}
+#endif
