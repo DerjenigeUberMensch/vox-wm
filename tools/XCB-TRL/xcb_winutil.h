@@ -2,6 +2,9 @@
 #define XCB_WINUTIL_H
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include "xcb_trl.h"
 
@@ -174,5 +177,10 @@ XCBGetPidReply(
         XCBDisplay *display,
         XCBCookie cookie
         );
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

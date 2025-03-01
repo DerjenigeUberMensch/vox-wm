@@ -1,11 +1,11 @@
 
-
 #include <stdio.h>
 #include <string.h>
 #include <wchar.h>
 #include <stdarg.h>
 #include "xcb_trl.h"
 #include "xcb_winutil.h"
+#include "__private__xcb__utils__.h"
 
 static const char *const WM_ATOM_NAMES[WMLast]= 
 {
@@ -355,6 +355,10 @@ XCBGetWindowName(
         XCBWindow win
         )
 {
+    XCBCookie ck = { .sequence = 0 };
+
+    _xcb_push_func(ck);
+
     XCBCookie wmnamecookie = XCBGetWMNameCookie(display, win);
     XCBTextProperty textprop;
     uint8_t textstatus = 0;
@@ -377,9 +381,12 @@ XCBGetPidCookie(
         XCBAtom _NET_WM_PID_ID
         )
 {
+
     const uint8_t INITAL_BYTE_OFFSET = 0;
     const uint8_t LENGTH = 1;   /* Pid is just 1 uint32_t */
     XCBCookie ret = XCBGetWindowPropertyCookie(display, win, _NET_WM_PID_ID, INITAL_BYTE_OFFSET, LENGTH, 0, XCB_ATOM_CARDINAL);
+
+    _xcb_push_func(ret);
 
     return ret;
 }
@@ -390,6 +397,9 @@ XCBGetPidReply(
         XCBCookie cookie
         )
 {    
+    XCBCookie ret = { .sequence = 0 };
+    _xcb_push_func(ret);
+
     XCBWindowProperty *prop = XCBGetWindowPropertyReply(display, cookie);
     int32_t pid = -1;
     if(prop)
@@ -407,4 +417,13 @@ XCBGetPidReply(
     }
     return pid;
 }
+
+
+
+
+
+
+
+
+
 

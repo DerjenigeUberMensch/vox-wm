@@ -1,6 +1,9 @@
 #ifndef XCB_PTL_IMAGE_UTIL_H_
 #define XCB_PTL_IMAGE_UTIL_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* AKA XCBArgb
  *
@@ -13,5 +16,9 @@
  * FORMAT: BLUE + (GREEN << 8) + (RED << 16) + (ALPHA << 24).
  */
 #define XCB_IMAGE_FORMAT_BGRA        (XCB_IMAGE_FORMAT_Z_PIXMAP)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

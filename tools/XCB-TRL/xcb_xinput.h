@@ -1,6 +1,12 @@
 #ifndef _XCB_PTL_XINPUT_H_
 #define _XCB_PTL_XINPUT_H_
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 #include "xcb_trl.h"
 
 #include <xcb/xinput.h>
@@ -72,6 +78,9 @@ XCBISelectEvents(
 
 
 
+#ifdef __cplusplus
+}
+#endif
 
 
 

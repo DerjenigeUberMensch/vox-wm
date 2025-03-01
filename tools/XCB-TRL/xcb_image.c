@@ -1,4 +1,8 @@
+
+
 #include "xcb_image.h"
+#include "__private__xcb__utils__.h"
+
 
 XCBImage *
 XCBCreateImage(
@@ -12,6 +16,10 @@ XCBCreateImage(
         XCBImageOrder bytes_per_line
         )
 {
+    XCBCookie ck = { .sequence = 0 };
+    _xcb_push_func(ck);
+
+
     return NULL;
 }
 
@@ -29,6 +37,8 @@ XCBPutImage(
         )
 {
     XCBCookie ret = xcb_image_put(display, drawable, gc, image, x, y, left_pad);
+
+    _xcb_push_func(ret);
 
     return ret;
 }
@@ -52,6 +62,8 @@ XCBPutPixels(
 {
     XCBCookie ret = xcb_put_image(display, XCB_IMAGE_FORMAT_XXX, drawable, gc, width, height, destination_x, destination_y, left_pad, depth, data_len_size_in_bytes, data);
 
+    _xcb_push_func(ret);
+
     return ret;
 }
 
@@ -74,7 +86,10 @@ XCBFillRectangle(
         .width = w,
         .height = h
     };
+
     XCBCookie ret = xcb_poly_fill_rectangle(display, drawable, gc, 1, &rect);
+
+    _xcb_push_func(ret);
 
     return ret;
 }
@@ -89,6 +104,8 @@ XCBFillRectangles(
         )
 {
     XCBCookie ret = xcb_poly_fill_rectangle(display, drawable, gc, nrectangles, rectangles);
+
+    _xcb_push_func(ret);
 
     return ret;
 }
@@ -111,7 +128,10 @@ XCBDrawRectangle(
         .width = w,
         .height = h
     };
+
     XCBCookie ret = xcb_poly_rectangle(display, drawable, gc, 1, &rect);
+
+    _xcb_push_func(ret);
 
     return ret;
 }
@@ -126,6 +146,8 @@ XCBDrawRectangles(
         )
 {
     XCBCookie ret = xcb_poly_rectangle(display, drawable, gc, nrectangles, rectangles);
+
+    _xcb_push_func(ret);
 
     return ret;
 }
@@ -143,6 +165,8 @@ XCBFillPolygon(
         )
 {
     XCBCookie ret = xcb_fill_poly(display, drawable, gc, shape, mode, npoints, points);
+
+    _xcb_push_func(ret);
 
     return ret;
 }
@@ -172,6 +196,8 @@ XCBFillArc(
 
     XCBCookie ret = xcb_poly_fill_arc(display,drawable, gc, 1, &arc);
 
+    _xcb_push_func(ret);
+
     return ret;
 }
 
@@ -185,6 +211,8 @@ XCBFillArcs(
         )
 {
     XCBCookie ret = xcb_poly_fill_arc(display, drawable, gc, number_of_arcs, arcs);
+
+    _xcb_push_func(ret);
 
     return ret;
 }
@@ -207,6 +235,8 @@ XCBDrawPoint(
 
     XCBCookie ret = xcb_poly_point(display, coordinatemode, drawable, gc, 1, &points);
 
+    _xcb_push_func(ret);
+
     return ret;
 }
 
@@ -221,6 +251,8 @@ XCBDrawPoints(
         )
 {
     XCBCookie ret = xcb_poly_point(display, coordinatemode, drawable, gc, points_len, points);
+
+    _xcb_push_func(ret);
 
     return ret;
 }
@@ -253,6 +285,8 @@ XCBDrawLine(
 
     XCBCookie ret = xcb_poly_line(display, coordinatemode, drawable, gc, 2, points);
 
+    _xcb_push_func(ret);
+
     return ret;
 }
 
@@ -267,6 +301,8 @@ XCBDrawLines(
         )
 {
     XCBCookie ret = xcb_poly_line(display, coordinatemode, drawable, gc, points_len, points);
+
+    _xcb_push_func(ret);
 
     return ret;
 }

@@ -1,3 +1,10 @@
+#ifndef __XCB__XEMBED__TRL__H_
+#define __XCB__XEMBED__TRL__H_
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include "xcb_trl.h"
 
@@ -118,4 +125,9 @@ XCBInitXembedAtomsReply(
         );
 
 
+#ifdef __cplusplus
+}
+#endif
 
+
+#endif

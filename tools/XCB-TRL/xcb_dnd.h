@@ -1,6 +1,11 @@
 #ifndef XCB_DND_H_
 #define XCB_DND_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 #include "xcb_trl.h"
 
 
@@ -42,5 +47,9 @@ XCBInitDNDAtomsReply(
         XCBCookie *cookies,
         XCBAtom *atom_return
         );
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
