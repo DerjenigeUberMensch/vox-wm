@@ -1824,7 +1824,7 @@ setbordercolor(Client *c, uint8_t red, uint8_t green, uint8_t blue)
 void
 setbordercolor32(Client *c, uint32_t col)
 {   
-    const u32 mask = (UINT32_MAX ^ (UINT8_MAX << 24));
+    const u32 mask = (UINT32_MAX ^ (((uint32_t)UINT8_MAX)<< 24));
     c->bcol &= mask;
     c->bcol |= col & mask;
 }
