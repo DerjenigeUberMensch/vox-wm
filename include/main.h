@@ -238,8 +238,18 @@ void NonNull wakeupconnection(XCBDisplay *display, int screen);
 /* Error handler */
 void NonNullArg(1) xerror(XCBDisplay *display, XCBGenericError *error);
 
-
+/* Gets the mutex availability and whether or not using LOCK_WM will do anythign.
+ * This is mostly to check if we are running in SINGLE thread or MULTI-THREAD.
+ *
+ * RETURN: 1 on if can lock window manager.
+ * RETURN: 0 on if cannot lock window manager.
+ */
+uint32_t CAN_LOCK_WM(void);
+/* Returns pthread return values */
 int LOCK_WM(void);
+/* Returns pthread return values */
+int TRY_LOCK_WM(void);
+/* Returns pthread return values */
 int UNLOCK_WM(void);
 
 
