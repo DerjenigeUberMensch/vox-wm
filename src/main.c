@@ -31,27 +31,39 @@
 #include "session.h"
 #include "bar.h"
 #include "keybinds.h"
+#include "safebool.h"
 /* for HELP/DebugGING see under main() or the bottom */
+
+
+u32 CAN_LOCK_WM(void)   {   
+                            extern WM _wm; 
+                            return _wm.use_threads;
+                        }
 
 int LOCK_WM(void)       {   
                             extern WM _wm;
                             int ret = EXIT_SUCCESS;
-                            if(_wm.use_threads)
+                            if(CAN_LOCK_WM())
                             {   ret = pthread_mutex_lock(&_wm.mutex);
+                            }
+                            return ret;
+                        }
+int TRY_LOCK_WM(void)   {
+                            extern WM _wm;
+                            int ret = EXIT_FAILURE;
+                            if(CAN_LOCK_WM())
+                            {   ret = pthread_mutex_trylock(&_wm.mutex);
                             }
                             return ret;
                         }
 int UNLOCK_WM(void)     {
                             extern WM _wm;
                             int ret = EXIT_SUCCESS;
-                            if(_wm.use_threads)
+                            if(CAN_LOCK_WM())
                             {   ret = pthread_mutex_unlock(&_wm.mutex);
                             }
                             return ret;
                         }
-
-
-
 
 
 extern void (*handler[XCBLASTEvent]) (XCBGenericEvent *);
