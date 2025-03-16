@@ -1291,7 +1291,6 @@ xerror(XCBDisplay *display, XCBGenericError *err)
            err->full_sequence);
         XCBCookie id;
         id.sequence = err->sequence;
-        Debug("%s()", XCBDebugGetNameFromId(id));
         (void)id;
     }
 }

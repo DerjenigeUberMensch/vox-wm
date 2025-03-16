@@ -27,7 +27,7 @@ DYNAMICLINK= -ldl
 SECTIONCODE= -ffunction-sections -fdata-sections
 LINKMODE = ${DYNAMICLINK}
 MEMFLAGSALWAYS = -fno-omit-frame-pointer
-MEMFLAGSDEBUG = -fsanitize=address 
+MEMFLAGSDEBUG = -fsanitize=address,pointer-compare,pointer-subtract,undefined,leak
 MEMFLAGS = ${MEMFLAGSALWAYS}
 MEMFLAGS += ${MEMFLAGSDEBUG}
 
@@ -37,7 +37,8 @@ WARNINGFLAGS = ${WARNINGDEFAULT} ${WARNINGEXTRAS}
 
 LINKTIMEOPTIMIZATIONS = -flto -flto=auto
 
-PRELINKERFLAGS ?= -fstack-protector-strong -fstack-clash-protection -fpie ${LINKTIMEOPTIMIZATIONS} ${SECTIONCODE}
+#SAFETYFLAGS = -fcf-protection=full -fharden-compares -fstack-protector-all -fstack-clash-protection -fharden-compares -fharden-conditional-branches -fharden-control-flow-redundancy  -fhardcfr-check-exceptions  -fhardcfr-check-returning-calls -fhardcfr-check-noreturn-calls=always 
+PRELINKERFLAGS ?= -fpie -fstack-protector-strong -fstack-clash-protection ${LINKTIMEOPTIMIZATIONS} ${SECTIONCODE}
 
 # can set higher but function overhead is pretty small so meh
 INLINELIMIT ?= 15
