@@ -170,22 +170,7 @@ StickWindow(const Arg *arg)
 
 void
 UserStatsCallStack(const Arg *arg)
-{
-    char *stack = XCBDebugGetCallStack();
-    if(!stack)
-    {   return;
-    }
-    unsigned long long int i = 0;
-    while(stack[i] || stack[i + 1])
-    {   
-        if(stack[i])
-        {   putc(stack[i], stderr);
-        }
-        else
-        {   putc('\n', stderr);
-        }
-    }
-    free(stack);
+{   Debug0("Not Available");
 }
 
 void
