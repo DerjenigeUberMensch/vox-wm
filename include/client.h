@@ -500,7 +500,7 @@ void NonNullArg(1) updateclass(Client *c, XCBWMClass *_class);
 void NonNull updatecolormap(Client *c, XCBColormap colormap);
 void NonNull updatedecor(Client *c);
 /* Updates the Client icon if we find one */
-void NonNullAll updateicon(Client *c, XCBWindowProperty *iconprop);
+void NonNullArg(1) updateicon(Client *c, XCBWindowProperty *iconprop);
 /* Updates the Clients border properties to the XServer */
 void NonNull updateborder(Client *c);
 /* Updates the Clients border colour to the XServer */
