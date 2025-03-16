@@ -64,21 +64,6 @@ PropValidType(
     return (type >= PropNone) & (type < PropLAST);
 }
 
-
-static void
-LockMainThread(
-        void
-        )
-{   pthread_mutex_lock(&_wm.mutex);
-}
-
-static void
-UnlockMainThread(
-        void
-        )
-{   pthread_mutex_unlock(&_wm.mutex);
-}
-
 XCBCookie
 PropGetInvalidCookie(
         XCBDisplay *display, 
@@ -208,7 +193,7 @@ PropUpdateTrans(
     Client *ctrans;
     if(transstatus)
     {   
-        LockMainThread();
+        LOCK_WM();
         c = wintoclient(cookie->win);
         if(c)
         {   
@@ -223,7 +208,7 @@ PropUpdateTrans(
             }
             setwtypedialog(c, 1);
         }
-        UnlockMainThread();
+        UNLOCK_WM();
     }
 }
 
@@ -237,12 +222,12 @@ PropUpdateWindowState(
     Client *c;
     if(prop)
     {
-        LockMainThread();
+        LOCK_WM();
         c = wintoclient(cookie->win);
         if(c)
         {   clientinitwstate(c, prop);
         }
-        UnlockMainThread();
+        UNLOCK_WM();
     }
     free(prop);
 }
@@ -257,12 +242,12 @@ PropUpdateWindowType(
     Client *c;
     if(prop)
     {
-        LockMainThread();
+        LOCK_WM();
         c = wintoclient(cookie->win);
         if(c)
         {   clientinitwtype(c, prop);
         }
-        UnlockMainThread();
+        UNLOCK_WM();
     }
     free(prop);
 }
@@ -278,12 +263,12 @@ PropUpdateSizeHints(
     Client *c;
     if(hintstatus)
     {   
-        LockMainThread();
+        LOCK_WM();
         c = wintoclient(cookie->win);
         if(c)
         {   updatesizehints(c, &hints);
         }
-        UnlockMainThread();
+        UNLOCK_WM();
     }
 }
 
@@ -298,7 +283,7 @@ PropUpdateWMHints(
     u8 wasvisible = 0;
     if(prop)
     {   
-        LockMainThread();
+        LOCK_WM();
         c = wintoclient(cookie->win);
         wasvisible = ISVISIBLE(c);
         if(c)
@@ -310,7 +295,7 @@ PropUpdateWMHints(
             showhide(c);
             arrange(c->desktop);
         }
-        UnlockMainThread();
+        UNLOCK_WM();
     }
     free(prop);
 }
@@ -326,12 +311,12 @@ PropUpdateWMClass(
     Client *c;
     if(status)
     {
-        LockMainThread();
+        LOCK_WM();
         c = wintoclient(cookie->win);
         if(c)
         {   updateclass(c, &prop);
         }
-        UnlockMainThread();
+        UNLOCK_WM();
         XCBWipeGetWMClass(&prop);
     }
 }
@@ -347,12 +332,12 @@ PropUpdateWMProtocol(
     Client *c;
     if(status)
     {   
-        LockMainThread();
+        LOCK_WM();
         c = wintoclient(cookie->win);
         if(c)
         {   updatewindowprotocol(c, &prop);
         }
-        UnlockMainThread();
+        UNLOCK_WM();
         XCBWipeGetWMProtocols(&prop);
     }
 }
@@ -390,12 +375,12 @@ PropUpdateNetWMName(
     {
         if(netname)
         {
-            LockMainThread();
+            LOCK_WM();
             c = wintoclient(cookie->win);
             if(c)
             {   updatetitle(c, netname, c->wmname);
             }
-            UnlockMainThread();
+            UNLOCK_WM();
         }
     }
     free(prop);
@@ -414,12 +399,12 @@ PropUpdateWMName(
     {
         if(wmname)
         {
-            LockMainThread();
+            LOCK_WM();
             c = wintoclient(cookie->win);
             if(c)
             {   updatetitle(c, c->netwmname, wmname);
             }
-            UnlockMainThread();
+            UNLOCK_WM();
         }
     }
     free(prop);
@@ -436,12 +421,12 @@ PropUpdatePid(
     Client *c;
     if(prop != BAD_PID)
     {
-        LockMainThread();
+        LOCK_WM();
         c = wintoclient(cookie->win);
         if(c)
         {   setclientpid(c, prop);
         }
-        UnlockMainThread();
+        UNLOCK_WM();
     }
 }
 
@@ -458,14 +443,14 @@ PropUpdateIcon(
     {
         if(icon)
         {
-            LockMainThread();
+            LOCK_WM();
             c = wintoclient(cookie->win);
             if(c)
             {   
                 free(c->icon);
                 c->icon = icon;
             }
-            UnlockMainThread();
+            UNLOCK_WM();
         }
     }
     free(prop);
@@ -481,12 +466,12 @@ PropUpdateMotifHints(
     Client *c;
     if(prop)
     {
-        LockMainThread();
+        LOCK_WM();
         c = wintoclient(cookie->win);
         if(c)
         {   updatemotifhints(c, prop);
         }
-        UnlockMainThread();
+        UNLOCK_WM();
     }
     free(prop);
 }
@@ -506,7 +491,7 @@ PropUpdateManage(
     managerequest(win, requests);
     managereplies(requests, replies);
 
-    LockMainThread();
+    LOCK_WM();
 
     c = manage(win, replies);
     if(c)
@@ -532,7 +517,7 @@ PropUpdateManage(
     focus(cf);
 
     XCBFlush(_wm.dpy);
-    UnlockMainThread();
+    UNLOCK_WM();
     managecleanup(replies);
 }
 
@@ -547,7 +532,7 @@ PropUpdateUnmanage(
     Desktop *desk;
     (void)display;
     (void)cookie->cookie;
-    LockMainThread();
+    LOCK_WM();
 
     c = wintoclient(win);
     if(c)
@@ -565,7 +550,7 @@ PropUpdateUnmanage(
         XCBFlush(_wm.dpy);
     }
 
-    UnlockMainThread();
+    UNLOCK_WM();
 }
 
 void 
@@ -581,12 +566,12 @@ PropUpdateSetWType(
     /* TODO: Time based race condition */
     XCBWindowProperty *prop = XCBGetWindowPropertyReply(display, cookie->cookie);
 
-    LockMainThread();
+    LOCK_WM();
 
     XCBSetAtomState(display, win, type, atom, prop, 0);
     XCBFlush(display);
 
-    UnlockMainThread();
+    UNLOCK_WM();
     free(prop);
 }
 
@@ -603,12 +588,12 @@ PropUpdateUnsetWType(
     /* TODO: Time based race condition */
     XCBWindowProperty *prop = XCBGetWindowPropertyReply(display, cookie->cookie);
 
-    LockMainThread();
+    LOCK_WM();
 
     XCBSetAtomState(display, win, type, atom, prop, 1);
     XCBFlush(display);
 
-    UnlockMainThread();
+    UNLOCK_WM();
 
     free(prop);
 }
@@ -626,12 +611,12 @@ PropUpdateSetWState(
     /* TODO: Time based race condition */
     XCBWindowProperty *prop = XCBGetWindowPropertyReply(display, cookie->cookie);
 
-    LockMainThread();
+    LOCK_WM();
 
     XCBSetAtomState(display, win, type, atom, prop, 0);
     XCBFlush(display);
 
-    UnlockMainThread();
+    UNLOCK_WM();
 
     free(prop);
 
@@ -650,12 +635,12 @@ PropUpdateUnsetWState(
     /* TODO: Time based race condition */
     XCBWindowProperty *prop = XCBGetWindowPropertyReply(display, cookie->cookie);
 
-    LockMainThread();
+    LOCK_WM();
 
     XCBSetAtomState(display, win, type, atom, prop, 1);
     XCBFlush(display);
 
-    UnlockMainThread();
+    UNLOCK_WM();
 
     free(prop);
 }
@@ -693,9 +678,9 @@ PropUpdateProperty(
         if(__prophandler__[type].get_cookie)
         {   cookie->cookie = __prophandler__[type].get_cookie(display, win);
         }
-        LockMainThread();
+        LOCK_WM();
         valid_client = cookie->cookie.sequence == 0 || wintoclient(win);
-        UnlockMainThread();
+        UNLOCK_WM();
         if(valid_client)
         {
             if(__prophandler__[type].get_reply)
