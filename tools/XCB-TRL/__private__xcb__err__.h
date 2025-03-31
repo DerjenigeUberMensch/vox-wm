@@ -11,9 +11,9 @@ extern "C" {
 #include "safebool.h"
 
 #ifdef XCB_TRL_ENABLE_DEBUG
-    #define _xcb_push_func(cookie) XCBDebugPushID(__func__, cookie.sequence)
+    #define _xcb_push_func(XCB_PUSH_COOKIE) XCBDebugPushID(__func__, XCB_PUSH_COOKIE.sequence)
 #else
-    #define _xcb_push_func(cookie) ((void)cookie)
+    #define _xcb_push_func(XCB_PUSH_COOKIE) ((void)XCB_PUSH_COOKIE)
 #endif
 
 

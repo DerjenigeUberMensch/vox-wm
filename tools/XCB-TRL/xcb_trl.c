@@ -117,7 +117,6 @@ XCBOpenDisplay(
     XCBCookie ck = { .sequence = 0 };
     _xcb_push_func(ck);
 
-
     if(!display || xcb_connection_has_error(display))
     {   
 
@@ -279,7 +278,7 @@ XCBVendorRelease(
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret);
 
-    return xcb_get_setup (display)->release_number;
+    return xcb_get_setup(display)->release_number;
 }
 
 int

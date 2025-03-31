@@ -17,7 +17,7 @@ static khash_t(__KHASH__ERROR__FUNCTIONS__) *_hashed_functions = NULL;
 static khash_t(__KHASH__ERROR__LOGS__) *_hashed_logs = NULL;
 
 /* khash is not thread safe */
-static pthread_rwlock_t _khash_mutex = PTHREAD_RWLOCK_INITIALIZER;
+static pthread_mutex_t _khash_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #endif
 
@@ -158,6 +158,32 @@ __XCBSetErrorHandler(
     }
 }
 
+/* atexit() is not multithreaded */
+void 
+__atexit_xcb_handler(void)
+{
+#ifdef XCB_TRL_ENABLE_DEBUG
+
+    if(_hashed_logs)
+    {   kh_destroy(__KHASH__ERROR__LOGS__, _hashed_logs);
+    }
+
+    if(_hashed_functions)
+    {   kh_destroy(__KHASH__ERROR__FUNCTIONS__, _hashed_functions);
+    }
+
+    _hashed_logs = NULL;
+    _hashed_functions = NULL;
+
+    /* ensure no deadlocks occur */
+
+    int ret = pthread_mutex_trylock(&_khash_mutex);
+    pthread_mutex_unlock(&_khash_mutex);
+
+    (void)ret;
+#endif
+}
+
 void 
 _xcb_handler(
         xcb_connection_t *display, 
@@ -169,7 +195,11 @@ _xcb_handler(
     uint32_t sequence = error->sequence;
     khint_t k;
 
-    pthread_rwlock_rdlock(&_khash_mutex);
+    pthread_mutex_lock(&_khash_mutex);
+
+    if(!_hashed_logs || !_hashed_functions)
+    {   goto UNLOCK;
+    }
 
     k = kh_get(__KHASH__ERROR__LOGS__, _hashed_logs, sequence);
 
@@ -182,7 +212,7 @@ _xcb_handler(
     _XCB_MANUAL_DEBUG("%s", kh_key(_hashed_functions, k));
 
 UNLOCK:
-    pthread_rwlock_unlock(&_khash_mutex);
+    pthread_mutex_unlock(&_khash_mutex);
 #endif
     XCBBreakPoint();
 }
@@ -213,16 +243,33 @@ XCBDebugPushID(
 {
 #ifdef XCB_TRL_ENABLE_DEBUG
 
-    pthread_rwlock_wrlock(&_khash_mutex);
+    /* Due to this being an implementation detail we can push this later down development,
+     * Anayways we ignore 0 sequences as they are technically not implemented yet,
+     * if they were implemented then we would just use the function_name as a call stack order
+     * rather than the sequence of 0, but we removed call stack backtrace since last major release.
+     */
+    if(!sequence)
+    {   return;
+    }
+
+    pthread_mutex_lock(&_khash_mutex);
 
     if(!_hashed_logs)
-    {   _hashed_logs = kh_init(__KHASH__ERROR__LOGS__);
+    {   
+        _hashed_logs = kh_init(__KHASH__ERROR__LOGS__);
+        if(_hashed_logs)
+        {   
+            /* this could fail but would only result in memory leak which isnt that important */
+            int status = atexit(__atexit_xcb_handler);
+
+            if(unlikely(status))
+            {   fprintf(stderr, "XCB error handler failed to set atexit(), this may result in a MEMORY_LEAK\n");
+            }
+        }
     }
 
     if(!_hashed_logs)
-    {  
-        goto UNLOCK;
-        return;
+    {   goto UNLOCK;
     }
 
     if(!_hashed_functions)
@@ -230,9 +277,7 @@ XCBDebugPushID(
     }
 
     if(!_hashed_functions)
-    {   
-        goto UNLOCK;
-        return;
+    {   goto UNLOCK;
     }
 
     enum
@@ -252,9 +297,7 @@ XCBDebugPushID(
         k = kh_put(__KHASH__ERROR__FUNCTIONS__, _hashed_functions, function_name, &err);
         /* Failed to add function */
         if(err == __KHASH_BAD_OPERATION)
-        {   
-            goto UNLOCK;
-            return;
+        {   goto UNLOCK;
         }
     }
 
@@ -271,7 +314,6 @@ XCBDebugPushID(
     {   kh_value(_hashed_logs, k) = func_it;
     }
 UNLOCK:
-    pthread_rwlock_unlock(&_khash_mutex);
+    pthread_mutex_unlock(&_khash_mutex);
 #endif
-    
 }
