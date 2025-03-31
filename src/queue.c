@@ -121,7 +121,9 @@ CQueueAdd(CQueue *queue, void *data)
     queue->rear = index;
 
     memcpy((uint8_t *)queue->data + queue->datasize * index, data, queue->datasize);
+    pthread_mutex_lock(&queue->condmutex);
     pthread_cond_signal(&queue->cond);
+    pthread_mutex_unlock(&queue->condmutex);
     CQueueUnlockW(queue);
     return 1;
 }

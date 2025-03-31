@@ -2416,8 +2416,7 @@ __update_motif_decor(Client *c, uint32_t hints)
     }
     if(hints & DECOR_RESIZEH)
     {   
-        /* NOP */
-        ASSUME(0);
+        (void)hints;
     }
     if(hints & DECOR_TITLE)
     {   setshowdecor(c, 1);
@@ -2426,14 +2425,10 @@ __update_motif_decor(Client *c, uint32_t hints)
     {   setshowdecor(c, 0);
     }
     if(hints & DECOR_MENU)
-    {  
-        /* NOP */
-        ASSUME(0);
+    {   (void)hints;
     }
     if(hints & DECOR_MINIMIZE || hints & DECOR_MAXIMIZE)
-    {   
-        /* NOP */
-        ASSUME(0);
+    {   (void)hints;
     }
 }
 
