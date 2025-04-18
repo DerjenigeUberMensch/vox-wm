@@ -1,0 +1,495 @@
+site_name: vox-wm Docs
+repo_url: https://github.com/DerjenigeUberMensch/vox-wm
+
+nav: 
+  - Home:   index.md
+  - Guides: 
+    - "X Protocol":
+      - X11/index.md
+    - "C99":
+      - C99_Data/index.md
+      - Types:
+          - C99_Data/Types/null.md
+          - C99_Data/Types/char.md
+          - C99_Data/Types/unsigned char.md
+          - C99_Data/Types/short.md
+          - C99_Data/Types/unsigned short.md
+          - C99_Data/Types/int.md
+          - C99_Data/Types/unsigned int.md
+          - C99_Data/Types/long.md
+          - C99_Data/Types/unsigned long.md
+          - C99_Data/Types/long long.md
+          - C99_Data/Types/unsigned long long.md
+          - C99_Data/Types/float.md
+          - C99_Data/Types/int8_t.md
+          - C99_Data/Types/uint8_t.md
+          - C99_Data/Types/int16_t.md
+          - C99_Data/Types/uint16_t.md
+          - C99_Data/Types/int32_t.md
+          - C99_Data/Types/uint32_t.md
+          - C99_Data/Types/int64_t.md
+          - C99_Data/Types/uint64_t.md
+    - "These Docs":
+      - Docs/index.md
+  - Tools:
+    - Tools/index.md
+    - DynamicArray:
+      - Tools/DynamicArray/index.md
+    - FileUtil:
+      - Tools/FileUtil/index.md
+    - Khash:
+      - Tools/Khash/index.md
+    - Safebool:
+      - Tools/Safebool/index.md
+    - TPromises:
+      - Tools/TPromises/index.md
+    - Util:
+      - Tools/Util/index.md
+    - XCB-TRL:
+      - Tools/XCB-TRL/index.md
+  - Monitor:
+    - Types:
+      - Monitor/Type/index.md
+    - Functions:
+      - None
+    - Macros:
+      - None
+    - Enums:
+      - Monitor/Enums/index.md
+      - ClientListModes:
+        - Monitor/Enums/ClientListModes/index.md
+        - Monitor/Enums/ClientListModes/ClientListAdd.md
+        - Monitor/Enums/ClientListModes/ClientListRemove.md
+        - Monitor/Enums/ClientListModes/ClientListReload.md
+      - CurType:
+        - Monitor/Enums/CurType/index.md
+        - Monitor/Enums/CurType/CurNomal.md
+        - Monitor/Enums/CurType/CurResizeTopL.md
+        - Monitor/Enums/CurType/CurResizeTopR.md
+        - Monitor/Enums/CurType/CurMove.md
+        - Monitor/Enums/CurType/CurLast.md
+  - Desktop:
+    - Types:
+      - Desktop/Type/index.md
+    - Functions:
+      - None
+    - Macros:
+      - None
+    - Enums:
+      - Desktop/Enums/index.md
+      - LayoutType:
+        - Desktop/Enums/LayoutType/index.md
+        - Desktop/Enums/LayoutType/Tiled.md
+        - Desktop/Enums/LayoutType/Floating.md
+        - Desktop/Enums/LayoutType/Monocle.md
+        - Desktop/Enums/LayoutType/Grid.md
+        - Desktop/Enums/LayoutType/LayoutTypeLAST.md
+  - Client:
+    - Client/index.md
+    - Types:
+      - Client/Types/client.md
+    - Functions:
+      - Client/Functions/index.md
+      - Client/Functions/applygravity.md
+      - Client/Functions/applysizehints.md
+      - Client/Functions/cleanupclient.md
+      - Client/Functions/clientinitcolormap.md
+      - Client/Functions/clientinitdecor.md
+      - Client/Functions/clientinitfloat.md
+      - Client/Functions/clientinitgeom.md
+      - Client/Functions/clientinitwtype.md
+      - Client/Functions/clientinitwstate.md
+      - Client/Functions/clientinittrans.md
+      - Client/Functions/configure.md
+      - Client/Functions/createclient.md
+      - Client/Functions/focus.md
+      - Client/Functions/focusrealize.md
+      - Client/Functions/grabbutons.md
+      - Client/Functions/grabkeys.md
+      - Client/Functions/killclient.md
+      - Client/Functions/lastclient.md
+      - Client/Functions/lastfocus.md
+      - Client/Functions/laststack.md
+      - Client/Functions/lastrstack.md
+      - Client/Functions/managecleanup.md
+      - Client/Functions/managerequest.md
+      - Client/Functions/managereplies.md
+      - Client/Functions/manage.md
+      - Client/Functions/maximize.md
+      - Client/Functions/maximizehorz.md
+      - Client/Functions/maximizevert.md
+      - Client/Functions/nextclient.md
+      - Client/Functions/nextstack.md
+      - Client/Functions/nextrstack.md
+      - Client/Functions/nextfocus.md
+      - Client/Functions/nexttiled.md
+      - Client/Functions/nextvisible.md
+      - Client/Functions/prevclient.md
+      - Client/Functions/prevfocus.md
+      - Client/Functions/prevstack.md
+      - Client/Functions/prevvisible.md
+      - Client/Functions/resize.md
+      - Client/Functions/resizeclient.md
+      - Client/Functions/resizemove.md
+      - Client/Functions/sendprotocolevent.md
+      - Client/Functions/setalwaysontop.md
+      - Client/Functions/setalwaysonbottom.md
+      - Client/Functions/setborderalpha.md
+      - Client/Functions/setbordercolor.md
+      - Client/Functions/setbordercolor32.md
+      - Client/Functions/setborderwidth.md
+      - Client/Functions/setclientdesktop.md
+      - Client/Functions/setclientstate.md
+      - Client/Functions/setdecorvisible.md
+      - Client/Functions/setdisableborder.md
+      - Client/Functions/setclientpid.md
+      - Client/Functions/setmapstate.md
+      - Client/Functions/setwtypedesktop.md
+      - Client/Functions/setwtypedialog.md
+      - Client/Functions/setwtypedock.md
+      - Client/Functions/setwtypetoolbar.md
+      - Client/Functions/setwtypemenu.md
+      - Client/Functions/setwtypeneverfocus.md
+      - Client/Functions/setwtypeutility.md
+      - Client/Functions/setwtypesplash.md
+      - Client/Functions/setwtypedropdownmenu.md
+      - Client/Functions/setwtypepopupmenu.md
+      - Client/Functions/setwtypetooltip.md
+      - Client/Functions/setwtypenotification.md
+      - Client/Functions/setwtypecombo.md
+      - Client/Functions/setwtypednd.md
+      - Client/Functions/setwtypenormal.md
+      - Client/Functions/setwtypemapiconic.md
+      - Client/Functions/setwtypemapnormal.md
+      - Client/Functions/setwmtakefocus.md
+      - Client/Functions/setwmsaveyourself.md
+      - Client/Functions/setwmdeletewindow.md
+      - Client/Functions/setskippager.md
+      - Client/Functions/setskiptaskbar.md
+      - Client/Functions/setshowdecor.md
+      - Client/Functions/setfullscreen.md
+      - Client/Functions/setfloating.md
+      - Client/Functions/sethidden.md
+      - Client/Functions/setkeepfocus.md
+      - Client/Functions/setmaximizedvert.md
+      - Client/Functions/setmaximizedhorz.md
+      - Client/Functions/setshaded.md
+      - Client/Functions/setmodal.md
+      - Client/Functions/setoverrideredirect.md
+      - Client/Functions/setsticky.md
+      - Client/Functions/seturgent.md
+      - Client/Functions/showhide.md
+      - Client/Functions/startclient.md
+      - Client/Functions/startfocus.md
+      - Client/Functions/startstack.md
+      - Client/Functions/startrstack.md
+      - Client/Functions/unfocus.md
+      - Client/Functions/updateclass.md
+      - Client/Functions/updatecolormap.md
+      - Client/Functions/updatedecor.md
+      - Client/Functions/updateicon.md
+      - Client/Functions/updateborder.md
+      - Client/Functions/updatebordercol.md
+      - Client/Functions/updateborderwidth.md
+      - Client/Functions/updatemotifhints.md
+      - Client/Functions/updatesizehints.md
+      - Client/Functions/updatetitle.md
+      - Client/Functions/updatewindowprotocol.md
+      - Client/Functions/updatewindowstate.md
+      - Client/Functions/updatewindowstates.md
+      - Client/Functions/updatewindowtype.md
+      - Client/Functions/updatewindowtypes.md
+      - Client/Functions/updatewmhints.md
+      - Client/Functions/wintoclient.md
+      - Client/Functions/unmanage.md
+      - Client/Functions/unmaximize.md
+      - Client/Functions/unmaximizehorz.md
+      - Client/Functions/unmaximizevert.md
+    - Macros:
+      - Client/Macros/index.md
+      - Macros:
+        - none
+      - Functions:
+        - none
+    - Enums:
+      - Client/Enums/index.md
+      - ClientFlags:
+        - Client/Enums/ClientFlags/index.md
+        - Client/Enums/ClientFlags/ClientFlagFloating.md
+        - Client/Enums/ClientFlags/ClientFlagWasFloating.md
+        - Client/Enums/ClientFlags/ClientFlagShowDecor.md
+        # Client Flag 1u << 3 (not Implemented)
+        - Client/Enums/ClientFlags/ClientFlagKeepFocus.md
+        - Client/Enums/ClientFlags/ClientFlagDisableBorder.md
+        - Client/Enums/ClientFlags/ClientFlagMapped.md
+        - Client/Enums/ClientFlags/ClientFlagOverrideRedirect.md
+      - EWMHFlags:
+        - Client/Enums/EWMHFlags/index.md
+        - Client/Enums/EWMHFlags/WTypeFlagDesktop.md
+        - Client/Enums/EWMHFlags/WTypeFlagDock.md
+        - Client/Enums/EWMHFlags/WTypeFlagToolbar.md
+        - Client/Enums/EWMHFlags/WTypeFlagMenu.md
+        - Client/Enums/EWMHFlags/WTypeFlagUtility.md
+        - Client/Enums/EWMHFlags/WTypeFlagSplash.md
+        - Client/Enums/EWMHFlags/WTypeFlagDialog.md
+        - Client/Enums/EWMHFlags/WTypeFlagDropdownMenu.md
+        - Client/Enums/EWMHFlags/WTypeFlagPopupMenu.md
+        - Client/Enums/EWMHFlags/WTypeFlagTooltip.md
+        - Client/Enums/EWMHFlags/WTypeFlagNotification.md
+        - Client/Enums/EWMHFlags/WTypeFlagCombo.md
+        - Client/Enums/EWMHFlags/WTypeFlagDnd.md
+        - Client/Enums/EWMHFlags/WTypeFlagNormal.md
+        - Client/Enums/EWMHFlags/WStateFlagModal.md
+        - Client/Enums/EWMHFlags/WStateFlagSticky.md
+        - Client/Enums/EWMHFlags/WStateFlagMaximizedVert.md
+        - Client/Enums/EWMHFlags/WStateFlagMaximizedHorz.md
+        - Client/Enums/EWMHFlags/WStateFlagShaded.md
+        - Client/Enums/EWMHFlags/WStateFlagSkipTaskbar.md
+        - Client/Enums/EWMHFlags/WStateFlagSkipPager.md
+        - Client/Enums/EWMHFlags/WStateFlagHidden.md
+        - Client/Enums/EWMHFlags/WStateFlagFullscreen.md
+        - Client/Enums/EWMHFlags/WStateFlagAbove.md
+        - Client/Enums/EWMHFlags/WStateFlagBelow.md
+        - Client/Enums/EWMHFlags/WStateFlagDemandAttention.md
+        - Client/Enums/EWMHFlags/WStateFlagFocused.md
+        - Client/Enums/EWMHFlags/WStateFlagWMTakeFocus.md
+        - Client/Enums/EWMHFlags/WStateFlagWMSaveYourself.md
+        - Client/Enums/EWMHFlags/WStateFlagWMDeleteWindow.md
+        - Client/Enums/EWMHFlags/WStateFlagNeverFocus.md
+        - Client/Enums/EWMHFlags/WStateFlagMapIconic.md
+      - WMMapState:
+        - Client/Enums/WMMapState/index.md
+        - Client/Enums/WMMapState/WMMapStateMapped.md
+        - Client/Enums/WMMapState/WMMapStateUnmapped.md
+      - KillType:
+        - Client/Enums/KillType/index.md
+        - Client/Enums/KillType/Graceful.md
+        - Client/Enums/KillType/Safedestroy.md
+        - Client/Enums/KillType/Destroy.md
+      - FloatType:
+        - Client/Enums/FloatType/index.md
+        - Client/Enums/FloatType/DefinitelyFloating.md
+        - Client/Enums/FloatType/ProbablyFloating.md
+        - Client/Enums/FloatType/CouldBeFloating.md
+        - Client/Enums/FloatType/ProbablyNotFloating.md
+        - Client/Enums/FloatType/DefinitelyNotFloating.md
+        - Client/Enums/FloatType/FLOATINGLAST.md
+      - ManageClientProperties:
+        - Client/Enums/ManageClientProperties/index.md
+        - Client/Enums/ManageClientProperties/ManageClientAttributes.md
+        - Client/Enums/ManageClientProperties/ManageClientGeometry.md
+        - Client/Enums/ManageClientProperties/ManageClientTransient.md
+        - Client/Enums/ManageClientProperties/ManageClientWType.md
+        - Client/Enums/ManageClientProperties/ManageClientWState.md
+        - Client/Enums/ManageClientProperties/ManageClientSizeHint.md
+        - Client/Enums/ManageClientProperties/ManageClientWMHints.md
+        - Client/Enums/ManageClientProperties/ManageClientClass.md
+        - Client/Enums/ManageClientProperties/ManageClientWMProtocol.md
+        - Client/Enums/ManageClientProperties/ManageClientStrutP.md
+        - Client/Enums/ManageClientProperties/ManageClientStrut.md
+        - Client/Enums/ManageClientProperties/ManageClientNetWMName.md
+        - Client/Enums/ManageClientProperties/ManageClientWMName.md
+        - Client/Enums/ManageClientProperties/ManageClientPid.md
+        - Client/Enums/ManageClientProperties/ManageClientIcon.md
+        - Client/Enums/ManageClientProperties/ManageClientMotif.md
+        - Client/Enums/ManageClientProperties/ManageClientLAST.md
+  - Bar:
+    - Bar/index.md
+    - Types:
+      - Bar/Types/index.md
+    - Functions:
+      - Bar/Functions/index.md
+    - Enums:
+      - Bar/Enums/index.md
+      - BarSides:
+        - Bar/Enums/BarSides/index.md
+        - Bar/Enums/BarSides/BarSideLeft.md
+        - Bar/Enums/BarSides/BarSideRight.md
+        - Bar/Enums/BarSides/BarSideTop.md
+        - Bar/Enums/BarSides/BarSideBottom.md
+  - Decorations:
+    - Decorations/index.md
+    - Types:
+      - Decorations/Types/index.md
+    - Functions:
+      - Decorations/Functions/index.md
+    - Enums:
+      - Decorations/Enums/index.md
+  - Prop:
+    - Prop/index.md
+    - Types:
+      - Prop/Types/index.md
+    - Functions:
+      - Prop/Functions/index.md
+    - Enums:
+      - Prop/Enums/index.md
+      - PropertyType:
+        - Prop/Enums/PropertyType/index.md
+        - Prop/Enums/PropertyType/PropNone.md
+        - Prop/Enums/PropertyType/PropTransient.md
+        - Prop/Enums/PropertyType/PropWindowState.md
+        - Prop/Enums/PropertyType/PropWindowType.md
+        - Prop/Enums/PropertyType/PropSizeHints.md
+        - Prop/Enums/PropertyType/PropWMHints.md
+        - Prop/Enums/PropertyType/PropWMClass.md
+        - Prop/Enums/PropertyType/PropWMProtocol.md
+        - Prop/Enums/PropertyType/PropStrut.md
+        - Prop/Enums/PropertyType/PropStrutP.md
+        - Prop/Enums/PropertyType/PropNetWMName.md
+        - Prop/Enums/PropertyType/PropWMName.md
+        - Prop/Enums/PropertyType/PropPid.md
+        - Prop/Enums/PropertyType/PropIcon.md
+        - Prop/Enums/PropertyType/PropMotifHints.md
+        - Prop/Enums/PropertyType/PropManage.md
+        - Prop/Enums/PropertyType/PropUnmanage.md
+        - Prop/Enums/PropertyType/PropSetWtype.md
+        - Prop/Enums/PropertyType/PropUnsetWtype.md
+        - Prop/Enums/PropertyType/PropSetWState.md
+        - Prop/Enums/PropertyType/PropUnsetWState.md
+        - Prop/Enums/PropertyType/PropExitThread.md
+        - Prop/Enums/PropertyType/PropLAST.md
+  - About:  about.md
+
+
+
+theme: 
+  name: material
+  code: Fira Code
+  highlightjs: false  
+  codehilite: false
+  # Tab Icon
+  favicon: simple-readthedocs
+  language: en
+
+  icon:
+    repo: fontawesome/brands/github
+  palette:
+    # Dark Mode
+    - scheme: slate
+      #toggle:
+        #icon: material/brightness-7
+        #name: Switch to Light Mode
+      primary: black
+      accent: deep purple
+    # Light Mode
+    #- scheme: default
+      #toggle:
+        #icon: material/brightness-4
+        #name: Switch to Dark Mode
+      #primary: light blue
+      #accent: amber
+  features:
+    # Essential cookie, Stores where the page last was.
+    - navigation.tracking
+    # Auto expands navigation bar for user conevinece (somewhat incoveinent).
+    # - navigation.expand
+    # Shows navigation path, mostly just for show, and some minor user convinence
+    - navigation.path
+    # This just shows the section as its own tab, mostly for show.
+    - navigation.indexes
+    # Auto scroll when clickig table of contets.
+    - toc.follow
+    # Navigation button to top 
+    - navigation.top
+    # Emoji md support
+    - content.code.annotate
+    - content.admonitions
+    # Better searching
+    - search.suggest
+    - search.highlight
+    # Tabs
+    - content.tabs.link
+    # Speed 
+    - navigation.instant
+    - navigation.instant.prefetch
+    # Progress bar if too slow
+    - navigation.instant.progress
+
+    - content.code.copy
+    - content.code.annotate
+
+markdown_extensions:
+  # Syntax Highlighting Support 
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+      use_pygments: true
+      linenums: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.arithmatex:
+      generic: true
+
+  # Better markdown reading 
+  - pymdownx.betterem
+
+  - admonition
+  - pymdownx.emoji  # Enables icons like :warning:
+  - pymdownx.details
+  # Enables tabbed content
+  - pymdownx.tabbed: 
+      alternate_style: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  # Syntax Highlighting Support 
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  # Markdown Lists 
+  - def_list
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  # Tool Tips
+  - abbr
+  - attr_list
+  - md_in_html
+  - pymdownx.snippets
+
+  - tables
+  - def_list
+  - footnotes
+
+  # END
+
+plugins:
+  # Searching plugin enable
+  - search
+  # Offline Support.
+  - privacy
+
+
+
+extra:
+  # Due to the prototype of these docs, this is not added as to not confused future users, also looks a bit clunky
+  generator: false
+
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/DerjenigeUberMensch/vox-wm
+#  consent:
+#    title: Cookie consent
+#    description: >- 
+#      I just wanted to put this here, no cookies are being collected in this website.
+#    actions:
+#      - reject
+
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+
+extra_css:
+  - css/code_highlight.css
+  - css/table_beutify.css
+
+
+copyright: >
+  Copyright &copy; 2025 Joseph
