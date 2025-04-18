@@ -205,3 +205,10 @@ Or you can open an **[issue](https://github.com/DerjenigeUberMensch/vox-wm/issue
 - More modularity 
 - Less Complex Code Base
 - Better Documentatin (Likely when I finish implementing the usability part of the Window manager (AKA when I switch over to this.))
+
+## Roles
+
+### Maintainers
+
+Lead             @DerjenigeUberMensch
+Documentation    @RealTDemon
