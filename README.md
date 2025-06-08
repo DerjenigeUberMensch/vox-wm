@@ -208,5 +208,4 @@ Or you can open an **[issue](https://github.com/DerjenigeUberMensch/vox-wm/issue
 
 ## Roles
 
-Project Head - [@DerjenigeUberMensch](https://github.com/DerjenigeUberMensch/)  
-Documentation - [@RealTDemon](https://github.com/RealTDemon)  
+Project Head - [@DerjenigeUberMensch](https://github.com/DerjenigeUberMensch/)
