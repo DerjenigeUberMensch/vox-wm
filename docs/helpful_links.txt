@@ -1,2 +1,0 @@
-https://www.markdownguide.org/extended-syntax/#superscript
-https://squidfunk.github.io/mkdocs-material/reference/formatting/
