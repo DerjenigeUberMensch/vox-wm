@@ -1692,9 +1692,8 @@ prevrstack(Client *c)
 Client *
 prevvisible(Client *c)
 {
-    while(c && !ISVISIBLE(c))
-    {   c = prevclient(c);
-    }
+    for(; c && !ISVISIBLE(c); c = prevstack(c));
+  
     return c;
 }
 
@@ -2834,7 +2833,7 @@ updatewindowstate(Client *c, XCBAtom state, uint8_t add_remove_toggle)
     {   
         /* this is a wierd state to even configure so idk */
         if(toggle)
-        {       setalwaysonbottom(c, !ISALWAYSONBOTTOM(c));
+        {   setalwaysonbottom(c, !ISALWAYSONBOTTOM(c));
         }
         else
         {   setalwaysonbottom(c, add_remove_toggle);
@@ -3156,5 +3155,6 @@ wintoclient(XCBWindow win)
             }
         }
     }
-    return NULL;
+  
+    return c;
 }
