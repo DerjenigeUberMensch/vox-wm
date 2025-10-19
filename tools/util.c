@@ -81,7 +81,7 @@ PTHREAD_INIT_RECURSIVE_MUTEX(pthread_mutex_t *mutex)
 
     ret = pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
 
-    if (!ret) 
+    if (ret) 
     {
         pthread_mutexattr_destroy(&attr);
         return ret;
