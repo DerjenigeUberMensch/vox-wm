@@ -63,6 +63,41 @@ memfilled(void *mem, size_t size)
     return true;
 }
 
+#ifdef __linux__ 
+
+#include <pthread.h>
+
+int 
+PTHREAD_INIT_RECURSIVE_MUTEX(pthread_mutex_t *mutex)
+{
+    pthread_mutexattr_t attr;
+    int ret;
+
+    ret = pthread_mutexattr_init(&attr);
+
+    if (ret)
+    {   return ret;
+    }
+
+    ret = pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+
+    if (!ret) 
+    {
+        pthread_mutexattr_destroy(&attr);
+        return ret;
+    }
+
+    ret = pthread_mutex_init(mutex, &attr);
+
+    pthread_mutexattr_destroy(&attr);
+
+    return ret;
+}
+
+#endif
+
+
+
 
 
 
