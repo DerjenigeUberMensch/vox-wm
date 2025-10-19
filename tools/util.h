@@ -84,7 +84,7 @@ Generic
  */
 union ARGB
 {
-#if __BYTE_ORDER == __ORDER_LITTLE_ENDIAN__
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
     uint8_t a;  /* Alpha value */
     uint8_t r;  /* Red Value   */
     uint8_t g;  /* Green Value */
@@ -195,6 +195,10 @@ union ARGB
 #define Debug0(X) (fprintf(stderr, "[%s:%d] by %s(): " X "\n", __FILE__, __LINE__, __func__))
 #endif
 
+#ifndef DebugI
+#define DebugI(fmt, ...) (fprintf(stderr, "[%s:%d] by %s(): " fmt "\n", __FILE__,__LINE__,__func__,__VA_ARGS__))
+#endif
+
 #ifndef ASSERT
 #include <assert.h>
 #define ASSERT(X) (assert(X))
@@ -208,6 +212,10 @@ union ARGB
 
 #ifndef Debug0
 #define Debug0(X)       ((void)0)
+#endif
+
+#ifndef DebugI
+#define DebugI(fmt, ...) (fprintf(stderr, "%s(): " fmt "\n", __func__, __VA_ARGS__))
 #endif
 
 #ifndef ASSERT
@@ -678,7 +686,13 @@ bool memnonempty(void *mem, size_t size);
  */
 bool memfilled(void *mem, size_t size);
 
+#ifdef __linux__ 
 
+#include <pthread.h>
+
+int PTHREAD_INIT_RECURSIVE_MUTEX(pthread_mutex_t *mutex);
+
+#endif
 
 
 #endif
