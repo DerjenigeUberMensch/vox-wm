@@ -7,210 +7,307 @@
 #include <sys/wait.h>
 #include <time.h>
 #include <pthread.h>
+#include <errno.h>
 
 #include "watchdog.h"
 #include "util.h"
 
-WatchDog *watchdog = NULL;
+static WatchDog *watchdog = NULL;
 
-static void
-sigany(
-        int signo
-      )
-{
-    /* These are cases where we dont explicitly want any action taken, unless otherwise stated 
-     * AKA cases where we dont want the system to intervene.
-     */
-    (void)signo;
-}
+int WatchDogRun(int argc, char **argv);
 
-static void
-sigquit(
-        int signo
-       )
-{
-    Debug0("Aborting...");
-    abort();
-}
-
-static void
-sigsegv(
-        int signo
-      )
-{
-    /* No, we arent handling our own segmentation fault, that should never happen, unless the user overwrites memory manually.
-     * But we still need to make sure the (XEH) doesnt crash completely and atleast let the user close their stuff, before telling them.
-     * "The current (XEH) is not safe to use please restart the (XEH), preferably restart the XServer."
-     */
-    Debug0("Sigsev");
-    watchdog->restart = 1;
-    watchdog->running = 0;
-}
-
-static void
-WatchDogInstallSignal(
-        void (*func)(int signo),
-        int signo
-        )
-{
-    struct sigaction sa;
-    memset(&sa, 0, sizeof(struct sigaction));
-    sa.sa_handler = func;
-    sigaction(signo, &sa, NULL);
-}
-
-static void
-WatchDogInstallSignals(
-        void
-        )
-{
-    WatchDogInstallSignal(sigany, SIGHUP);
-    WatchDogInstallSignal(sigany, SIGINT);
-    WatchDogInstallSignal(sigsegv, SIGSEGV);
-    WatchDogInstallSignal(sigquit, SIGQUIT);
-    WatchDogInstallSignal(sigquit, SIGFPE);
-}
-
-static int
-WatchDogSetSignals(
-        pid_t pid
-        )
-{
-    int status = 0;
-    waitpid(pid, &status, WNOHANG|WUNTRACED);
-
-    if(status == -1)
-    {   
-        Debug0("Waitpid failed");
-        return 1;
-    }
-
-    status = ptrace(PTRACE_ATTACH, pid, NULL, NULL);
-    if(status == -1)
-    {   
-        Debug0("Ptrace failed to attach,");
-        return 1;
-    }
-    /* wait for main procces to hold (SIGSTOP) */
-    waitpid(pid, &status, 0);
-
-    if(status == -1)
-    {   
-        Debug0("Waitpid failed");
-        return 1;
-    }
-    WatchDogInstallSignals();
-    status = ptrace(PTRACE_DETACH, pid, NULL, NULL);
-    /* Should not happen */
-    if(status == -1)
-    {   
-        Debug0("Ptraced failed to dettach");
-        abort();
-    }
-    return 0;
-}
-
-void
-WatchdogExit(
-        pid_t child
-        )
-{
-    int status = 0;
-    time_t start = time(NULL);
-    time_t cur;
-    int tooslow = 0;
-    const time_t MAX_TIME_ELAPSED_SECONDS = 5;
-    do
-    {   
-        waitpid(child, &status, WNOHANG);
-        cur = time(NULL);
-        tooslow = cur - start > MAX_TIME_ELAPSED_SECONDS;
-    } while(!WIFEXITED(status) || tooslow);
-    if(tooslow)
-    {   
-        kill(child, SIGABRT);
-        Debug0("Child did not kill fast enough, aborting...");
-        abort();
-    }
-    exit(0);
-}
-
-void
+int
 WatchDogInit(
-        pid_t pid
-        )
+    void
+    )
 {
-    WatchDogSetSignals(pid);
-    watchdog->mutex = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
-    watchdog->cond = (pthread_cond_t)PTHREAD_COND_INITIALIZER;
+    pthread_mutexattr_t attrmutex;
+    pthread_condattr_t attrcond;
+    int status;
+
+    watchdog = mmap(NULL, sizeof(WatchDog), PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
+
+    if(!watchdog)
+    {   return EXIT_FAILURE;
+    }
+
+    memset(watchdog, 0, sizeof(WatchDog));
+
+    status = pthread_mutexattr_init(&attrmutex);
+
+    if(status)
+    {   goto UNMAP;
+    }
+
+    pthread_mutexattr_setpshared(&attrmutex, PTHREAD_PROCESS_SHARED);
+
+    status = pthread_condattr_init(&attrcond);
+    
+    if(status)
+    {   goto UNMUTXATTR;
+    }
+
+    pthread_condattr_setpshared(&attrcond, PTHREAD_PROCESS_SHARED);
+
+    status = pthread_mutex_init(&watchdog->mutex, &attrmutex);
+
+    if(status)
+    {   goto UNCONDATTR;
+    }
+
+    status = pthread_cond_init(&watchdog->cond, &attrcond);
+
+    if(status)
+    { 	goto UNMUTEX;
+    }
+
+
+    return EXIT_SUCCESS;
+UNMUTEX:
+    pthread_mutex_destroy(&watchdog->mutex);
+UNCONDATTR:
+    pthread_condattr_destroy(&attrcond);
+UNMUTXATTR:
+    pthread_mutexattr_destroy(&attrmutex);
+UNMAP:
+    munmap(watchdog, sizeof(*watchdog));
+    return EXIT_FAILURE;
+}
+
+void
+WatchDogDestroy(
+    void
+    )
+{
+    pthread_cond_destroy(&watchdog->cond);
+    pthread_mutex_destroy(&watchdog->mutex);
+    munmap(watchdog, sizeof(*watchdog));
+    watchdog = NULL;
 }
 
 int
 WatchDogStart(
-        void
-        )
+    int argc,
+    char **argv
+    )
 {
     pid_t pid;
-START:
-    watchdog = mmap(NULL, sizeof(WatchDog), PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
-    if(!watchdog)
+
+    /* watchdog failed to start */
+    if(WatchDogInit() != EXIT_SUCCESS)
     {   return EXIT_FAILURE;
     }
-    memset(watchdog, 0, sizeof(WatchDog));
+
     pid = fork();
+
     switch(pid)
     {
         /* watchdog failed to start */
         case -1:
             return EXIT_FAILURE;
         case 0:
-            Debug0("Watchdog Child, valid");
-            int errcount = WatchDogRun();
-            if(errcount)
-            {   goto START;   
-            }
+            WatchDogRun(argc, argv);
+	    exit(EXIT_SUCCESS);
+            break;
         default:
-            WatchDogInit(pid);
-            watchdog->child = pid;
-            Debug0("Watch Dog Succesfully Started!");
+            pthread_mutex_lock(&watchdog->mutex);
+            watchdog->child = getpid();
+            watchdog->last_alive = time(NULL);
+            pthread_mutex_unlock(&watchdog->mutex);
+            Debug0("WatchDog Succesfully Started!");
     }
+
     return EXIT_SUCCESS;
+}
+
+void
+WatchDogRequestExit(
+    void
+)
+{
+    if(!watchdog)
+    {   return;
+    }
+
+    pthread_mutex_lock(&watchdog->mutex);
+
+    pthread_cond_broadcast(&watchdog->cond);
+
+    watchdog->die = 1;
+
+    while(watchdog->running)
+    {   pthread_cond_wait(&watchdog->cond, &watchdog->mutex);
+    }
+
+    pthread_mutex_unlock(&watchdog->mutex);
+
+    /* Mutex is never held after terminating last mutex hold after watchdog->running is set to false. */
+    WatchDogDestroy();
+}
+
+void
+WatchDogPingAlive(
+    void
+)
+{
+    if(!watchdog)
+    {   return;
+    }
+    pthread_mutex_lock(&watchdog->mutex);
+
+    watchdog->last_alive = time(NULL);
+
+    pthread_mutex_unlock(&watchdog->mutex);
 }
 
 int
 WatchDogRun(
-        void
-        )
+    int argc,
+    char **argv
+)
 {
-    /* Wait for watchdog data */
+    int status;
+
+    pthread_mutex_lock(&watchdog->mutex);
     while(!watchdog->child)
-    {   usleep(100);
+    {   pthread_cond_wait(&watchdog->cond, &watchdog->mutex);
     }
-    const unsigned int SECONDS = 10;
-    const struct timespec _time = 
-    {
-        .tv_sec = SECONDS,
-        .tv_nsec = 0
-    };
+
     watchdog->running = 1;
-    while(watchdog->running)
+
+    /* due to speed, and blah blah blah we dont want this to hang or whatever... */
+    const unsigned int SECONDS = 1;
+    const unsigned int MAX_TIMEOUT = 7;
+    struct timespec PING_TIME;
+
+    bool child_dead = false;
+
+    while(watchdog->running && !watchdog->die)
     {
-        pthread_mutex_lock(&watchdog->mutex);
-        pthread_cond_timedwait(&watchdog->cond, &watchdog->mutex, &_time);
-        pthread_mutex_unlock(&watchdog->mutex);
-    }
-    WatchDog wcpy = *watchdog;
-    munmap(watchdog, sizeof(WatchDog));
+	status = clock_gettime(CLOCK_REALTIME, &PING_TIME);
+	PING_TIME.tv_sec += SECONDS;
+        /* wait... */
+        status = pthread_cond_timedwait(&watchdog->cond, &watchdog->mutex, &PING_TIME);
 
-    /* aborts watchdog if need be, but on success, calls exit() */
-    if(wcpy.die)
-    {   WatchdogExit(wcpy.child);
+	/* ok were kinda fucked here... 
+	 * This is here cause the above immediatly fails since the time is in the past....
+	 */
+	if(status == -1)
+	{   sleep(SECONDS);
+	}
+
+        /* is the process alive? */
+        if(kill(watchdog->child, 0) != EXIT_SUCCESS)
+        {
+            if(errno == ESRCH)
+            {   
+                watchdog->running = 0;
+                /* Just in case process magically spawns in. */
+                watchdog->restart = 1;
+                child_dead = true;
+                break;
+            }
+        }
+
+        time_t now = time(NULL);
+	Debug("%d", now - watchdog->last_alive);
+
+        /* 7 seconds is more than enough. */
+        if (now - watchdog->last_alive > MAX_TIMEOUT)
+        {   
+            kill(watchdog->child, SIGKILL);
+	    #ifdef DEBUG
+		kill(watchdog->child, SIGABRT);
+	    #else
+		kill(watchdog->child, SIGKILL);
+	    #endif
+            watchdog->running = 0;
+            /* Process might hang for a undefined length of time so this just forces a restart regardless. */
+            watchdog->restart = 1;
+            child_dead = true;
+
+            if (waitpid(watchdog->child, &status, 0) > 0) 
+            {   
+                int ERROR_STATUS = -1;
+
+                if(status == ERROR_STATUS)
+                {   
+                    if(errno == ECHILD)
+                    {   
+                        Debug0("Child died, before killing.");
+                        break;
+                    }
+
+                    /* we got interrupted */
+                    if(errno == EINTR)
+                    {
+                        /* if its still alive, abort this shouldnt be happening. */
+                        if(kill(watchdog->child, 0) == EXIT_SUCCESS)
+                        {   kill(watchdog->child, SIGABRT);
+                        }
+                        break;
+                    }
+                }
+            }
+            break;
+        }
     }
 
-    if(wcpy.restart)
+    watchdog->running = 0;
+    pthread_cond_broadcast(&watchdog->cond);
+
+    /* This line is purposely left here commented.
+     * Due to cleanup code, we do not want the watchdog to ever need to UNLOCK.
+     */
+    /* pthread_mutex_unlock(&watchdog->mutex); */
+    /* WM is succesfully cleaned up, confirmation is simply needed to exit process. */
+    if(watchdog->die)
     {   
-        Debug0("restarting");
-        return 0;
+        pthread_mutex_unlock(&watchdog->mutex);
+	_exit(EXIT_SUCCESS);
+        return EXIT_SUCCESS;
     }
-    return 1;
+
+    if(kill(watchdog->child, 0) != EXIT_SUCCESS)
+    {   
+        if(errno == ESRCH)
+        {   child_dead = true;
+        }
+    }
+
+    if(likely(watchdog->restart))
+    {
+        WatchDogDestroy();
+
+        /* This should be unreachable but could maybe happen. */
+        if(unlikely(!child_dead))
+        {   	
+	    #ifdef DEBUG
+		kill(watchdog->child, SIGABRT);
+	    #else
+		kill(watchdog->child, SIGKILL);
+	    #endif
+        }
+
+        Debug0("Watchdog Restarting Process...");
+        #ifdef __linux__
+            char *path = "/proc/self/exe";
+            execv(path, argv);
+            perror("execv failed.");
+        #endif
+
+        execvp(argv[0], argv);
+        perror("execvp failed.");
+    }
+
+    if(likely(child_dead))
+    {   
+        Debug0("Exiting, child dead?? FIXME.");
+	_exit(EXIT_SUCCESS);
+    }
+
+
+    ASSERT(false);
+
+    return EXIT_FAILURE;
 }
