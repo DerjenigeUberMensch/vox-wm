@@ -19,9 +19,9 @@ WatchDog
     uint8_t restart;
     uint8_t die;
     uint8_t pad0[1];
-    /* Maybe use poll?, For now just use these to sleep */
     pthread_mutex_t mutex;
     pthread_cond_t cond;
+    time_t last_alive;
 };
 
 /* Starts up the WatchDog Process.
@@ -31,18 +31,30 @@ WatchDog
  */
 int
 WatchDogStart(
-        void
-        );
-/* This is the main WatchDog Event loop.
+    int argc,
+    char **argv
+);
+/* Requests the watchdog to terminate, and allow for application to terminate gracefully.
+ *
+ * NOTE: This function (may) block, until watchdog is ready to exit.
+ * NOTE: This should ONLY be called when the main application is about to exit AFTER cleanup.
+ *
+ * This function does not return a value.
  */
-int
-WatchDogRun(
-        void
-        );
+void
+WatchDogRequestExit(
+    void
+);
 
-
-
-
+/* For program sanity, this should be called at atleast every second, though this can be extented to ever 2 seconds.
+ *
+ * NOTE: This function does not block, unless past the watchdog threshhold at which point your application will restart.
+ *
+ */
+void
+WatchDogPingAlive(
+    void
+);
 
 
 
