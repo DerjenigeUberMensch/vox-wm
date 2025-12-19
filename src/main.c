@@ -32,6 +32,8 @@
 #include "bar.h"
 #include "keybinds.h"
 #include "safebool.h"
+#include "threading.h"
+
 /* for HELP/DebugGING see under main() or the bottom */
 
 
@@ -62,6 +64,17 @@ int UNLOCK_WM(void)     {
                             if(CAN_LOCK_WM())
                             {   ret = pthread_mutex_unlock(&_wm.mutex);
                             }
+                            return ret;
+                        }
+u32 IS_WM_WINDOW(XCBWindow win) 
+                        {
+                            extern WM _wm;
+                            u32 ret = 0;
+                            
+                            LOCK_WM();
+                            ret = _wm.root == win || _wm.wmcheckwin == win;
+                            UNLOCK_WM();
+                            
                             return ret;
                         }
 
@@ -112,7 +125,6 @@ cleanup(void)
     USSave(&_cfg);
     SessionSave();
     savesession();
-    PropDestroy(_wm.handler);
     if(!_wm.dpy)
     {
         /* sometimes due to our own lack of competence we can call quit twice and segfault here */
@@ -147,6 +159,7 @@ cleanup(void)
         }
         _wm.dpy = NULL;
     }
+    ThreadingDestroy();
 }
 
 void __HOT__
@@ -194,6 +207,7 @@ void
 quit(void)
 {
     _wm.running = 0;
+    _wm.manual_exit = 1;
     wakeupconnection(_wm.dpy, _wm.screen);
     Debug0("Exiting...");
 }
@@ -553,7 +567,7 @@ restoremonsession(char *buff, u16 len)
                 {   
                     XCBWindow win = pullm->bar->win;
                     unmanage(pullm->bar, 0);
-                    PropListen(_wm.handler, _wm.dpy, win, PropManage);
+                    PropListen(_wm.dpy, win, PropManage);
                 }
                 setupbar(pullm, b);
             }
@@ -844,7 +858,12 @@ scan(void)
             }
 
             for(i = 0; i < num; ++i)
-            {   
+            {
+		/* skip window manager related window. */
+		if(IS_WM_WINDOW(wins[i]))
+		{   continue;
+		}
+
                 wa[i] = XCBGetWindowAttributesCookie(_wm.dpy, wins[i]);
                 /* this specifically queries for the state which wa[i] might fail to provide */
                 wastates[i] = XCBGetWindowPropertyCookie(_wm.dpy, wins[i], wmatom[WMState], 0L, 2L, False, wmatom[WMState]);
@@ -857,6 +876,11 @@ scan(void)
             /* get them replies back */
             for(i = 0; i < num; ++i)
             {
+		/* skip window manager related window. */
+		if(IS_WM_WINDOW(wins[i]))
+		{   continue;
+		}
+
                 replies[i] = XCBGetWindowAttributesReply(_wm.dpy, wa[i]);
                 replystates[i] = XCBGetWindowAttributesReply(_wm.dpy, wastates[i]);
                 hastrans = XCBGetTransientForHintReply(_wm.dpy, tfh[i], &trans[i]);
@@ -871,6 +895,11 @@ scan(void)
             /* Manage the Windows */
             for(i = 0; i < num; ++i)
             {
+		/* skip window manager related window. */
+		if(IS_WM_WINDOW(wins[i]))
+		{   continue;
+		}
+
                 /* override_redirect only needed to be handled for old windows */
                 /* X auto redirects when running wm so no need to do anything else */
                 if(replies[i]->override_redirect || trans[i]) 
@@ -888,6 +917,11 @@ scan(void)
             /* now the transients */
             for(i = 0; i < num; ++i)
             {   
+		/* skip window manager related window. */
+		if(IS_WM_WINDOW(wins[i]))
+		{   continue;
+		}
+
                 if(trans[i])
                 {
                     if(replies[i]->map_state == XCB_MAP_STATE_VIEWABLE && replystates[i] && replystates[i]->map_state == XCB_WINDOW_ICONIC_STATE)
@@ -903,6 +937,11 @@ scan(void)
             /* cleanup */
             for(i = 0; i < num; ++i)
             {
+		/* skip window manager related window. */
+		if(IS_WM_WINDOW(wins[i]))
+		{   continue;
+		}
+
                 index = ManageClientLAST * i;
                 managecleanup(managereplys + index);
                 free(replies[i]);
@@ -951,8 +990,7 @@ setup(void)
     setupcursors();
     setupcfg();
     setupwm();
-    /* Setup prop handler */
-    PropInit(_wm.handler);
+    InitThreading();
     /* finds any monitor's */
     updategeom();
     updatedesktopnum();
@@ -1127,7 +1165,16 @@ specialconds(int argc, char *argv[])
     /* local support */
     char *err = strerror_l(errno, uselocale((locale_t)0));
     if(err)
-    {   Debug("%s", strerror_l(errno, uselocale((locale_t)0)));
+    {   
+	/* if we manually quit the display will sometimes send a error if we quit too quickly.
+	 * This is due to the SIGINT (CTRL+C) interrupting some xlib/xcb syscalls.
+	 */
+        if(_wm.manual_exit && strcmp(err, "Resource Unavailable."))
+	{   err = NULL;
+	}
+	else
+	{   Debug("%s", strerror_l(errno, uselocale((locale_t)0)));
+	}
     }
 
     err = NULL;
@@ -1135,6 +1182,12 @@ specialconds(int argc, char *argv[])
     {
         case XCB_CONN_ERROR:
             err =   "Could Hold connection to the XServer for whatever reason BadConnection Error.";
+	    /* if we manually quit the display will sometimes send a error if we quit too quickly.
+	     * This is due to the SIGINT (CTRL+C) interrupt some xlib/xcb syscalls.
+	     */
+            if(_wm.manual_exit)
+	    { 	err = NULL;
+	    }
             break;
         case XCB_CONN_CLOSED_EXT_NOTSUPPORTED:
             err =   "The XServer could not find an extention ExtensionNotSupported Error.\n"
@@ -1251,7 +1304,6 @@ startupwm(void)
         }
         DIECAT("FATAL: Cannot Connect to X Server. [%s]", display);
     }
-    _wm.handler = PropCreateStatic();
     /* This allows for execvp and exec to only spawn process on the specified display rather than the default varaibles */
     if(display)
     {   setenv("DISPLAY", display, 1);

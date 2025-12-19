@@ -61,6 +61,7 @@ __XValidReply(
     {   return false;
     }
 
+
     if(unlikely(!__XValidFormat(reply->format)))
     {   return false;  
     }
@@ -72,6 +73,15 @@ __XValidReply(
     return true;
 }
 
+bool
+__XIsEmptyReply(
+        xcb_get_property_reply_t *reply
+	)
+{
+    /* Check is this a valid 'Empty' reply? */
+    return unlikely(reply->type == XCB_NONE && reply->value_len == 0);
+}
+
 void *
 __XValidateReply(
         xcb_connection_t *display,
@@ -79,8 +89,15 @@ __XValidateReply(
         xcb_generic_error_t *error
         )
 {
-    if(reply && __XValidReply(reply))
-    {   return reply;
+    if(reply)
+    {
+	/* Empty replies are allowed */
+	if(__XIsEmptyReply(reply))
+	{   return reply;
+	}
+	if(__XValidReply(reply))
+	{   return reply;
+	}
     }
 
     /* suprisingly both can return NULL, 
@@ -228,12 +245,9 @@ _xcb_trl_err_handler(
     free(error);
 }
 
-void 
-XCBBreakPoint(
-        void
-        )
-{   volatile int *e = 0; if(e != (volatile int *)1) { e = (volatile int *)3; } (void)e;
-}
+
+void XCBBreakPoint(void) { volatile int *e = 0; if(e != (volatile int *)1) { e = (volatile int *)3; } (void)e; }
+
 
 void 
 XCBDebugPushID(

@@ -31,6 +31,11 @@ ArgcvDisplayBadArgs(
         );
 
 void
+ArgcvDisplayDIECAT(
+	void
+	);
+
+void
 ArgcvSingleCommandHandler(
         char *str
         );
