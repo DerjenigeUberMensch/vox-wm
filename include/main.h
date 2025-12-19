@@ -55,26 +55,6 @@ X11DefaultsWM
     X11_DEFAULT_MAX_WINDOW_LIMIT = 256,
 };
 
-enum 
-SchemeType 
-{ 
-    SchemeNorm, 
-    SchemeSel 
-};
-
-/* clicks */
-enum 
-ClkType 
-{ 
-    ClkTagBar, 
-    ClkLtSymbol, 
-    ClkStatusText, 
-    ClkWinTitle,
-    ClkClientWin, 
-    ClkRootWin, 
-    ClkLast 
-};
-
 enum
 RestartType
 {
@@ -135,13 +115,13 @@ struct WM
     Monitor *mons;                  /* Monitors             */
     XCBKeySymbols *syms;            /* keysym alloc         */
     char *wmname;                   /* WM_NAME              */
-    PropHandler *handler;           /* Prop Handler         */
 
-    pthread_mutex_t mutex;          /* Mutex for main thread */
+    pthread_mutex_t mutex;          /* Mutex for main thread*/
     uint8_t restart;                /* Restart flag         */
+    uint8_t manual_exit; 	    /* Manual terminate flag*/
     uint8_t has_error;              /* Error flag           */
     uint8_t use_threads;            /* Use thread Flag      */
-    uint8_t pad0[5];
+    uint8_t pad0[4];
 };
 
 struct MotifWmHints
@@ -251,6 +231,8 @@ int LOCK_WM(void);
 int TRY_LOCK_WM(void);
 /* Returns pthread return values */
 int UNLOCK_WM(void);
+/* Determines whether or not a specified window, is related to the window manager in a important way. */
+uint32_t IS_WM_WINDOW(XCBWindow win);
 
 
 #endif 

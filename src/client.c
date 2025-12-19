@@ -641,9 +641,24 @@ __FLOAT__TYPE__IS__FLOATING(
     */
     /* check if in the corner */
     if(c->x == m->mx && c->y == m->my)
-    {   ret = DefinitelyNotFloating;
+    {   
+	/* make sure the application is not resonable small to be considered,
+	 * 'Floating'
+	 */
+	const float threshold = .325f;
+	const float widthweight = .7f;
+	const float heightweight = 1 + (1 - widthweight);
+
+	i64 clientarea = (WIDTH(c) * widthweight) * (HEIGHT(c) * heightweight);
+	i64 monitorarea = m->mw * m->mh;
+
+	/* is it too big to be considerd a popup? */
+	if(clientarea > monitorarea * threshold)
+	{   ret = DefinitelyNotFloating;
+	}
     }
-    Debug("Is float: %s", ret != DefinitelyNotFloating ? "true" : "false");
+    /* Used for floating debugging, irrelavent now */
+    /* Debug("Is float: %s", ret != DefinitelyNotFloating ? "true" : "false"); */
     return ret != DefinitelyNotFloating;   
 }
 
@@ -1187,7 +1202,9 @@ focusrealize(Client *c)
         detachfocus(c);
         attachfocus(c);
     }
-    Debug("Focus Realized: [%d]", c ? c->win : 0);
+
+    /* Used for focus debugging irrelavent otherwise, currently commented for that reason */
+    /* Debug("Focus Realized: [%d]", c ? c->win : 0); */
     return c;
 }
 
@@ -1862,10 +1879,10 @@ setclientwtype(Client *c, XCBAtom atom, u8 state)
     PropArg arg;
     arg.ui[0] = atom;
     if(state)
-    {   PropListenArg(_wm.handler, _wm.dpy, c->win, PropSetWtype, arg);
+    {   PropListenArg(_wm.dpy, c->win, PropSetWtype, arg);
     }
     else
-    {   PropListenArg(_wm.handler, _wm.dpy, c->win, PropUnsetWtype, arg);
+    {   PropListenArg(_wm.dpy, c->win, PropUnsetWtype, arg);
     }
 }
 
@@ -1875,10 +1892,10 @@ setclientnetstate(Client *c, XCBAtom atom, u8 state)
     PropArg arg;
     arg.ui[0] = atom;
     if(state)
-    {   PropListenArg(_wm.handler, _wm.dpy, c->win, PropSetWState, arg);
+    {   PropListenArg(_wm.dpy, c->win, PropSetWState, arg);
     }
     else
-    {   PropListenArg(_wm.handler, _wm.dpy, c->win, PropUnsetWState, arg);
+    {   PropListenArg(_wm.dpy, c->win, PropUnsetWState, arg);
     }
 }
 

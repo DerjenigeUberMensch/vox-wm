@@ -262,6 +262,18 @@ SessionSaveMonitor(
     u16 desksel = m->desksel->num;
     u16 deskcount = m->deskcount;
 
+    /* TODO */
+    (void)mx;
+    (void)my;
+    (void)mw;
+    (void)mh;
+    (void)wx;
+    (void)wy;
+    (void)ww;
+    (void)wh;
+    (void)desksel;
+    (void)deskcount;
+
 
     SessionSaveBar(parser, m->bar);
     SessionSaveDesktops(parser, m);
@@ -299,6 +311,11 @@ SessionSaveDesktop(
     i16 desknum = desktop->num;
     u8 layout = desktop->layout;
     u8 old_layout = desktop->olayout;
+
+    (void)desknum;
+    (void)layout;
+    (void)old_layout;
+
     SessionSaveClients(parser, desktop);
 }
 
@@ -332,7 +349,7 @@ SessionSaveClient(
     i16 h = c->h;
 
     u16 bw = c->bw;
-    u16 oldwbw = c->oldbw;
+    u16 oldbw = c->oldbw;
     u32 bcol = c->bcol;
 
     XCBWindow win = c->win;
@@ -352,6 +369,34 @@ SessionSaveClient(
     u16 flags = c->flags;
     u32 ewmhflags = c->ewmhflags;
     u8 sel = c->desktop->sel == c;
+
+    (void)ox;
+    (void)oy;
+    (void)ow;
+    (void)oh;
+
+    (void)x;
+    (void)y;
+    (void)w;
+    (void)h;
+
+    (void)bw;
+    (void)oldbw;
+    (void)bcol;
+
+    (void)win;
+    (void)next;
+    (void)prev;
+    (void)snext;
+    (void)sprev;
+    (void)rnext;
+    (void)rprev;
+    (void)fnext;
+    (void)fprev;
+
+    (void)flags;
+    (void)ewmhflags;
+    (void)sel;
 }
 
 

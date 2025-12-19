@@ -6,8 +6,6 @@
 #include "safebool.h"
 #include "argcv.h"
 
-extern WM _wm;
-
 struct
 ArgCVCommand
 {
@@ -38,7 +36,11 @@ __single__commands__[] =
 const struct ArgCVCommand
 __double__commands__[] = 
 {
-    ARG_CV_NEW_COMMAND("NULL", "NULL.", NULL)
+    ARG_CV_NEW_COMMAND("help", "Help Information.", ArgcvDisplayHelp)
+    ARG_CV_NEW_COMMAND("version", "Help Information.", ArgcvDisplayHelp)
+    ARG_CV_NEW_COMMAND("die-cat", "Calls 'DIECAT' immediatly", ArgcvDisplayDIECAT)
+/* TODO: implement this */
+/*    ARG_CV_NEW_COMMAND("verbose", "Enables Verbose Debugging Info.", NULL) */
 };
 
 
@@ -76,6 +78,22 @@ ArgcvIsDoubleCommand(
     const bool VALID_CHAR = isalpha(str[DOUBLE_OPTION_INDEX_STRING_START]);
 
     return LONG_ENOUGH && VALID_DASHES && VALID_CHAR;
+}
+
+bool
+ArgcvIsDoubleEnd(
+	char *str,
+	unsigned long len
+	)
+{
+    const unsigned char MIN_LENGTH = 2;
+    const unsigned char DOUBLE_OPTION_INDEX_DASH_FIRST = 0;
+    const unsigned char DOUBLE_OPTION_INDEX_DASH_SECOND = 1;
+
+    const bool LONG_ENOUGH = len == MIN_LENGTH;
+    const bool VALID_DASHES = str[DOUBLE_OPTION_INDEX_DASH_FIRST] == '-' && str[DOUBLE_OPTION_INDEX_DASH_SECOND] == '-';
+
+    return LONG_ENOUGH && VALID_DASHES;
 }
 
 void
@@ -193,6 +211,14 @@ ArgcvDisplayBadArgs(
 }
 
 void
+ArgcvDisplayDIECAT(
+	void
+	)
+{
+    DIECAT("%s", "MANUALLY TRIGGERED.");
+}
+
+void
 ArgcvSingleCommandHandler(
         char *str
         )
@@ -262,6 +288,10 @@ ArgcvHandler(
         else if(ArgcvIsDoubleCommand(argv[i], len))
         {   ArgcvDoubleCommandHandler(argv[i]);
         }
+	/* TODO: Implement functionality */
+	else if(ArgcvIsDoubleEnd(argv[i], len))
+	{   break;
+	}
         else
         {   
             const char exec1 = '.';

@@ -46,6 +46,10 @@ bool
 __XValidReply(
         xcb_get_property_reply_t  *reply
         );
+bool
+__XIsEmptyReply(
+        xcb_get_property_reply_t  *reply
+	);
 
 void *
 __XValidateReply(

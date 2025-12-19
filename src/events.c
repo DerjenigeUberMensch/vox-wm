@@ -819,7 +819,7 @@ maprequest(XCBGenericEvent *event)
 
     u8 sync = 0;
 
-    PropListen(_wm.handler, _wm.dpy, win, PropManage);
+    PropListen(_wm.dpy, win, PropManage);
 
     if(sync)
     {   XCBFlush(_wm.dpy);
@@ -977,7 +977,7 @@ destroynotify(XCBGenericEvent *event)
             arrange(desk);
         }
         /* unused due to race conditions */
-        /* PropListen(_wm.handler, _wm.dpy, win, PropUnmanage); */
+        /* PropListen(_wm.dpy, win, PropUnmanage); */
         sync = 1;
     }
 
@@ -1071,7 +1071,7 @@ unmapnotify(XCBGenericEvent *event)
             arrange(desk);
         }
         /* unused due to race conditions */
-        /* PropListen(_wm.handler, _wm.dpy, win, PropUnmanage); */
+        /* PropListen(_wm.dpy, win, PropUnmanage); */
         sync = 1;
     }
 
@@ -1561,7 +1561,7 @@ propertynotify(XCBGenericEvent *event)
         Debug0("Prop is invalid FIXME");
         return;
     }
-    PropListen(_wm.handler, _wm.dpy, win, type);
+    PropListen(_wm.dpy, win, type);
 }
 
 void

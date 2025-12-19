@@ -3162,8 +3162,11 @@ XCBGetWMHintsReply(
         u8 no_data = !data;
 
         if(bad_format || bad_atom || no_data || num_elem < XCB_ICCCM_NUM_WM_HINTS_ELEMENTS - 1)
-        {   
-            __XCBThrowError(display, cookie, XCBBadImplementation, X_GetProperty, XCB_NONE);
+        {
+	    /* make sure we dont error if the reply is just Empty */
+	    if(!__XIsEmptyReply(reply))
+	    {   __XCBThrowError(display, cookie, XCBBadImplementation, X_GetProperty, XCB_NONE);
+	    }
             goto USER_ERROR;
         }
 

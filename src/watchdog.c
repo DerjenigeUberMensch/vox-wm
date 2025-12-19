@@ -210,7 +210,7 @@ WatchDogRun(
         }
 
         time_t now = time(NULL);
-	Debug("%d", now - watchdog->last_alive);
+	Debug("%ld", now - watchdog->last_alive);
 
         /* 7 seconds is more than enough. */
         if (now - watchdog->last_alive > MAX_TIMEOUT)
