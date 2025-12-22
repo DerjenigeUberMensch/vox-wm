@@ -1,0 +1,441 @@
+C99 Guidelines
+
+Functions(s):
+    Declaration:
+        Style 1:
+            Default style should be used primarly for any code relating to the soly the codebase.
+
+            static void *myfunction(void *x, void *y);
+        Style 2:
+            Style to be used when creating 'external' or possibly, library code, that can theoredically be used outside the current codebase.
+            I.E Generic functions, though not required.
+            Either v1, or v2 may be used, they are just different formats.
+
+            v1:
+                static void *
+                myfunction(
+                    void *x, 
+                    void *y
+                );
+            v2: 
+                static void *
+                myfunction(
+                    void *x, 
+                    void *y
+                    );
+
+        Style 3 (Deprecated):
+            The Original Style, of function declaration, now deprecated.
+            This should not be used for ANY new codebases, and serves as documentation for previously written styles.
+
+            static void *
+            myfunction(void *x, void *y);
+    Definition:
+        Style 1:
+            Default style should be used primarly for any code relating to the soly the codebase.
+
+            static void *
+            myfunction(void *x, void *y)
+            {
+            }
+        Style 2:
+            Style to be used when creating 'external' or possibly, library code, that can theoredically be used outside the current codebase.
+            I.E Generic functions, though not required.
+            Either v1, or v2 may be used, they are just different formats.
+
+            v1:
+                static void *
+                myfunction(
+                    void *x,
+                    void *y
+                )
+                {
+                }
+            v2:
+                static void *
+                myfunction(
+                    void *x,
+                    void *y
+                    )
+                {
+                }
+        Style 3 (Deprecated):
+            The Original Style, of function declaration, now deprecated.
+            This should not be used for ANY new codebases, and serves as documentation for previously written styles.
+
+            static void *myfunction(void *x, void *y)
+            {
+            }
+    Casing:
+        Style 1:
+            Default casing recommended for all functions.
+
+            void nocasing();
+        Style 2 (Recommended for library code):
+            Casing allowed to be used for external/library relating code.
+
+            void PascalCase();
+        Style 3 (Deprecated):
+            Deprecated casing that may appear in old codebases.
+            Note: There are situations where snake_case is allowed however for general functions, it is deprecated.
+
+            void snake_case();
+    Prefix:
+        Static (Optional):
+            Static functions (may) optionally have a double underscore '__' as a prefix.
+
+            int *__MY_STATIC(void *x, void *y);
+            int *
+            __MY_STATIC(void *x, void *y)
+            {
+            }
+    Return:
+        Assertions:
+            1. Functions must return the same type pointer as their declaration, and any other pointer type must be either a void *, or casted as the correct type pointer.
+            2. Functions that return mismatched types must cast as correct type, and document side-effects somewhere.
+            3. Functions must not do 'compound-statment' returns, such as return *ret = 10, EXIT_SUCCESS; As these add uncessary mental overhead (and harder to read) for no additional benefit.
+            4. Functions may do comprehensive statment such as return ret ? *ret : 0; However it is recommended to avoid doing this often.
+
+    Special:
+        Declaration:
+            N/A
+        Definition:
+            'Macro':
+                Style 1:
+                    Primary style for defining macros that are single line.
+
+                    void MY_MACRO(void *x, void *y) {};
+                Style 2:
+                    Recommended style for defining macros that are multi line.
+
+                    void MY_MACRO(void *x, void *y) {
+                                                    };
+        Single Line:
+            Style 1:
+                v1 (Recommended):
+                    Single line function Declaration default style.
+                    
+                    int *
+                    singleLineFunction(void *x, void *y)
+                    {   int x = 10;
+                    }
+
+                v2:
+                    Single line function Declaration optional style if future code will be added.
+
+                    int * 
+                    singleLineFunctionFuture(void *x, void *y)
+                    {
+                        int x = 10;
+                    }
+        Casing:
+            'Macro':
+                void CAPS_CASE();
+            Static (Optional):
+                static void CAPS_CASE();
+
+
+Variables:
+    Declaration:
+        Assertions:
+            1. Variables may not be declared in the same line unless they are 'pairs' of relating objects, such as int x, y;
+            2. Variables should not be declared differently from their parent declaration if using same line declaration. (i.e all pointers or all int's etc...)
+            3. Uninitialized Variables should be at the top of the block, with intialized variables (and enums) following.
+
+    Prefix:
+        Static:
+            Static variables are to be prefixed with two underscores '__'.
+
+            static int __underscore_prefix;
+        Global (Optional):
+            Global variables may be optionally prefixed by either one of the below styles.
+
+            Style 1:
+                static int _underscoreprefix;
+            Style 2:
+                static int __underscoreprefix;
+        Extern:
+            Extern variables must be prefixed by either one of the below styles.
+
+            Style 1:
+                extern int _underscoreprefix;
+            Style 2:
+                extern int __underscoreprefix;
+            Style 3(Deprecated):
+                extern int ___underscoreprefix;
+        Volatile (Optional)(Pending):
+            Volatile variables may or may not be prefixed by either one of the below styles.
+
+            Approval Pending.
+
+            Style 1:
+                volatile int vvv_underscore_prefix;
+            Style 2:
+                volatile int vv_underscore_prefix;
+    Casing:
+        Variables must follow the following casing scheme for (most) declaration.
+
+        Style 1:
+            Default style for non-special declarations.
+
+            int nocaps;
+        Constants:
+            Constants must be declared in caps case for all new implemenation
+
+            v1 (Deprecated):
+                const int nocase = 10;
+            v2 (Recommended):
+                const int CAPS_CASE = 10;
+
+        Static (Optional):
+            Static variables (may) optionally use snake casing for their declaration, and either of the two below may be used.
+
+            v1:
+                static int _snake_case;
+            v2:
+                static int __snake_case;
+        Volatile (Pending):
+            Volatile variables may or may not use either one of the below styles.
+
+            Approval Pending.
+
+            v1:
+                volatile int v_snake_case;
+            v2:
+                volatile int vv_nocase;
+Enums:
+    Declaration:
+        Style 1 (Recommended):
+            The recommened style for declaring new enums.
+
+            typedef enum MyEnum MyEnum;
+        Style 2:
+            Enum declaration that may be external or other, may use this format.
+
+            enum MyEnum;
+
+        Style 3:
+            Nameless enums are allowed, but serve mostly as CONSTANTS, for debugging purposes over using 'Macros'.
+
+            enum {};
+    Definition:
+        Style 1:
+            v1:
+                enum
+                {
+                };
+            v2:
+                enum
+                MyEnum
+                {
+                };
+        Style 2:
+            v1:
+                enum {};
+            v2:
+                enum MyEnum {};
+    Casing: 
+        Style 1 (Recommended):
+            enum
+            PascalCase
+            {
+            };
+        Style 2:
+            enum
+            {
+            };
+    Prefix Casing:
+        Style 1 (Optional):
+            enum
+            MyEnum
+            {
+                MyEnumRandomThing1,
+                MyEnumRandomThing2,
+                MyEnumRandomThing3,
+            };
+        Style 2 (Optional):
+            enum
+            MyEnum
+            {
+                RandomThing1,
+                RandomThing2,
+                RandomThing3,
+            };
+    Inner Casing:
+        Style 1 (Recommended):
+            enum
+            MyEnum
+            {
+                PascalCase1,
+                PascalCase2,
+                PascalCase3,
+            };
+        Style 2:
+            enum
+            MyEnum
+            {   
+                CAPS_CASING_1,
+                CAPS_CASING_2,
+                CAPS_CASING_3,
+            }
+    
+    
+Structs/Unions:
+    Declaration:
+        Style 1 (Recommended):
+            typedef struct MyStruct MyStruct;
+        Style 2:
+            struct MyStruct;
+    Definition:
+        Style 1:
+            struct
+            MyStrut
+            {
+            };
+    Special:
+        Inner Variable Casing:
+            Style 1:
+                int nocaps;
+            Style 2:
+                int snake_case;
+            Style 3 (Deprecated):
+                int PascalCase;
+            Style 4 (Deprecated):
+                int camelCase;
+Switch:
+    Declaration:
+        Default style for switch statments.
+
+        Style 1:
+            switch(...)
+            {
+            }
+    Case(s):
+        Style 1:
+            switch(...)
+            {
+                case 1:
+                    break;
+                case 2:
+                    break;
+                case 3:
+                    break;
+            }
+        Style 2:
+            switch(...)
+            {
+                case 1: ... break;
+                case 2: ... break;
+                case 3: ... break;
+            }
+While:
+    Declaration:
+        Default style for declaring while() loops.
+
+        Style 1:
+            while(...)
+            {
+            }
+Do:
+    Declaration:
+        Default style for declaring do {} while() loops.
+        
+        Style 1:
+            do
+            {
+            } while(...);
+if/else:
+    Declaration:
+        Style 1:
+            if(...)
+            {
+                int x;
+                int y;
+            }
+    Special:
+        Single Line:
+            v1 (Obsolete): 
+                if(...) int x = 10;
+            v2 (Deprecated):
+                if(...) { int x = 10; }
+            v3 (Obsolete):
+                if(...)
+                    int x = 10;
+            v4 (Obsolete):
+                if(...)
+                    { int x = 10; }
+            v5 (Recommended):
+                if(...)    
+                {   int x = 10;
+                }
+            v6:
+                if(...)
+                {
+                    int x = 10;
+                }
+        else if:
+            if(...)
+            {
+            }
+            else if(...)
+            {
+            }
+            else
+            {
+            }
+    Assertions:
+        1. else if() clauses should (generally) be avoided, this does not apply to else { if() }, however.
+        2. variables are preferred over using naked conditional statments (unless very simple)
+
+Pointers:
+    Style 1:
+        This is the only style allowed to be used for pointers, no other style has been documented.
+
+        void *mypointer;
+        void *myfunction(void *x, void *y);
+        struct MyStruct *mypointer;
+    Assertions:
+        1. Pointer placement must always include one space, no more no less in between the type (and or typename) and the star.
+        2. Pointer placement should always have the star next to the corresponding variable/function/etc... during declaration.
+        3. Pointers may not be multi-line.
+
+Sizeof:
+    Declaration:
+        Style 1 (Optional):
+            sizeof(int );
+        Style 2 (Optional):
+            sizeof(int);
+        Special:
+            Pointers:
+                Style 1 (Required):
+                    sizeof(int *);
+Types:
+    Assertions:
+        1. Fixed-Width Integers, may use shorthand typedef specifiers such as u32 or i32 for uint32_t, and int32_t types. 
+        2. Fixed-Width Integers, may not use a prefix 's' for signed integers such as s32.
+        3. Float type specifiers may use shorthand typedef's of f32 for 'float' and f64 for 'double', f128 and f256 may also be implemented.
+        4. Macros should be avoided, unless impossible otherwise, or if they may implement code without the help of compiler extensions.
+        5. Compiler specific extensions may be used however must use a macro (if possible) and have a substitute to the expression if not available.
+
+Goto:
+    Label Definition:
+        Style 1:
+            'CAPS_CASE:'
+    Declaration:
+        goto LABEL_1;
+    Assertions:
+        1. Goto cannot be used to jump out of a function (unless all options exhausted).
+        2. Goto should primarly only be used for cleanup of resources.
+        3. Goto should not be used excessively unless the above condition is true.
+        4. Goto should not be used in the main() function.
+        5. Goto should not be used excessively in switch() statments.
+        6. Goto should not create any external undocumented loops.
+        7. Goto should not create any recursion of any kind (unless absolutely necesary).
+        8. Goto may be used to jump out of nested loops or switch() statments.
+        9. Goto may be used as a temporary fix, however must document reason.
+        10. If your program is 100% without a doubt in your mind is going to be unmaintained, or private. You may ignore 2-7.
+
+
+Compiler Extensions:
+    Assertions:
+        1. Compiler extensions should not be used, unless there is a macro replacement for them if they are not available.
