@@ -1,9 +1,10 @@
 #include "helper.h"
 
 #include <stdint.h>
+#include <math.h>
 
 #ifndef LENGTH
-#define LENGTH(X) sizeof(X) / sizeof(X[0]);
+#define LENGTH(X) (sizeof(X) / sizeof(X[0]))
 #endif
 
 typedef struct Color Color;
@@ -16,8 +17,7 @@ struct Color
     const char* name;
 };
 
-
-static const Color palette[]
+static const Color palette[] = 
 {
     {240, 248, 255, "aliceblue"},
     {250, 235, 215, "antiquewhite"},
@@ -135,7 +135,7 @@ static const Color palette[]
     {245, 245, 245, "whitesmoke"},
     {255, 255, 0, "yellow"},
     {154, 205, 50, "yellowgreen"}
-}
+};
 
 double
 coldist(Color a, Color b)
@@ -155,13 +155,15 @@ colmatch(unsigned int col)
 
     Color x = { .r = col & 255, .b = col & (255 << 8), .g = col & (255 << 16) };
 
-    for (int i = 0; i < LENGTH(palette); i++) 
+    int i;
+
+    for (i = 0; i < LENGTH(palette); i++) 
     {
         double distance = coldist(x, palette[i]);
 
-        if (d < min_dist) 
+        if (distance < dist) 
         {
-            min_dist = d;
+            dist = distance;
             closest = palette[i].name;
         }
     }
