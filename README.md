@@ -1,3 +1,6 @@
+# NOTE: The current commit is bugged
+Please use a stable release https://github.com/DerjenigeUberMensch/vox-wm/releases
+
 # vox-wm
 The [vox-wm](https://github.com/DerjenigeUberMensch/vox-wm/edit/Experimental/README.md) project was intially a mission to create a window manager that could offer the same usability that a regular desktop while being simple to the end user.  
 While still maintaing the window manager like feel of multiple different layouts and simpled nature behaviour.
