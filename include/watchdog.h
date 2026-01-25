@@ -18,10 +18,11 @@ WatchDog
     pid_t child;
     uint8_t restart;
     uint8_t die;
-    uint8_t pad0[1];
+    uint8_t restart_timer;
     pthread_mutex_t mutex;
     pthread_cond_t cond;
-    time_t last_alive;
+    void (*callback)(void);
+    struct timespec last_alive;
 };
 
 /* Starts up the WatchDog Process.
@@ -32,8 +33,10 @@ WatchDog
 int
 WatchDogStart(
     int argc,
-    char **argv
+    char **argv,
+    void (*callback_on_stall)(void)
 );
+
 /* Requests the watchdog to terminate, and allow for application to terminate gracefully.
  *
  * NOTE: This function (may) block, until watchdog is ready to exit.
@@ -46,16 +49,14 @@ WatchDogRequestExit(
     void
 );
 
-/* For program sanity, this should be called at atleast every second, though this can be extented to ever 2 seconds.
+/* This resets the hard timer in the watchdog process.
  *
- * NOTE: This function does not block, unless past the watchdog threshhold at which point your application will restart.
+ * NOTE: This function does not block.
  *
  */
 void
-WatchDogPingAlive(
+WatchDogRespond(
     void
 );
-
-
 
 #endif

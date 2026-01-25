@@ -356,7 +356,6 @@ updategeom(void)
     if(xiactive)
     {
         int i, j, n, nn;
-        Client *c = NULL;
         Monitor *m = NULL;
         XCBGenericError *err = NULL;
         XCBXineramaQueryScreens *xsq = NULL;
@@ -416,23 +415,29 @@ updategeom(void)
 		/* removed monitors if n > nn */
 		for (i = nn; i < n; ++i)
         {
+            /* get last mon */
 			for (m = _wm.mons; m && m->next; m = m->next);
-			while ((c = m->desktops->clients)) 
+
+            /* clang gets angry here for some reason (which is why we need the assert) */
+            if(ASSERT(m))
             {
-				dirty = 1;
-				m->desktops->clients = c->next;
-				detachstack(c);
-                detachfocus(c);
-                c->desktop = _wm.mons->desktops;
-                /* TODO desktops might break. */
-				attach(c);
-				attachstack(c);
-                attachfocus(c);
-			}
-			if (m == _wm.selmon)
-            {   _wm.selmon = _wm.mons;
+                Desktop *desk;
+
+                for(desk = m->desktops; desk; desk = desk->next)
+                {   
+                    Client *c1;
+
+                    /* move all clients in NOW deleted monitor to the first monitor desktop */
+                    for(c1 = startclient(desk); c1; c1 = nextclient(c1))
+                    {   setclientdesktop(c1, _wm.mons->desktops);
+                    }
+                }
+
+			    if (m == _wm.selmon)
+                {   _wm.selmon = _wm.mons;
+                }
+			    cleanupmon(m);
             }
-			cleanupmon(m);
 		}
 		free(unique);
 	} else
@@ -476,45 +481,64 @@ updateclientlist(XCBWindow win, uint8_t type)
             break;
     }
 
-    Monitor *m;
-    Desktop *desk;
-    Client *c;
-    
-    XCBWindow winlist[X11_DEFAULT_MAX_WINDOW_LIMIT];
-    i32 i = 0;
-    u32 first = 1;
+    garray_i it;
 
-    XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetClientList]);
-    for(m = _wm.mons; m; m = nextmonitor(m))
+    for(it = GArrayStart(&_wm.clients); it < GArrayEnd(&_wm.clients); ++it)
     {
-        for(desk = m->desktops; desk; desk = nextdesktop(desk))
+        /* we dont need to find anythig in reload */
+        if(type == ClientListReload)
+        {   break;
+        }
+
+        XCBWindow *winsearch = GArrayAt(&_wm.clients, it);
+        int status;
+
+        if(!ASSERT(winsearch))
+        {   
+            Debug0("Failed to get window");
+            continue;
+        }
+
+        if(*winsearch == win)
         {
-            for(c = startclient(desk); c; c = nextclient(c))
-            {   
-                if(first)
-                {
-                    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientList], 
-                            XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&c->win, 1);
-                    first = 0;
-                }
-                else
-                {
-                    winlist[i++] = c->win;
-                    if(i == X11_DEFAULT_MAX_WINDOW_LIMIT)
-                    {   
-                        XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientList], 
-                                XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_APPEND, (unsigned char *)winlist, i);
-                        i = 0;
-                    }
-                }
+            (void)ASSERT(type == ClientListAdd || type == ClientListRemove);
+
+            status = GArrayDelete(&_wm.clients, it);
+
+            /* if we failed for some reason just replace it with nothing */
+            if(status == EXIT_FAILURE)
+            {   GArrayReplace(&_wm.clients, NULL, it);
             }
+
+            /* if we found it then we shouldnt add it back as a duplicate, instead append to end. */
+            if(!ASSERT(type == ClientListAdd))
+            {   
+                /* ignore status, as we cant do much if it fails */
+                GArrayPushBack(&_wm.clients, &win);
+            }
+
+            break;
         }
     }
-    if(i)
-    {    
-        XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientList], 
-                XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_APPEND, (unsigned char *)winlist, i);
+
+    void *data = NULL;
+    size_t size = 0;
+    size_t item_size = 0;
+
+    GArrayGetArray(&_wm.clients, &data, &size, &item_size);
+    
+    if(!data)
+    {   return;
     }
+
+    if(!ASSERT(item_size == sizeof(XCBWindow)))
+    {   
+        Debug0("item size is incorrect size.");
+        return;
+    }
+    
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientList], 
+            XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (const char *)data, size / item_size);
 }
 /* this function is really slow, slower than malloc use only in startup or rare mapping changes */
 void

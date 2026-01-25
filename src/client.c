@@ -64,54 +64,98 @@ u32 DOCKED(Client *c)           { return DOCKEDVERT(c) && DOCKEDHORZ(c); }
 
 
 
-static const unsigned int
-__COULD__BE__FLOATING__GEOM__FITS(Client *c, const float WIDTH_RATIO, const float HEIGHT_RATIO)
-{
-    const Monitor *m = c->desktop->mon;
-    return c->w <= (m->mw * WIDTH_RATIO) || c->h <= (m->mh * HEIGHT_RATIO);
-}
-
-static float __SIGMOID__SCALING(int i , float k, float z0)
-{   return 1.0f / (1.0f + expf(-k * (i - z0)));
-}
-
 /* Unfortunatly this seems to kinda not work with some applications, mainly because some set their location AFTER being mapped.
  * We could maybe have a timer or something that would make all configure requests apply this also.
  * Still dont know why, they do this (firefox), wouldnt it look better to do it before? IDK.
  */
-enum FloatType COULDBEFLOATINGGEOM(Client *c)  
+double COULDBEFLOATINGGEOM(Client *c)  
                                 {
-                                    const float k = .8f;
-                                    const float z0 = 0x0;
+                                    enum { ARRAY_LENGTH = 7 };
+                                    enum { SCALE, WEIGHT, WEIGHT_LENGHT };
 
-                                    float scale;
-                                    i32 i;
-                                    for(i = 0; i < FLOATINGLAST; ++i)
-                                    {   
-                                        /* Roughly as follows (k = 1.5f, z0 = 1.5f)
-                                         * DefinitelyFloating,      10 %
-                                         * ProbablyFloating,        30 %
-                                         * CouldBeFloating,         67 %
-                                         * ProbablyNotFloating,     90 %
-                                         * DefinitelyNotFloating,   97 %
-                                         */
-                                        scale = __SIGMOID__SCALING(i, k, z0);
-                                        /* Debug("%f", scale); */
-                                        if(__COULD__BE__FLOATING__GEOM__FITS(c, scale, scale))
-                                        {   return (enum FloatType)i;
-                                        }
-                                    }
-                                    if(ISFIXED(c))
+
+                                    const double 
+                                    SCALE_SIZE_WEIGHTS_LONG[ARRAY_LENGTH][WEIGHT_LENGHT] = 
                                     {
-                                        const float MIN_W_RATIO = .67f;
-                                        if(c->maxw <= c->desktop->mon->mw * MIN_W_RATIO || c->maxh <= c->desktop->mon->mh * MIN_W_RATIO)
-                                        {   return ProbablyFloating;
+                                        /* SCALE | MULTIPLIER */
+                                        {   .95,        1      },
+                                        {   .90,       .95     },
+                                        {   .80,       .85     },
+                                        {   .65,       .50     },
+                                        {   .50,       .30     },
+                                        {   .25,       .15     },
+                                        {   .10,       .0      },
+                                    };
+
+                                    const double 
+                                    SCALE_SIZE_WEIGHTS_SHORT[ARRAY_LENGTH][WEIGHT_LENGHT] = 
+                                    {
+                                        /* SCALE | MULTIPLIER */
+                                        {   .95,        1      },
+                                        {   .90,       .95     },
+                                        {   .80,       .90     },
+                                        {   .65,       .65     },
+                                        {   .50,       .40     },
+                                        {   .25,       .25     },
+                                        {   .10,       .05     },
+                                    };
+
+                                    bool widthBigger = c->w > c->h;
+                                    bool sameSize = c->w == c->h;
+                                    const double (*width)[WEIGHT_LENGHT];
+                                    const double (*height)[WEIGHT_LENGHT];
+
+                                    if(sameSize)
+                                    {
+                                        width = SCALE_SIZE_WEIGHTS_LONG;
+                                        height = SCALE_SIZE_WEIGHTS_LONG;
+                                    }
+                                    else if(widthBigger)
+                                    {
+                                        width = SCALE_SIZE_WEIGHTS_LONG;
+                                        height = SCALE_SIZE_WEIGHTS_SHORT;
+                                    }
+                                    else
+                                    {
+                                        width = SCALE_SIZE_WEIGHTS_SHORT;
+                                        height = SCALE_SIZE_WEIGHTS_LONG;
+                                    }
+
+                                    int i;
+                                    double sizew;
+                                    double sizeh;
+
+                                    Monitor *m = c->desktop->mon;
+
+                                    double scorew = 100;
+                                    double scoreh = 100;
+
+                                    for(i = 0; i < ARRAY_LENGTH; ++i)
+                                    {
+                                        sizew = m->mw * width[i][SCALE];
+
+                                        if(c->w > sizew)
+                                        {
+                                            scorew *= width[i][WEIGHT];
+                                            break;
                                         }
                                     }
-                                    return ProbablyNotFloating;
+
+                                    for(i = 0; i < ARRAY_LENGTH; ++i)
+                                    {
+                                        sizeh = m->mh * height[i][SCALE];
+
+                                        if(c->h > sizeh)
+                                        {
+                                            scoreh *= height[i][WEIGHT];
+                                            break;
+                                        }
+                                    }
+
+                                    return (scorew + scoreh) / 2;
                                 }
 u32 
-__COULD__BE__FLOATING__POSITION__FITS(const Client *c, float width_ratio, float height_ratio)
+__COULD__BE__FLOATING__POSITION__FITS(const Client *c, double width_ratio, double height_ratio)
 {
     const Monitor *m = c->desktop->mon;
 
@@ -141,24 +185,41 @@ __COULD__BE__FLOATING__POSITION__FITS(const Client *c, float width_ratio, float 
     */
     return isratiox || isratioy;
 }
-enum FloatType COULDBEFLOATINGPOSITION(Client *c)
+double COULDBEFLOATINGPOSITION(Client *c)
                                 {
-                                    const float k = 0.8f;
-                                    const float z0 = 3.6f;
+                                    enum { ARRAY_LENGTH = 7 };
+                                    enum { SCALE, WEIGHT, WEIGHT_LENGHT };
 
-                                    i32 i;
-                                    float scale;
-                                    for(i = 0; i < FLOATINGLAST; ++i)
+                                    const double 
+                                    POSITION_WEIGHTS[ARRAY_LENGTH][WEIGHT_LENGHT] = 
                                     {
-                                        scale = __SIGMOID__SCALING(i, k, z0);
-                                        if(__COULD__BE__FLOATING__POSITION__FITS(c, scale, scale))
-                                        {   return (enum FloatType)i;
+                                        /* OFFSET | MULTIPLIER */
+                                        {   .02,        1      },
+                                        {   .05,       .95     },
+                                        {   .10,       .90     },
+                                        {   .25,       .65     },
+                                        {   .30,       .40     },
+                                        {   .40,       .25     },
+                                        {   .50,       .05     },
+                                    };
+
+                                    int i;
+                                    double score = 100;
+
+                                    for(i = 0; i < ARRAY_LENGTH; ++i)
+                                    {
+                                        if(__COULD__BE__FLOATING__POSITION__FITS(c, POSITION_WEIGHTS[i][SCALE], POSITION_WEIGHTS[i][SCALE]))
+                                        {
+                                            score *= POSITION_WEIGHTS[i][WEIGHT];
+                                            break;
                                         }
                                     }
-                                    return ProbablyNotFloating;
+
+                                    return score;
                                 }
-enum FloatType COULDBEFLOATINGHINTS(Client *c)
+double COULDBEFLOATINGHINTS(Client *c)
                                 {
+                                    double score = 100;
                                     /* This check is mostly for (some) popup windows 
                                      * Mainly those which dont matter, like steams startup display, but are nice to have's.
                                      */
@@ -166,64 +227,69 @@ enum FloatType COULDBEFLOATINGHINTS(Client *c)
                                     /* Splash windows are like those "intro" logos they display on some applications, ex: audacity */
                                     if(ISSPLASH(c))
                                     {   
+                                        score *= 0.95;
                                         Debug0("Splash Window.");
-                                        return ProbablyFloating;
                                     }
                                     /* Modal dialog boxes are just persistent dialog boxes (aka dont focus anything else as they are important) */
                                     else if(ISMODAL(c))
                                     {   
+                                        score *= 0.90;
                                         Debug0("Modal Window.");
-                                        return ProbablyFloating;
                                     }
                                     /* Popup menus see above */
                                     else if(ISPOPUPMENU(c))
                                     {   
+                                        score *= 0.90;
                                         Debug0("Popup Menu");
-                                        return ProbablyFloating;
                                     }
                                     /* Dialog boxes are usually floating */
                                     else if(ISDIALOG(c))
                                     {   
+                                        score *= 0.90;
                                         Debug0("Dialog Menu");
-                                        return ProbablyFloating;
                                     }
                                     /* Notification boxes like "changed music" things ussualy arent too important, but should still be floating */
                                     else if(ISNOTIFICATION(c))
                                     {   
+                                        score *= 0.85;
                                         Debug0("Notification.");
-                                        return ProbablyFloating;
                                     }
                                     /* These are like modal boxes but less important */
                                     else if(ISCOMBO(c))
                                     {   
+                                        score *= 0.85;
                                         Debug0("Combo Menu,");
-                                        return DefinitelyFloating;
                                     }
                                     /* Above windows ussually are small utility boxes, that shouldnt cover other content completly */
                                     else if(ISABOVE(c))
                                     {   
+                                        score *= 0.85;
                                         Debug0("AlwaysOnTop Window detected.");
-                                        return DefinitelyFloating;
                                     }
                                     /* This checks for other non dialog types that sort of work like dialog(s) if not maximized. */
                                     else if(ISUTILITY(c))
                                     {   
+                                        score *= 0.85;
                                         Debug0("Util Window detected, maybe picture-in-picture?");
-                                        return ProbablyFloating;
                                     }
                                     else if(ISMAXIMIZEDVERT(c) && ISMAXIMIZEDHORZ(c))
                                     {   
+                                        score *= .01;
                                         Debug0("Maximized Window detected.");
-                                        return DefinitelyNotFloating;
                                     }
                                     else if(ISNORMAL(c))
                                     {   
+                                        score *= .25;
                                         Debug0("Normal Window detected.");
-                                        return ProbablyNotFloating;
                                     }
-                                    Debug0("Window has no special attributes.");
+                                    else
+                                    {
+                                        score *= 0.1;
+                                        Debug0("Window has no special attributes.");
+                                    }
+
                                     /* No special attributes return */
-                                    return ProbablyNotFloating;
+                                    return score;
                                 }
 
 static bool 
@@ -250,416 +316,29 @@ __FLOAT__TYPE__EXTRA__CHECKS(Client *c)
 static bool
 __FLOAT__TYPE__IS__FLOATING(
         Client *c,
-        const enum FloatType hints, 
-        const enum FloatType geom, 
-        const enum FloatType pos
+        double hints,
+        double geom,
+        double pos
         )
 {
-    enum FloatType ret = DefinitelyNotFloating;
-    switch(hints)
-    {
-        case DefinitelyFloating:
-        {
-            switch(geom)
-            {
-                case DefinitelyFloating:
-                case ProbablyFloating:
-                case CouldBeFloating:
-                    ret = DefinitelyFloating;
-                    break;
-                case ProbablyNotFloating:
-                    switch(pos)
-                    {
-                        case DefinitelyFloating:
-                        case ProbablyFloating:
-                        case CouldBeFloating:
-                        case ProbablyNotFloating:
-                            ret = ProbablyFloating;
-                            break;
-                            /* unused */
-                        case FLOATINGLAST:
-                        case DefinitelyNotFloating:
-                            break;
-                    }
-                    break;
-                case DefinitelyNotFloating:
-                    switch(pos)
-                    {
-                        case DefinitelyFloating:
-                        case ProbablyFloating:
-                        case CouldBeFloating:
-                            ret = CouldBeFloating;
-                            break;
-                            /* unused */
-                        case FLOATINGLAST:
-                        case ProbablyNotFloating:
-                        case DefinitelyNotFloating:
-                            break;
-                    }
-                    break;
-
-                    /* unused */
-                case FLOATINGLAST:
-                    break;
-            }
-            break;
-        }
-        case ProbablyFloating:
-        {
-            switch(geom)
-            {
-                case DefinitelyFloating:
-                case ProbablyFloating:
-                    ret = DefinitelyFloating;
-                case CouldBeFloating:
-                    switch(pos)
-                    {
-                        case DefinitelyFloating:
-                        case ProbablyFloating:
-                        case CouldBeFloating:
-                            ret = ProbablyFloating;
-                            break;
-                            /* unused */
-                        case FLOATINGLAST:
-                        case ProbablyNotFloating:
-                        case DefinitelyNotFloating:
-                            if(__FLOAT__TYPE__EXTRA__CHECKS(c))
-                            {   ret = CouldBeFloating; 
-                            }
-                            break;
-                    }
-                    break;
-                case ProbablyNotFloating:
-                    switch(pos)
-                    {
-                        case DefinitelyFloating:
-                        case ProbablyFloating:
-                            ret = ProbablyFloating;
-                            break;
-                            /* unused */
-                        case FLOATINGLAST:
-                        case CouldBeFloating:
-                        case ProbablyNotFloating:
-                        case DefinitelyNotFloating:
-                            if(__FLOAT__TYPE__EXTRA__CHECKS(c))
-                            {   ret = CouldBeFloating; 
-                            }
-                            break;
-                    }
-                    break;
-                case DefinitelyNotFloating:
-                    switch(pos)
-                    {
-                        case DefinitelyFloating:
-                            ret = ProbablyFloating;
-                            /* unused */
-                        case FLOATINGLAST:
-                        case ProbablyFloating:
-                        case CouldBeFloating:
-                        case ProbablyNotFloating:
-                            if(__FLOAT__TYPE__EXTRA__CHECKS(c))
-                            {   ret = CouldBeFloating; 
-                            }
-                        case DefinitelyNotFloating:
-                            break;
-                    }
-                    break;
-
-                    /* unused */
-                case FLOATINGLAST:
-                    break;
-            }
-        }
-        case CouldBeFloating:
-        {
-            switch(geom)
-            {
-                case DefinitelyFloating:
-                    ret = DefinitelyFloating;
-                    break;
-                case ProbablyFloating:
-                    switch(pos)
-                    {   
-                        case DefinitelyFloating:
-                        case ProbablyFloating:
-                        case CouldBeFloating:
-                            ret = ProbablyFloating;
-                            break;
-                            /* unused */
-                        case FLOATINGLAST:
-                        case ProbablyNotFloating:
-                        case DefinitelyNotFloating:
-                            if(__FLOAT__TYPE__EXTRA__CHECKS(c))
-                            {   ret = ProbablyFloating; 
-                            }
-                            break;
-                    }
-                    break;
-                case CouldBeFloating:
-                    switch(pos)
-                    {   
-                        case DefinitelyFloating:
-                        case ProbablyFloating:
-                            ret = ProbablyFloating;
-                            break;
-                            /* unused */
-                        case FLOATINGLAST:
-                        case CouldBeFloating:
-                        case ProbablyNotFloating:
-                        case DefinitelyNotFloating:
-                            if(__FLOAT__TYPE__EXTRA__CHECKS(c))
-                            {   ret = CouldBeFloating; 
-                            }
-                            break;
-                    }
-                    break;
-                case ProbablyNotFloating:
-                    switch(pos)
-                    {   
-                        case DefinitelyFloating:
-                            ret = ProbablyFloating;
-                            break;
-                            /* unused */
-                        case FLOATINGLAST:
-                        case ProbablyFloating:
-                        case CouldBeFloating:
-                        case ProbablyNotFloating:
-                            if(__FLOAT__TYPE__EXTRA__CHECKS(c))
-                            {   ret = CouldBeFloating; 
-                            }
-                        case DefinitelyNotFloating:
-                            break;
-                    }
-                    break;
-                case DefinitelyNotFloating:
-                    switch(pos)
-                    {   
-                        case DefinitelyFloating:
-                            ret = CouldBeFloating;
-                            break;
-                            /* unused */
-                        case FLOATINGLAST:
-                        case ProbablyFloating:
-                        case CouldBeFloating:
-                            if(__FLOAT__TYPE__EXTRA__CHECKS(c))
-                            {   ret = CouldBeFloating; 
-                            }
-                        case ProbablyNotFloating:
-                        case DefinitelyNotFloating:
-                            break;
-                    }
-                    break;
-                    /* unused */
-                case FLOATINGLAST:
-                    break;
-
-            }
-            break;
-        }
-        case ProbablyNotFloating:
-        {
-            switch(geom)
-            {
-                case DefinitelyFloating:
-                    ret = ProbablyFloating;
-                case ProbablyFloating:
-                    switch(pos)
-                    {
-                        case DefinitelyFloating:
-                        case ProbablyFloating:
-                            ret = CouldBeFloating;
-                            break;
-                            /* unused */
-                        case FLOATINGLAST:
-                        case CouldBeFloating:
-                        case ProbablyNotFloating:
-                            if(__FLOAT__TYPE__EXTRA__CHECKS(c))
-                            {   ret = CouldBeFloating; 
-                            }
-                        case DefinitelyNotFloating:
-                            break;
-                    }
-                    break;
-                case CouldBeFloating:
-                    switch(pos)
-                    {
-                        case FLOATINGLAST:
-                        case DefinitelyFloating:
-                        case ProbablyFloating:
-                        case CouldBeFloating:
-                            if(__FLOAT__TYPE__EXTRA__CHECKS(c))
-                            {   ret = CouldBeFloating; 
-                            }
-                        case ProbablyNotFloating:
-                        case DefinitelyNotFloating:
-                            break;
-                    }
-                case ProbablyNotFloating:
-                    switch(pos)
-                    {
-                        case FLOATINGLAST:
-                        case DefinitelyFloating:
-                        case ProbablyFloating:
-                            if(__FLOAT__TYPE__EXTRA__CHECKS(c))
-                            {   ret = CouldBeFloating; 
-                            }
-                        case CouldBeFloating:
-                        case ProbablyNotFloating:
-                        case DefinitelyNotFloating:
-                            break;
-                    }
-                    break;
-                case DefinitelyNotFloating:
-                    switch(pos)
-                    {   
-                        case FLOATINGLAST:
-                        case DefinitelyFloating:
-                            if(__FLOAT__TYPE__EXTRA__CHECKS(c))
-                            {   ret = CouldBeFloating; 
-                            }
-                        case ProbablyFloating:
-                        case DefinitelyNotFloating:
-                        case ProbablyNotFloating:
-                        case CouldBeFloating:
-                            break;
-                    }
-                    break;
-                case FLOATINGLAST:
-                    break;
-            }
-            break;
-        }
-        case DefinitelyNotFloating:
-        {
-            switch(geom)
-            {
-                case DefinitelyFloating:
-                    switch(pos)
-                    {
-                        case DefinitelyFloating:
-                        case ProbablyFloating:
-                        case CouldBeFloating:
-                            ret = CouldBeFloating;
-                            break;
-                        case DefinitelyNotFloating:
-                            if(__FLOAT__TYPE__EXTRA__CHECKS(c))
-                            {   ret = CouldBeFloating; 
-                            }
-                            break;
-                        case ProbablyNotFloating:
-                        case FLOATINGLAST:
-                        default:
-                            break;
-                    }
-                case ProbablyFloating:
-                    switch(pos)
-                    {
-                        case DefinitelyFloating:
-                        case ProbablyFloating:
-                            ret = CouldBeFloating;
-                            break;
-                        case CouldBeFloating:
-                            if(__FLOAT__TYPE__EXTRA__CHECKS(c))
-                            {   ret = CouldBeFloating; 
-                            }
-                            break;
-                        case DefinitelyNotFloating:
-                        case ProbablyNotFloating:
-                        case FLOATINGLAST:
-                        default:
-                            break;
-                    }
-                    break;
-                case CouldBeFloating:
-                    switch(pos)
-                    {
-                        case DefinitelyFloating:
-                            ret = CouldBeFloating;
-                            break;
-                            /* unused */
-                        case ProbablyFloating:
-                            if(__FLOAT__TYPE__EXTRA__CHECKS(c))
-                            {   ret = CouldBeFloating; 
-                            }
-                            break;
-                        case CouldBeFloating:
-                        case DefinitelyNotFloating:
-                        case ProbablyNotFloating:
-                        case FLOATINGLAST:
-                        default:
-                            break;
-                    }
-                    break;
-                case ProbablyNotFloating:
-                case DefinitelyNotFloating:
-                    switch(pos)
-                    {
-                        case DefinitelyFloating:
-                            if(__FLOAT__TYPE__EXTRA__CHECKS(c))
-                            {   ret = CouldBeFloating; 
-                            }
-                            break;
-                        case ProbablyFloating:
-                        case CouldBeFloating:
-                        case ProbablyNotFloating:
-                        case DefinitelyNotFloating:
-                        case FLOATINGLAST:
-                        default:
-                            break;
-                    }
-                    break;
-                    /* unused */
-                case FLOATINGLAST:
-                    break;
-            }
-        }
-
-        /* unused */
-        case FLOATINGLAST:
-        {   break;
-        }
-    }
     const Monitor *m = c->desktop->mon;
-    Debug("Float state: %d", ret);
-    /* UNUSED DUE TO unreliablity.
-    switch(ret)
+
+    double total = (hints + geom + pos) / 3;
+
+    double MAX_SCORE = 100;
+
+    if(total > MAX_SCORE * .75)
+    {   return true;
+    }
+
+    if(total > MAX_SCORE * .55)
     {
-        case DefinitelyFloating:
-            break;
-        case ProbablyFloating:
-            break;
-        case CouldBeFloating:
-            break;
-        case ProbablyNotFloating:
-            break;
-        case DefinitelyNotFloating:
-            break;
-        case FLOATINGLAST:
-        default:
-            break;
+        if(__FLOAT__TYPE__EXTRA__CHECKS(c))
+        {   return true;
+        }
     }
-    */
-    /* check if in the corner */
-    if(c->x == m->mx && c->y == m->my)
-    {   
-	/* make sure the application is not resonable small to be considered,
-	 * 'Floating'
-	 */
-	const float threshold = .325f;
-	const float widthweight = .7f;
-	const float heightweight = 1 + (1 - widthweight);
 
-	i64 clientarea = (WIDTH(c) * widthweight) * (HEIGHT(c) * heightweight);
-	i64 monitorarea = m->mw * m->mh;
-
-	/* is it too big to be considerd a popup? */
-	if(clientarea > monitorarea * threshold)
-	{   ret = DefinitelyNotFloating;
-	}
-    }
-    /* Used for floating debugging, irrelavent now */
-    /* Debug("Is float: %s", ret != DefinitelyNotFloating ? "true" : "false"); */
-    return ret != DefinitelyNotFloating;   
+    return false;
 }
 
 
@@ -668,12 +347,12 @@ bool
 SHOULDBEFLOATING(Client *c) 
                                 {
                                     /* Note dont check if ISFIXED(c) as games often set that option */
-                                    const enum FloatType htype = COULDBEFLOATINGHINTS(c);
-                                    const enum FloatType gtype = COULDBEFLOATINGGEOM(c);
-                                    const enum FloatType ptype = COULDBEFLOATINGPOSITION(c);
+                                    const double htype = COULDBEFLOATINGHINTS(c);
+                                    const double gtype = COULDBEFLOATINGGEOM(c);
+                                    const double ptype = COULDBEFLOATINGPOSITION(c);
 
                                     bool ret = __FLOAT__TYPE__IS__FLOATING(c, htype, gtype, ptype);
-                                    Debug("(%d, %d, %d)", htype, gtype, ptype);
+
                                     if(!ret)
                                     {   Debug("[%s] Was Not Floating", c->wmname ? c->wmname : c->netwmname ? c->netwmname : "NULL");
                                     }
@@ -836,11 +515,70 @@ u32 ISABOVE(Client *c)          { return c->ewmhflags & WStateFlagAbove; }
 u32 ISBELOW(Client *c)          { return c->ewmhflags & WStateFlagBelow; }
 u32 DEMANDSATTENTION(Client *c) { return c->ewmhflags & WStateFlagDemandAttention; }
 u32 ISFOCUSED(Client *c)        { return c->ewmhflags & WStateFlagFocused; }
-u32 WSTATENONE(Client *c)       { return c->ewmhflags == 0; }
+u32 WSTATENONE(Client *c)       { return (c->ewmhflags & ~WStateFlagFocused) == 0; }
 /* WM Protocol */
 u32 HASWMTAKEFOCUS(Client *c)   { return c->ewmhflags & WStateFlagWMTakeFocus; }
 u32 HASWMSAVEYOURSELF(Client *c){ return c->ewmhflags & WStateFlagWMSaveYourself; }
 u32 HASWMDELETEWINDOW(Client *c){ return c->ewmhflags & WStateFlagWMDeleteWindow; }
+
+/* manage */
+u32 CANMANAGE(XCBWindow win, XCBGetWindowAttributes *waattributes, XCBWindowProperty *wastate) {
+                    u32 *data = NULL;
+                    uint32_t size = 0;
+                    int status = 0;
+
+                    enum { NO_FORMAT = 1 };
+
+                    if(wastate)
+                    {   
+                        data = XCBGetWindowPropertyValue(wastate);
+                        status = XCBGetWindowPropertyValueSize(wastate, &size);
+                    }
+
+                    if(waattributes && waattributes->override_redirect)
+                    {
+                        /* theoredically we could manage these but they are a hastle to deal with */
+                        if(waattributes->override_redirect)
+                        {
+                            Debug("Override Redirect: [%d]", win);
+                            goto NO_MANAGE;
+                        }
+                        switch(waattributes->map_state)
+                        {
+                            case XCB_MAP_STATE_VIEWABLE:
+                                break;
+                            case XCB_MAP_STATE_UNVIEWABLE:
+                            case XCB_MAP_STATE_UNMAPPED:
+                            default:
+                                /* if the window is 'iconic' we dont handle that as of vox-wm v3.2.0, so we just treat as normal window */
+                                if(wastate)
+                                {
+                                    if(status == NO_FORMAT)
+                                    {   goto NO_MANAGE;
+                                    }
+
+                                    if(size != sizeof(u32))
+                                    {   Debug("Format is incorrect while processing WMState for [%d]", win);
+                                    }
+
+                                    if(data && *data != XCB_ICCCM_WM_STATE_ICONIC)
+                                    {   goto NO_MANAGE;
+                                    }
+                                }
+                                goto NO_MANAGE;
+                        }
+                    }
+
+                    if(wastate)
+                    {
+                        if(status != NO_FORMAT && data && *data == XCB_ICCCM_WM_STATE_WITHDRAWN)
+                        {   goto NO_MANAGE;
+                        }
+                    }
+                    return 1;
+NO_MANAGE:
+                    return 0;
+                }
 
 void
 applygravity(const enum XCBBitGravity gravity, int32_t *x, int32_t *y, const uint32_t w, const uint32_t h, const uint32_t bw)
@@ -1159,13 +897,16 @@ void
 focus(Client *c)
 {
     Monitor *selmon = _wm.selmon;
-    Desktop *desk  = selmon->desksel;
+    Desktop *desk = selmon->desksel;
+
     c = focusrealize(c);
+
     if(desk->sel && desk->sel != c)
     {   unfocus(desk->sel, 0);
     }
+
     if(c)
-    {
+    {   
         if(ISURGENT(c))
         {   seturgent(c, 0);
         }
@@ -1175,12 +916,14 @@ focus(Client *c)
         setfocus(c);
     }
     else
-    {   
+    {
         XCBSetInputFocus(_wm.dpy, _wm.root, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
         XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow]);
+
     }
     desk->sel = c;
-    Debug("Focused: [%d]", c ? c->win : 0);
+
+    /* Debug("Attempted to Focus: [%d]", c ? c->win : 0); */
 }
 
 Client *
@@ -1188,17 +931,21 @@ focusrealize(Client *c)
 {
     Monitor *selmon = _wm.selmon;
     Desktop *desk  = selmon->desksel;
+
     if(!c || !ISVISIBLE(c) || NEVERHOLDFOCUS(c))
     {   for(c = startfocus(desk); c && !ISVISIBLE(c) && !KEEPFOCUS(c); c = nextfocus(c));
     }
-    if(c)
+
+    if(c && ISFOCUSED(c))
     {
         if(c->desktop->mon != _wm.selmon)
         {   setmonsel(c->desktop->mon);
         }
+
         if(c->desktop != _wm.selmon->desksel)
         {   setdesktopsel(_wm.selmon, c->desktop);
         }
+
         detachfocus(c);
         attachfocus(c);
     }
@@ -1233,6 +980,7 @@ grabbuttons(Client *c, uint8_t focused)
         {   XCBUngrabButton(_wm.dpy, buttons[j].button, modifiers[i], c->win);
         }
     }
+
     if (!focused)
     {
         /* grab focus buttons */
@@ -1387,6 +1135,7 @@ managerequest(XCBWindow win, XCBCookie requests[ManageClientLAST])
     requests[ManageClientWState] = PropGetWindowStateCookie(_wm.dpy, win);
     requests[ManageClientSizeHint] = PropGetSizeHintsCookie(_wm.dpy, win);
     requests[ManageClientWMHints] = PropGetWMHintsCookie(_wm.dpy, win);
+    requests[ManageClientWMState] = PropGetWMStateCookie(_wm.dpy, win);
     requests[ManageClientClass] = PropGetWMClassCookie(_wm.dpy, win);
     requests[ManageClientWMProtocol] = PropGetWMProtocolCookie(_wm.dpy, win);
     requests[ManageClientStrut] = PropGetStrutCookie(_wm.dpy, win);
@@ -1417,11 +1166,11 @@ managereplies(XCBCookie requests[ManageClientLAST], void *replies[ManageClientLA
     XCBWindowProperty *netwmnamereply;
     XCBWindowProperty *wmnamereply;
     XCBWindowProperty *iconreply;
-    pid_t pid = 0;
+    XCBWindowProperty *wastates;
     XCBWindowProperty *motifreply;
+    pid_t pid = 0;
     XCBWindow trans;
     u8 transstatus;
-
     /* wait for replies */
     waattributes = XCBGetWindowAttributesReply(_wm.dpy, requests[ManageClientAttributes]);
     wg = XCBGetWindowGeometryReply(_wm.dpy, requests[ManageClientGeometry]);
@@ -1437,8 +1186,9 @@ managereplies(XCBCookie requests[ManageClientLAST], void *replies[ManageClientLA
     netwmnamereply = XCBGetWindowPropertyReply(_wm.dpy, requests[ManageClientNetWMName]);
     wmnamereply = XCBGetWindowPropertyReply(_wm.dpy, requests[ManageClientWMName]);
     iconreply = XCBGetWindowPropertyReply(_wm.dpy, requests[ManageClientIcon]);
-    pid = XCBGetPidReply(_wm.dpy, requests[ManageClientPid]);
+    wastates = XCBGetWindowPropertyReply(_wm.dpy, requests[ManageClientWMState]);
     motifreply = XCBGetWindowPropertyReply(_wm.dpy, requests[ManageClientMotif]);
+    pid = XCBGetPidReply(_wm.dpy, requests[ManageClientPid]);
 
 
     XCBWindow *transreply = NULL;
@@ -1504,6 +1254,7 @@ managereplies(XCBCookie requests[ManageClientLAST], void *replies[ManageClientLA
     replies[ManageClientStrutP] = strutpreply;
     replies[ManageClientNetWMName] = netwmnamereply;
     replies[ManageClientWMName] = wmnamereply;
+    replies[ManageClientWMState] = wastates;
     replies[ManageClientPid] = pidreply;
     replies[ManageClientIcon] = iconreply;
     replies[ManageClientMotif] = motifreply;
@@ -1516,6 +1267,9 @@ manage(XCBWindow win, void *replies[ManageClientLAST])
     Monitor *m = NULL;
     Client *c = NULL;
     /* checks */
+    if(IS_WM_WINDOW(win))
+    {   goto FAILURE;
+    }
     if(!SHOULDMANAGE(win))
     {   
         Debug("Cannot manage(): [%u]", win);
@@ -1544,24 +1298,23 @@ manage(XCBWindow win, void *replies[ManageClientLAST])
     XCBWindowProperty *netwmnamereply = replies[ManageClientNetWMName];
     XCBWindowProperty *wmnamereply = replies[ManageClientWMName];
     XCBWindowProperty *iconreply = replies[ManageClientIcon];
+    XCBWindowProperty *wastatereply = replies[ManageClientWMState];
     pid_t *pid = replies[ManageClientPid];
     XCBWindowProperty *motifreply = replies[ManageClientMotif];
     XCBWindow *trans = replies[ManageClientTransient];
 
     u32 *strutp = strutp = strutpreply ? XCBGetWindowPropertyValue(strutpreply) : NULL;
     u32 *strut = strut = strutreply ? XCBGetWindowPropertyValue(strutpreply) : NULL;
-    
+
+    if(!CANMANAGE(win, waattributes, wastatereply))
+    {   goto FAILURE;
+    }
 
     if(!c)
     {   goto FAILURE;
     }
-    c->win = win;
 
-    if(waattributes && waattributes->override_redirect)
-    {   Debug("Override Redirect: [%d]", win);
-        /* theoredically we could manage these but they are a hastle to deal with */
-        goto FAILURE;
-    }
+    c->win = win;
 
     /* this sets up the desktop which is quite important for some operations */
     clientinitcolormap(c, waattributes);
@@ -1592,6 +1345,7 @@ manage(XCBWindow win, void *replies[ManageClientLAST])
     m = c->desktop->mon;
 
     addclienthash(c);
+
     attach(c);
     attachstack(c);
     attachfocus(c);
@@ -1600,11 +1354,24 @@ manage(XCBWindow win, void *replies[ManageClientLAST])
     setwtypemapnormal(c, 1);
     setclientstate(c, XCB_WINDOW_NORMAL_STATE);
     /* add to hash */
-    /* propagates border_width, if size doesn't change */
-    configure(c);
     /* if its a new bar we dont want to return it as the monitor now manages it */
     if(!checknewbar(m, c, strut || strutp))
     {   c = NULL;
+    }
+    /* this is not a bar */
+    else
+    {
+        /* are we a fixed client */
+        if(ISFIXED(c))
+        {
+            /* has the client its coords? */
+            if(c->x == m->mx && c->y == m->my)
+            {   /* center it */
+                resizemove(c, m->wx + m->ww / 2 - WIDTH(c), m->wy + m->wh / 2 - HEIGHT(c) / 2, 1);
+            }
+        }
+        /* propagates border_width, if size doesn't change */
+        configure(c);
     }
     goto CLEANUP;
 FAILURE:
@@ -1717,6 +1484,7 @@ prevvisible(Client *c)
 void
 resize(Client *c, i32 x, i32 y, i32 width, i32 height, uint8_t interact)
 {
+    Debug("(x: %d, y: %d), (w: %d, h: %d)", x, y, width, height);
     if(applysizehints(c, &x, &y, &width, &height, interact))
     {   resizeclient(c, x, y, width, height);
     }
@@ -1775,9 +1543,24 @@ resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
     else
     {   Debug("[%u] Not visible", c->win);
     }
+
     /* only send config if changed */
     if(mask)
-    {   configure(c);
+    {   
+        if(DOCKEDVERT(c) && !ISMAXVERT(c))
+        {   setclientnetstate(c, netatom[NetWMStateMaximizedVert], 1);
+        }
+        if(!DOCKEDVERT(c) && ISMAXVERT(c))
+        {   setclientnetstate(c, netatom[NetWMStateMaximizedVert], 0);
+        }
+
+        if(DOCKEDHORZ(c) && !ISMAXHORZ(c))
+        {   setclientnetstate(c, netatom[NetWMStateMaximizedHorz], 1);
+        }
+        if(!DOCKEDHORZ(c) && ISMAXHORZ(c))
+        {   setclientnetstate(c, netatom[NetWMStateMaximizedHorz], 0);
+        }
+        configure(c);
     }
 }
 
@@ -2125,15 +1908,16 @@ setfloating(Client *c, uint8_t state)
 void
 setfocus(Client *c)
 {
+    if(HASWMTAKEFOCUS(c))
+    {   sendprotocolevent(c, wmatom[WMTakeFocus]);
+    
+    }
     if(!NEVERHOLDFOCUS(c))
     {
         XCBSetInputFocus(_wm.dpy, c->win, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
         XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&(c->win), 1);
         setclientnetstate(c, netatom[NetWMStateFocused], 1);
         SETFLAG(c->ewmhflags, WStateFlagFocused, 1);
-    }
-    if(HASWMTAKEFOCUS(c))
-    {   sendprotocolevent(c, wmatom[WMTakeFocus]);
     }
 }
 
@@ -2251,11 +2035,13 @@ unfocus(Client *c, uint8_t setfocus)
     grabbuttons(c, 0);
     XCBSetWindowBorder(_wm.dpy, c->win, c->bcol);
     setclientnetstate(c, netatom[NetWMStateFocused], 0);
+
     if(setfocus)
     {   
         XCBSetInputFocus(_wm.dpy, _wm.root, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
         XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow]);
     }
+
     SETFLAG(c->ewmhflags, WStateFlagFocused, 0);
 }
 
@@ -2743,6 +2529,7 @@ updatewindowstate(Client *c, XCBAtom state, uint8_t add_remove_toggle)
     if(!state)
     {   return;
     }
+
     const u8 toggle = add_remove_toggle == 2;
     /* This is similiar to those Windows 10 dialog boxes that play the err sound and cant click anything else */
     if (state == netatom[NetWMStateModal])

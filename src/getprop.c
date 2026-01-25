@@ -56,18 +56,18 @@ PropListenArg(
     usethreads = _wm.use_threads;
     UNLOCK_WM();
 
-    if(!usethreads)
-    {   
-        Debug0("Using single threads: NO_MULTI_THREAD");
-        goto SINGLE_THREAD;
-    }
-
     if(type == PropExitThread)
     { 	return;
     }
 
     GetPropCookie cookie = { .win = win, .type = type, .arg = arg };
     Generic data = {0};
+
+    if(!usethreads)
+    {   
+        Debug0("Using single threads: NO_MULTI_THREAD");
+        goto SINGLE_THREAD;
+    }
 
     data.datav[0] = malloc(sizeof(GetPropCookie));
 
@@ -78,7 +78,7 @@ PropListenArg(
     }
     else
     {
-	*(GetPropCookie *)data.datav[0] = cookie;
+        *(GetPropCookie *)data.datav[0] = cookie;
         status = ThreadingAddWork(Worker, &data, NULL);
 
         /* TODO MEMORY LEAK? */

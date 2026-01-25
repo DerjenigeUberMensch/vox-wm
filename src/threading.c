@@ -26,6 +26,7 @@ WorkItem
 int
 InitThreading(void)
 {
+    return EXIT_FAILURE;
     pthread_mutex_lock(&__thread_mutex);
 
     if(__thread__pool)
@@ -63,10 +64,17 @@ ThreadingWorker(void *arg)
 {
     WorkItem *work = (WorkItem *)arg;
 
-    ASSERT(work->func);
+    if(!ASSERT(work))
+    {   return;
+    }
+
+    if(!ASSERT(work->func))
+    {   goto CLEANUP;   
+    }
 
     work->func(&work->arg);
     
+CLEANUP:
     if(work->promise)
     {   ResolveTPromise(work->promise, NULL);
     }
@@ -77,9 +85,7 @@ ThreadingWorker(void *arg)
 int
 ThreadingAddWork(void (*function)(Generic *arg), Generic *arg, TPromise *optional_tpromise_to_use)
 {
-    ASSERT(function);
-
-    if(!function)
+    if(!ASSERT(function))
     {   return EXIT_FAILURE;
     }
 

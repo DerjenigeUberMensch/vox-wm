@@ -53,7 +53,8 @@ EWMHFlags
 /* Window map states, Widthdrawn, Iconic, Normal. */
 #define WStateFlagMapIconic     (1u << 31)
 
-enum WMMapState
+enum 
+WMMapState
 {
     WMMapStateMapped,
     WMMapStateUnmapped,
@@ -72,7 +73,8 @@ ClientFlags
 };
 
 /* kill client type */
-enum KillType 
+enum 
+KillType 
 { 
     Graceful, 
     Safedestroy, 
@@ -81,39 +83,28 @@ enum KillType
 
 /* Manage cookies */
 /* Manage cookies */
-enum ManageClientProperties
+enum 
+ManageClientProperties
 {
     ManageClientAttributes,
     ManageClientGeometry,
     ManageClientTransient,
+    ManageClientSizeHint,
     ManageClientWType,
     ManageClientWState,
-    ManageClientSizeHint,
+    ManageClientNetWMName,
     ManageClientWMHints,
-    ManageClientClass,
+    ManageClientWMState,
+    ManageClientWMName,
     ManageClientWMProtocol,
+    ManageClientClass,
     ManageClientStrutP,
     ManageClientStrut,
-    ManageClientNetWMName,
-    ManageClientWMName,
     ManageClientPid,
     ManageClientIcon,
     ManageClientMotif,
-    
 
     ManageClientLAST
-};
-
-enum
-FloatType
-{
-    DefinitelyFloating,
-    ProbablyFloating,
-    CouldBeFloating,
-    ProbablyNotFloating,
-    DefinitelyNotFloating,
-
-    FLOATINGLAST,
 };
 
 typedef struct Client Client;
@@ -384,6 +375,10 @@ void NonNull setborderwidth(Client *c, uint16_t border_width);
 void NonNull setclientdesktop(Client *c, struct Desktop *desktop);
 /* Sets the clients wmatom[WMState] property. */
 void NonNull setclientstate(Client *c, uint8_t state);
+/* Sets the clients netatom[NetWMWindowType] property. */
+void NonNull setclientwtype(Client *c, XCBAtom atom, u8 state);
+/* Sets the clients netatom[NetWMState] property. */
+void NonNull setclientnetstate(Client *c, XCBAtom atom, u8 state);
 /* Sets the decor visibility. */
 void NonNull setdecorvisible(Client *c, uint8_t state);
 /* Sets the flag to disable border >>CHANGES<< for a client. */
@@ -559,8 +554,8 @@ uint32_t NonNull DISABLEBORDER(Client *c);
 uint32_t NonNull DOCKEDVERT(Client *c);
 uint32_t NonNull DOCKEDHORZ(Client *c);
 uint32_t NonNull DOCKED(Client *c);
-enum FloatType NonNull COULDBEFLOATINGGEOM(Client *c);
-enum FloatType NonNull COULDBEFLOATINGHINTS(Client *c);
+double NonNull COULDBEFLOATINGGEOM(Client *c);
+double NonNull COULDBEFLOATINGHINTS(Client *c);
 bool NonNull SHOULDBEFLOATING(Client *c);
 uint32_t NonNull SHOULDMAXIMIZE(Client *c);
 uint32_t NonNull DOCKEDINITIAL(Client *c);
@@ -613,6 +608,7 @@ uint32_t NonNull ISABOVE(Client *c);
 uint32_t NonNull ISBELOW(Client *c);
 uint32_t NonNull DEMANDSATTENTION(Client *c);
 uint32_t NonNull ISFOCUSED(Client *c);
+uint32_t NonNull WSTATENONE(Client *c);
 
 /* WM Protocol */
 uint32_t NonNull HASWMTAKEFOCUS(Client *c);
@@ -623,6 +619,9 @@ uint16_t NonNull OLDWIDTH(Client *c);
 uint16_t NonNull OLDHEIGHT(Client *c);
 uint16_t NonNull WIDTH(Client *c);
 uint16_t NonNull HEIGHT(Client *c);
+
+/* manage */
+uint32_t CANMANAGE(XCBWindow win, XCBGetWindowAttributes *waattributes, XCBWindowProperty *wastate);
 
 
 

@@ -111,8 +111,8 @@ UserStats(const Arg *arg)
         if(c->icon)
         {
             u32 *icon = c->icon;
-            u32 i;
-            u32 j;
+            u64 i;
+            u64 j;
             static XCBWindow win = 0;
             if(win)
             {   XCBDestroyWindow(_wm.dpy, win);
@@ -126,7 +126,7 @@ UserStats(const Arg *arg)
                 {
                     if(icon[icon[1] * j + i])
                     {
-                        XCBSetForeground(_wm.dpy, gc, icon[icon[1] * j + i] & ~(UINT8_MAX << 24));
+                        XCBSetForeground(_wm.dpy, gc, icon[icon[1] * j + i] & ~((uint32_t)UINT8_MAX << 24));
                         XCBDrawPoint(_wm.dpy, XCB_COORD_MODE_ORIGIN, win, gc, i, j);
                     }
                 }

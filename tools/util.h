@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <assert.h>
 
 #include "safebool.h"
 
@@ -184,8 +185,12 @@ union ARGB
                                     "\n", __FILE__,__LINE__,__func__,__VA_ARGS__); exit(EXIT_FAILURE); } while (0)
 #endif
 
+#ifndef STATIC_ASSERT
+#define STATIC_ASSERT(cond, msg) typedef char static_assertion_##msg[(cond) ? 1 : -1]
+#endif
 
-#ifdef DEBUG
+
+#ifndef NDEBUG
 
 #ifndef Debug
 #define Debug(fmt, ...) (fprintf(stderr, "[%s:%d] by %s(): " fmt "\n", __FILE__,__LINE__,__func__,__VA_ARGS__))
@@ -201,10 +206,14 @@ union ARGB
 
 #ifndef ASSERT
 #include <assert.h>
-#define ASSERT(X) (assert(X))
+#define ASSERT(expr) (assert(expr), (expr))
 #endif
 
 #else
+
+#ifdef DEBUG
+STATIC_ASSERT(0, cannot_run_debug_with_ndebug)
+#endif
 
 #ifndef Debug
 #define Debug(fmt, ...) ((void)0)
@@ -219,9 +228,8 @@ union ARGB
 #endif
 
 #ifndef ASSERT
-#define ASSERT(X)       ((void)0)
+#define ASSERT(expr)       ((expr) ? 1 : (assert(expr), 0))
 #endif
-
 
 #endif
 
@@ -648,8 +656,6 @@ union ARGB
     }                                           \
     HEAD = __s__;
 
-
-
 /* Functions */
 
 /*
@@ -685,6 +691,12 @@ bool memnonempty(void *mem, size_t size);
  * RETURN: false otherwise.
  */
 bool memfilled(void *mem, size_t size);
+
+
+#ifndef __intersect_area
+#define __intersect_area(x1_start, y1_start, x1_end, y1_end, x2_start, y2_start, x2_end, y2_end) ((MAX(0, MIN(x1_end, x2_end) - MAX(x1_start, x2_start))) * (MAX(0, MIN(y1_end, y2_end) - MAX(y1_start, y2_start))))
+#endif
+
 
 #ifdef __linux__ 
 

@@ -9,27 +9,6 @@
 extern WM _wm;
 extern UserSettings _cfg;
 
-static uint32_t 
-__intersect_area(
-        /* rect 1 */
-        int32_t x1, 
-        int32_t y1, 
-        int32_t x2, 
-        int32_t y2,
-        /* rect 2 */
-        int32_t x3,
-        int32_t y3,
-        int32_t x4,
-        int32_t y4
-        )
-{
-    const int32_t xoverlap = MAX(0, MIN(x2, x4) - MAX(x1, x3));
-    const int32_t yoverlap = MAX(0, MIN(y2, y4) - MAX(y1, y3));
-    const uint32_t area = xoverlap * yoverlap;
-    return area;
-}
-
-
 u32 COULDBEBAR(Client *c, uint8_t strut) 
                                 {
                                     const u8 sticky = !!ISSTICKY(c);
