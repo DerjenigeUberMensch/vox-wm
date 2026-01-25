@@ -26,7 +26,6 @@ WorkItem
 int
 InitThreading(void)
 {
-    return EXIT_FAILURE;
     pthread_mutex_lock(&__thread_mutex);
 
     if(__thread__pool)
@@ -165,7 +164,7 @@ ThreadingResume(void)
 }
 
 int 
-ThreadingGetNumWorking()
+ThreadingGetNumWorking(void)
 {
     int ret = 0;
 
@@ -181,7 +180,7 @@ ThreadingGetNumWorking()
 }
 
 bool
-ThreadingUsesThreads()
+ThreadingUsesThreads(void)
 {   
     bool use_threads = false;
 

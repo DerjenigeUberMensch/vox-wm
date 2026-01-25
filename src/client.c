@@ -321,8 +321,6 @@ __FLOAT__TYPE__IS__FLOATING(
         double pos
         )
 {
-    const Monitor *m = c->desktop->mon;
-
     double total = (hints + geom + pos) / 3;
 
     double MAX_SCORE = 100;
@@ -1484,7 +1482,7 @@ prevvisible(Client *c)
 void
 resize(Client *c, i32 x, i32 y, i32 width, i32 height, uint8_t interact)
 {
-    Debug("(x: %d, y: %d), (w: %d, h: %d)", x, y, width, height);
+    // Debug("(x: %d, y: %d), (w: %d, h: %d)", x, y, width, height);
     if(applysizehints(c, &x, &y, &width, &height, interact))
     {   resizeclient(c, x, y, width, height);
     }

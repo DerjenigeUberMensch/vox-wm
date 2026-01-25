@@ -511,7 +511,7 @@ updateclientlist(XCBWindow win, uint8_t type)
             }
 
             /* if we found it then we shouldnt add it back as a duplicate, instead append to end. */
-            if(!ASSERT(type == ClientListAdd))
+            if(type == ClientListAdd)
             {   
                 /* ignore status, as we cant do much if it fails */
                 GArrayPushBack(&_wm.clients, &win);
@@ -520,6 +520,12 @@ updateclientlist(XCBWindow win, uint8_t type)
             break;
         }
     }
+
+    /* if the it is equal to nothing then we have no clients add it. */
+    if(it == GArrayEnd(&_wm.clients))
+    {   GArrayPushBack(&_wm.clients, &win);
+    }
+
 
     void *data = NULL;
     size_t size = 0;
@@ -535,6 +541,11 @@ updateclientlist(XCBWindow win, uint8_t type)
     {   
         Debug0("item size is incorrect size.");
         return;
+    }
+
+    for(garray_i i = GArrayStart(&_wm.clients); i < GArrayEnd(&_wm.clients); ++i)
+    {   
+        Debug("%d", *(XCBWindow *)GArrayAt(&_wm.clients, i));
     }
     
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientList], 
