@@ -102,6 +102,20 @@ PropGetSizeHintsCookie(XCBDisplay *display, XCBWindow win)
 }
 
 XCBCookie
+PropGetWMStateCookie(XCBDisplay *display, XCBWindow win)
+{   
+    const uint8_t NO_BYTE_OFFSET = 0;
+    const uint8_t WM_STATE_SIZE = 2;
+    const uint8_t WINDOW_STATE_INDEX = 0;
+    const uint8_t WINDOW_ICON_WINDOW = 1;
+
+    (void)WINDOW_STATE_INDEX;
+    (void)WINDOW_ICON_WINDOW;
+
+    return XCBGetWindowPropertyCookie(display, win, wmatom[WMState], NO_BYTE_OFFSET, WM_STATE_SIZE, False, wmatom[WMState]);
+}
+
+XCBCookie
 PropGetWMHintsCookie(XCBDisplay *display, XCBWindow win)
 {   return XCBGetWMHintsCookie(display, win);
 }
@@ -494,6 +508,7 @@ PropUpdateManage(
     LOCK_WM();
 
     c = manage(win, replies);
+
     if(c)
     {
         /* Dont waste extra resources if not visible */

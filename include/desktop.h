@@ -52,7 +52,7 @@ void NonNull arrange(Desktop *desk);
  * NOTE: Does not restack windows.
  */
 void NonNull arrangedesktop(Desktop *desk);
-/* Adds Client to clients desktop linked list.
+/* Adds Client to support _NET_CLIENT_LIST.
 */
 void NonNull attach(Client *c);
 /* Adds Client to rendering stack order in desktop linked list.

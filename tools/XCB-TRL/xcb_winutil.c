@@ -19,10 +19,10 @@ static const char *const WM_ATOM_NAMES[WMLast]=
     [WMColormapWindows]   = "WM_COLORMAP_WINDOWS",
     [WMClientMachine]     = "WM_CLIENT_MACHINE",
     [WMCommand]           = "WM_COMMAND",
+    [WMProtocols]         = "WM_PROTOCOLS",
     [WMTakeFocus]         = "WM_TAKE_FOCUS",
     [WMSaveYourself]      = "WM_SAVE_YOURSELF", /* (deprecated) */
     [WMDeleteWindow]      = "WM_DELETE_WINDOW", 
-    [WMProtocols]         = "WM_PROTOCOLS",
     [WMState]             = "WM_STATE",
     [WMChangeState]       = "WM_CHANGE_STATE"
 };
@@ -39,10 +39,10 @@ static const unsigned int WM_ATOM_LEN[WMLast] =
     [WMColormapWindows]   = sizeof("WM_COLORMAP_WINDOWS") - 1,
     [WMClientMachine]     = sizeof("WM_CLIENT_MACHINE") - 1,
     [WMCommand]           = sizeof("WM_COMMAND") - 1,
+    [WMProtocols]         = sizeof("WM_PROTOCOLS") - 1,
     [WMTakeFocus]         = sizeof("WM_TAKE_FOCUS") - 1,
     [WMSaveYourself]      = sizeof("WM_SAVE_YOURSELF") - 1, /* (deprecated) */
     [WMDeleteWindow]      = sizeof("WM_DELETE_WINDOW") - 1,
-    [WMProtocols]         = sizeof("WM_PROTOCOLS") - 1,
     [WMState]             = sizeof("WM_STATE") - 1,
     [WMChangeState]       = sizeof("WM_CHANGE_STATE") - 1
 };

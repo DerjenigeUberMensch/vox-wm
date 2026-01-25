@@ -456,6 +456,7 @@ leavenotify(XCBGenericEvent *event)
 }
 
 /* there are some broken focus acquiring clients needing extra handling */
+
 void
 focusin(XCBGenericEvent *event)
 {
@@ -470,11 +471,16 @@ focusin(XCBGenericEvent *event)
     u8 sync = 0;
 
     Client *sel = _wm.selmon->desksel->sel;
+
     if(sel && eventwin != sel->win)
-    {   
+    {
         setfocus(sel);
         sync = 1;
     }
+
+
+    Debug("Focused: [%d]", eventwin);
+
     if(sync)
     {   XCBFlush(_wm.dpy);
     }
@@ -1235,9 +1241,19 @@ clientmessage(XCBGenericEvent *event)
                 arrange(c->desktop);
             }
         }
-
+        else if (atom == wmatom[WMProtocols])
+        {   
+            XCBAtom _atom = l0;
+            XCBTimestamp _time = l1;
+            (void)_time;
+            XCBWMProtocols proto;
+            proto.atoms = &_atom;
+            proto.atoms_len = 1;
+            updatewindowprotocol(c, &proto);
+            sync = 1;
+        }
         /* NET_WM */
-        if(atom == netatom[NetWMState])
+        else if(atom == netatom[NetWMState])
         {
             const u8 action = l0;   /* remove: 0 
                                      * add: 1 
@@ -1460,17 +1476,6 @@ clientmessage(XCBGenericEvent *event)
                     }
                 }
             }
-        }
-        else if (atom == netatom[WMProtocols])
-        {   
-            XCBAtom _atom = l0;
-            XCBTimestamp _time = l1;
-            (void)_time;
-            XCBWMProtocols proto;
-            proto.atoms = &_atom;
-            proto.atoms_len = 1;
-            updatewindowprotocol(c, &proto);
-            sync = 1;
         }
         else if (atom == netatom[NetWMFullscreenMonitors])
         {   /* TODO */

@@ -98,6 +98,8 @@ arrangedesktop(Desktop *desk)
                                                                     STRUCT->NEXT = NULL;                                        \
                                                                     STRUCT->PREV = NULL;                                        \
                                                                 } while(0)
+
+
 void
 attach(Client *c)
 {
@@ -481,9 +483,6 @@ stackpriority(Client *c1, Client *c2)
      */
     static const u32 BELOW_PRIORTY[] = 
     {
-        /* Apparently this is just a proxy for 'background image' type windows. */
-        WTypeFlagDesktop,
-
         WStateFlagBelow,
         WStateFlagHidden,
     };
@@ -495,6 +494,9 @@ stackpriority(Client *c1, Client *c2)
      */
     static const u32 ABOVE_PRIORITY[] = 
     {
+        /* Due to the lack of virtual desktop handling this is no used by default. */
+        /* WTypeFlagDesktop, */
+
         WTypeFlagDock,
         WTypeFlagSplash,
         WTypeFlagNotification,

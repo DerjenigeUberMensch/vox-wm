@@ -105,6 +105,12 @@ PropGetSizeHintsCookie(
         );
 
 XCBCookie NonNull
+PropGetWMStateCookie(
+        XCBDisplay *display,
+        XCBWindow window
+        );
+
+XCBCookie NonNull
 PropGetWMHintsCookie(
         XCBDisplay *display, 
         XCBWindow window

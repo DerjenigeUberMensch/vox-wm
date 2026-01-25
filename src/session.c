@@ -10,16 +10,12 @@
 
 
 #include "main.h"
-
 #include "parser.h"
 #include "session.h"
 #include "config.h"
 #include "file_util.h"
 
 extern WM _wm;
-
-
-
 
 enum
 {

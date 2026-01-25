@@ -33,6 +33,7 @@
 #include "keybinds.h"
 #include "safebool.h"
 #include "threading.h"
+/* #include "watchdog.h" */
 
 /* for HELP/DebugGING see under main() or the bottom */
 
@@ -109,7 +110,8 @@ checkotherwm(void)
         free(ev);
         XCBCloseDisplay(_wm.dpy);
         if(response == 0) 
-        {   DIECAT("%s", "FATAL: ANOTHER WINDOW MANAGER IS RUNNING.");
+        {   
+            DIECAT("%s", "FATAL: ANOTHER WINDOW MANAGER IS RUNNING.");
         }
         /* UNREACHABLE */
         DIECAT("%s", "FATAL: UNKNOWN REPONSE_TYPE");
@@ -129,8 +131,7 @@ cleanup(void)
     {
         /* sometimes due to our own lack of competence we can call quit twice and segfault here */
         if(_wm.selmon)
-        {
-            Debug0("Some data has not been freed exiting due to possible segfault.");
+        {   Debug0("Some data has not been freed exiting due to possible segfault.");
         }
         return;
     }
@@ -151,6 +152,8 @@ cleanup(void)
     XCBFlush(_wm.dpy);
     /* Free hashmap */
     cleanupclienthash();
+    GArrayWipe(&_wm.clients);
+    unsetenv("GTK_CSD");
     if(_wm.dpy)
     {
         XCBCloseDisplay(_wm.dpy);
@@ -661,12 +664,14 @@ run(void)
 {
     XCBGenericEvent *ev = NULL;
     XCBSync(_wm.dpy);
+    
     while(_wm.running && !XCBNextEvent(_wm.dpy, &ev))
     {
-        eventhandler(ev); 
+        eventhandler(ev);
         free(ev);
         ev = NULL;
     }
+
     _wm.has_error = XCBCheckDisplayError(_wm.dpy);
 }
 
@@ -832,26 +837,18 @@ scan(void)
             const size_t countsz = sizeof(XCBCookie ) * num;
             const size_t managecookiesz = sizeof(XCBCookie) * ManageClientLAST;
             const size_t managerepliesz = sizeof(void *) * ManageClientLAST;
-            XCBCookie *wa = malloc(countsz);
-            XCBCookie *wastates = malloc(countsz);
             XCBCookie *tfh = malloc(countsz);
             XCBCookie *managecookies = malloc(managecookiesz * num);
             void **managereplys = malloc(managerepliesz * num);
-            XCBGetWindowAttributes **replies = malloc(sizeof(XCBGetWindowAttributes *) * num);
-            XCBGetWindowAttributes **replystates = malloc(sizeof(XCBGetWindowAttributes *) * num);
             XCBWindow *trans = malloc(sizeof(XCBWindow) * num);
             uint64_t index;
 
 
-            if(!wa || !wastates || !tfh || !managecookies || !managereplys || !replies || !replystates || !trans)
+            if(!tfh || !managecookies || !managereplys || !trans)
             {   
-                free(wa);
-                free(wastates);
                 free(tfh);
                 free(managecookies);
                 free(managereplys);
-                free(replies);
-                free(replystates);
                 free(trans);
                 free(tree);
                 return;
@@ -859,14 +856,8 @@ scan(void)
 
             for(i = 0; i < num; ++i)
             {
-		/* skip window manager related window. */
-		if(IS_WM_WINDOW(wins[i]))
-		{   continue;
-		}
-
-                wa[i] = XCBGetWindowAttributesCookie(_wm.dpy, wins[i]);
-                /* this specifically queries for the state which wa[i] might fail to provide */
-                wastates[i] = XCBGetWindowPropertyCookie(_wm.dpy, wins[i], wmatom[WMState], 0L, 2L, False, wmatom[WMState]);
+                /* init value */
+                trans[i] = 0;
                 tfh[i] = XCBGetTransientForHintCookie(_wm.dpy, wins[i]);
                 index = i * ManageClientLAST;
                 managerequest(wins[i], managecookies + index);
@@ -876,84 +867,47 @@ scan(void)
             /* get them replies back */
             for(i = 0; i < num; ++i)
             {
-		/* skip window manager related window. */
-		if(IS_WM_WINDOW(wins[i]))
-		{   continue;
-		}
-
-                replies[i] = XCBGetWindowAttributesReply(_wm.dpy, wa[i]);
-                replystates[i] = XCBGetWindowAttributesReply(_wm.dpy, wastates[i]);
                 hastrans = XCBGetTransientForHintReply(_wm.dpy, tfh[i], &trans[i]);
-                index = ManageClientLAST * i;
-                managereplies(managecookies + index, managereplys + index);
 
-                if(!hastrans)
-                {   trans[i] = 0;
-                }
+                trans[i] = hastrans;
+
+                index = ManageClientLAST * i;
+
+                managereplies(managecookies + index, managereplys + index);
             }
 
             /* Manage the Windows */
             for(i = 0; i < num; ++i)
             {
-		/* skip window manager related window. */
-		if(IS_WM_WINDOW(wins[i]))
-		{   continue;
-		}
-
-                /* override_redirect only needed to be handled for old windows */
-                /* X auto redirects when running wm so no need to do anything else */
-                if(replies[i]->override_redirect || trans[i]) 
+                if(trans[i]) 
                 {   continue;
                 }
+
                 index = ManageClientLAST * i;
-                if(replies[i] && replies[i]->map_state == XCB_MAP_STATE_VIEWABLE)
-                {   manage(wins[i], managereplys + index);
-                }
-                else if(replystates[i] && replystates[i]->map_state == XCB_WINDOW_ICONIC_STATE)
-                {   manage(wins[i], managereplys + index);
-                }
+
+                manage(wins[i], managereplys + index);
             }
 
             /* now the transients */
             for(i = 0; i < num; ++i)
             {   
-		/* skip window manager related window. */
-		if(IS_WM_WINDOW(wins[i]))
-		{   continue;
-		}
-
+                /* skip window manager related window. */
                 if(trans[i])
                 {
-                    if(replies[i]->map_state == XCB_MAP_STATE_VIEWABLE && replystates[i] && replystates[i]->map_state == XCB_WINDOW_ICONIC_STATE)
-                    {
-                        index = ManageClientLAST * i;
-                        /* technically we shouldnt have to do this but just in case */
-                        if(!wintoclient(wins[i]))
-                        {   manage(wins[i], managereplys + index);
-                        }
-                    }
+                    index = ManageClientLAST * i;
+
+                    manage(wins[i], managereplys + index);
                 }
             }
             /* cleanup */
             for(i = 0; i < num; ++i)
             {
-		/* skip window manager related window. */
-		if(IS_WM_WINDOW(wins[i]))
-		{   continue;
-		}
-
                 index = ManageClientLAST * i;
                 managecleanup(managereplys + index);
-                free(replies[i]);
-                free(replystates[i]);
             }
-            free(wa);
-            free(wastates);
             free(tfh);
             free(managecookies);
             free(managereplys);
-            free(replies);
-            free(replystates);
             free(trans);
         }
         free(tree);
@@ -1055,17 +1009,20 @@ setupsys(void)
 {
 #ifdef __OpenBSD__
     if (pledge("stdio rpath proc exec", NULL) == -1)
-    {   DIECAT("pledge");
+    {   
+        DIECAT("pledge");
     }
 #endif /* __OpenBSD__ */
-    if(!setlocale(LC_CTYPE, ""))
-    {   fputs("WARN: NO_LOCALE_SUPPORT\n", stderr);
-    }
 }
 
 void
 setupwm(void)
 {
+    enum { DESK_GEOM_LENGTH = 2 };
+                                    /* width, height */
+    i32 deskgeom[DESK_GEOM_LENGTH] = { _wm.sw, _wm.sh };
+    int status;
+
     setenv("GTK_CSD", "amogus", 1);
     /* startup wm */
     _wm.running = 1;
@@ -1073,6 +1030,16 @@ setupwm(void)
     _wm.sw = XCBDisplayWidth(_wm.dpy, _wm.screen);
     _wm.sh = XCBDisplayHeight(_wm.dpy, _wm.screen);
     _wm.root = XCBRootWindow(_wm.dpy, _wm.screen);
+
+    status = GArrayCreateFilled(&_wm.clients, sizeof(XCBWindow), X11_DEFAULT_MAX_WINDOW_LIMIT);
+
+    /* we failed the assert this should not happen */
+    if(!ASSERT(status == EXIT_SUCCESS))
+    {
+        cleanup();
+        DIECAT("%s", "Could not allocate memory for _NET_WM_CLIENT support (OutOfMemory)");
+    }
+    
     /* Most java apps require this see:
      * https://wiki.archlinux.org/title/Java#Impersonate_another_window_manager
      * https://wiki.archlinux.org/title/Java#Gray_window,_applications_not_resizing_with_WM,_menus_immediately_closing
@@ -1088,6 +1055,7 @@ setupwm(void)
         cleanup();
         DIECAT("%s", "Could not establish connection with keyboard (OutOfMemory)");
     }
+
     /* supporting window for NetWMCheck */
     _wm.wmcheckwin = XCBCreateSimpleWindow(_wm.dpy, _wm.root, 0, 0, 1, 1, 0, 0, 0);
     XCBSelectInput(_wm.dpy, _wm.wmcheckwin, XCB_NONE);
@@ -1099,6 +1067,9 @@ setupwm(void)
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&wmatom, WMLast);
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&gtkatom, GTKLAST);
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&motifatom, 1);
+
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetDesktopGeometry], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)deskgeom, DESK_GEOM_LENGTH);
+
     XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetClientList]);
     XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking]);
 }
@@ -1122,28 +1093,41 @@ sigchld(int signo) /* signal */
 void
 sighandler(void)
 {
+    struct sigaction sa = {0};
+
+    /* donot block */
+    sigemptyset(&sa.sa_mask);
+
+    sa.sa_handler = sigchld;
+    sa.sa_flags = 0;
+
     /* sig info: https://faculty.cs.niu.edu/~hutchins/csci480/signals.htm 
      * */
-    if(signal(SIGCHLD, &sigchld) == SIG_ERR)
-    {   DIECAT("%s", "FATAL: CANNOT_INSTALL_SIGCHLD_HANDLER");
+    if(sigaction(SIGCHLD, &sa, NULL) == -1)
+    {
+        DIECAT("%s", "FATAL: CANNOT_INSTALL_SIGCHLD_HANDLER");
     }
     /* wait for zombies to die */
     sigchld(0);
-    if(signal(SIGTERM, &sigterm) == SIG_ERR) 
+
+    sa.sa_handler = sigterm;
+
+    if(sigaction(SIGTERM, &sa, NULL) == -1) 
     {   
         DIECAT("%s", "FATAL: CANNOT_INSTALL_SIGTERM_HANDLER");
         signal(SIGTERM, SIG_DFL); /* default signal */
     }
 
-    if(signal(SIGHUP, &sighup) == SIG_ERR) 
-    {   
-        Debug("%s", "WARNING: CANNOT_INSTALL_SIGHUP_HANDLER");
-        signal(SIGHUP, SIG_DFL); /* default signal */
+    sa.sa_handler = sighup;
+
+    if(sigaction(SIGHUP, &sa, NULL) == -1) 
+    {   Debug0("WARNING: CANNOT_INSTALL_SIGHUP_HANDLER");
     }
-    if(signal(SIGINT, &sigterm) == SIG_ERR)
-    {   
-        Debug("%s", "WARNING: CANNOT_INSTALL_SIGINT_HANDLER");
-        signal(SIGINT, SIG_DFL);
+
+    sa.sa_handler = sigterm;
+
+    if(sigaction(SIGINT, &sa, NULL) == -1)
+    {   Debug0("WARNING: CANNOT_INSTALL_SIGINT_HANDLER");
     }
 }
 
@@ -1315,17 +1299,18 @@ wakeupconnection(XCBDisplay *display, int screen)
 {
     XCBGenericEvent ev;
     XCBClientMessageEvent *cev = (XCBClientMessageEvent *)&ev;
-    memset(&ev, 0, sizeof(XCBGenericEvent));
+
+    memset(&ev, 0, sizeof(ev));
+
     cev->type = wmatom[WMProtocols];
     cev->response_type = XCB_CLIENT_MESSAGE;
     cev->window = _wm.root;
     cev->format = 32;
     cev->data.data32[0] = wmatom[WMDeleteWindow];
     cev->data.data32[1] = XCB_CURRENT_TIME;
-                                        /* XCB_EVENT_MASK_NO_EVENT legit does nothing lol */
+                                    
     XCBSendEvent(display, XCBRootWindow(display, screen), False, XCB_EVENT_MASK_STRUCTURE_NOTIFY, (const char *)&ev);
-    /* make sure display gets the event (duh) */
-    XCBFlush(_wm.dpy);
+    XCBFlush(display);
 }
 
 void
@@ -1361,6 +1346,7 @@ main(int argc, char **argv)
         cleanup();
         specialconds(argc, argv);
     } while(_wm.restart);
+
     return EXIT_SUCCESS;
 }
 
@@ -1388,7 +1374,7 @@ main(int argc, char **argv)
  * set the display to the one you did for Xephyr in this case we did 1 so
  * run this command: export DISPLAY=:1
  * now you are mostly done
- * run this command: gdb dwm
+ * run this command: gdb vox-wm
  * you get menu
  * run this command: lay spl
  * you get layout and stuff

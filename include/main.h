@@ -13,7 +13,8 @@
 #include "getprop.h"
 #include "x.h"
 #include "safebool.h"
-#include "../tools/util.h"
+#include "util.h"
+#include "DynamicArray/dynamic_array.h"
 
 
 #ifndef VERSION
@@ -34,9 +35,7 @@
 #define INTERSECT(x,y,w,h,m)    (MAX(0, MIN((x)+(w),(m)->wx+(m)->ww) - MAX((x),(m)->wx)) \
                                 * MAX(0, MIN((y)+(h),(m)->wy+(m)->wh) - MAX((y),(m)->wy)))
 #define LENGTH(X)               (sizeof X / sizeof X[0])
-#define SESSION_FILE            "/tmp/dwm-session"
-#define SESSION_COLD_FILE       "/var/tmp/dwm-cold-session"
-#define CONFIG_FILE             "/var/tmp/dwm-config"   /* todo make dir .config/dwm/config or someting like that */
+#define SESSION_FILE            "/tmp/vox-session"
 #define BORKED                  "NOT_SET"
 
 enum { BUTTONMASK = (XCB_EVENT_MASK_BUTTON_PRESS|XCB_EVENT_MASK_BUTTON_RELEASE) };
@@ -69,7 +68,8 @@ typedef struct Button Button;
 typedef struct WM WM;
 typedef struct MotifWmHints MotifWmHints;
 
-union Arg
+union 
+Arg
 {
     int32_t i;              /* i  -> int            */
     uint32_t ui;            /* ui -> unsigned int   */
@@ -80,7 +80,8 @@ union Arg
     void *v;                /* v  -> void pointer   */
 };
 
-struct Key
+struct 
+Key
 {
     uint16_t type;              /* KeyPress/KeyRelease  */
     uint16_t mod;               /* Modifier             */
@@ -89,7 +90,8 @@ struct Key
     Arg arg;                    /* Argument             */
 };
 
-struct Button
+struct 
+Button
 {
     uint8_t type;                   /* ButtonPress/ButtonRelease    */
     uint8_t button;                 /* Button                       */
@@ -98,7 +100,8 @@ struct Button
     Arg arg;                        /* Argument                     */
 };
 
-struct WM
+struct 
+WM
 {
     int running;                    /* Running flag         */
     int numlockmask;                /* numlockmask          */
@@ -117,14 +120,20 @@ struct WM
     char *wmname;                   /* WM_NAME              */
 
     pthread_mutex_t mutex;          /* Mutex for main thread*/
-    uint8_t restart;                /* Restart flag         */
-    uint8_t manual_exit; 	    /* Manual terminate flag*/
+
+    uint8_t flags;                  /* WM Flags,            */
     uint8_t has_error;              /* Error flag           */
     uint8_t use_threads;            /* Use thread Flag      */
-    uint8_t pad0[4];
+    uint8_t manual_exit;            /* Manual terminate flag*/
+    uint8_t restart;                /* Restart flag         */
+    uint8_t pad[3];
+
+    /* store _NET_CLIENT_LIST */
+    GArray clients;
 };
 
-struct MotifWmHints
+struct 
+MotifWmHints
 {
     /* These correspond to XmRInt resources. (VendorSE.c) */
     uint32_t flags;
@@ -215,6 +224,8 @@ void startup(void);
 void startupwm(void);
 /* Wakups the current X connection by sending a event to it */
 void NonNull wakeupconnection(XCBDisplay *display, int screen);
+/* Wakeup handler used for watchdog */
+void watchdogwakeuphandler(void);
 /* Error handler */
 void NonNullArg(1) xerror(XCBDisplay *display, XCBGenericError *error);
 

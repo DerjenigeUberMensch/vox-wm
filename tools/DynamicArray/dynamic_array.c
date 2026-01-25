@@ -23,15 +23,15 @@
  */
 
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 
 #include "dynamic_array.h"
 
+
 GArray *
 GArrayCreate(
-    uint32_t item_size,
-    uint32_t base_allocate
+    size_t item_size,
+    garray_i base_allocate
     )
 {
     GArray *ret = malloc(sizeof(GArray));
@@ -46,24 +46,31 @@ GArrayCreate(
             ret = NULL;
         }
     }
+
     return ret;
 }
 
 int
 GArrayCreateFilled(
     GArray *array_return,
-    uint32_t item_size,
-    uint32_t base_allocate
+    size_t item_size,
+    garray_i base_allocate
     )
 {
     if(!array_return || !item_size)
     {   return EXIT_FAILURE;
     }
+
     array_return->item_size = item_size;
     array_return->data = NULL;
     array_return->data_len = 0;
     array_return->data_len_real = 0;
+    array_return->base_allocate = base_allocate;
+
     GArrayResize(array_return, base_allocate);
+    /* replace head index */
+    array_return->data_len = 0;
+
     return EXIT_SUCCESS;
 }
 
@@ -75,13 +82,14 @@ GArrayWipe(
     if(!array)
     {   return;
     }
-    free(array->data);
+
+    GArrayResize(array, 0);
 }
 
 int
 GArrayResize(
     GArray *array,
-    uint32_t item_len
+    garray_i item_len
     )
 {
     if(!array)
@@ -92,44 +100,73 @@ GArrayResize(
     {   return EXIT_SUCCESS;
     }
 
-    const float MIN_GROWTH = 1.25f;
-    
+    if(item_len > SIZE_MAX / array->item_size)
+    {   return EXIT_FAILURE;
+    }
+
     if(item_len == 0)
     {   
         free(array->data);
+
         array->data = NULL;
+        array->data_len = 0;
+        array->data_len_real = 0;
     }
     else if(!array->data)
-    {   
-        uint64_t size = item_len * MIN_GROWTH;
-        array->data = malloc(array->item_size * size);
+    {
+        if(array->base_allocate > item_len)
+        {   item_len = array->base_allocate;
+        }
+
+        array->data = malloc(array->item_size * item_len);
+
         if(!array->data)
         {   return EXIT_FAILURE;
         }
-        array->data_len_real = size;
+
+        array->data_len_real = item_len;
     }
     else
     {
-        const uint8_t toosmall = array->data_len_real < item_len;
-        uint64_t size;
-        if(toosmall)
-        {   size = item_len + (item_len / (array->data_len_real + !array->data_len_real));
+        garray_i length;
+
+        if(array->data_len_real < item_len)
+        {   length = array->data_len_real * 2;
         }
         else
-        {   size = array->data_len_real - (array->data_len_real - item_len);
+        {
+            garray_i used_space = array->data_len_real - array->base_allocate;
+            float REDUCE_THRESHOLD = .225f;
+            float EXTRA_KEPT = 1.5f;
+
+            if(used_space * REDUCE_THRESHOLD >= array->data_len)
+            {   
+                length = array->data_len * EXTRA_KEPT;
+
+                if(length < array->base_allocate)
+                {   length = array->base_allocate;
+                }
+            }
+            else
+            {   goto END;
+            }
         }
-        
-        void *rec = realloc(array->data, array->item_size * size);
-        if(!rec )
+
+        void *rec = realloc(array->data, array->item_size * length);
+
+        if(!rec)
         {   return EXIT_FAILURE;
         }
-        array->data = rec;
-    }
 
+        array->data = rec;
+        array->data_len_real = length;
+    }
+END:
     array->data_len = item_len;
 
     return EXIT_SUCCESS;
 }
+
 int
 GArrayPushBack(
     GArray *array,
@@ -139,15 +176,20 @@ GArrayPushBack(
     if(!array || !item_cpy)
     {   return EXIT_FAILURE;
     }
+
     uint8_t status = GArrayResize(array, array->data_len + 1);
+
     if(status == EXIT_SUCCESS)
     {   
-        uint8_t *data = array->data;
-        uint8_t *dest = data + (array->data_len - 1) * array->item_size;
-        uint8_t *src = item_cpy;
-        uint32_t size = array->item_size;
+        if(array->data)
+        {
+            uint8_t *data = array->data;
+            uint8_t *dest = data + (array->data_len - 1) * array->item_size;
+            uint8_t *src = item_cpy;
+            garray_i size = array->item_size;
 
-        memmove(dest, src, size);
+            memmove(dest, src, size);
+        }
     }
     return status;
 }
@@ -164,7 +206,7 @@ GArrayPopBack(
     {   
         /* make sure no underflow */
         if(array->data_len)
-        {   GArrayResize(array, array->data_len - 1);
+        {   return GArrayResize(array, array->data_len - 1);
         }
     }
     return EXIT_SUCCESS;
@@ -174,17 +216,17 @@ int
 GArrayReplace(
     GArray *array,
     void *item_cpy,
-    uint32_t index
+    garray_i index
     )
 {
     if(!array)
     {   return EXIT_FAILURE;
     }
-    if(index > array->data_len)
+    if(index >= array->data_len)
     {   return EXIT_FAILURE;
     }
 
-    uint32_t size = array->item_size;;
+    garray_i size = array->item_size;
     uint8_t *data = array->data;
     uint8_t *dest = data + index * size;
     uint8_t *src = item_cpy;
@@ -202,13 +244,14 @@ int
 GArrayInsert(
     GArray *array,
     void *item_cpy,
-    uint32_t index
+    garray_i index
     )
 {
     if(!array)
     {   return EXIT_FAILURE;
     }
-    if(index >= array->data_len)
+
+    if(index > array->data_len)
     {   return EXIT_FAILURE;
     }
 
@@ -216,20 +259,24 @@ GArrayInsert(
 
     if(status == EXIT_SUCCESS)
     {   
-        uint32_t size = array->item_size;
+        int isEnd = (array->data_len == index) ? 0 : 1;
+        garray_i size = array->item_size;
 
         uint8_t *data = array->data;
         uint8_t *dest = data + (index + 1) * size;
         uint8_t *src = data + index * size;
 
-        uint32_t move_size = (array->data_len - index - 1) * size;
+        garray_i move_size = (array->data_len - index - isEnd) * size;
 
-        memmove(dest, src, move_size);
-        if(item_cpy)
-        {   memmove(src, item_cpy, size);
-        }
-        else
-        {   memset(src, 0, size);
+        if(data)
+        {
+            memmove(dest, src, move_size);
+            if(item_cpy)
+            {   memmove(src, item_cpy, size);
+            }
+            else
+            {   memset(src, 0, size);
+            }
         }
     }
 
@@ -237,20 +284,17 @@ GArrayInsert(
 }
 
 int
-GArrayDelete(
-    GArray *array,
-    uint32_t index
-    )
-{
-    if(!array)
+GArrayDelete(GArray *array, garray_i index) 
+{ 
+    if(!array) 
     {   return EXIT_FAILURE;
     }
     if(index >= array->data_len)
     {   return EXIT_FAILURE;
     }
 
-    const uint32_t size = array->item_size;
-    const uint32_t BYTES_MOVE = (array->data_len - index - 1) * size;
+    const garray_i size = array->item_size;
+    const garray_i BYTES_MOVE = (array->data_len - index - 1) * size;
 
     uint8_t *data = array->data;
     uint8_t *src = data + (size * (index + 1));
@@ -261,27 +305,27 @@ GArrayDelete(
     {   memmove(dest, src, BYTES_MOVE);
     }
 
-    GArrayResize(array, array->data_len - 1);
-    return EXIT_SUCCESS;
+    return GArrayResize(array, array->data_len - 1);
 }
 
 
 void *
 GArrayAt(
         GArray *array,
-        uint32_t index
+        garray_i index
         )
 {
-    if(array->data_len < index)
+    if(!array || array->data_len <= index)
     {   return NULL;
     }
+
     return (uint8_t *)array->data + (index * array->item_size);
 }
 
 int
 GArrayAtSafe(
         GArray *array,
-        uint32_t index,
+        garray_i index,
         void *fill_return
         )
 {
@@ -298,8 +342,35 @@ GArrayAtSafe(
     return ret;
 }
 
+int
+GArrayGetArray(
+    GArray *array,
+    void **array_return,
+    size_t *sizeof_array_return,
+    size_t *item_size_return
+    )
+{
+    if(!array)
+    {   return EXIT_FAILURE;
+    }
 
-uint32_t
+    if(array_return)
+    {   *array_return = array->data;
+    }
+
+    if(sizeof_array_return)
+    {   *sizeof_array_return = array->data_len * array->item_size;
+    }
+
+    if(item_size_return)
+    {   *item_size_return = array->item_size;
+    }
+
+    return EXIT_SUCCESS;
+}
+
+
+garray_i
 GArrayEnd(
         GArray *array
         )
@@ -307,13 +378,14 @@ GArrayEnd(
     if(array)
     {   return array->data_len;
     }
+
     return 0;
 }
 
-uint32_t 
+garray_i
 GArrayStart(
         GArray *array
         )
-{   return (const unsigned int) 0;
+{   return 0;
 }
 

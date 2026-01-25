@@ -26,6 +26,7 @@
 #define __DY__NAMIC__ARRAY__H__
 
 #include <stdint.h>
+#include <stdio.h>
 
 #ifdef __G_ARRAY_H__
 #error "Using Glib for dynamic array, delete this line to acknowledge this"
@@ -35,52 +36,71 @@
 
 /* G stands for generic by the way.
  */
-typedef struct GArray GArray;
-typedef struct __GArray__ __GArray__;
+typedef struct GArray32 GArray32;
+typedef GArray32 GArray;
+/* typedef struct GArray64 GArray64; */
 /* UNUSED cause why would you use this? 
  * Encapsulation is useless at this low level. 
  * Even had said that I still use encapsulation, and half the time I only do it for sustainability of the project. 
  * Otherwise why would I?
  */
-typedef uint64_t garray_i;
+typedef uint32_t garray_i32;
+/* typedef uint64_t garray_i64; */
 
+typedef garray_i32 garray_i;
+
+/* DONOT MODIFY DATA INSIDE.
+ *
+ */
 struct
-GArray
+GArray32
 {
     void *data;
-    uint32_t item_size;
-    uint32_t data_len;
-    uint32_t data_len_real;
-    uint8_t pad0[4];
+    size_t item_size;
+
+    garray_i data_len;
+    garray_i data_len_real;
+    garray_i base_allocate;
 };
 
-struct 
-__GArray__
-{
-    void *data;
-    uint32_t data_len;
-    uint32_t data_len_real;
-};
 
 /*
+struct
+GArray64
+{
+    void *data;
+    size_t item_size;
+
+    garray_i64 data_len;
+    garray_i64 data_len_real;
+    garray_i64 base_allocate;
+};
+*/
+
+/* Do not use inside data. use functions only
+ *
+ *
  * RETURN: GArray * on Success
  * RETURN: NULL on Failure.
  */
 GArray *
 GArrayCreate(
-    uint32_t item_size,
-    uint32_t base_allocate
+    size_t item_size,
+    garray_i base_allocate
     );
 
-/*
+/* Do not use inside data. use functions only
+ *
+ * NOTE: This function will always 'succeed' if array_return is a valid pointer, item_size is greater than 0.
+ *
  * RETURN: EXIT_SUCCESS on Sucesss.
  * RETURN: EXIT_FAILURE on Failure.
  */
 int
 GArrayCreateFilled(
     GArray *array_return,
-    uint32_t item_size,
-    uint32_t base_allocate
+    size_t item_size,
+    garray_i base_allocate
     );
 
 /*
@@ -99,7 +119,7 @@ GArrayWipe(
 int
 GArrayResize(
     GArray *array,
-    uint32_t item_len
+    garray_i item_len
     );
 
 /*
@@ -129,7 +149,7 @@ int
 GArrayReplace(
     GArray *array,
     void *item_cpy,
-    uint32_t index
+    garray_i index
     );
 
 /*
@@ -140,7 +160,7 @@ int
 GArrayInsert(
     GArray *array,
     void *item_cpy,
-    uint32_t index
+    garray_i index
     );
 
 /*
@@ -150,27 +170,43 @@ GArrayInsert(
 int
 GArrayDelete(
     GArray *array,
-    uint32_t index
+    garray_i index
     );
 
 void *
 GArrayAt(
         GArray *array,
-        uint32_t index
+        garray_i index
         );
 int
 GArrayAtSafe(
         GArray *array,
-        uint32_t index,
+        garray_i index,
         void *fill_return
         );
 
-uint32_t
+
+/* This gets the raw array data, that may be required for some library optimizations
+ *
+ * NOTE: This will only fail if GArray *array is NULL.
+ *
+ * RETURN: EXIT_SUCCESS on Success.
+ * RETURN: EXIT_FAILURE on Failure.
+ */
+int
+GArrayGetArray(
+    GArray *array,
+    void **array_return,
+    size_t *sizeof_array_return,
+    size_t *item_size_return
+    );
+
+garray_i
 GArrayEnd(
         GArray *array
         );
 
-uint32_t 
+garray_i
 GArrayStart(
         GArray *array
         );

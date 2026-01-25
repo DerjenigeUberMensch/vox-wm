@@ -828,6 +828,7 @@ SCParserDelVar(
             {   free(item->name);
             }
             free(item->typename);
+            item->typename = NULL;
             --parser->items_len;
             return GArrayDelete(&parser->items, index);
         }
