@@ -402,7 +402,9 @@ restack(Desktop *desk)
     {   XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&slist->win, 1);
     }
     else
-    {   XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking]);
+    {   
+        winstack[0] = 0;
+        XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, winstack, 1);
     }
 
     for(slist = prevstack(slist); slist; slist = prevstack(slist))

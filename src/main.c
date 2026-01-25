@@ -944,7 +944,9 @@ setup(void)
     setupcursors();
     setupcfg();
     setupwm();
-    InitThreading();
+    if(_wm.use_threads)
+    {   _wm.use_threads = InitThreading() == EXIT_SUCCESS;
+    }
     /* finds any monitor's */
     updategeom();
     updatedesktopnum();
@@ -1270,6 +1272,7 @@ startupwm(void)
     pthread_mutexattr_t attr;
     /* TODO: Just make toggle functions use a seperate thread isntead of high jacking the main thread #DontBeStupid */
     _wm.use_threads = 0;
+
     if(!pthread_mutexattr_init(&attr))
     {
         if(!pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE))
@@ -1277,10 +1280,15 @@ startupwm(void)
         }
         pthread_mutexattr_destroy(&attr);
     }
+
     char *display = NULL;
+
     _wm.dpy = XCBOpenDisplay(display, &_wm.screen);
+
     display = display ? display : getenv("DISPLAY");
+
     Debug("DISPLAY -> %s", display);
+
     if(!_wm.dpy)
     {   
         if(_wm.use_threads)
