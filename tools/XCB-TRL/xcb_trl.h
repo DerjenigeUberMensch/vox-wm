@@ -2766,6 +2766,7 @@ XCBWipeGetWMClass(
         );
 
 
+extern void XCBDefaultHandlerMsg(XCBDisplay *display, XCBGenericError *error);
 
 
 
