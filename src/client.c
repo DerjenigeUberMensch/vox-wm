@@ -194,13 +194,13 @@ double COULDBEFLOATINGPOSITION(Client *c)
                                     POSITION_WEIGHTS[ARRAY_LENGTH][WEIGHT_LENGHT] = 
                                     {
                                         /* OFFSET | MULTIPLIER */
-                                        {   .02,        1      },
-                                        {   .05,       .95     },
-                                        {   .10,       .90     },
-                                        {   .25,       .65     },
-                                        {   .30,       .40     },
-                                        {   .40,       .25     },
-                                        {   .50,       .05     },
+                                        {   .50,        1.25   },
+                                        {   .40,       .95     },
+                                        {   .30,       .70     },
+                                        {   .25,       .50     },
+                                        {   .10,       .20     },
+                                        {   .05,       .07     },
+                                        {   .02,       .05     },
                                     };
 
                                     int i;
@@ -309,7 +309,7 @@ __FLOAT__TYPE__EXTRA__CHECKS(Client *c)
      * C.) It sets this to all windows and doesnt have any subwindows.
      * D.) (rarely) Its broken, but probably will be fixed later if their developer cares enough.
      */
-    return strcmp(classname, instance);
+    return strcasecmp(classname, instance);
 }
 
 
@@ -325,14 +325,18 @@ __FLOAT__TYPE__IS__FLOATING(
 
     double MAX_SCORE = 100;
 
-    if(total > MAX_SCORE * .75)
+    Debug("(h: %lf, g: %lf, p: %lf)", hints, geom, pos);
+
+    if(total > MAX_SCORE * .5)
     {   return true;
     }
 
-    if(total > MAX_SCORE * .55)
+    if(total > MAX_SCORE * .35)
     {
         if(__FLOAT__TYPE__EXTRA__CHECKS(c))
-        {   return true;
+        {   
+            Debug0("FLOAT CHECK BYPASSED.");
+            return true;
         }
     }
 
@@ -538,7 +542,7 @@ u32 CANMANAGE(XCBWindow win, XCBGetWindowAttributes *waattributes, XCBWindowProp
                         /* theoredically we could manage these but they are a hastle to deal with */
                         if(waattributes->override_redirect)
                         {
-                            Debug("Override Redirect: [%d]", win);
+                            //Debug("Override Redirect: [%d]", win);
                             goto NO_MANAGE;
                         }
                         switch(waattributes->map_state)
@@ -915,9 +919,10 @@ focus(Client *c)
     }
     else
     {
-        XCBSetInputFocus(_wm.dpy, _wm.root, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
-        XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow]);
+        XCBWindow empty = 0;
 
+        XCBSetInputFocus(_wm.dpy, _wm.root, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
+        XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, &empty, 1);
     }
     desk->sel = c;
 
@@ -1342,6 +1347,19 @@ manage(XCBWindow win, void *replies[ManageClientLAST])
 
     m = c->desktop->mon;
 
+    /* If the client is floatnig and in a corner center it because ??? */
+    /* Most desktop enviroments do this, and sinec its jarring for windows to spawn wher they said they will
+     * also do this.
+     */
+    if(ISFLOATING(c) || ISFIXED(c))
+    {
+        /* has the client its coords? */
+        if(c->x == m->mx && c->y == m->my)
+        {   /* center it */
+            resizemove(c, m->wx + m->ww / 2 - WIDTH(c) / 2, m->wy + m->wh / 2 - HEIGHT(c) / 2, 1);
+        }
+    }
+
     addclienthash(c);
 
     attach(c);
@@ -1351,26 +1369,16 @@ manage(XCBWindow win, void *replies[ManageClientLAST])
     updateclientlist(win, ClientListAdd);
     setwtypemapnormal(c, 1);
     setclientstate(c, XCB_WINDOW_NORMAL_STATE);
+
+    /* propagates border_width, if size doesn't change */
+    configure(c);
+
     /* add to hash */
     /* if its a new bar we dont want to return it as the monitor now manages it */
     if(!checknewbar(m, c, strut || strutp))
     {   c = NULL;
     }
-    /* this is not a bar */
-    else
-    {
-        /* are we a fixed client */
-        if(ISFIXED(c))
-        {
-            /* has the client its coords? */
-            if(c->x == m->mx && c->y == m->my)
-            {   /* center it */
-                resizemove(c, m->wx + m->ww / 2 - WIDTH(c), m->wy + m->wh / 2 - HEIGHT(c) / 2, 1);
-            }
-        }
-        /* propagates border_width, if size doesn't change */
-        configure(c);
-    }
+
     goto CLEANUP;
 FAILURE:
     free(c);
@@ -1913,7 +1921,7 @@ setfocus(Client *c)
     if(!NEVERHOLDFOCUS(c))
     {
         XCBSetInputFocus(_wm.dpy, c->win, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
-        XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&(c->win), 1);
+        XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, &c->win, 1);
         setclientnetstate(c, netatom[NetWMStateFocused], 1);
         SETFLAG(c->ewmhflags, WStateFlagFocused, 1);
     }
@@ -2198,6 +2206,7 @@ __update_motif_decor(Client *c, uint32_t hints)
     const u32 DECOR_MENU = 1 << 4;
     const u32 DECOR_MINIMIZE = 1 << 5;
     const u32 DECOR_MAXIMIZE = 1 << 6;
+
     if(hints & DECOR_ALL)
     {   hints |= (uint32_t)~0;
     }

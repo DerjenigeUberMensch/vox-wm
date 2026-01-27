@@ -78,6 +78,20 @@ u32 IS_WM_WINDOW(XCBWindow win)
                             
                             return ret;
                         }
+int WM_ADD_WORK(int (*func)(XCBGenericEvent *event, Arg arg), Arg arg)
+                        {
+                            extern WM _wm;
+
+                            int ret;
+
+                            WMWork work = { .function = func, .arg = arg };
+
+                            LOCK_WM();
+                            ret = GArrayPushBack(&_wm.work, &work);
+                            UNLOCK_WM();
+
+                            return ret;
+                        }
 
 
 extern void (*handler[XCBLASTEvent]) (XCBGenericEvent *);
@@ -110,8 +124,7 @@ checkotherwm(void)
         free(ev);
         XCBCloseDisplay(_wm.dpy);
         if(response == 0) 
-        {   
-            DIECAT("%s", "FATAL: ANOTHER WINDOW MANAGER IS RUNNING.");
+        {   DIECAT("%s", "FATAL: ANOTHER WINDOW MANAGER IS RUNNING.");
         }
         /* UNREACHABLE */
         DIECAT("%s", "FATAL: UNKNOWN REPONSE_TYPE");
@@ -153,6 +166,7 @@ cleanup(void)
     /* Free hashmap */
     cleanupclienthash();
     GArrayWipe(&_wm.clients);
+    GArrayWipe(&_wm.work);
     unsetenv("GTK_CSD");
     if(_wm.dpy)
     {
@@ -169,6 +183,7 @@ void __HOT__
 eventhandler(XCBGenericEvent *ev)
 {
     const int cleanev = XCB_EVENT_RESPONSE_TYPE(ev);
+    garray_i i;
 
     if(LENGTH(handler) < cleanev || cleanev <= -1)
     {   return;
@@ -177,6 +192,25 @@ eventhandler(XCBGenericEvent *ev)
     LOCK_WM();
 
     handler[cleanev](ev);
+
+    for(i = GArrayStart(&_wm.work); i < GArrayEnd(&_wm.work); ++i)
+    {
+        int ret = 0;
+        WMWork *work = GArrayAt(&_wm.work, i);
+
+        if(work->function)
+        {   ret = work->function(ev, work->arg);
+        }
+
+        if(!ret)
+        {   
+            ret = GArrayDelete(&_wm.work, i);
+
+            if(ret)
+            {   GArrayReplace(&_wm.work, NULL, i);
+            }
+        }
+    }
 
     UNLOCK_WM();
 }
@@ -940,13 +974,16 @@ setup(void)
     /* clean up any zombies immediately */
     sighandler();
 
+    /* setup threading before any major systems use it */
+    if(_wm.use_threads)
+    {   _wm.use_threads = InitThreading() == EXIT_SUCCESS;
+    }
+
     setupatoms();
     setupcursors();
     setupcfg();
     setupwm();
-    if(_wm.use_threads)
-    {   _wm.use_threads = InitThreading() == EXIT_SUCCESS;
-    }
+
     /* finds any monitor's */
     updategeom();
     updatedesktopnum();
@@ -1040,6 +1077,14 @@ setupwm(void)
     {
         cleanup();
         DIECAT("%s", "Could not allocate memory for _NET_WM_CLIENT support (OutOfMemory)");
+    }
+
+    status = GArrayCreateFilled(&_wm.work, sizeof(WMWork), 0);
+
+    if(!ASSERT(status == EXIT_SUCCESS))
+    {
+        cleanup();
+        DIECAT("%s", "Could not allocate memory for work queue.");
     }
     
     /* Most java apps require this see:
@@ -1296,6 +1341,7 @@ startupwm(void)
         }
         DIECAT("FATAL: Cannot Connect to X Server. [%s]", display);
     }
+
     /* This allows for execvp and exec to only spawn process on the specified display rather than the default varaibles */
     if(display)
     {   setenv("DISPLAY", display, 1);
@@ -1326,8 +1372,9 @@ xerror(XCBDisplay *display, XCBGenericError *err)
 {
     if(likely(err))
     {   
-        Debug("%s %s\n", XCBGetErrorMajorCodeText(err->major_code), XCBGetFullErrorText(err->error_code));
-        Debug("error_code: [%d], major_code: [%d], minor_code: [%d]\n"
+#if NDEBUG
+        DebugI("%s %s\n", XCBGetErrorMajorCodeText(err->major_code), XCBGetFullErrorText(err->error_code));
+        DebugI("error_code: [%d], major_code: [%d], minor_code: [%d]\n"
               "sequence: [%d], response_type: [%d], resource_id: [%d]\n"
               "full_sequence: [%d]\n"
               ,
@@ -1337,6 +1384,9 @@ xerror(XCBDisplay *display, XCBGenericError *err)
         XCBCookie id;
         id.sequence = err->sequence;
         (void)id;
+#else
+        XCBDefaultHandlerMsg(display, err);
+#endif
     }
 }
 

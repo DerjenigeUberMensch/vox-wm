@@ -543,10 +543,12 @@ updateclientlist(XCBWindow win, uint8_t type)
         return;
     }
 
+    /* DEBUGGING */
+    /*
     for(garray_i i = GArrayStart(&_wm.clients); i < GArrayEnd(&_wm.clients); ++i)
-    {   
-        Debug("%d", *(XCBWindow *)GArrayAt(&_wm.clients, i));
+    {   Debug("%d", *(XCBWindow *)GArrayAt(&_wm.clients, i));
     }
+    */
     
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientList], 
             XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (const char *)data, size / item_size);
