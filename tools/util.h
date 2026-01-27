@@ -481,6 +481,7 @@ STATIC_ASSERT(0, cannot_run_debug_with_ndebug)
  *
  * The below macro 'MERGE_SORT_LINKED_LIST' falls under the above license.
  */
+#ifndef MERGE_SORT_LINKED_LIST
 #define MERGE_SORT_LINKED_LIST(TYPE, CMP_FUNC, HEAD, TAIL, NEXT, PREV, IS_DOUBLE, IS_CIRCULAR)\
                         do                                                              \
                         {                                                               \
@@ -612,10 +613,12 @@ STATIC_ASSERT(0, cannot_run_debug_with_ndebug)
                                 __insize *= 2;                                          \
                             }                                                           \
                         } while(0)
+#endif
 
 /* NOTE SLOWER THAN MERGE SORT, BY ALOT */
 
 /* ONLY NON-CIRCULAR, DOUBLE LINKED */
+#ifndef INSERTION_SORT_LINKED_LIST
 #define INSERTION_SORT_LINKED_LIST(TYPE, CMP_FUNC, HEAD, TAIL, NEXT, PREV) \
     if(!HEAD)                   \
     {   TAIL = HEAD;            \
@@ -655,6 +658,7 @@ STATIC_ASSERT(0, cannot_run_debug_with_ndebug)
         __c__ = __n__;                          \
     }                                           \
     HEAD = __s__;
+#endif
 
 /* Functions */
 
@@ -694,7 +698,8 @@ bool memfilled(void *mem, size_t size);
 
 
 #ifndef __intersect_area
-#define __intersect_area(x1_start, y1_start, x1_end, y1_end, x2_start, y2_start, x2_end, y2_end) ((MAX(0, MIN(x1_end, x2_end) - MAX(x1_start, x2_start))) * (MAX(0, MIN(y1_end, y2_end) - MAX(y1_start, y2_start))))
+#define __intersect_area(x1_start, y1_start, x1_end, y1_end, x2_start, y2_start, x2_end, y2_end) \
+    ((MAX(0, MIN(x1_end, x2_end) - MAX(x1_start, x2_start))) * (MAX(0, MIN(y1_end, y2_end) - MAX(y1_start, y2_start))))
 #endif
 
 

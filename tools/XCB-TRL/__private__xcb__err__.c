@@ -248,6 +248,14 @@ _xcb_trl_err_handler(
 
 void XCBBreakPoint(void) { volatile int *e = 0; if(e != (volatile int *)1) { e = (volatile int *)3; } (void)e; }
 
+void
+XCBDefaultHandlerMsg(
+        XCBDisplay *display,
+        XCBGenericError *error
+        )
+{
+    _xcb_handler(display, error);
+}
 
 void 
 XCBDebugPushID(
