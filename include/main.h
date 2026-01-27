@@ -67,6 +67,8 @@ typedef struct Key Key;
 typedef struct Button Button;
 typedef struct WM WM;
 typedef struct MotifWmHints MotifWmHints;
+typedef struct WMWork WMWork;
+
 
 union 
 Arg
@@ -100,6 +102,13 @@ Button
     Arg arg;                        /* Argument                     */
 };
 
+struct
+WMWork
+{
+    int (*function)(XCBGenericEvent *event, Arg arg);
+    Arg arg;
+};
+
 struct 
 WM
 {
@@ -130,6 +139,7 @@ WM
 
     /* store _NET_CLIENT_LIST */
     GArray clients;
+    GArray work;
 };
 
 struct 
@@ -244,6 +254,12 @@ int TRY_LOCK_WM(void);
 int UNLOCK_WM(void);
 /* Determines whether or not a specified window, is related to the window manager in a important way. */
 uint32_t IS_WM_WINDOW(XCBWindow win);
+/* Add work that runs after events, work should not block or hang or infinite loop.
+ *
+ * RETURN: EXIT_SUCCESS on Success.
+ * RETURN: EXIT_FAILURE on Failure.
+ */
+int WM_ADD_WORK(int (*func)(XCBGenericEvent *event, Arg arg), Arg arg);
 
 
 #endif 

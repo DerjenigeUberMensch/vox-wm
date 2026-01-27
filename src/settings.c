@@ -6,6 +6,8 @@
 #include <sys/types.h>
 #include <errno.h>
 
+#include "FNotify/fnotify.h"
+
 #include "settings.h"
 #include "util.h"
 #include "safebool.h"
@@ -109,7 +111,9 @@ USInit(
         )
 {
     memset(settings_init, 0, sizeof(UserSettings));
+
     settings_init->cfg = SCParserCreate(UserSettingsLAST);
+
     if(settings_init->cfg)
     {
         USSetupCFGVars(settings_init);

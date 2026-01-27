@@ -6,8 +6,6 @@
 #include "file_util.h"
 #include "config.h"
 
-
-
 int
 WMConfigGetConfigPath(
         char *buff,

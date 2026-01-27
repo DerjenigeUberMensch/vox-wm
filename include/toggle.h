@@ -26,7 +26,11 @@ void NonNull RestartQ(const Arg *arg);
 void NonNull Quit(const Arg *arg);
 /* resizes the current window based on mouse position */
 void NonNull ResizeWindow(const Arg *arg);
-/* resizes the current window based on mouse position no restrictions */
+/* Resizes the current window based on mouse position no restrictions 
+ *
+ * NOTE: There is no gurantee this function performs as intended due to other dynamic system behaviour/
+ * NOTE: Use at your own risk! Or for Debugging!
+ */
 void NonNull ResizeWindowAlt(const Arg *arg);
 /* sets the window layout based on a enum in main.h -> Grid, Floating, Monocle, Tiled */
 void NonNull SetWindowLayout(const Arg *arg);

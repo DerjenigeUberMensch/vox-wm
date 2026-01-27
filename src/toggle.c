@@ -120,6 +120,7 @@ UserStats(const Arg *arg)
             win = XCBCreateSimpleWindow(_wm.dpy, _wm.root, 0, 0, icon[1] + 5, icon[0] + 5, 0, 0, 0);
             XCBMapWindow(_wm.dpy, win);
             XCBGC gc = XCBCreateGC(_wm.dpy, win, 0, NULL);
+
             for(i = 0; i < icon[0]; ++i)
             {
                 for(j = 0; j < icon[1]; ++j)
@@ -214,11 +215,245 @@ KillWindow(const Arg *arg)
 void
 TerminateWindow(const Arg *arg)
 {
-    if(_wm.selmon->desksel->sel)
+    Client *c = _wm.selmon->desksel->sel;
+
+    if(c)
     {
-        killclient(_wm.selmon->desksel->sel, Destroy);
+        killclient(c, Destroy);
         XCBFlush(_wm.dpy);
     }
+}
+
+int
+DragWindowHandler(
+        XCBGenericEvent *event,
+        Arg arg
+        )
+{
+    static bool running = 0;
+
+    static XCBWindow win;
+    static i16 nx, ny;
+    static i16 x, y;
+    static i16 oldx, oldy;
+    static u16 oldw, oldh;
+    static u16 bw;
+    static i64 detail;
+    static XCBTimestamp lasttime;
+
+    const XCBCursor cur = cursors[CurMove];
+
+    if(!running)
+    {
+        if(XCB_EVENT_RESPONSE_TYPE(event) != XCB_BUTTON_PRESS)
+        {   return false;
+        }
+
+        /* get any requests that may have moved the window back */
+        XCBSync(_wm.dpy);
+
+
+        XCBCookie GrabPointerCookie = XCBGrabPointerCookie(_wm.dpy, _wm.root, False, MOUSEMASK, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE, cur, XCB_CURRENT_TIME);
+
+        XCBGrabPointer *GrabPointer = XCBGrabPointerReply(_wm.dpy, GrabPointerCookie);
+
+        XCBButtonPressEvent *tmp = (XCBButtonPressEvent *)event;
+
+        win = tmp->event;
+        detail = CLEANBUTTONMASK(tmp->detail);
+
+        /* FIXME this looks horrible */
+        if(!GrabPointer || GrabPointer->status != XCB_GRAB_STATUS_SUCCESS)
+        {   
+            free(GrabPointer);
+
+            return 0;
+        }
+        free(GrabPointer);
+
+        XCBCookie QueryPointerCookie = XCBQueryPointerCookie(_wm.dpy, win);
+        XCBQueryPointer *pointer = XCBQueryPointerReply(_wm.dpy, QueryPointerCookie);
+
+        if(pointer)
+        {
+            x = pointer->root_x;
+            y = pointer->root_y;
+            free(pointer);
+        }
+        else
+        {   return 0;
+        }
+
+        Client *c_tmp = wintoclient(win);
+
+        if(!c_tmp)
+        {
+            XCBCookie GetGeometryCookie = XCBGetGeometryCookie(_wm.dpy, win);
+
+            XCBGeometry *geom = XCBGetGeometryReply(_wm.dpy, GetGeometryCookie);
+
+            if(geom)   
+            {
+                oldx = geom->x;
+                oldy = geom->y;
+                oldw = geom->width;
+                oldh = geom->height;
+                bw = geom->border_width;
+
+                free(geom);
+            }
+            else
+            {   return 0;
+            }
+        }
+        else
+        {
+            oldx = c_tmp->x;
+            oldy = c_tmp->y;
+            oldw = c_tmp->w;
+            oldh = c_tmp->h;
+            bw = c_tmp->bw;
+        }
+
+        /* make sure calculations include border width */
+        oldw += bw * 2;
+        oldh += bw * 2;
+
+        if(c_tmp)
+        {
+            /* prevent DOCKED from computing non floating */
+
+            setfloating(c_tmp, 1); 
+            /* make sure auto-docking dosent auto dock it */
+            c_tmp->x += 1;
+
+            arrange(_wm.selmon->desksel);
+        }
+        else
+        {   XCBRaiseWindow(_wm.dpy, win);
+        }
+
+        XCBFlush(_wm.dpy);
+
+        running = 1;
+
+        //* button event press does nothing */
+        return running;
+    }
+
+
+    Client *c;
+    XCBMotionNotifyEvent *mev = NULL;
+    XCBButtonPressEvent *bpev = NULL;
+    XCBButtonReleaseEvent *brev = NULL;
+    XCBUnmapNotifyEvent *umev = NULL;
+    XCBDestroyNotifyEvent *dnev = NULL;
+
+    switch(XCB_EVENT_RESPONSE_TYPE(event))
+    {
+        case XCB_MOTION_NOTIFY:
+            mev = (XCBMotionNotifyEvent *)event;
+
+            if(_cfg.RefreshRate)
+            {
+                const float FRAME_TIME = 1000.0f / (_cfg.RefreshRate + !_cfg.RefreshRate);
+
+                if((mev->time - lasttime) <= FRAME_TIME)
+                {   break;
+                }
+
+                lasttime = mev->time;
+            }
+
+            nx = oldx + mev->event_x - x;
+            ny = oldy + mev->event_y - y;
+
+            /* snap to window area */
+            if (abs(_wm.selmon->wx - nx) < _cfg.Snap)
+            {   nx = _wm.selmon->wx;
+            }
+            else if (abs((_wm.selmon->wx + _wm.selmon->ww) - (nx + oldw)) < _cfg.Snap)
+            {   nx = _wm.selmon->wx + _wm.selmon->ww - oldw;
+            }
+            if (abs(_wm.selmon->wy - ny) < _cfg.Snap)
+            {   ny = _wm.selmon->wy;
+            }
+            else if (abs((_wm.selmon->wy + _wm.selmon->wh) - (ny + oldh)) < _cfg.Snap)
+            {   ny = _wm.selmon->wy + _wm.selmon->wh - oldh;
+            }
+
+            c = wintoclient(win);
+
+            if(c)
+            {   resizemove(c, nx, ny, 1);
+            }
+            else
+            {   XCBMoveWindow(_wm.dpy, win, nx, ny);
+            }
+
+            XCBFlush(_wm.dpy);
+            break;
+            /* TODO */
+        case XCB_BUTTON_PRESS:
+            bpev = (XCBButtonPressEvent *)event;
+ 
+            /* another tasks spawned in? */
+            if(CLEANBUTTONMASK(bpev->detail) == detail)
+            {   running = 0;
+            }
+
+            break;
+        case XCB_BUTTON_RELEASE:
+            brev = (XCBButtonReleaseEvent *)event;
+
+            if(CLEANBUTTONMASK(brev->detail) == detail)
+            {   running = 0;
+            }
+
+            break;
+            /* this accounts for users killing the window (cause they can) */
+        case XCB_UNMAP_NOTIFY:
+            umev = (XCBUnmapNotifyEvent *)event;
+
+            if(umev->window == win)
+            {   running = 0;
+            }
+
+            break;
+        case XCB_DESTROY_NOTIFY:
+            dnev = (XCBDestroyNotifyEvent *)event;
+
+            if(dnev->window == win)
+            {   running = 0;
+            }
+
+            break;
+    }
+
+    if(!running)
+    {
+        XCBUngrabPointer(_wm.dpy, XCB_CURRENT_TIME);
+
+        Monitor *m;
+        c = wintoclient(win);
+
+        if(c)
+        {
+            if ((m = recttomon(c->x, c->y, c->w, c->h)) != _wm.selmon) 
+            {
+                setclientdesktop(c, m->desksel);
+                setmonsel(m);
+            }
+            if(DOCKED(c))
+            {   setfloating(c, 0);
+            }
+        }
+
+        arrange(_wm.selmon->desksel);
+        XCBFlush(_wm.dpy);
+    }
+
+    return running;
 }
 
 void
@@ -227,185 +462,20 @@ DragWindow(
         )
 {
     Debug0("Called.");
-    static u8 running = 0;
-    if(!arg->v || ((XCBButtonPressEvent *)arg->v)->event == _wm.root || running)
-    {   return;
-    }
-    /* get any requests that may have moved the window back */
-    XCBSync(_wm.dpy);
-    XCBWindow win = ((XCBButtonPressEvent *)arg->v)->event;
-    Client *c = wintoclient(win);
-    i16 nx, ny;
-    i16 x, y;
-    i16 oldx, oldy;
-    u16 oldw, oldh;
-    u16 bw;
-    const XCBCursor cur = cursors[CurMove];
-    const i64 detail = CLEANBUTTONMASK(((XCBButtonPressEvent *)arg->v)->detail);
-    nx = ny = x = y = oldx = oldy = oldw = oldh = 0;
 
-    XCBCookie GrabPointerCookie = XCBGrabPointerCookie(_wm.dpy, _wm.root, False, MOUSEMASK, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE, cur, XCB_CURRENT_TIME);
-    XCBGrabPointer *GrabPointer = XCBGrabPointerReply(_wm.dpy, GrabPointerCookie);
-
-    /* FIXME this looks horrible */
-    if(!GrabPointer || GrabPointer->status != XCB_GRAB_STATUS_SUCCESS)
-    {   
-        free(GrabPointer);
-        return;
-    }
-    free(GrabPointer);
-
-    XCBCookie QueryPointerCookie = XCBQueryPointerCookie(_wm.dpy, win);
-    XCBQueryPointer *pointer = XCBQueryPointerReply(_wm.dpy, QueryPointerCookie);
-
-    if(pointer)
-    {
-        x = pointer->root_x;
-        y = pointer->root_y;
-        free(pointer);
-    }
-    else
+    if(!arg->v || ((XCBButtonPressEvent *)arg->v)->event == _wm.root)
     {   return;
     }
 
-    if(!c)
-    {
-        XCBCookie GetGeometryCookie = XCBGetGeometryCookie(_wm.dpy, win);
-        XCBGeometry *geom = XCBGetGeometryReply(_wm.dpy, GetGeometryCookie);
+    int status;
+    Arg empty = {0};
 
-        if(geom)
-        {
-            oldx = geom->x;
-            oldy = geom->y;
-            oldw = geom->width;
-            oldh = geom->height;
-            bw = geom->border_width;
-            free(geom);
-        }
-        else
-        {   return;
-        }
+
+    status = WM_ADD_WORK(DragWindowHandler, empty);
+
+    if(status == EXIT_FAILURE)
+    {   Debug0("Failed to start DragWindow");
     }
-    else
-    {   
-        oldx = c->x;
-        oldy = c->y;
-        oldw = c->w;
-        oldh = c->h;
-        bw = c->bw;
-    }
-
-    /* make sure calculations include border width */
-    oldw += bw * 2;
-    oldh += bw * 2;
-    if(c)
-    {
-        /* prevent DOCKED from computing non floating */
-        setfloating(c, 1); c->x += 1;
-        arrange(_wm.selmon->desksel);
-    }
-    else
-    {   XCBRaiseWindow(_wm.dpy, win);
-    }
-
-    XCBFlush(_wm.dpy);
-    XCBGenericEvent *ev = NULL;
-    running = 1;
-    XCBMotionNotifyEvent *mev = NULL;
-    XCBTimestamp lasttime = 0;
-
-    /* Unlock as was previous locked */
-    UNLOCK_WM();
-    do
-    {
-        if(ev)
-        {
-            LOCK_WM();
-            eventhandler(ev);
-            switch(XCB_EVENT_RESPONSE_TYPE(ev))
-            {
-                case XCB_MOTION_NOTIFY:
-                    mev = (XCBMotionNotifyEvent *)ev;
-                    if(_cfg.RefreshRate)
-                    {
-                        const float FRAME_TIME = 1000.0f / (_cfg.RefreshRate + !_cfg.RefreshRate);
-                        if((mev->time - lasttime) <= FRAME_TIME)
-                        {   break;
-                        }
-                        lasttime = mev->time;
-                    }
-                    nx = oldx + mev->event_x - x;
-                    ny = oldy + mev->event_y - y;
-                    /* snap to window area */
-                    if (abs(_wm.selmon->wx - nx) < _cfg.Snap)
-                        nx = _wm.selmon->wx;
-                    else if (abs((_wm.selmon->wx + _wm.selmon->ww) - (nx + oldw)) < _cfg.Snap)
-                        nx = _wm.selmon->wx + _wm.selmon->ww - oldw;
-                    if (abs(_wm.selmon->wy - ny) < _cfg.Snap)
-                        ny = _wm.selmon->wy;
-                    else if (abs((_wm.selmon->wy + _wm.selmon->wh) - (ny + oldh)) < _cfg.Snap)
-                        ny = _wm.selmon->wy + _wm.selmon->wh - oldh;
-
-                    if(c)
-                    {   resizemove(c, nx, ny, 1);
-                    }
-                    else
-                    {   XCBMoveWindow(_wm.dpy, win, nx, ny);
-                    }
-                    XCBFlush(_wm.dpy);
-                    break;
-                /* TODO */
-                case XCB_BUTTON_PRESS:
-                    break;
-                case XCB_BUTTON_RELEASE:
-                    if(CLEANBUTTONMASK(((XCBButtonPressEvent *)ev)->detail) == detail)
-                    {   running = 0;
-                    }
-                    break;
-                case XCB_KEY_PRESS:
-                    break;
-                case XCB_KEY_RELEASE:
-                    break;
-                /* this accounts for users killing the window (cause they can) */
-                case XCB_UNMAP_NOTIFY:
-                    if(((XCBUnmapNotifyEvent *)ev)->window == win)
-                    {   running = 0;
-                    }
-                    break;
-                case XCB_DESTROY_NOTIFY:
-                    if(((XCBDestroyNotifyEvent *)ev)->window == win)
-                    {   running = 0;
-                    }
-                    break;
-            }
-            UNLOCK_WM();
-            free(ev);
-        }
-    } while(_wm.running && running && !XCBNextEvent(_wm.dpy, &ev));
-
-    /* relock to prevent race conditions */
-    LOCK_WM();
-
-    running = 0;
-    XCBUngrabPointer(_wm.dpy, XCB_CURRENT_TIME);
-    Monitor *m;
-    c = wintoclient(win);
-    if(c)
-    {
-        if ((m = recttomon(c->x, c->y, c->w, c->h)) != _wm.selmon) 
-        {
-            setclientdesktop(c, m->desksel);
-            setmonsel(m);
-        }
-        if(DOCKED(c))
-        {   setfloating(c, 0);
-        }
-    }
-
-    arrange(_wm.selmon->desksel);
-    XCBFlush(_wm.dpy);
-
-    /* No unlock as lock previous state was locked, (aka no double lock) */
 }
 
 void
@@ -428,460 +498,313 @@ Quit(const Arg *arg)
     quit();
 }
 
+int
+ResizeWindowHandler(
+        XCBGenericEvent *event,
+        Arg arg
+        )
+{
+
+    static bool running = 0;
+
+    static XCBWindow win;
+    static i16 nx, ny;
+    static i32 nw, nh;
+    static i16 oldx, oldy;
+    static u16 oldw, oldh;
+    static i16 curx, cury;
+    static i8 horz, vert;
+    static u16 minw, minh;
+    static u16 maxw, maxh;
+    static i64 detail;
+    static XCBTimestamp lasttime;
+    static bool altmode;
+
+    XCBCursor cur;
+
+    if(!running)
+    {
+        /* get any requests that may have moved the window back */
+        XCBSync(_wm.dpy);
+
+        XCBButtonPressEvent *bpev = (XCBButtonPressEvent *)event;
+
+        detail = CLEANBUTTONMASK(bpev->detail);
+        win = bpev->event;
+        altmode = arg.i;
+
+        XCBCookie QueryPointerCookie = XCBQueryPointerCookie(_wm.dpy, win);
+        XCBQueryPointer *pointer = XCBQueryPointerReply(_wm.dpy, QueryPointerCookie);
+
+        if(pointer)
+        {
+            curx = pointer->root_x;
+            cury = pointer->root_y;
+            nx = pointer->win_x;
+            ny = pointer->win_y;
+            free(pointer);
+        }
+        else
+        {   return running;
+        }
+
+        Client *c_tmp = wintoclient(win);
+
+        if(c_tmp)
+        {
+            oldw = c_tmp->w;
+            oldh = c_tmp->h;
+            oldx = c_tmp->x;
+            oldy = c_tmp->y;
+            minw = c_tmp->minw;
+            minh = c_tmp->minh;
+            maxw = c_tmp->maxw;
+            maxh = c_tmp->maxh;
+        }
+        else
+        {
+            XCBCookie GetGeometryCookie = XCBGetGeometryCookie(_wm.dpy, win);
+            XCBGeometry *wa = XCBGetGeometryReply(_wm.dpy, GetGeometryCookie);
+
+            if(wa)
+            {   
+                oldw = wa->width;
+                oldh = wa->height;
+                oldx = wa->x;
+                oldy = wa->y;
+                free(wa);
+            }
+            else
+            {   return running;
+            }
+
+            XCBSizeHints hints;
+            XCBCookie GetWMNormalHintsCookie = XCBGetWMNormalHintsCookie(_wm.dpy, win);
+            u8 hintsstatus = XCBGetWMNormalHintsReply(_wm.dpy, GetWMNormalHintsCookie, &hints);
+            if(hintsstatus)
+            {
+                Client c1;
+
+                updatesizehints(&c1, &hints);
+                minw = c1.minw;
+                minh = c1.minh;
+                maxw = c1.maxw;
+                maxh = c1.maxh;
+            }
+            else
+            {   return running;
+            }
+        }
+
+        const u8 MIN_SIZE = 1 * 1;
+
+        minw = MAX(minw, MIN_SIZE);
+        minh = MAX(minh, MIN_SIZE);
+
+        horz = nx < oldw / 2 ? -1 : 1;
+        vert = ny < oldh / 2 ? -1 : 1;
+
+        if(horz == -1)
+        {
+            /* top left */
+            if(vert == -1)
+            {   cur = cursors[CurResizeTopL];
+            }
+            /* Bottom Right */
+            else
+            {   cur = cursors[CurResizeTopR];
+            }
+        }
+        else
+        {
+            /* top right */
+            if(vert == -1)
+            {   cur = cursors[CurResizeTopR];
+            }
+            /* bottom right */
+            else
+            {   cur = cursors[CurResizeTopL];
+            }
+        }
+
+        XCBCookie GrabPointerCookie = XCBGrabPointerCookie(_wm.dpy, _wm.root, False, MOUSEMASK, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE, cur, XCB_CURRENT_TIME);
+        XCBGrabPointer *GrabPointer = XCBGrabPointerReply(_wm.dpy, GrabPointerCookie);
+
+        if(!GrabPointer || GrabPointer->status != XCB_GRAB_STATUS_SUCCESS)
+        {   
+            free(GrabPointer);
+            return running;
+        }
+        free(GrabPointer);
+
+        /* Prevent it from being detected as non floating */
+        if(c_tmp)
+        {
+            setfloating(c_tmp, 1); c_tmp->x += 1;
+            arrange(c_tmp->desktop);
+        }
+        else
+        {   XCBRaiseWindow(_wm.dpy, win);
+        }
+
+        XCBFlush(_wm.dpy);
+
+        running = 1;
+
+        return running;
+    }
+
+    Client *c;
+    XCBMotionNotifyEvent *mev = NULL;
+    XCBButtonPressEvent *bpev = NULL;
+    XCBUnmapNotifyEvent *umev = NULL;
+    XCBDestroyNotifyEvent *dnev = NULL;
+
+    switch(XCB_EVENT_RESPONSE_TYPE(event))
+    {   
+        case XCB_MOTION_NOTIFY:
+            mev = (XCBMotionNotifyEvent *)event;
+
+            if(_cfg.RefreshRate)
+            {
+                const float FRAME_TIME = 1000.0f / (_cfg.RefreshRate + !_cfg.RefreshRate);
+
+                if((mev->time - lasttime) <= FRAME_TIME)
+                {   break;
+                }
+
+                lasttime = mev->time;
+            }
+
+            nw = oldw + horz * (mev->root_x - curx);
+            nh = oldh + vert * (mev->root_y - cury);
+
+            if(!altmode)
+            {
+                if(maxw)
+                {   nw = MIN(nw, maxw);
+                }
+                if(maxh)
+                {   nh = MIN(nh, maxh);
+                }
+
+                nw = MAX(nw, minw);
+                nh = MAX(nh, minh);
+            }
+
+            nx = oldx + !~horz * (oldw - nw);
+            ny = oldy + !~vert * (oldh - nh);
+
+            c = wintoclient(win);
+
+            if(c)
+            {   
+                if(!altmode)
+                {   resize(c, nx, ny, nw, nh, 1);
+                }
+                else
+                {   resizeclient(c, nx, ny, nw, nh);
+                }
+            }
+            else
+            {   XCBMoveResizeWindow(_wm.dpy, win, nx, ny, nw, nh);
+            }
+
+            XCBFlush(_wm.dpy);
+            break;
+            /* TODO */
+        case XCB_BUTTON_PRESS:
+            bpev = (XCBButtonPressEvent *)event;
+ 
+            /* another tasks spawned in? */
+            if(CLEANBUTTONMASK(bpev->detail) == detail)
+            {   running = 0;
+            }
+
+            break;
+        case XCB_BUTTON_RELEASE:
+            bpev = (XCBButtonPressEvent *)event;
+            /* another tasks spawned in? */
+            if(CLEANBUTTONMASK(bpev->detail) == detail)
+            {   running = 0;
+            }
+
+            break;
+            /* this accounts for users killing the window (cause they can) */
+        case XCB_UNMAP_NOTIFY:
+            umev = (XCBUnmapNotifyEvent *)event;
+
+            if(umev->window == win)
+            {   running = 0;
+            }
+
+            break;
+        case XCB_DESTROY_NOTIFY:
+            dnev = (XCBDestroyNotifyEvent *)event;
+
+            if(dnev->window == win)
+            {   running = 0;
+            }
+            break;
+    }
+
+    if(!running)
+    {
+        XCBUngrabPointer(_wm.dpy, XCB_CURRENT_TIME);
+        Monitor *m;
+        c = wintoclient(win);
+        if(c)
+        {
+            if ((m = recttomon(c->x, c->y, c->w, c->h)) != _wm.selmon) 
+            {
+                setclientdesktop(c, m->desksel);
+                setmonsel(m);
+            }
+            if(DOCKED(c))
+            {   setfloating(c, 0);
+            }
+        }
+        arrange(_wm.selmon->desksel);
+        XCBFlush(_wm.dpy);
+    }
+
+    return running;
+}
+
 void
 ResizeWindow(const Arg *arg)
 {
     Debug0("Called.");
-    static u8 running = 0;
-    if(!arg->v || ((XCBButtonPressEvent *)arg->v)->event == _wm.root || running)
-    {   return;
-    }
-    /* get any requests that may have moved the window back */
-    XCBSync(_wm.dpy);
-    XCBGenericEvent *ev = arg->v;
-    const i64 detail = CLEANBUTTONMASK(((XCBButtonPressEvent *)arg->v)->detail);
-    XCBWindow win = ((XCBButtonPressEvent *)ev)->event;
-    Client *c = wintoclient(win);
-    XCBDisplay *display = _wm.dpy;
-
-    i16 curx, cury;
-    i32 oldw, oldh;
-    i32 nx, ny;
-    i32 nw, nh;
-    i32 oldx, oldy;
-    i8 horz, vert;
-    u16 minw, minh;
-    u16 maxw, maxh;
-    XCBCursor cur;
-
-    /* init data */
-    curx = cury = oldw = oldh = nx = ny = nw = nh = oldx = oldy = horz = vert = 0;
-    minw = minh = maxw = maxh = 0;
-
-    XCBCookie QueryPointerCookie = XCBQueryPointerCookie(display, win);
-    XCBQueryPointer *pointer = XCBQueryPointerReply(display, QueryPointerCookie);
-
-    if(pointer)
-    {
-        curx = pointer->root_x;
-        cury = pointer->root_y;
-        nx = pointer->win_x;
-        ny = pointer->win_y;
-        free(pointer);
-    }
-    else
+    if(!arg->v || ((XCBButtonPressEvent *)arg->v)->event == _wm.root)
     {   return;
     }
 
-    if(!c)
-    {
-        XCBCookie GetGeometryCookie = XCBGetGeometryCookie(display, win);
-        XCBGeometry *wa = XCBGetGeometryReply(display, GetGeometryCookie);
+    int status;
+    Arg noaltmode = { .i = 0 };
 
-        if(wa)
-        {   
-            oldw = wa->width;
-            oldh = wa->height;
-            oldx = wa->x;
-            oldy = wa->y;
-            free(wa);
-        }
-        else
-        {   return;
-        }
+    status = WM_ADD_WORK(ResizeWindowHandler, noaltmode);
+
+    if(status == EXIT_FAILURE)
+    {   Debug0("Failed to start DragWindow");
     }
-    else
-    {
-        oldw = c->w;
-        oldh = c->h;
-        oldx = c->x;
-        oldy = c->y;
-    }
-
-    if(!c)
-    {
-        XCBSizeHints hints;
-        XCBCookie GetWMNormalHintsCookie = XCBGetWMNormalHintsCookie(_wm.dpy, win);
-        u8 hintsstatus = XCBGetWMNormalHintsReply(_wm.dpy, GetWMNormalHintsCookie, &hints);
-        if(hintsstatus)
-        {
-            Client c1;
-            updatesizehints(&c1, &hints);
-            minw = c1.minw;
-            minh = c1.minh;
-            maxw = c1.maxw;
-            maxh = c1.maxh;
-        }
-        else
-        {   return;
-        }
-    }
-    else
-    {
-        minw = c->minw;
-        minh = c->minh;
-        maxw = c->maxw;
-        maxh = c->maxh;
-    }
-
-    const u8 MIN_SIZE = 1 * 1;
-    minw = MAX(minw, MIN_SIZE);
-    minh = MAX(minh, MIN_SIZE);
-
-    horz = nx < oldw / 2 ? -1 : 1;
-    vert = ny < oldh / 2 ? -1 : 1;
-
-    if(horz == -1)
-    {
-        /* top left */
-        if(vert == -1)
-        {   cur = cursors[CurResizeTopL];
-        }
-        /* Bottom Right */
-        else
-        {   cur = cursors[CurResizeTopR];
-        }
-    }
-    else
-    {
-        /* top right */
-        if(vert == -1)
-        {   cur = cursors[CurResizeTopR];
-        }
-        /* bottom right */
-        else
-        {   cur = cursors[CurResizeTopL];
-        }
-    }
-
-    XCBCookie GrabPointerCookie = XCBGrabPointerCookie(_wm.dpy, _wm.root, False, MOUSEMASK, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE, cur, XCB_CURRENT_TIME);
-    XCBGrabPointer *GrabPointer = XCBGrabPointerReply(_wm.dpy, GrabPointerCookie);
-
-    if(!GrabPointer || GrabPointer->status != XCB_GRAB_STATUS_SUCCESS)
-    {   free(GrabPointer);
-        return;
-    }
-    free(GrabPointer);
-    /* Prevent it from being detected as non floating */
-    if(c)
-    {
-        setfloating(c, 1); c->x += 1;
-        arrange(c->desktop);
-    }
-    else
-    {   XCBRaiseWindow(display, win);
-    }
-    XCBFlush(_wm.dpy);
-    running = 1;
-    ev = NULL;
-    XCBMotionNotifyEvent *mev = NULL;
-    XCBTimestamp lasttime = 0;
-
-    /* Unlock as was previous locked */
-    UNLOCK_WM();
-
-    do
-    {
-        if(ev)
-        {
-            LOCK_WM();
-            eventhandler(ev);
-            switch(XCB_EVENT_RESPONSE_TYPE(ev))
-            {   
-                case XCB_MOTION_NOTIFY:
-                    mev = (XCBMotionNotifyEvent *)ev;
-                    if(_cfg.RefreshRate)
-                    {
-                        const float FRAME_TIME = 1000.0f / (_cfg.RefreshRate + !_cfg.RefreshRate);
-                        if((mev->time - lasttime) <= FRAME_TIME)
-                        {   break;
-                        }
-                        lasttime = mev->time;
-                    }
-                    nw = oldw + horz * (mev->root_x - curx);
-                    nh = oldh + vert * (mev->root_y - cury);
-
-                    if(maxw)
-                    {   nw = MIN(nw, maxw);
-                    }
-                    if(maxh)
-                    {   nh = MIN(nh, maxh);
-                    }
-
-                    nw = MAX(nw, minw);
-                    nh = MAX(nh, minh);
-
-                    nx = oldx + !~horz * (oldw - nw);
-                    ny = oldy + !~vert * (oldh - nh);
-                    if(c)
-                    {   resize(c, nx, ny, nw, nh, 1);
-                    }
-                    else
-                    {   XCBMoveResizeWindow(_wm.dpy, win, nx, ny, nw, nh);
-                    }
-                    XCBFlush(_wm.dpy);
-                    break;
-                /* TODO */
-                case XCB_BUTTON_PRESS:
-                    break;
-                case XCB_BUTTON_RELEASE:
-                    if(CLEANBUTTONMASK(((XCBButtonPressEvent *)ev)->detail) == detail)
-                    {   running = 0;
-                    }
-                    break;
-                case XCB_KEY_PRESS:
-                    break;
-                case XCB_KEY_RELEASE:
-                    break;
-                /* this accounts for users killing the window (cause they can) */
-                case XCB_UNMAP_NOTIFY:
-                    if(((XCBUnmapNotifyEvent *)ev)->window == win)
-                    {   running = 0;
-                    }
-                    break;
-                case XCB_DESTROY_NOTIFY:
-                    if(((XCBDestroyNotifyEvent *)ev)->window == win)
-                    {   running = 0;
-                    }
-                    break;
-            }
-            UNLOCK_WM();
-            free(ev);
-        }
-    } while(_wm.running && running && !XCBNextEvent(_wm.dpy, &ev)); 
-
-    /* relock to prevent race conditions */
-    LOCK_WM();
-
-    running = 0;
-    XCBUngrabPointer(_wm.dpy, XCB_CURRENT_TIME);
-    Monitor *m;
-    c = wintoclient(win);
-    if(c)
-    {
-        if ((m = recttomon(c->x, c->y, c->w, c->h)) != _wm.selmon) 
-        {
-            setclientdesktop(c, m->desksel);
-            setmonsel(m);
-        }
-        if(DOCKED(c))
-        {   setfloating(c, 0);
-        }
-    }
-    arrange(_wm.selmon->desksel);
-    XCBFlush(_wm.dpy);
-    /* No unlock as lock previous state was locked, (aka no double lock) */
 }
 
 void
 ResizeWindowAlt(const Arg *arg)
 {
     Debug0("Called.");
-    static u8 running = 0;
-    if(!arg->v || ((XCBButtonPressEvent *)arg->v)->event == _wm.root || running)
-    {   return;
-    }
-    /* get any requests that may have moved the window back */
-    XCBSync(_wm.dpy);
-    XCBGenericEvent *ev = arg->v;
-    const i64 detail = CLEANBUTTONMASK(((XCBButtonPressEvent *)arg->v)->detail);
-    XCBWindow win = ((XCBButtonPressEvent *)ev)->event;
-    Client *c = wintoclient(win);
-    XCBDisplay *display = _wm.dpy;
-
-    i16 curx, cury;
-    i32 oldw, oldh;
-    i32 nx, ny;
-    i32 nw, nh;
-    i32 oldx, oldy;
-    i8 horz, vert;
-    XCBCursor cur;
-
-    /* init data */
-    curx = cury = oldw = oldh = nx = ny = nw = nh = oldx = oldy = horz = vert = 0;
-
-    XCBCookie QueryPointerCookie = XCBQueryPointerCookie(display, win);
-    XCBQueryPointer *pointer = XCBQueryPointerReply(display, QueryPointerCookie);
-
-    if(pointer)
-    {
-        curx = pointer->root_x;
-        cury = pointer->root_y;
-        nx = pointer->win_x;
-        ny = pointer->win_y;
-        free(pointer);
-    }
-    else
+    if(!arg->v || ((XCBButtonPressEvent *)arg->v)->event == _wm.root)
     {   return;
     }
 
-    if(!c)
-    {
-        XCBCookie GetGeometryCookie = XCBGetGeometryCookie(display, win);
-        XCBGeometry *wa = XCBGetGeometryReply(display, GetGeometryCookie);
+    int status;
+    Arg altmode = { .i = ~0 };
 
-        if(wa)
-        {   
-            oldw = wa->width;
-            oldh = wa->height;
-            oldx = wa->x;
-            oldy = wa->y;
-            free(wa);
-        }
-        else
-        {   return;
-        }
-    }
-    else
-    {
-        oldw = c->w;
-        oldh = c->h;
-        oldx = c->x;
-        oldy = c->y;
-    }
+    status = WM_ADD_WORK(ResizeWindowHandler, altmode);
 
-    if(!c)
-    {
-        XCBSizeHints hints;
-        XCBCookie GetWMNormalHintsCookie = XCBGetWMNormalHintsCookie(_wm.dpy, win);
-        u8 hintsstatus = XCBGetWMNormalHintsReply(_wm.dpy, GetWMNormalHintsCookie, &hints);
-        if(hintsstatus)
-        {
-            Client c1;
-            updatesizehints(&c1, &hints);
-        }
-        else
-        {   return;
-        }
+    if(status == EXIT_FAILURE)
+    {   Debug0("Failed to start DragWindow");
     }
-    else
-    {
-    }
-
-    horz = nx < oldw / 2 ? -1 : 1;
-    vert = ny < oldh / 2 ? -1 : 1;
-
-    if(horz == -1)
-    {
-        /* top left */
-        if(vert == -1)
-        {   cur = cursors[CurResizeTopL];
-        }
-        /* Bottom Right */
-        else
-        {   cur = cursors[CurResizeTopR];
-        }
-    }
-    else
-    {
-        /* top right */
-        if(vert == -1)
-        {   cur = cursors[CurResizeTopR];
-        }
-        /* bottom right */
-        else
-        {   cur = cursors[CurResizeTopL];
-        }
-    }
-
-    XCBCookie GrabPointerCookie = XCBGrabPointerCookie(_wm.dpy, _wm.root, False, MOUSEMASK, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE, cur, XCB_CURRENT_TIME);
-    XCBGrabPointer *GrabPointer = XCBGrabPointerReply(_wm.dpy, GrabPointerCookie);
-
-    if(!GrabPointer || GrabPointer->status != XCB_GRAB_STATUS_SUCCESS)
-    {   
-        free(GrabPointer);
-        return;
-    }
-    free(GrabPointer);
-    /* Prevent it from being detected as non floating */
-    if(c)
-    {
-        setfloating(c, 1); c->x += 1;
-        arrange(c->desktop);
-    }
-    else
-    {   XCBRaiseWindow(display, win);
-    }
-    XCBFlush(_wm.dpy);
-    running = 1;
-    ev = NULL;
-    XCBMotionNotifyEvent *mev = NULL;
-
-    /* Unlock as was previous locked */
-    UNLOCK_WM();
-    do
-    {
-        if(ev)
-        {
-            LOCK_WM();
-            eventhandler(ev);
-            switch(XCB_EVENT_RESPONSE_TYPE(ev))
-            {   
-                case XCB_MOTION_NOTIFY:
-                    mev = (XCBMotionNotifyEvent *)ev;
-                    nw = oldw + horz * mev->root_x - curx;
-                    nh = oldh + vert * mev->root_y - cury;
-
-                    nx = oldx + !~horz * (oldw - nw);
-                    ny = oldy + !~vert * (oldh - nh);
-                    if(c)
-                    {   resizeclient(c, nx, ny, nw, nh);
-                    }
-                    else
-                    {   XCBMoveResizeWindow(_wm.dpy, win, nx, ny, nw, nh);
-                    }
-                    XCBFlush(_wm.dpy);
-                    break;
-                /* TODO */
-                case XCB_BUTTON_PRESS:
-                    break;
-                case XCB_BUTTON_RELEASE:
-                    if(CLEANBUTTONMASK(((XCBButtonPressEvent *)ev)->detail) == detail) 
-                    {   running = 0;
-                    }
-                    break;
-                case XCB_KEY_PRESS:
-                    break;
-                case XCB_KEY_RELEASE:
-                    break;
-                /* this accounts for users killing the window (cause they can) */
-                case XCB_UNMAP_NOTIFY:
-                    if(((XCBUnmapNotifyEvent *)ev)->window == win)
-                    {   running = 0;
-                    }
-                    break;
-                case XCB_DESTROY_NOTIFY:
-                    if(((XCBDestroyNotifyEvent *)ev)->window == win)
-                    {   running = 0;
-                    }
-                    break;
-            }
-            UNLOCK_WM();
-            free(ev);
-        }
-    } while(_wm.running && running && !XCBNextEvent(_wm.dpy, &ev)); 
-
-    /* relock to prevent race conditions */
-    LOCK_WM();
-
-    running = 0;
-    XCBUngrabPointer(_wm.dpy, XCB_CURRENT_TIME);
-    Monitor *m;
-    c = wintoclient(win);
-    if(c)
-    {
-        if ((m = recttomon(c->x, c->y, c->w, c->h)) != _wm.selmon) 
-        {
-            setclientdesktop(c, m->desksel);
-            setmonsel(m);
-        }
-        if(DOCKED(c))
-        {   setfloating(c, 0);
-        }
-    }
-    arrange(_wm.selmon->desksel);
-    XCBFlush(_wm.dpy);
-    /* No unlock as lock previous state was locked, (aka no double lock) */
 }
 
 

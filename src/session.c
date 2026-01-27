@@ -10,7 +10,7 @@
 
 
 #include "main.h"
-#include "parser.h"
+#include "SCParser/parser.h"
 #include "session.h"
 #include "config.h"
 #include "file_util.h"

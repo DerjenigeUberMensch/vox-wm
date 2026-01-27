@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#include "parser.h"
+#include "SCParser/parser.h"
 #include "util.h"
 
 
