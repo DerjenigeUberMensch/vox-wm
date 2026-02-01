@@ -2,8 +2,8 @@
 Name=vox-wm
 GenericName=Window Manager
 Comment=X Server Event Handler (XEH)
-Exec=/usr/loca/bin/vox-wm
-TryExec=/usr/loca/bin/vox-wm
+Exec=/usr/local/bin/vox-wm
+TryExec=/usr/local/bin/vox-wm
 Terminal=true
 Type=Application
 Categories=
