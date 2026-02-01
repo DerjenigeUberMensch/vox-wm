@@ -1,4 +1,5 @@
 # The MIT License (MIT)
+#
 
 # Copyright (c) 2014 Michael Crawford
 
@@ -42,10 +43,10 @@ ARCH64 = -march=x86-64
 ARCH = ${ARCH64} ${ARCHALL}
 # General compiler flags
 COMPILE_FLAGS = ${CCFLAGS} ${PRELINKERFLAGS} ${ARCH} 
-COMPILE_FLAGS += -DXINERAMA -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L -DNDEBUG -DVERSION=\"${VERSION}\" -DMARK=\"${MARK}\"
+COMPILE_FLAGS += -DXINERAMA -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L -DVERSION=\"${VERSION}\" -DMARK=\"${MARK}\"
 # Additional release-specific flags
-RCOMPILE_FLAGS = ${RELEASES}
-SCOMPILE_FLAGS = ${SIZEONLY}
+RCOMPILE_FLAGS = ${RELEASES} -DNDEBUG
+SCOMPILE_FLAGS = ${SIZEONLY} -DNDEBUG
 # Additional debug-specific flags
 DCOMPILE_FLAGS = -DDEBUG -DENABLE_DEBUG -DXCB_TRL_ENABLE_DEBUG ${DEBUG} ${SAFETYFLAGS}
 # Add additional include paths
@@ -60,6 +61,9 @@ DLINK_FLAGS = ${LINKDEBUG}
 DESTDIR = /
 # Install path (bin/ is appended automatically)
 INSTALL_PREFIX = usr/local
+LOCAL_SHARE_PREFIX = $(HOME)/.local/share
+XSESSION_PREFIX = ${LOCAL_SHARE_PREFIX}/xsessions
+APPLICATION_PREFIX = ${LOCAL_SHARE_PREFIX}/applications
 #### END PROJECT SETTINGS ####
 
 # Optionally you may move the section above to a separate config.mk file, and
@@ -250,12 +254,22 @@ dirs:
 .PHONY: install
 install:
 	@echo "Installing to $(DESTDIR)$(INSTALL_PREFIX)/bin"
+	@echo "Installing .desktop file to $(XSESSION_PREFIX)"
+	@echo "Installing .desktop file to $(APPLICATION_PREFIX)"
+	@mkdir -p $(XSESSION_PREFIX)
+	@mkdir -p ${APPLICATION_PREFIX}
+	@$(INSTALL_PROGRAM) vox-wm.desktop $(XSESSION_PREFIX)/vox-wm.desktop
+	@$(INSTALL_PROGRAM) vox-wm.desktop $(APPLICATION_PREFIX)/vox-wm.desktop
 	@$(INSTALL_PROGRAM) $(BIN_PATH)/$(BIN_NAME) $(DESTDIR)$(INSTALL_PREFIX)/bin
 
 # Uninstalls the program
 .PHONY: uninstall
 uninstall:
 	@echo "Removing $(DESTDIR)$(INSTALL_PREFIX)/bin/$(BIN_NAME)"
+	@echo "Removing $(XSESSION_PREFIX)/vox-wm.desktop"
+	@echo "Removing $(APPLICATION_PREFIX)/vox-wm.desktop"
+	@$(RM) $(XSESSION_PREFIX)/vox-wm.desktop
+	@$(RM) $(APPLICATION_PREFIX)/vox-wm.desktop
 	@$(RM) $(DESTDIR)$(INSTALL_PREFIX)/bin/$(BIN_NAME)
 
 # Removes all build files
