@@ -134,7 +134,8 @@ WM
     uint8_t has_error;              /* Error flag           */
     uint8_t use_threads;            /* Use thread Flag      */
     uint8_t manual_exit;            /* Manual terminate flag*/
-    uint8_t restart;                /* Restart flag         */
+    uint8_t use_watcher;            /* Watchers Flag        */
+    uint8_t restart;                /* Restart Flag         */
     uint8_t pad[3];
 
     /* store _NET_CLIENT_LIST */
@@ -214,6 +215,8 @@ void setupatoms(void);
 void setupcfg(void);
 /* Sets up System related data */
 void setupsys(void);
+/* Setup file watchers for the wm */
+void setupwatchers(void);
 /* Loads WM with valid memory data */
 void setupwm(void);
 /* waits for childs (zombies) to die */

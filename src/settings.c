@@ -13,10 +13,12 @@
 #include "safebool.h"
 #include "config.h"
 #include "file_util.h"
+#include "threading.h"
+#include "main.h"
 
 
 #define VOX_ADD_MEMBER_SETTING(NAME, TYPE, DEFAULT_SETTING) \
-        VOX_ADD_MEMBER(NAME, TYPE, offsetof(UserSettings, NAME), FIELD_SIZEOF(UserSettings, NAME) ,DEFAULT_SETTING)
+        VOX_ADD_MEMBER(NAME, TYPE, offsetof(UserSettings, NAME), FIELD_SIZEOF(UserSettings, NAME), DEFAULT_SETTING)
 
 static const SCSetting
 __USER__SETTINGS__DATA__[] = 
@@ -110,9 +112,18 @@ USInit(
         UserSettings *settings_init
         )
 {
+    int status;
+
     memset(settings_init, 0, sizeof(UserSettings));
 
     settings_init->cfg = SCParserCreate(UserSettingsLAST);
+    settings_init->use_threads = 0;
+
+    status = pthread_mutex_init(&settings_init->mutex, NULL);
+
+    if(!status)
+    {   settings_init->use_threads = 1;
+    }
 
     if(settings_init->cfg)
     {
@@ -127,42 +138,108 @@ USLoad(
         UserSettings *settings
         )
 {
+    pthread_mutex_lock(&settings->mutex);
+
     if(!settings->cfg)
-    {   return;
+    {   goto UNLOCK;
     }
 
     char __CONFIG__PATH__[FFSysGetConfigPathLengthMAX];
+
     SCParser *cfg = settings->cfg;
     SCItem *item;
     u8 status;
 
     status = WMConfigGetSettingsPath(__CONFIG__PATH__, FFSysGetConfigPathLengthMAX, NULL);
+
     if(status)
     {   
         Debug0("Failed to get system config path, loading defaults");
-        return;
+        goto UNLOCK;
     }
 
     status = SCParserReadFile(cfg, __CONFIG__PATH__);
+
     if(status)
     {   
-        Debug0("Failed to load previous data, loading defaults...");
-        return;
+        /* TODO: This sometimes prints, even when it shouldnt. FIXME */
+        /*
+         * if the file doesnt exist then we probably read the file when it was deleted
+         * if(FFFileExists(__CONFIG__PATH__))
+         * {   Debug0("Failed to load data?");
+         * }
+         */
+        goto UNLOCK;
     }
+
     i32 i;
     void *data;
 
     const SCSetting *usdata = __USER__SETTINGS__DATA__;
+
     for(i = 0; i < UserSettingsLAST; ++i)
     {
         data = ((uint8_t *)settings) + usdata->offset;
         item = SCParserSearch(cfg, usdata->name);
+
         if(!item)
         {   item = SCParserSearchSlow(cfg, usdata->name);
         }
+
         if(item)
         {   
+            #if DEBUG
+                enum { SAFE_TYPE_BUFF_SIZE = 32 };
+
+                char tmp[SAFE_TYPE_BUFF_SIZE];
+
+                memcpy(tmp, data, MIN(usdata->size, SAFE_TYPE_BUFF_SIZE));
+            #endif
+
             status = SCParserLoad(item, data, usdata->size, usdata->type);
+
+            #if DEBUG
+                if(memcmp(data, tmp, MIN(usdata->size, SAFE_TYPE_BUFF_SIZE)))
+                {   Debug("Updated: [%s]", usdata->name);
+                }
+            #endif
+
+                /*
+                   Debug("%f", _cfg.MFact);
+                   Debug("%f", _cfg.GapRatio);
+                   Debug("%d", _cfg.MCount);
+                   Debug("%d", _cfg.Snap);
+                   Debug("%d", _cfg.RefreshRate);
+
+                   Debug("%d", _cfg.MaxCC);
+
+                   Debug("%s", GET_BOOL(_cfg.HoverFocus));
+                   Debug("%s", GET_BOOL(_cfg.UseDecorations));
+                   Debug("%s", GET_BOOL(_cfg.UseClientSideDecorations));
+                   Debug("%s", GET_BOOL(_cfg.PreferClientSideDecorations));
+
+                   Debug("%f", _cfg.BarLX);
+                   Debug("%f", _cfg.BarLY);
+                   Debug("%f", _cfg.BarLW);
+                   Debug("%f", _cfg.BarLH);
+
+                   Debug("%f", _cfg.BarRX);
+                   Debug("%f", _cfg.BarRY);
+                   Debug("%f", _cfg.BarRW);
+                   Debug("%f", _cfg.BarRH);
+
+                   Debug("%f", _cfg.BarTX);
+                   Debug("%f", _cfg.BarTY);
+                   Debug("%f", _cfg.BarTW);
+                   Debug("%f", _cfg.BarTH);
+
+                   Debug("%f", _cfg.BarBX);
+                   Debug("%f", _cfg.BarBY);
+                   Debug("%f", _cfg.BarBW);
+                   Debug("%f", _cfg.BarBH);
+                   */
+
+
             if(status)
             {   Debug("Failed to LOAD, \"%s\"", usdata->name);
             }
@@ -172,6 +249,9 @@ USLoad(
         }
         ++usdata;
     }
+
+UNLOCK:
+    pthread_mutex_unlock(&settings->mutex);
 }
 
 void
@@ -179,9 +259,11 @@ USSave(
         UserSettings *settings
         )
 {
+    pthread_mutex_lock(&settings->mutex);
     if(!settings->cfg)
-    {   return;
+    {   goto UNLOCK;
     }
+
     SCParser *cfg = settings->cfg;
     UserSettings *s = settings;
     i32 i;
@@ -199,7 +281,7 @@ USSave(
     if(status)
     {   
         Debug0("Failed to get system config path, cannot save settings.");
-        return;
+        goto UNLOCK;
     }
 
     if(!FFFileExists(__CONFIG__PATH__))
@@ -219,6 +301,8 @@ USSave(
         Debug0("Empty file found, writing base config...");
         SCParserWrite(cfg, __CONFIG__PATH__);
     }
+UNLOCK:
+    pthread_mutex_unlock(&settings->mutex);
 }
 
 void
@@ -229,7 +313,10 @@ USWipe(
     if(!settings->cfg)
     {   return;
     }
+
     SCParser *cfg = settings->cfg;
+
     SCParserDestroy(cfg);
+    pthread_mutex_destroy(&settings->mutex);
     memset(settings, 0, sizeof(UserSettings));
 }

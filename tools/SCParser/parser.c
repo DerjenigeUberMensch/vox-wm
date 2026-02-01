@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <fcntl.h>
 #include <ctype.h>  /* isdigit() */
 
 #include "parser.h"
@@ -315,6 +316,7 @@ SCParserLoad(
 {
     const int FAILURE = 1;
     const int SUCCESS = 0;
+
     if(!item || !item->typename || !_return)
     {   return FAILURE;
     }
@@ -640,8 +642,10 @@ SCParserReadFile(
         const char *const FILE_NAME
         )
 {
-    const int FAILURE = 1;
-    const int SUCCESS = 0;
+    enum { FAILURE = 1 };
+    enum { SUCCESS = 0 } ;
+
+    enum { ERROR = -1 };
 
     if(!parser)
     {   return FAILURE;
@@ -649,10 +653,36 @@ SCParserReadFile(
 
 
     FILE *fr = fopen(FILE_NAME, "r");
+    int fd;
 
     if(!fr)
     {   return FAILURE;
     }
+
+    fd = fileno(fr);
+
+    if(fd == ERROR)
+    {   
+        perror("fileno");
+        fclose(fr);
+        return FAILURE;
+    }
+
+    struct flock lock = {0};
+
+    lock.l_type = F_RDLCK;
+    lock.l_whence = SEEK_SET;
+    lock.l_start = 0;
+    lock.l_len = 0;
+
+    if(fcntl(fd, F_SETLK, &lock) == ERROR)
+    {   
+        perror("fcntl");
+        fclose(fr);
+
+        return FAILURE;
+    }
+
 
     const int BUFF_LIMIT = 1024;
     int running = 1;
@@ -664,6 +694,7 @@ SCParserReadFile(
     SCItem *item;
     /* Make sure null byte is set */
     memset(buff, 0, BUFF_LIMIT);
+
     while(running)
     {
         switch(__FILE_GET_NEW_LINE(fr, buff, BUFF_LIMIT - 1))
@@ -695,7 +726,11 @@ SCParserReadFile(
         memset(buff, 0, bufflenreal);
     }
 
+    lock.l_type = F_UNLCK;
+
+    fcntl(fd, F_SETLK, &lock);
     fclose(fr);
+
     return SUCCESS;
 }
 

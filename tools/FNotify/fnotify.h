@@ -15,7 +15,12 @@ extern "C" {
 
 #include <pthread.h>
 
+
 enum
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((flag_enum))
+#endif
+
 FNotifyFlags
 {
     FNotifyFileAccess           = 1 << 0,
@@ -24,13 +29,16 @@ FNotifyFlags
     FNotifyClosedRead           = 1 << 3,
     FNotifyFileCreate           = 1 << 4,
     FNotifyDirCreate            = 1 << 5,
-    FNotifyFileMoved            = 1 << 6,
-    FNotifyFileDeleted          = 1 << 7,
-    FNotifyFileModify           = 1 << 8,
-    FNotifyFileOpened           = 1 << 9,
+    FNotifyFileMovedSelf        = 1 << 6,
+    FNotifyFileMovedTo          = 1 << 7,
+    FNotifyFileMovedFrom        = 1 << 8,
+    FNotifyFileDeletedSelf      = 1 << 9,
+    FNotifyFileDeleted          = 1 << 10,
+    FNotifyFileModify           = 1 << 11,
+    FNotifyFileOpened           = 1 << 12,
 
     /* ensure compiler gets minimum flag correctly */
-    FNotifySpareBit             = 1 << 10,
+    FNotifySpareBit             = 1 << 13,
 };
 
 typedef struct FNotify FNotify;
@@ -60,7 +68,7 @@ FNotifyEvent
  */
 FNotify *
 FNotifyCreate(
-        const char *const FILE_NAME,
+        char *FILE_NAME,
         enum FNotifyFlags flags
         );
 
@@ -72,7 +80,7 @@ FNotifyCreate(
 int
 FNotifyCreateFilled(
         FNotify *fill_return,
-        const char *const FILE_NAME,
+        char *FILE_NAME,
         enum FNotifyFlags flags
         );
 

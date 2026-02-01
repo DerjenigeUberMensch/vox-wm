@@ -30,14 +30,23 @@ FNOTIFY_GET_INOTIFY_FLAGS_FNOTIFY(uint32_t mask)
     if(mask & IN_CREATE)
     {   ret |= FNotifyFileCreate|FNotifyDirCreate;
     }
-    if(mask & IN_MOVE)
-    {   ret |= FNotifyFileMoved;
-    }
     if(mask & IN_DELETE)
     {   ret |= FNotifyFileDeleted;
     }
+    if(mask & IN_DELETE_SELF)
+    {   ret |= FNotifyFileDeletedSelf;
+    }
     if(mask & IN_MODIFY)
     {   ret |= FNotifyFileModify;
+    }
+    if(mask & IN_MOVE_SELF)
+    {   ret |= FNotifyFileMovedSelf;
+    }
+    if(mask & IN_MOVED_FROM)
+    {   ret |= FNotifyFileMovedFrom;
+    }
+    if(mask & IN_MOVED_TO)
+    {   ret |= FNotifyFileMovedTo;
     }
     if(mask & IN_OPEN)
     {   ret |= FNotifyFileOpened;
@@ -90,12 +99,6 @@ FNotifyGetCorrectFlagsAdd(
     {   ret |= flag;
     }
 
-    flag = IN_MOVE;
-
-    if(flags & FNotifyFileMoved)
-    {   ret |= flag;
-    }
-
     flag = IN_DELETE;
 
     if(flags & FNotifyFileDeleted)
@@ -114,12 +117,42 @@ FNotifyGetCorrectFlagsAdd(
     {   ret |= flag;
     }
 
+    flag = IN_DELETE_SELF;
+
+    if(flags & FNotifyFileDeletedSelf)
+    {   ret |= flag;
+    }
+
+    flag = IN_MODIFY;
+
+    if(flags & FNotifyFileModify)
+    {   ret |= flag;
+    }
+
+    flag = IN_MOVE_SELF;
+
+    if(flags & FNotifyFileMovedSelf)
+    {   ret |= flag;
+    }
+
+    flag = IN_MOVED_FROM;
+
+    if(flags & FNotifyFileMovedFrom)
+    {   ret |= flag;
+    }
+
+    flag = IN_MOVED_TO;
+
+    if(flags & FNotifyFileMovedTo)
+    {   ret |= flag;
+    }
+
     return ret;
 }
 
 FNotify *
 FNotifyCreate(
-        const char *const FILE_NAME,
+        char *FILE_NAME,
         enum FNotifyFlags flags
         )
 {
@@ -139,7 +172,7 @@ FNotifyCreate(
 int
 FNotifyCreateFilled(
         FNotify *fill_return,
-        const char *const FILE_NAME,
+        char *FILE_NAME,
         enum FNotifyFlags flags
         )
 {
@@ -164,10 +197,11 @@ FNotifyCreateFilled(
     {   goto FAILURE;
     }
 
+    fill_return->inotify_fd = status;
+
     uint32_t mask = FNotifyGetCorrectFlagsAdd(flags);
 
     int fd;
-
     fd = inotify_add_watch(fill_return->inotify_fd, FILE_NAME, mask);
 
     enum { INOTIFY_ERR = -1 };

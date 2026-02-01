@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <libgen.h>
 #include <math.h>
 #include <unistd.h>
 #include <unistd.h>
@@ -33,6 +34,9 @@
 #include "keybinds.h"
 #include "safebool.h"
 #include "threading.h"
+#include "watchers.h"
+#include "config.h"
+#include "file_util.h"
 /* #include "watchdog.h" */
 
 /* for HELP/DebugGING see under main() or the bottom */
@@ -148,6 +152,12 @@ cleanup(void)
         }
         return;
     }
+    if(_wm.use_watcher)
+    {   WatcherDestroy();
+    }
+    /* Threads are alawys first to go due to concurrency problems with future cleanup functions */
+    ThreadingDestroy();
+
     /* cleanup cfg */
     USWipe(&_cfg);
     XCBCookie cookie = XCBDestroyWindow(_wm.dpy, _wm.wmcheckwin);
@@ -156,11 +166,13 @@ cleanup(void)
     XCBSetInputFocus(_wm.dpy, _wm.root, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
     XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow]);
     _wm.wmcheckwin = 0;
+
     if(_wm.syms)
     {   
         XCBKeySymbolsFree(_wm.syms);
         _wm.syms = NULL;
     }
+
     cleanupmons();
     XCBFlush(_wm.dpy);
     /* Free hashmap */
@@ -176,7 +188,6 @@ cleanup(void)
         }
         _wm.dpy = NULL;
     }
-    ThreadingDestroy();
 }
 
 void __HOT__
@@ -982,6 +993,7 @@ setup(void)
     setupatoms();
     setupcursors();
     setupcfg();
+    setupwatchers();
     setupwm();
 
     /* finds any monitor's */
@@ -1052,6 +1064,61 @@ setupsys(void)
         DIECAT("pledge");
     }
 #endif /* __OpenBSD__ */
+}
+
+static void
+IMPL_WM_CONFIG_WATCHER(Generic *arg)
+{
+    (void)arg;
+
+    LOCK_WM();
+
+    USLoad(&_cfg);
+
+    UNLOCK_WM();
+}
+
+void
+setupwatchers(void)
+{
+    _wm.use_watcher = WatcherInit() == EXIT_SUCCESS;
+
+    if(!_wm.use_watcher)
+    {   return;
+    }
+
+    int status;
+    char buff[FFSysGetConfigPathLengthMAX + 1];
+    char *dir;
+    const char *const invaliddir = ".";
+    uint32_t len = 0;
+
+    memset(buff, '\0', sizeof(buff));
+
+    status = WMConfigGetSettingsPath(buff, FFSysGetConfigPathLengthMAX, &len);
+
+    if(status == EXIT_SUCCESS)
+    {   
+        /* TODO: Fix Fnotify and this, as this is just a quick fix to get it up and running
+         * FIxing FNotify will be a hassle for now, so skipping...
+         */
+        dir = dirname(buff);
+        status = EXIT_FAILURE;
+
+        /* make sure it has a higher dir above it or in it */
+        if(strcmp(dir, invaliddir))
+        {   
+            status = WatcherAdd(buff, IMPL_WM_CONFIG_WATCHER, NULL, 
+                FNotifyClosedWrite|FNotifyFileMovedTo|FNotifyFileCreate|FNotifyFileDeleted
+                |FNotifyFileDeletedSelf|FNotifyFileMovedSelf
+                );
+        }
+
+    }
+
+    if(status == EXIT_FAILURE)
+    {   Debug0("WARNING: Could not allocate memory for watchers, FEATURE: file watching is not running");
+    }
 }
 
 void

@@ -63,6 +63,8 @@ GArray32
     garray_i base_allocate;
 };
 
+#define GARRAY_STATIC_INITIALIZER(ITEM_SIZE) { .data = NULL, .item_size = ITEM_SIZE, .data_len = 0, .data_len_real = 0, .base_allocate = 0 }
+
 
 /*
 struct

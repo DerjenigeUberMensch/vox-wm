@@ -63,6 +63,7 @@ memfilled(void *mem, size_t size)
     return true;
 }
 
+void _Breakpoint(void) { volatile int *e = 0; if(e != (volatile int *)1) { e = (volatile int *)3; } (void)e; }
 
 
 #ifdef __linux__ 
