@@ -189,6 +189,9 @@ union ARGB
 #define STATIC_ASSERT(cond, msg) typedef char static_assertion_##msg[(cond) ? 1 : -1]
 #endif
 
+#ifndef GET_BOOL
+#define GET_BOOL(X) ((X) ? "true" : "false")
+#endif
 
 #ifndef NDEBUG
 
@@ -696,6 +699,7 @@ bool memnonempty(void *mem, size_t size);
  */
 bool memfilled(void *mem, size_t size);
 
+void _Breakpoint(void);
 
 #ifndef __intersect_area
 #define __intersect_area(x1_start, y1_start, x1_end, y1_end, x2_start, y2_start, x2_end, y2_end) \

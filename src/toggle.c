@@ -31,17 +31,6 @@ extern WM _wm;
 extern UserSettings _cfg;
 extern XCBCursor cursors[CurLast];
 
-const char *const
-GET_BOOL(i64 x)
-{
-    if(x)
-    {   return "True";
-    }
-    else
-    {   return "False";
-    }
-}
-
 void
 UserStats(const Arg *arg)
 {

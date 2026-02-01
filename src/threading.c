@@ -12,17 +12,6 @@
 threadpool __thread__pool = NULL;
 pthread_mutex_t __thread_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-
-typedef struct WorkItem WorkItem;
-
-struct
-WorkItem
-{
-    Generic arg;
-    TPromise *promise;
-    void (*func)(Generic *);
-};
-
 int
 InitThreading(void)
 {
@@ -61,7 +50,7 @@ InitThreading(void)
 static void
 ThreadingWorker(void *arg)
 {
-    WorkItem *work = (WorkItem *)arg;
+    ThreadWorkItem *work = (ThreadWorkItem *)arg;
 
     if(!ASSERT(work))
     {   return;
@@ -90,7 +79,7 @@ ThreadingAddWork(void (*function)(Generic *arg), Generic *arg, TPromise *optiona
 
     int status = EXIT_FAILURE;
 
-    WorkItem *arg_real = malloc(sizeof(*arg_real));
+    ThreadWorkItem *arg_real = malloc(sizeof(*arg_real));
 
     if(!arg_real)
     {   return EXIT_FAILURE;
@@ -112,6 +101,8 @@ ThreadingAddWork(void (*function)(Generic *arg), Generic *arg, TPromise *optiona
     {   return EXIT_SUCCESS;
     }
 
+    free(arg_real);
+
     return EXIT_FAILURE;
 }
 
@@ -132,6 +123,7 @@ ThreadingDestroy(void)
 
     if(__thread__pool)
     {   
+        /* this can be a memory leak sometimes... But currently there is not another good way to halt threads without breaking stuff */
         thpool_destroy(__thread__pool);
         __thread__pool = NULL;
     }

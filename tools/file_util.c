@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <sys/stat.h>
 #include <errno.h>
@@ -70,7 +71,7 @@ FFDirExists(
         )
 {
     if(!DIR_NAME)
-    {   return EXIT_FAILURE;
+    {   return 0;
     }
     const int NOT_FOUND = -1;
     int statstatus = 0; 
@@ -167,10 +168,13 @@ FFCreatePath(
     if(!FFFileExists(FULL_PATH))
     {
         FILE *f = fopen(FULL_PATH, "ab+");
+
         if(!f)
         {   ret = EXIT_FAILURE;
         }
-        fclose(f);
+        else
+        {   fclose(f);
+        }
     }
 
     return ret;
@@ -182,17 +186,10 @@ FFPathExists(
         )
 {
     if(!FULL_PATH)
-    {   return EXIT_FAILURE;
+    {   return 0;
     }
-    const int NOT_FOUND = -1;
-    int statstatus = 0; 
-    struct stat st = {0};
 
-    statstatus = stat(FULL_PATH, &st);
-
-    const int FOUND = statstatus != NOT_FOUND;
-
-    return FOUND;
+    return access(FULL_PATH, F_OK);
 }
 
 int
@@ -201,8 +198,9 @@ FFFileExists(
         )
 {   
     if(!FILE_NAME)
-    {   return EXIT_FAILURE;
+    {   return 0;
     }
+
     const int NOT_FOUND = -1;
     int statstatus = 0; 
     struct stat st = {0};
@@ -235,11 +233,13 @@ FFIsFileEmpty(
         if(fr)
         {
             int c = fgetc(fr);
+
             if(c == EOF)
             {   ret = 1;
             }
+
+            fclose(fr);
         }
-        fclose(fr);
     }
 
     return ret;

@@ -1,8 +1,27 @@
-
 #include "TPromises/tpromise.h"
 #include "util.h"
 #include "safebool.h"
 
+
+typedef struct ThreadWorkItem ThreadWorkItem;
+typedef struct ThreadWorkItem2 ThreadWorkItem2;
+
+struct
+ThreadWorkItem
+{
+    Generic arg;
+    TPromise *promise;
+    void (*func)(Generic *);
+};
+
+struct
+ThreadWorkItem2
+{
+    Generic arg1;
+    Generic arg2;
+    TPromise *promise;
+    void (*func)(Generic *);
+};
 
 
 /*

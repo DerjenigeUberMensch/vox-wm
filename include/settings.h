@@ -4,6 +4,8 @@
 #include <stdint.h>
 
 #include "SCParser/parser.h"
+#include "FNotify/fnotify.h"
+
 #include "util.h"
 
 
@@ -108,6 +110,11 @@ UserSettings
     float BarBY;    /* Ratio of Monitor y offset    */
     float BarBW;    /* Ratio of Monitor w size      */
     float BarBH;    /* Ratio of Monitor h size      */
+
+    pthread_mutex_t mutex;
+    pthread_cond_t exitcond;
+    uint8_t use_threads;
+    FNotify fnotify;   /* NOTE: Access of this pointer is restricted to USInit */
 };
 
 enum
