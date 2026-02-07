@@ -28,7 +28,6 @@ __USER__SETTINGS__DATA__[] =
     VOX_ADD_MEMBER_SETTING(MCount, SCTypeUSHORT, 1)
     VOX_ADD_MEMBER_SETTING(Snap, SCTypeUSHORT, 10)
     VOX_ADD_MEMBER_SETTING(RefreshRate, SCTypeUSHORT, 60)
-    VOX_ADD_MEMBER_SETTING(MaxCC, SCTypeUSHORT, 256)
 
     /* BOOL Types */
     VOX_ADD_MEMBER_SETTING(HoverFocus, SCTypeBOOL, false)
@@ -210,8 +209,6 @@ USLoad(
                    Debug("%d", _cfg.MCount);
                    Debug("%d", _cfg.Snap);
                    Debug("%d", _cfg.RefreshRate);
-
-                   Debug("%d", _cfg.MaxCC);
 
                    Debug("%s", GET_BOOL(_cfg.HoverFocus));
                    Debug("%s", GET_BOOL(_cfg.UseDecorations));

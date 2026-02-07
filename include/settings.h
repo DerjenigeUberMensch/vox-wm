@@ -69,8 +69,6 @@ UserSettings
     uint16_t Snap;          /* snap window to border in pixels; 0 to disable (NOT RECOMMENDED)  */
     uint16_t RefreshRate;   /* max refresh rate when resizing, moving windows;  0 to disable    */
 
-    uint16_t MaxCC;         /* max number of clients (XOrg Default is 256)                      */
-
     /* Not bool or bitfield for portability */
     uint8_t HoverFocus;
     uint8_t UseDecorations;
@@ -124,15 +122,11 @@ enum
     MCount,
     Snap,
     RefreshRate,
-    MaxCC,
-
 
     HoverFocus,
     UseDecorations,
     UseClientSideDecorations,
     PreferClientSideDecorations,
-
-
 
     BarLX,
     BarLY,
