@@ -1278,7 +1278,7 @@ manage(XCBWindow win, void *replies[ManageClientLAST])
         Debug("Cannot manage(): [%u]", win);
         goto FAILURE;
     }
-    
+
     const u16 bw = 0;
     const u32 bcol = 0;
     const u8 showdecor = 1;

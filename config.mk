@@ -44,15 +44,17 @@ PRELINKERFLAGS ?= -fpie -fstack-protector-strong -fstack-clash-protection ${LINK
 INLINELIMIT ?= 15
 # can conflict with adress sanatizer if used (clang)
 NO_SANATIZE_FLAGS =  -Wl,-z,relro
-
+X86 = -m32
+X86_64 = -m64
+BUILD_ARCHITECTURE = ${X86_64}
 LINKLIBS = -lpthread -lm
-LINKFLAGS = ${LINKMODE} -Wl,--as-needed,--relax,-z,now,-z,noexecstack,-z,defs,-pie -finline-limit=${INLINELIMIT}  ${LINKTIMEOPTIMIZATIONS} ${LINKLIBS}
+LINKFLAGS = ${LINKMODE} -Wl,--as-needed,--relax,-z,now,-z,noexecstack,-z,defs,-pie -finline-limit=${INLINELIMIT}  ${LINKTIMEOPTIMIZATIONS} ${LINKLIBS} ${BUILD_ARCHITECTURE}
 LINKRELEASE = ${NO_SANATIZE_FLAGS} 
 #-Wl,--strip-all 
 LINKDEBUG = -Wl,--gc-sections ${MEMFLAGS}
 
 CPPFLAGS = -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L ${XINERAMAFLAGS}
-CCFLAGS  = ${CCVERSION} ${WARNINGFLAGS} ${INCS} ${CPPFLAGS} ${PRELINKERFLAGS} 
+CCFLAGS  = ${CCVERSION} ${WARNINGFLAGS} ${INCS} ${CPPFLAGS} ${PRELINKERFLAGS} ${BUILD_ARCHITECTURE}
 RELEASEFLAGS = ${CCFLAGS} 
 
 DEBUG 	= -ggdb -g ${SECTIONCODE} ${MEMFLAGS} -fverbose-asm -O0
