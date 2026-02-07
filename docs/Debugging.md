@@ -14,6 +14,30 @@ Compiling a debug build is as easy as.
 make debug
 ```
 
+## Environment
+
+To setup a environment you need to use Xephyr or any related xserver sub enviroment simulator.
+
+To install Xephyr, you may install it via your package manager, as seen below.
+
+**Arch**
+```
+sudo pacman -S Xephyr
+```
+
+To run Xephyr you may use the command(s) below.
+
+**NOTE: This command may FAIL, if you have another display open, you may want to change the display number if this is the case.**
+
+```
+export DISPLAY=:0 && Xephyr :1 -ac c 25 +xinerama -resizeable -screen 680x480 &
+```
+```
+export DISPLAY=:1
+```
+
+These help setup a basic Xephyr environment.
+
 ## GDB
 
 To install gdb, you may install it via your package manager, as seen below.
@@ -145,7 +169,7 @@ Valgrind is a useful tool to detect memory leaks and such, unforunatetly applica
 
 To install kcachegrind, you may install it via your package manager, as seen below.
 
-**NOTE: You must also have `valgrind` installed inorder to use kcachegrind, and related see #Valgrind for more details.**
+**NOTE: You must also have `valgrind` installed inorder to use kcachegrind, and related see [Valgrind](#valgrind) for more details.**
 
 **Arch**
 ```
