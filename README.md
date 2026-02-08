@@ -21,7 +21,7 @@ While still maintaing the window manager like feel of multiple different layouts
 This build is ***not*** fully feature ready.
 
 ## Why Use this.
-- **Low Memory Usage (~4-7 MiB) (When compiled in Release Mode)**
+- **Low Memory Usage under (~10 MiB) (When compiled in Release Mode)**
 - **Low CPU usage (~.1-2%) idle**
 - **Low CPU usage when doing expensive stuff (mapping windows) (~4-10%)**
 
