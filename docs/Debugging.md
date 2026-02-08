@@ -22,7 +22,7 @@ To install Xephyr, you may install it via your package manager, as seen below.
 
 **Arch**
 ```
-sudo pacman -S Xephyr
+sudo pacman -S xorg-server-xephyr
 ```
 
 To run Xephyr you may use the command(s) below.
