@@ -70,6 +70,8 @@ ClientFlags
     ClientFlagDisableBorder = 1u << 5,
     ClientFlagOverrideRedirect = 1u << 6,
     ClientFlagMapped = 1u << 7,   /* desktop optimizations */
+    ClientFlagBypassCompositor = 1u << 8,
+    ClientFlagNoPreferenceCompositor = 1u << 8,
 };
 
 /* kill client type */
@@ -549,6 +551,8 @@ uint32_t NonNull ISALWAYSONBOTTOM(Client *c);
 uint32_t NonNull WASFLOATING(Client *c);
 uint32_t NonNull ISFLOATING(Client *c);
 uint32_t NonNull ISOVERRIDEREDIRECT(Client *c);
+uint32_t NonNull ISBYPASSCOMPOSITOR(Client *c);
+uint32_t NonNull ISNOPREFERENCECOMPOSITOR(Client *c);
 uint32_t NonNull KEEPFOCUS(Client *c);
 uint32_t NonNull DISABLEBORDER(Client *c);
 uint32_t NonNull DOCKEDVERT(Client *c);

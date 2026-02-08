@@ -445,7 +445,7 @@ DragWindowHandler(
     return running;
 }
 
-void
+Arg
 DragWindow(
         const Arg *arg
         )
@@ -453,7 +453,7 @@ DragWindow(
     Debug0("Called.");
 
     if(!arg->v || ((XCBButtonPressEvent *)arg->v)->event == _wm.root)
-    {   return;
+    {   return (Arg){ .i = EXIT_FAILURE };
     }
 
     int status;
@@ -465,6 +465,8 @@ DragWindow(
     if(status == EXIT_FAILURE)
     {   Debug0("Failed to start DragWindow");
     }
+
+    return (Arg){ .i = status } ;
 }
 
 void
@@ -513,6 +515,10 @@ ResizeWindowHandler(
 
     if(!running)
     {
+        if(XCB_EVENT_RESPONSE_TYPE(event) != XCB_BUTTON_PRESS)
+        {   return false;
+        }
+
         /* get any requests that may have moved the window back */
         XCBSync(_wm.dpy);
 
@@ -520,7 +526,7 @@ ResizeWindowHandler(
 
         detail = CLEANBUTTONMASK(bpev->detail);
         win = bpev->event;
-        altmode = arg.i;
+        altmode = arg.i == 1;
 
         XCBCookie QueryPointerCookie = XCBQueryPointerCookie(_wm.dpy, win);
         XCBQueryPointer *pointer = XCBQueryPointerReply(_wm.dpy, QueryPointerCookie);
@@ -585,7 +591,7 @@ ResizeWindowHandler(
             }
         }
 
-        const u8 MIN_SIZE = 1 * 1;
+        const u8 MIN_SIZE = 5;
 
         minw = MAX(minw, MIN_SIZE);
         minh = MAX(minh, MIN_SIZE);
@@ -673,12 +679,14 @@ ResizeWindowHandler(
                 if(maxw)
                 {   nw = MIN(nw, maxw);
                 }
+
                 if(maxh)
                 {   nh = MIN(nh, maxh);
                 }
 
                 nw = MAX(nw, minw);
                 nh = MAX(nh, minh);
+
             }
 
             nx = oldx + !~horz * (oldw - nw);
@@ -760,12 +768,12 @@ ResizeWindowHandler(
     return running;
 }
 
-void
+Arg
 ResizeWindow(const Arg *arg)
 {
     Debug0("Called.");
     if(!arg->v || ((XCBButtonPressEvent *)arg->v)->event == _wm.root)
-    {   return;
+    {   return (Arg){ .i = EXIT_FAILURE };
     }
 
     int status;
@@ -776,24 +784,28 @@ ResizeWindow(const Arg *arg)
     if(status == EXIT_FAILURE)
     {   Debug0("Failed to start DragWindow");
     }
+
+    return (Arg){ .i = status };
 }
 
-void
+Arg
 ResizeWindowAlt(const Arg *arg)
 {
     Debug0("Called.");
     if(!arg->v || ((XCBButtonPressEvent *)arg->v)->event == _wm.root)
-    {   return;
+    {   return (Arg){ .i = EXIT_FAILURE };
     }
 
     int status;
-    Arg altmode = { .i = ~0 };
+    Arg altmode = { .i = 1 };
 
     status = WM_ADD_WORK(ResizeWindowHandler, altmode);
 
     if(status == EXIT_FAILURE)
     {   Debug0("Failed to start DragWindow");
     }
+
+    return (Arg){ .i = status };
 }
 
 

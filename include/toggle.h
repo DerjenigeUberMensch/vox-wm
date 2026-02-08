@@ -16,22 +16,33 @@ void NonNull FocusMonitor(const Arg *arg);
 void NonNull KillWindow(const Arg *arg);
 /* Attempts to kill the current window directly instead of just sending a signal and waiting for the window to respond */
 void NonNull TerminateWindow(const Arg *arg);
-/* keybind to move the current window where the mouse cursor is */
-void NonNull DragWindow(const Arg *arg);
+/* keybind to move the current window where the mouse cursor is 
+ *
+ * RETURN: EXIT_SUCCESS on Success, inside Arg.i.
+ * RETURN: EXIT_FAILURE on Failure, inside Arg.i.
+ */
+Arg NonNull DragWindow(const Arg *arg);
 /* Hard restart, execvp() */
 void NonNull Restart(const Arg *arg);
 /* Soft restart, self hosted, ie: do {} while(restart) */
 void NonNull RestartQ(const Arg *arg);
 /* quits wm */
 void NonNull Quit(const Arg *arg);
-/* resizes the current window based on mouse position */
-void NonNull ResizeWindow(const Arg *arg);
+/* resizes the current window based on mouse position 
+ *
+ * RETURN: EXIT_SUCCESS on Success, inside Arg.i.
+ * RETURN: EXIT_FAILURE on Failure, inside Arg.i.
+ */
+Arg NonNull ResizeWindow(const Arg *arg);
 /* Resizes the current window based on mouse position no restrictions 
  *
  * NOTE: There is no gurantee this function performs as intended due to other dynamic system behaviour/
  * NOTE: Use at your own risk! Or for Debugging!
+ *
+ * RETURN: EXIT_SUCCESS on Success, inside Arg.i.
+ * RETURN: EXIT_FAILURE on Failure, inside Arg.i.
  */
-void NonNull ResizeWindowAlt(const Arg *arg);
+Arg NonNull ResizeWindowAlt(const Arg *arg);
 /* sets the window layout based on a enum in main.h -> Grid, Floating, Monocle, Tiled */
 void NonNull SetWindowLayout(const Arg *arg);
 /* Spawns a window based on arguments provided */
