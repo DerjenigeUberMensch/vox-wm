@@ -140,6 +140,8 @@ checkotherwm(void)
 void
 cleanup(void)
 {
+    XCBCookie cookie;
+
     /* save setting data. */
     USSave(&_cfg);
     SessionSave();
@@ -160,9 +162,11 @@ cleanup(void)
 
     /* cleanup cfg */
     USWipe(&_cfg);
-    XCBCookie cookie = XCBDestroyWindow(_wm.dpy, _wm.wmcheckwin);
-    cleanupcursors();
+
+    cookie = XCBDestroyWindow(_wm.dpy, _wm.wmcheckwin);
     XCBDiscardReply(_wm.dpy, cookie);
+
+    cleanupcursors();
     XCBSetInputFocus(_wm.dpy, _wm.root, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
     XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow]);
     _wm.wmcheckwin = 0;
@@ -1125,6 +1129,7 @@ void
 setupwm(void)
 {
     enum { DESK_GEOM_LENGTH = 2 };
+    const u32 BYPASS_COMPOSITOR = 1;
                                     /* width, height */
     i32 deskgeom[DESK_GEOM_LENGTH] = { _wm.sw, _wm.sh };
     int status;
@@ -1172,9 +1177,12 @@ setupwm(void)
 
     /* supporting window for NetWMCheck */
     _wm.wmcheckwin = XCBCreateSimpleWindow(_wm.dpy, _wm.root, 0, 0, 1, 1, 0, 0, 0);
+
     XCBSelectInput(_wm.dpy, _wm.wmcheckwin, XCB_NONE);
+
     XCBChangeProperty(_wm.dpy, _wm.wmcheckwin, netatom[NetSupportingWMCheck], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&_wm.wmcheckwin, 1);
     XCBChangeProperty(_wm.dpy, _wm.wmcheckwin, netatom[NetWMName], netatom[NetUtf8String], 8, XCB_PROP_MODE_REPLACE, _wm.wmname, strlen(_wm.wmname) + 1);
+    XCBChangeProperty(_wm.dpy, _wm.wmcheckwin, netatom[NetWMBypassCompositor], XCB_ATOM_CARDINAL, 32, XCB_PROP_MODE_REPLACE, &BYPASS_COMPOSITOR, 1);
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupportingWMCheck], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&_wm.wmcheckwin, 1);
     /* EWMH support per view */
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&netatom, NetLast);

@@ -825,7 +825,14 @@ maprequest(XCBGenericEvent *event)
 
     u8 sync = 0;
 
-    PropListen(_wm.dpy, win, PropManage);
+    Client *c = wintoclient(win);
+
+    if(c)
+    {   setmapstate(c, WMMapStateMapped);
+    }
+    else
+    {   PropListen(_wm.dpy, win, PropManage);
+    }
 
     if(sync)
     {   XCBFlush(_wm.dpy);
@@ -1055,18 +1062,25 @@ unmapnotify(XCBGenericEvent *event)
     (void)eventwin;
     (void)isconfigure;
 
-    if(isconfigure)
-    {   
-        Debug0("Window unmapped, but will be remaped, AKA: FROM_CONFIGURE");
-        return;
-    }
 
     u8 sync = 0;
 
     Client *c = wintoclient(win);
 
+    if(isconfigure)
+    {   
+        Debug0("Window unmapped, but will be remaped, AKA: FROM_CONFIGURE");
+
+        if(c)
+        {   setmapstate(c, WMMapStateUnmapped);
+        }
+
+        return;
+    }
+
     if(c)
     {   
+
         u32 sticky = ISSTICKY(c);
         Desktop *desk = c->desktop;
         unmanage(c, 1);
@@ -1284,21 +1298,35 @@ clientmessage(XCBGenericEvent *event)
             const int netwmstate = l2;
             /* some apps decided that they wanna be funny and fuck things up so this check prevents that */
             const i32 button = CLEANBUTTONMASK(l3);
-            XCBButtonPressEvent bev;
-            bev.state = SUPER;
-            bev.root = _wm.root;
-            bev.time = XCB_CURRENT_TIME;
-            bev.child = 0;
-            bev.event = win;
-            bev.detail = button;
-            bev.root_x = l0;
-            bev.root_y = l1;
-            bev.event_x = 0;
-            bev.event_y = 0;
-            bev.sequence = 0;
-            bev.same_screen = 1;
+
+            XCBGenericEvent tmp_bev;
+
+            XCBButtonPressEvent bev = 
+            {
+                .state = SUPER,
+                .root = _wm.root,
+                .time = XCB_CURRENT_TIME,
+                .child = 0,
+                .event = win,
+                .detail = button,
+                .root_x = l0,
+                .root_y = l1,
+                .event_x = 0,
+                .event_y = 0,
+                .sequence = 0,
+                .same_screen = 1,
+                .response_type = XCB_BUTTON_PRESS,
+            };
+
+            memset(&tmp_bev, 0, sizeof(tmp_bev));
+            memcpy(&tmp_bev, &bev, sizeof(bev));
+
+            extern int DragWindowHandler(XCBGenericEvent *ev, Arg arg);
+            extern int ResizeWindowHandler(XCBGenericEvent *ev, Arg arg);
+
             Arg arg;
-            arg.v = &bev;
+            Arg status;
+            arg.v = &tmp_bev;
             /* TODO */
             switch(netwmstate)
             {
@@ -1310,10 +1338,16 @@ clientmessage(XCBGenericEvent *event)
                 case _NET_WM_MOVERESIZE_SIZE_BOTTOM:
                 case _NET_WM_MOVERESIZE_SIZE_BOTTOMLEFT:
                 case _NET_WM_MOVERESIZE_SIZE_LEFT:
-                    ResizeWindow(&arg);
+                    status = ResizeWindow(&arg);
+                    if(status.i == EXIT_SUCCESS)
+                    {   ResizeWindowHandler(&tmp_bev, arg);
+                    }
                     break;
                 case _NET_WM_MOVERESIZE_MOVE:
-                    DragWindow(&arg);
+                    status = DragWindow(&arg);
+                    if(status.i == EXIT_SUCCESS)
+                    {   DragWindowHandler(&tmp_bev, arg);
+                    }
                     break;
                 case _NET_WM_MOVERESIZE_SIZE_KEYBOARD: 
                     break;
@@ -1331,7 +1365,7 @@ clientmessage(XCBGenericEvent *event)
             /* specified as first 7 bits: 
              * https://specifications.freedesktop.org/wm-spec/latest/ar01s04.html
              */
-            const u8 GRAVITY_BITS = UINT8_MAX - 1;
+            const u8 GRAVITY_BITS = (1 << 7) - 1;
             const u32 FLAG_BITS = ~(GRAVITY_BITS);
             const i32 x = l1;
             const i32 y = l2;

@@ -520,6 +520,7 @@ PropUpdateManage(
         else
         {   showhide(c);
         }
+
         setmapstate(c, WMMapStateMapped);
     }
     else if(_wm.selmon->bar && _wm.selmon->bar->win == win)

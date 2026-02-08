@@ -29,6 +29,8 @@ u32 ISALWAYSONBOTTOM(Client *c) { return c->ewmhflags & WStateFlagBelow; }
 u32 WASFLOATING(Client *c)      { return c->flags & ClientFlagWasFloating; }
 u32 ISFLOATING(Client *c)       { return c->flags & ClientFlagFloating; }
 u32 ISOVERRIDEREDIRECT(Client *c) { return c->flags & ClientFlagOverrideRedirect; }
+u32 ISBYPASSCOMPOSITOR(Client *c) { return c->flags & ClientFlagBypassCompositor; }
+u32 ISNOPREFERENCECOMPOSITOR(Client *c) { return c->flags & ClientFlagNoPreferenceCompositor; }
 u32 KEEPFOCUS(Client *c)        { return c->flags & ClientFlagKeepFocus; }
 u32 DISABLEBORDER(Client *c)    { return c->flags & ClientFlagDisableBorder; }
 
@@ -479,8 +481,8 @@ u32 NEVERHOLDFOCUS(Client *c)   { return NEVERFOCUS(c) || ISDOCK(c);}
 u32 ISMAXHORZ(Client *c)        { return WIDTH(c) == c->desktop->mon->ww; }
 u32 ISMAXVERT(Client *c)        { return HEIGHT(c) == c->desktop->mon->wh; }
 u32 ISVISIBLE(Client *c)        { return (c->desktop->mon->desksel == c->desktop || ISSTICKY(c)) && !(ISHIDDEN(c) || ISMAPICONIC(c)); }
-/* TODO: XServer race conditions makes this unsuitable for usage */
-__DEPRECATED__ u32 ISMAPPED(Client *c) { return c->flags & ClientFlagMapped; }
+
+u32 ISMAPPED(Client *c)         { return c->flags & ClientFlagMapped; }
 u32 SHOWDECOR(Client *c)        { return c->flags & ClientFlagShowDecor; }
 u32 ISSELECTED(Client *c)       { return c->desktop->sel == c; }
         
@@ -1490,7 +1492,7 @@ prevvisible(Client *c)
 void
 resize(Client *c, i32 x, i32 y, i32 width, i32 height, uint8_t interact)
 {
-    // Debug("(x: %d, y: %d), (w: %d, h: %d)", x, y, width, height);
+    Debug("(x: %d, y: %d), (w: %d, h: %d)", x, y, width, height);
     if(applysizehints(c, &x, &y, &width, &height, interact))
     {   resizeclient(c, x, y, width, height);
     }
@@ -1981,6 +1983,7 @@ seturgent(Client *c, uint8_t state)
     XCBCookie wmhcookie = XCBGetWMHintsCookie(_wm.dpy, c->win);
     XCBWMHints *wmh = XCBGetWMHintsReply(_wm.dpy, wmhcookie);
     SETFLAG(c->ewmhflags, WStateFlagDemandAttention, !!state);
+
     if(state)
     {   /* set window border */   
     }
@@ -2000,14 +2003,18 @@ seturgent(Client *c, uint8_t state)
 void
 showhide(Client *c)
 {
-    const Monitor *m = c->desktop->mon;
     i16 x;
+    Monitor *m = c->desktop->mon;
+
     if(ISVISIBLE(c))
-    {   x = c->x;
+    {   
+        x = c->x;
     }
     else
-    {   x = -c->w - m->mx;
+    {   
+        x = -c->w - m->mx;
     }
+
     XCBMoveResizeWindow(_wm.dpy, c->win, x, c->y, c->w, c->h);
 }
 

@@ -98,7 +98,7 @@ Button
     uint8_t type;                   /* ButtonPress/ButtonRelease    */
     uint8_t button;                 /* Button                       */
     uint16_t mask;                  /* Modifier                     */
-    void (*func)(const Arg *arg);   /* Function                     */
+    Arg (*func)(const Arg *arg);    /* Function                     */
     Arg arg;                        /* Argument                     */
 };
 

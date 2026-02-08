@@ -124,6 +124,7 @@ XCBSetAtomState(XCBDisplay *display, XCBWindow win, XCBAtom type, XCBAtom atom, 
     void *data = NULL;
     u32 len = 0;
     u32 propmode = XCB_PROP_MODE_REPLACE;
+
     if(prop)
     {
         XCBAtom *atoms = XCBGetPropertyValue(prop);
