@@ -698,6 +698,13 @@ bool memnonempty(void *mem, size_t size);
  * RETURN: false otherwise.
  */
 bool memfilled(void *mem, size_t size);
+/* Gets the byte order without being compiler specific.
+ *
+ * RETURN: 1234 if Byte order little endian
+ * RETURN: 4321 if Byte order big endian
+ * RETURN: 0 if unsupported byte order.
+ */
+int GET_BYTE_ORDER(void);
 
 void _Breakpoint(void);
 

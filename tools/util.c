@@ -63,6 +63,46 @@ memfilled(void *mem, size_t size)
     return true;
 }
 
+int
+GET_BYTE_ORDER(void)
+{
+    int byteorder = 0;
+    int knownbyteOrder = 0;
+
+    uint16_t x = 0x0102;
+    unsigned char *p = (unsigned char *)&x;
+
+    if(p[0] == 0x02 && p[1] == 0x01)
+    {   knownbyteOrder = 1234;
+    }
+    else if(p[0] == 0x01 && p[1] == 0x02)
+    {   knownbyteOrder = 4321;
+    }
+
+    #if defined(__GNUC__) || defined(__clang__)
+        byteorder = __BYTE_ORDER__;
+        (void)knownbyteOrder;
+    #elif defined(_MSC_VER)
+        #if defined(_WIN32)
+            byteorder = 1234;
+            (void)knownbyteOrder;
+        #else
+            byteorder = knownbyteOrder
+        #endif
+    #elif defined(__INTEL__COMPILER)
+        #if defined(__GNUC__)
+            byteorder = __BYTE_ORDER__;
+            (void)knownbyteOrder;
+        #else
+            byteorder = knownbyteOrder;
+        #endif
+    #else
+        byteorder = knownbyteOrder;
+    #endif
+
+    return byteorder;
+}
+
 void _Breakpoint(void) { volatile int *e = 0; if(e != (volatile int *)1) { e = (volatile int *)3; } (void)e; }
 
 
