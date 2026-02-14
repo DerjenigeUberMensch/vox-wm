@@ -20,7 +20,7 @@ This project is a personal, niche window manager that has seen a lot of hard wor
 3. **Test your changes thoroughly.**  
 4. **Submit a pull request with a clear description of your changes.**
 
-If you find something confusing or problematic in the code or design, don’t hesitate to open an issue or PR—even if it’s just to say "I think this part sucks."
+If you find something confusing or problematic in the code or design, don’t hesitate to open an issue or PR even if it’s just to say "I think this part sucks."
 
 ## Opening Issues
 
@@ -37,9 +37,9 @@ There is no strict code style enforced. Try to keep the style consistent with ex
 
 ## Communication
 
-This is a low-traffic, personal project. Pull requests and issues might take some time to get reviewed, but they are appreciated.
+This is a low traffic, project. Pull requests and issues might take some time to get reviewed, but they are appreciated.
 
-Thanks again for helping out — this project lives and breathes because of contributions like yours!
+Thanks again for helping out this project lives and breathes because of contributions like yours!
 
 #### Use of A.I
 
