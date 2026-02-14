@@ -522,7 +522,7 @@ updateclientlist(XCBWindow win, uint8_t type)
     }
 
     /* if the it is equal to nothing then we have no clients add it. */
-    if(it == GArrayEnd(&_wm.clients))
+    if(it == GArrayEnd(&_wm.clients) && type != ClientListRemove)
     {   GArrayPushBack(&_wm.clients, &win);
     }
 
@@ -534,7 +534,12 @@ updateclientlist(XCBWindow win, uint8_t type)
     GArrayGetArray(&_wm.clients, &data, &size, &item_size);
     
     if(!data)
-    {   return;
+    {   
+        XCBWindow nowins = XCB_NONE;
+
+        data = &nowins;
+        item_size = sizeof(XCBWindow);
+        size = 0;
     }
 
     if(!ASSERT(item_size == sizeof(XCBWindow)))

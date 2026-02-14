@@ -511,6 +511,9 @@ PropUpdateManage(
 
     if(c)
     {
+        /* client will be mapped so treat as so. */
+        setmapstate(c, WMMapStateMapped);
+        
         /* Dont waste extra resources if not visible */
         if(ISVISIBLE(c))
         {
@@ -520,8 +523,6 @@ PropUpdateManage(
         else
         {   showhide(c);
         }
-
-        setmapstate(c, WMMapStateMapped);
     }
     else if(_wm.selmon->bar && _wm.selmon->bar->win == win)
     {

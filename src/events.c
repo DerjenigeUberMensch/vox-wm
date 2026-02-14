@@ -982,7 +982,9 @@ destroynotify(XCBGenericEvent *event)
     {   
         u32 sticky = ISSTICKY(c);
         Desktop *desk = c->desktop;
+
         unmanage(c, 1);
+
         /* if desktop was selected re arrange (no need to waste resources if not visbile) */
         if(desk->mon->desksel == desk || sticky)
         {
@@ -1070,20 +1072,21 @@ unmapnotify(XCBGenericEvent *event)
     if(isconfigure)
     {   
         Debug0("Window unmapped, but will be remaped, AKA: FROM_CONFIGURE");
-
-        if(c)
-        {   setmapstate(c, WMMapStateUnmapped);
-        }
-
         return;
     }
 
     if(c)
-    {   
-
+    {  
         u32 sticky = ISSTICKY(c);
         Desktop *desk = c->desktop;
-        unmanage(c, 1);
+
+        setmapstate(c, WMMapStateUnmapped);
+
+        /* currently decorations are kinda not implemented */
+        if(!_cfg.UseDecorations || 1)
+        {   unmanage(c, 1);
+        }
+
         /* if desktop was selected re arrange (no need to waste resources if not visbile) */
         if(desk->mon->desksel == desk || sticky)
         {

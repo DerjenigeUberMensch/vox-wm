@@ -480,7 +480,7 @@ u32 NEVERFOCUS(Client *c)       { return c->ewmhflags & WStateFlagNeverFocus; }
 u32 NEVERHOLDFOCUS(Client *c)   { return NEVERFOCUS(c) || ISDOCK(c);}
 u32 ISMAXHORZ(Client *c)        { return WIDTH(c) == c->desktop->mon->ww; }
 u32 ISMAXVERT(Client *c)        { return HEIGHT(c) == c->desktop->mon->wh; }
-u32 ISVISIBLE(Client *c)        { return (c->desktop->mon->desksel == c->desktop || ISSTICKY(c)) && !(ISHIDDEN(c) || ISMAPICONIC(c)); }
+u32 ISVISIBLE(Client *c)        { return (c->desktop->mon->desksel == c->desktop || ISSTICKY(c)) && !(ISHIDDEN(c) || ISMAPICONIC(c) || !ISMAPPED(c)); }
 
 u32 ISMAPPED(Client *c)         { return c->flags & ClientFlagMapped; }
 u32 SHOWDECOR(Client *c)        { return c->flags & ClientFlagShowDecor; }
@@ -541,35 +541,10 @@ u32 CANMANAGE(XCBWindow win, XCBGetWindowAttributes *waattributes, XCBWindowProp
 
                     if(waattributes && waattributes->override_redirect)
                     {
-                        /* theoredically we could manage these but they are a hastle to deal with */
                         if(waattributes->override_redirect)
                         {
-                            //Debug("Override Redirect: [%d]", win);
+                            Debug("Override Redirect: [%d]", win);
                             goto NO_MANAGE;
-                        }
-                        switch(waattributes->map_state)
-                        {
-                            case XCB_MAP_STATE_VIEWABLE:
-                                break;
-                            case XCB_MAP_STATE_UNVIEWABLE:
-                            case XCB_MAP_STATE_UNMAPPED:
-                            default:
-                                /* if the window is 'iconic' we dont handle that as of vox-wm v3.2.0, so we just treat as normal window */
-                                if(wastate)
-                                {
-                                    if(status == NO_FORMAT)
-                                    {   goto NO_MANAGE;
-                                    }
-
-                                    if(size != sizeof(u32))
-                                    {   Debug("Format is incorrect while processing WMState for [%d]", win);
-                                    }
-
-                                    if(data && *data != XCB_ICCCM_WM_STATE_ICONIC)
-                                    {   goto NO_MANAGE;
-                                    }
-                                }
-                                goto NO_MANAGE;
                         }
                     }
 
@@ -801,6 +776,32 @@ clientinitgeom(Client *c, XCBWindowGeometry *wg)
         /* if no specified border width default to our own. */
         if(wg->border_width)
         {   c->bw = wg->border_width;
+        }
+    }
+}
+
+void 
+clientinitmapstate(Client *c, XCBGetWindowAttributes *wa)
+{
+    if(wa)
+    {
+        switch(wa->map_state)
+        {
+            case XCBIsViewable:
+                setmapstate(c, WMMapStateMapped);
+                setwtypemapnormal(c, 1);
+                break;
+            /* Unviewable is when parent is unmapped, but implementation wise we can treat this as unmapped.
+             * as there is no real difference in terms of error generated from certain operations...
+             * and this isnt particulary useful regardless...
+             */
+            case XCBIsUnviewable:
+            case XCBIsUnmapped:
+            default:
+                setwtypemapiconic(c, 1);
+
+                setmapstate(c, WMMapStateUnmapped);
+                break;
         }
     }
 }
@@ -1344,6 +1345,7 @@ manage(XCBWindow win, void *replies[ManageClientLAST])
     /* check if should be floating after, all size hints and other things are set. */
     clientinitfloat(c);
     clientinitdecor(c);
+    clientinitmapstate(c, waattributes);
     XCBSelectInput(_wm.dpy, win, inputmask);
     grabbuttons(c, 0);
 
@@ -1916,10 +1918,16 @@ setfloating(Client *c, uint8_t state)
 void
 setfocus(Client *c)
 {
+    if(!ISMAPPED(c))
+    {   
+        Debug0("unmapped windows cannot set their focus....");
+        return;
+    }
+
     if(HASWMTAKEFOCUS(c))
     {   sendprotocolevent(c, wmatom[WMTakeFocus]);
-    
     }
+
     if(!NEVERHOLDFOCUS(c))
     {
         XCBSetInputFocus(_wm.dpy, c->win, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
@@ -2051,8 +2059,10 @@ unfocus(Client *c, uint8_t setfocus)
 
     if(setfocus)
     {   
+        XCBWindow noactivewindow = XCB_NONE;
+
         XCBSetInputFocus(_wm.dpy, _wm.root, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
-        XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow]);
+        XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, &noactivewindow, 1);
     }
 
     SETFLAG(c->ewmhflags, WStateFlagFocused, 0);
@@ -2091,15 +2101,17 @@ unmanage(Client *c, uint8_t destroyed)
 
     /* prevent dangling pointer here woops */
     if(!destroyed)
-    {   
+    {   grabbuttons(c, ISFOCUSED(c));
         /* TODO causes alot of errors for some reason even if its not "destroyed" */
     }
+
     delclienthash(c);
     detachcompletely(c);
     /* Destroy colormap */
     updatecolormap(c, 0);
     updateclientlist(win, ClientListRemove);
     cleanupclient(c);
+
     Debug("Unmanaged: [%u]", win);
 }
 
