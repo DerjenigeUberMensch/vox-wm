@@ -397,14 +397,16 @@ restack(Desktop *desk)
     desk->rlast = desk->slast;
 
     slist = laststack(desk);
+
     /* reset client list */
     if(slist)
-    {   XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&slist->win, 1);
+    {   
+        XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&slist->win, 1);
     }
     else
     {   
         winstack[0] = 0;
-        XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, winstack, 1);
+        XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, winstack, 0);
     }
 
     for(slist = prevstack(slist); slist; slist = prevstack(slist))

@@ -39,6 +39,8 @@
             .default_data = VOX_ADD_MEMBER_TYPED(TYPE, DEFAULT_SETTING) \
         },
 
+#define VOX_ADD_MEMBER_SETTING(NAME, TYPE, DEFAULT_SETTING) \
+        VOX_ADD_MEMBER(NAME, TYPE, offsetof(UserSettings, NAME), FIELD_SIZEOF(UserSettings, NAME), DEFAULT_SETTING)
 
 
 /* User Settings Flags */

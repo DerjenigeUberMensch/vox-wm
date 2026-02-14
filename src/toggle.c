@@ -97,6 +97,7 @@ UserStats(const Arg *arg)
         Debug("MAP ICONIC:          %s", GET_BOOL(ISMAPICONIC(c)));
         Debug("FLOATING:            %s", GET_BOOL(ISFLOATING(c)));
         Debug("WASFLOATING:         %s", GET_BOOL(WASFLOATING(c)));
+
         if(c->icon)
         {
             u32 *icon = c->icon;
@@ -829,6 +830,7 @@ SpawnWindow(const Arg *arg)
     int err;
 
     pid_t child;
+
     if(pipe(pipefds))
     {   
         perror("pipe");
@@ -836,6 +838,7 @@ SpawnWindow(const Arg *arg)
         err = EX_OSERR;
         return;
     }
+
     if(fcntl(pipefds[1], F_SETFD, fcntl(pipefds[1], F_GETFD) | FD_CLOEXEC))
     {
         perror("fcntl");
@@ -855,6 +858,7 @@ SpawnWindow(const Arg *arg)
             break;
         case 0:
             close(pipefds[0]);
+
             if (_wm.dpy)
             {   close(XCBConnectionNumber(_wm.dpy));
             }
@@ -863,6 +867,23 @@ SpawnWindow(const Arg *arg)
             {   
                 perror("setsid");
                 _exit(EXIT_FAILURE);
+            }
+
+            pid_t pid2 = fork();
+
+            /* these 2 if's are to spawn a grandchild and mostly just to prevent vox-wm from
+             * being the 'parent' of all sub process, however this is mostly a visual trick,
+             * in the process table in linux, as we already detach with close() sigaction etc...
+             * so this can fail and we dont care.
+             */
+            if(pid2 < 0)
+            {
+                perror("fork");
+                Debug0("fork() failed preventing child's appearing under the window manager, ignoring...");
+            }
+            /* exit parent process */
+            else if(pid2 > 0)
+            {   _exit(EXIT_SUCCESS);
             }
 
             close(STDIN_FILENO);
@@ -880,8 +901,11 @@ SpawnWindow(const Arg *arg)
             setpgid(0, 0);
 
             execvp(((char **)arg->v)[0], (char **)arg->v);
+
             Debug0("execvp() failed.");
+
             write(pipefds[1], &errno, sizeof(int));
+
             _exit(EXIT_SUCCESS);
             break;
         default:

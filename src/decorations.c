@@ -5,6 +5,24 @@
 
 #define _DECOR_FLAGS_PREFER_CSD_    (1 << 0)
 
+
+Decoration *
+createdecoration(void)
+{
+    Decoration *decor = malloc(sizeof(*decor));
+
+    if(decor)
+    {
+        decor->w = 1;
+        decor->h = 1;
+        decor->win = 0;
+        decor->child = 0;
+        decor->flags = 0;
+    }
+
+    return decor;
+}
+
 Decoration *
 X11DecorCreate(void)
 {

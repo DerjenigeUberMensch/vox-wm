@@ -911,6 +911,9 @@ scan(void)
                 index = i * ManageClientLAST;
                 managerequest(wins[i], managecookies + index);
             }
+
+            /* flush request buffer */
+            XCBFlush(_wm.dpy);
             
             uint8_t hastrans = 0;
             /* get them replies back */
@@ -1378,9 +1381,7 @@ startup(void)
     startupwm();
     checkotherwm();
     atexit(exithandler);
-#ifndef Debug
     XCBSetErrorHandler(xerror);
-#endif
 }
 
 void
@@ -1446,9 +1447,9 @@ void
 xerror(XCBDisplay *display, XCBGenericError *err)
 {
     if(likely(err))
-    {   
-#if NDEBUG
+    {
         DebugI("%s %s\n", XCBGetErrorMajorCodeText(err->major_code), XCBGetFullErrorText(err->error_code));
+#if NDEBUG
         DebugI("error_code: [%d], major_code: [%d], minor_code: [%d]\n"
               "sequence: [%d], response_type: [%d], resource_id: [%d]\n"
               "full_sequence: [%d]\n"

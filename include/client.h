@@ -204,6 +204,8 @@ void NonNull clientinitfloat(Client *c);
 /* Initializes the Client geometry from the specified XCBWindowGeometry struct. 
  */
 void NonNullArg(1) clientinitgeom(Client *c, XCBWindowGeometry *geometry);
+/*Initializes the Client window map state, and map iconic states. */
+void NonNullArg(1) clientinitmapstate(Client *c, XCBGetWindowAttributes *wa);
 /* Initializes the Client window type from the specified XCBWindowProperty. */
 void NonNullArg(1) clientinitwtype(Client *c, XCBWindowProperty *windowtypereply);
 /* Initializes the Client window state from the specified XCBWindowProperty. */
@@ -575,8 +577,9 @@ uint32_t NonNull NEVERFOCUS(Client *c);
 /* client state */
 uint32_t NonNull NEVERHOLDFOCUS(Client *c);
 uint32_t NonNull ISVISIBLE(Client *c);
-/* TODO: XServer race conditions makes this unsuitable for usage */
- __DEPRECATED__ uint32_t NonNull ISMAPPED(Client *c); 
+/* 
+ */
+uint32_t NonNull ISMAPPED(Client *c); 
 uint32_t NonNull SHOWDECOR(Client *c);
 uint32_t NonNull ISSELECTED(Client *c);
 

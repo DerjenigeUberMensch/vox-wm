@@ -16,10 +16,6 @@
 #include "threading.h"
 #include "main.h"
 
-
-#define VOX_ADD_MEMBER_SETTING(NAME, TYPE, DEFAULT_SETTING) \
-        VOX_ADD_MEMBER(NAME, TYPE, offsetof(UserSettings, NAME), FIELD_SIZEOF(UserSettings, NAME), DEFAULT_SETTING)
-
 static const SCSetting
 __USER__SETTINGS__DATA__[] = 
 {
@@ -57,7 +53,6 @@ __USER__SETTINGS__DATA__[] =
     VOX_ADD_MEMBER_SETTING(BarBW, SCTypeFLOAT, 1.0f)    /*   bw    */
     VOX_ADD_MEMBER_SETTING(BarBH, SCTypeFLOAT, 0.15f)   /*   bh    */
 };
-
 
 void
 USSetupCFGVars(
@@ -97,7 +92,9 @@ USSetupCFGDefaults(
     UserSettings *s = us;
     void *data;
     i32 i;
+
     const SCSetting *usdata = __USER__SETTINGS__DATA__;
+
     for(i = 0; i < UserSettingsLAST; ++i)
     {
         data = ((uint8_t *)s) + usdata->offset;
@@ -264,6 +261,7 @@ USSave(
     SCParser *cfg = settings->cfg;
     UserSettings *s = settings;
     i32 i;
+
     const SCSetting *usdata = __USER__SETTINGS__DATA__;
 
     for(i = 0; i < UserSettingsLAST; ++i)

@@ -132,27 +132,44 @@ ArgcvDisplayCompilerInfo(
         void
         )
 {
-    char *compiler;
+    char *compiler = "UNKNOWN";
+    char *timestamp = "TimeStamp Not Available";
     short majorversion = -1;
     short minorversion = -1;
     short patchversion = -1;
-    compiler = "UNKNOWN";
+    int byteorder = GET_BYTE_ORDER();
+    int pointersize = sizeof(void *);
+
 #if defined(__GNUC__)
+    (void)compiler;
+    (void)timestamp;
+
     compiler = "GCC";
+    timestamp = __TIMESTAMP__;
     majorversion = __GNUC__;
     minorversion = __GNUC_MINOR__;
     patchversion = __GNUC_PATCHLEVEL__;
+    pointersize = __SIZEOF_POINTER__;
 #elif defined(__clang__)
+    (void)compiler;
+    (void)timestamp;
+
     compiler = "clang";
+    timestamp = __TIMESTAMP__;
     majorversion = __clang_major__;
     minorversion = __clang_minor__;
     patchversion = __clang_patchlevel__;
+    pointersize = __SIZEOF_POINTER__;
 #elif defined(_MSC_VER)
+    (void)compiler;
+
     compiler = "MSVC";
     majorversion = _MSC_VER;
     minorversion = 0;
     patchversion = 0;
 #elif defined(__INTEL__COMPILER)
+    (void)compiler;
+
     compiler = "INTEL";
     majorversion = __INTEL_COMPILER;
     minorversion = 0;
@@ -181,8 +198,9 @@ ArgcvDisplayCompilerInfo(
 
     printf( "Compiler Information.\n"
             "  Compiled:        %s %s\n"
+            "  Timestamp:       %s\n"
             "  Compiler:        [%s v%d.%d.%d]\n" 
-            "  STDC:            [%d] [%lu]\n"
+            "  STDC:            [%d] [%d] [%lu]\n"
             "  BYTE_ORDER:      [%d]\n"
             "  POINTER_SIZE:    [%d]\n"
             "Version Information.\n"
@@ -191,10 +209,11 @@ ArgcvDisplayCompilerInfo(
             ,
             /* TODO __DATE__ has an extra space for some reason? */ 
             date, __TIME__,
+            timestamp,
             compiler, majorversion, minorversion, patchversion,
-            __STDC_HOSTED__, __STDC_VERSION__,
-            __BYTE_ORDER__,
-            __SIZEOF_POINTER__,
+            __STDC__, __STDC_HOSTED__, __STDC_VERSION__,
+            byteorder,
+            pointersize,
             VERSION,
             MARK
           );
