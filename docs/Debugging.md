@@ -36,6 +36,11 @@ export DISPLAY=:0 && Xephyr :1 -ac c 25 +xinerama -resizeable -screen 680x480 &
 export DISPLAY=:1
 ```
 
+To Enter and or Exit the Xephyr Enviroment (i.e. move keypreses/mouseevents to inside the environment)
+
+You simply use the keybinds `CTRL+SHIFT` to enter and exit.
+
+
 These help setup a basic Xephyr environment.
 
 ## GDB
