@@ -1,6 +1,8 @@
 # Ignore binaries
 bin/
 build/
+Release/
+
 # Sometimes build leaves this
 *_time
 *.release_time
