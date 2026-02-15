@@ -254,5 +254,8 @@ WatcherDestroy(void)
     {   pthread_cond_wait(&exit_cond, &watcher_lock);
     }
 
+    kill_threads = 0;
+    watchers_exit = 0;
+
     pthread_mutex_unlock(&watcher_lock);
 }
