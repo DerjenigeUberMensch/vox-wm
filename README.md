@@ -78,7 +78,7 @@ cd vox-wm
 ```
 git checkout origin/Experimental
 ```
-4. Configure it See **[Configuratio](#Configuration)** (Optional)
+4. Configure it See **[Configuration](#Configuration)** (Optional)
 5. Compile using Make
 ```
 make
