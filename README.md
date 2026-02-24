@@ -78,7 +78,7 @@ cd vox-wm
 ```
 git checkout origin/Experimental
 ```
-4. Configure it See **Configuration** (Optional)
+4. Configure it See **[Configuratio](#Configuration)** (Optional)
 5. Compile using Make
 ```
 make
@@ -120,13 +120,11 @@ sudo make uninstall
 
 ## Configuration
 
-****Currently Configuration is not (GUI/conf file) supported in this version of vox-wm****
+****Currently Configuration is not GUI format in this version of vox-wm****
 ### However...
 If you know a bit of C you can change dmenu colours and some keybinds under the directory vox-wm/include/keybinds.h
 ### However...
-There is limited config file support under ~/.config/vox-wm/settings.cfg
-
-Do note that these changes only apply after a hard restart or killing and running the window manager again.
+There is limited config file support under ~/.config/vox-wm/vox.cfg
 
 ## Mousebinds
 These are the default mousebinds currently used within vox-wm, they are not planned to change (defaults), but will be when or if a configuration is implemented.
