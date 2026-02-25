@@ -531,7 +531,7 @@ updateclientlist(XCBWindow win, uint8_t type)
     size_t size = 0;
     size_t item_size = 0;
 
-    GArrayGetArray(&_wm.clients, &data, &size, &item_size);
+    GArrayGetArray(&_wm.clients, &data, NULL, &item_size);
     
     if(!data)
     {   
@@ -540,6 +540,9 @@ updateclientlist(XCBWindow win, uint8_t type)
         data = &nowins;
         item_size = sizeof(XCBWindow);
         size = 0;
+    }
+    else
+    {   size = (GArrayEnd(&_wm.clients) - GArrayStart(&_wm.clients)) * item_size;
     }
 
     if(!ASSERT(item_size == sizeof(XCBWindow)))
