@@ -1,3 +1,4 @@
+#include <string.h>
 
 #include "client.h"
 #include "monitor.h"
@@ -638,7 +639,36 @@ updatedesktop(void)
 void
 updatedesktopnames(void)
 {
-    /* TODO */
+    /* the number below is arbitrary, but we doubt we will ever need more than that */
+    enum { MAX_DIGITS = 32 };
+
+    Desktop *desk;
+    char buff[MAX_DIGITS];
+    int length;
+
+    char *unused = "";
+
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetDesktopNames], netatom[NetUtf8String], 8, XCB_PROP_MODE_REPLACE, unused, 0);
+
+    for(desk = _wm.selmon->desktops; desk; desk = nextdesktop(desk))
+    {
+        memset(buff, '\0', sizeof(buff));
+
+        length = snprintf(buff, MAX_DIGITS - 1, "%d", desk->num); 
+
+        // replace with X if it fails for wahtever reason....
+        if(length < 0)
+        {
+            buff[0] = 'X';
+            buff[1] = '\0';
+            length = 1;
+        }
+
+        ++length;
+
+        Debug("%s", buff);
+        XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetDesktopNames], netatom[NetUtf8String], 8, XCB_PROP_MODE_APPEND, buff, length);
+    }
 }
 
 void
