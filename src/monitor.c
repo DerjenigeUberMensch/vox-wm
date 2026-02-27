@@ -139,11 +139,13 @@ Monitor *
 createmon(void)
 {
     Monitor *m = calloc(1, sizeof(Monitor ));
+
     if(!m)
     {   /* while calling "DIE" may seem extreme frankly we cannot afford a monitor to fail alloc. */
         DIE("%s", "(OutOfMemory) Could not alloc enough memory for a Monitor");
         return NULL;
     }
+
     m->mx = m->my = 0;
     m->mw = m->mh = 0;
     m->wx = m->wy = 0;
@@ -203,13 +205,16 @@ setdesktopcount(Monitor *m, uint16_t desktops)
     {   Debug0("Cannot make desktop count less than possible.");
         return;
     }
+
     if(m->deskcount == desktops)
     {
         Debug("Desktops are already at specified capacity: [%u]", desktops);
         return;
     }
+
     u16 i;
     Desktop *desk = m->desklast;
+
     if(m->deskcount > desktops)
     {
         Client *c;
@@ -247,6 +252,14 @@ setdesktopcount(Monitor *m, uint16_t desktops)
         if(failurecount)
         {   Debug("Failed [%d]", failurecount);
         }
+    }
+
+    /* this does 2 things.
+     * 1. Prevents a crash if m is made in createmon() and has no intialized _wm.selmon
+     * 2. Only updates changes when we are on a different mon
+     */
+    if(_wm.selmon && _wm.selmon == m)
+    {   updatedesktopnames();
     }
 }
 
