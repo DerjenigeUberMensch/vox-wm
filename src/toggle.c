@@ -47,7 +47,7 @@ UserStats(const Arg *arg)
         Debug("WMNAME:      %s", c->wmname);
         Debug("CLASSNAME:   %s", c->classname);
         Debug("INSTANCENAME:%s", c->instancename);
-        Debug("WindowID:    %u", c->win);
+        Debug("WindowID:    %u (%x)", c->win, c->win);
         Debug("PID:         %u", c->pid);
         Debug("RGBA:        (R: %u, G: %u, B: %u, A: %u)", argb.c.r, argb.c.g, argb.c.b, argb.c.a);
         Debug("BorderWidth: %u", c->bw);

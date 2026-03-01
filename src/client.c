@@ -546,12 +546,19 @@ u32 CANMANAGE(XCBWindow win, XCBGetWindowAttributes *waattributes, XCBWindowProp
                             Debug("Override Redirect: [%d]", win);
                             goto NO_MANAGE;
                         }
+
+                        if(waattributes->map_state != XCBIsViewable)
+                        {   goto NO_MANAGE;
+                        }
                     }
 
                     if(wastate)
                     {
-                        if(status != NO_FORMAT && data && *data == XCB_ICCCM_WM_STATE_WITHDRAWN)
-                        {   goto NO_MANAGE;
+                        if(status != NO_FORMAT && data)
+                        {   
+                            if(*data == XCB_ICCCM_WM_STATE_WITHDRAWN)
+                            {   goto NO_MANAGE;
+                            }
                         }
                     }
                     return 1;
@@ -1359,7 +1366,8 @@ manage(XCBWindow win, void *replies[ManageClientLAST])
     {
         /* has the client its coords? */
         if(c->x == m->mx && c->y == m->my)
-        {   /* center it */
+        {   
+            /* center it */
             resizemove(c, m->wx + m->ww / 2 - WIDTH(c) / 2, m->wy + m->wh / 2 - HEIGHT(c) / 2, 1);
         }
     }

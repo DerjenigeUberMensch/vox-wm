@@ -429,7 +429,11 @@ updategeom(void)
 		for (i = nn; i < n; ++i)
         {
             /* get last mon */
-			for (m = _wm.mons; m && m->next; m = m->next);
+			for (m = _wm.mons; m && m->next; m = m->next)
+            /* this semi colon just silences clang errors, no other reasons its there 
+             * yes its for the loop above
+             */
+                ;
 
             /* clang gets angry here for some reason (which is why we need the assert) */
             if(ASSERT(m))
@@ -477,7 +481,7 @@ updategeom(void)
 }
 
 void
-updateclientlist(XCBWindow win, uint8_t type)
+updateclientlist(XCBWindow win, enum ClientListModes type)
 {
     switch(type)
     {
@@ -490,16 +494,22 @@ updateclientlist(XCBWindow win, uint8_t type)
             if(wintoclient(win))
             {   XCBRemoveFromSaveSet(_wm.dpy, win);
             }
+            break;
         case ClientListReload:
             break;
+        default:
+            (void)ASSERT(0);
+            return;
     }
+
+    Debug("%d", GArrayEnd(&_wm.clients));
 
     garray_i it;
 
     for(it = GArrayStart(&_wm.clients); it < GArrayEnd(&_wm.clients); ++it)
     {
         /* we dont need to find anythig in reload */
-        if(type == ClientListReload)
+        if(type == ClientListReload || type == ClientListAdd)
         {   break;
         }
 
@@ -514,8 +524,6 @@ updateclientlist(XCBWindow win, uint8_t type)
 
         if(*winsearch == win)
         {
-            (void)ASSERT(type == ClientListAdd || type == ClientListRemove);
-
             status = GArrayDelete(&_wm.clients, it);
 
             /* if we failed for some reason just replace it with nothing */
@@ -523,39 +531,26 @@ updateclientlist(XCBWindow win, uint8_t type)
             {   GArrayReplace(&_wm.clients, NULL, it);
             }
 
-            /* if we found it then we shouldnt add it back as a duplicate, instead append to end. */
-            if(type == ClientListAdd)
-            {   
-                /* ignore status, as we cant do much if it fails */
-                GArrayPushBack(&_wm.clients, &win);
-            }
-
             break;
         }
     }
 
-    /* if the it is equal to nothing then we have no clients add it. */
-    if(it == GArrayEnd(&_wm.clients) && type != ClientListRemove)
+    if(type == ClientListAdd)
     {   GArrayPushBack(&_wm.clients, &win);
     }
 
-
     void *data = NULL;
-    size_t size = 0;
+    size_t item_len = 0;
     size_t item_size = 0;
+    XCBWindow nowins = XCB_NONE;
 
-    GArrayGetArray(&_wm.clients, &data, NULL, &item_size);
+    GArrayGetArray(&_wm.clients, &data, &item_len, NULL, &item_size);
     
     if(!data)
     {   
-        XCBWindow nowins = XCB_NONE;
-
         data = &nowins;
         item_size = sizeof(XCBWindow);
-        size = 0;
-    }
-    else
-    {   size = (GArrayEnd(&_wm.clients) - GArrayStart(&_wm.clients)) * item_size;
+        item_len = 0;
     }
 
     if(!ASSERT(item_size == sizeof(XCBWindow)))
@@ -572,14 +567,92 @@ updateclientlist(XCBWindow win, uint8_t type)
     */
     
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientList], 
-            XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (const char *)data, size / item_size);
+            XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (const char *)data, item_len);
 }
+
+void
+updateclientstackinglist(void)
+{
+    Monitor *m;
+    Desktop *desk;
+    Client *c;
+    int status;
+
+    m = _wm.selmon;
+
+    status = GArrayMoveHead(&_wm.clientstacking, GArrayStart(&_wm.clientstacking));
+
+    if(!ASSERT(status == EXIT_SUCCESS))
+    {   return;
+    }
+
+    for(desk = m->desklast; desk; desk = prevdesktop(desk))
+    {
+        if(desk == m->desksel)
+        {   continue;
+        }
+
+        for(c = laststack(desk); c; c = prevstack(c))
+        {
+            status = GArrayPushBack(&_wm.clientstacking, &c->win);
+
+            /* stacking isnt that important to care about failign to pushback some clients */
+            if(!likely(status == EXIT_SUCCESS))
+            {   Debug("Failed to push client for whatever reason: [%d]", c->win);
+            }
+        }
+    }
+
+    desk = m->desksel;
+
+    for(c = laststack(desk); c; c = prevstack(c))
+    {
+        status = GArrayPushBack(&_wm.clientstacking, &c->win);
+
+        /* stacking isnt that important to care about failign to pushback some clients */
+        if(!likely(status == EXIT_SUCCESS))
+        {   Debug("Failed to push client for whatever reason: [%d]", c->win);
+        }
+    }
+
+    void *data = NULL;
+    size_t item_len = 0;
+    size_t item_size = 0;
+
+    GArrayGetArray(&_wm.clientstacking, &data, &item_len, NULL, &item_size);
+    
+    if(!data)
+    {   
+        XCBWindow nowins = XCB_NONE;
+
+        data = &nowins;
+        item_size = sizeof(XCBWindow);
+        item_len = 0;
+    }
+
+    if(!ASSERT(item_size == sizeof(XCBWindow)))
+    {   
+        Debug0("item size is incorrect size.");
+        return;
+    }
+
+    /* DEBUGGING */
+    /*
+    for(garray_i i = GArrayStart(&_wm.clients); i < GArrayEnd(&_wm.clients); ++i)
+    {   Debug("%d", *(XCBWindow *)GArrayAt(&_wm.clients, i));
+    }
+    */
+
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], 
+            XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (const char *)data, item_len);
+}
+
 /* this function is really slow, slower than malloc use only in startup or rare mapping changes */
 void
 updatenumlockmask(void)
 {
     XCBKeyboardModifier *reply;
-    XCBGenericError *err;
+    XCBGenericError *err = NULL;
 
     reply = xcb_get_modifier_mapping_reply(_wm.dpy, xcb_get_modifier_mapping(_wm.dpy), &err);
     if(err)

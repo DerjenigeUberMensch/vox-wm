@@ -515,14 +515,14 @@ PropUpdateManage(
         setmapstate(c, WMMapStateMapped);
         
         /* Dont waste extra resources if not visible */
+
         if(ISVISIBLE(c))
         {
             cf = focusrealize(c);
             arrange(c->desktop);
         }
-        else
-        {   showhide(c);
-        }
+
+        showhide(c);
     }
     else if(_wm.selmon->bar && _wm.selmon->bar->win == win)
     {

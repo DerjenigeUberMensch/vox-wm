@@ -1,7 +1,6 @@
 #include <pthread.h>
 #include <errno.h>
 
-#include "DynamicArray/dynamic_array.h"
 #include "FNotify/fnotify.h"
 #include "util.h"
 #include "watchers.h"

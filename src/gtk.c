@@ -14,14 +14,15 @@ X11GTKSetUseCSD(
      * NOT TESTED YET.
      */
     const char *const ENV_VARIABLE = "GTK_CSD";
-    const char *const VALUE = "amogus";     /* value only has to be filled, not checked if 1 */
+    const char *const VALUE_ENABLE = "1";
+    const char *const VALUE_DISABLE = "0";
     const int REPLACE = 1;
 
     if(enabled)
-    {   setenv(ENV_VARIABLE, VALUE, REPLACE);
+    {   setenv(ENV_VARIABLE, VALUE_ENABLE, REPLACE);
     }
     else
-    {   unsetenv(ENV_VARIABLE);
+    {   unsetenv(VALUE_DISABLE);
     }
 }
 

@@ -25,7 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "dynamic_array.h"
+#include "garray.h"
 
 
 GArray *
@@ -68,8 +68,9 @@ GArrayCreateFilled(
     array_return->base_allocate = base_allocate;
 
     GArrayResize(array_return, base_allocate);
+
     /* replace head index */
-    array_return->data_len = 0;
+    GArrayMoveHead(array_return, 0);
 
     return EXIT_SUCCESS;
 }
@@ -84,6 +85,34 @@ GArrayWipe(
     }
 
     GArrayResize(array, 0);
+}
+
+void
+GArrayClear(
+        GArray *array
+        )
+{
+    if(!array)
+    {   return;
+    }
+
+    GArrayResize(array, array->base_allocate);
+    GArrayMoveHead(array, 0);
+}
+
+int
+GArrayMoveHead(
+        GArray *array,
+        garray_i index_to_move_to
+        )
+{
+    if(index_to_move_to > array->data_len)
+    {   return EXIT_FAILURE;
+    }
+
+    array->data_len = index_to_move_to;
+
+    return EXIT_SUCCESS;
 }
 
 int
@@ -114,24 +143,40 @@ GArrayResize(
     }
     else if(!array->data)
     {
+        garray_i length;
+
         if(array->base_allocate > item_len)
-        {   item_len = array->base_allocate;
+        {   length = array->base_allocate;
+        }
+        else
+        {   length = item_len;
         }
 
-        array->data = malloc(array->item_size * item_len);
+        array->data = malloc(array->item_size * length);
 
         if(!array->data)
         {   return EXIT_FAILURE;
         }
 
-        array->data_len_real = item_len;
+        array->data_len_real = length;
     }
     else
     {
         garray_i length;
 
         if(array->data_len_real < item_len)
-        {   length = array->data_len_real * 2;
+        {   
+            garray_i new_cap = array->data_len_real;
+
+            if (new_cap == 0)
+            {   new_cap = array->base_allocate ? array->base_allocate : 1;
+            }
+
+            while (new_cap < item_len)
+            {   new_cap *= 2;
+            }
+
+            length = new_cap;
         }
         else
         {
@@ -154,7 +199,7 @@ GArrayResize(
 
         void *rec = realloc(array->data, array->item_size * length);
 
-        if(!rec)
+        if(!rec && length)
         {   return EXIT_FAILURE;
         }
 
@@ -289,6 +334,7 @@ GArrayDelete(GArray *array, garray_i index)
     if(!array) 
     {   return EXIT_FAILURE;
     }
+
     if(index >= array->data_len)
     {   return EXIT_FAILURE;
     }
@@ -300,7 +346,9 @@ GArrayDelete(GArray *array, garray_i index)
     uint8_t *src = data + (size * (index + 1));
     uint8_t *dest = data + (size * index);
 
-    /* Check if last so no invalid memove */
+    /* Check if last so no invalid memove 
+     * No check for underflow as that wouldnt matter, and would always fail index anyways.
+     */
     if(index < array->data_len - 1)
     {   memmove(dest, src, BYTES_MOVE);
     }
@@ -346,12 +394,17 @@ int
 GArrayGetArray(
     GArray *array,
     void **array_return,
+    size_t *data_len,
     size_t *sizeof_array_return,
     size_t *item_size_return
     )
 {
     if(!array)
     {   return EXIT_FAILURE;
+    }
+
+    if(data_len)
+    {   *data_len = (GArrayEnd(array) - GArrayStart(array));
     }
 
     if(array_return)

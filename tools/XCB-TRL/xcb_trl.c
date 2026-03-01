@@ -537,7 +537,7 @@ XCBSync(
 
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret);
-
+    
     /* "https://community.kde.org/Xcb"
      * The xcb equivalent of XSync() is xcb_aux_sync(), which is in xcb-utils.
      * The reason you won't find a sync function in libxcb is that there is no sync request in the X protocol. 

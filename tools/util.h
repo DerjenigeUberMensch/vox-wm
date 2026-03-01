@@ -209,7 +209,7 @@ union ARGB
 
 #ifndef ASSERT
 #include <assert.h>
-#define ASSERT(expr) (assert(expr), (expr))
+#define ASSERT(expr) (assert(likely(expr)), likely(expr))
 #endif
 
 #else
@@ -231,7 +231,7 @@ STATIC_ASSERT(0, cannot_run_debug_with_ndebug)
 #endif
 
 #ifndef ASSERT
-#define ASSERT(expr)       ((expr) ? 1 : (assert(expr), 0))
+#define ASSERT(expr)       (likely(expr))
 #endif
 
 #endif
@@ -406,11 +406,11 @@ STATIC_ASSERT(0, cannot_run_debug_with_ndebug)
 #endif
 
 #ifndef likely
-#define likely(X)    (!!X)
+#define likely(X)    (!!(X))
 #endif
 
 #ifndef unlikely
-#define unlikely(X)  (!!X)
+#define unlikely(X)  (!!(X))
 #endif
 
 #ifndef NonNull

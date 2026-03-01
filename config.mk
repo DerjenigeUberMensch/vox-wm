@@ -15,7 +15,7 @@ INCLUDE_LIST = tools include ${XCBLIST}
 INCS = $(foreach dir, ${INCLUDE_LIST}, -I${dir})
 #${INCLUDE_INCS} ${TOOLS} 
 #-lxcb-util -lxcb-icccm -lxcb-keysyms
-LIBS = ${XCBLIST} x11
+LIBS = ${XCBLIST} x11 
 #x11 xcb xcb-util xcb-aux xcb-xinerama xcb-event xcb-keysyms xcb-xinput xcb-image 
 #${XCB_INCS} x11
 
@@ -27,9 +27,9 @@ DYNAMICLINK= -ldl
 SECTIONCODE= -ffunction-sections -fdata-sections
 LINKMODE = ${DYNAMICLINK}
 MEMFLAGSALWAYS = -fno-omit-frame-pointer
-MEMFLAGSDEBUG = -fsanitize=address,pointer-compare,pointer-subtract,undefined,leak
+MEMFLAGSDEBUG = -fsanitize=address,pointer-compare,pointer-subtract,undefined,leak -fasynchronous-unwind-tables
 MEMFLAGS = ${MEMFLAGSALWAYS}
-MEMFLAGS += ${MEMFLAGSDEBUG}
+#MEMFLAGS += ${MEMFLAGSDEBUG}
 
 WARNINGDEFAULT = -pedantic -Wall -Wno-deprecated-declarations -Wshadow -Wuninitialized -Werror=format-security 
 WARNINGEXTRAS = -Wunreachable-code -Waggregate-return -Wstrict-overflow=4 -Wpointer-arith
@@ -38,7 +38,7 @@ WARNINGFLAGS = ${WARNINGDEFAULT} ${WARNINGEXTRAS}
 LINKTIMEOPTIMIZATIONS = -flto -flto=auto
 
 #SAFETYFLAGS = -fcf-protection=full -fharden-compares -fstack-protector-all -fstack-clash-protection -fharden-compares -fharden-conditional-branches -fharden-control-flow-redundancy  -fhardcfr-check-exceptions  -fhardcfr-check-returning-calls -fhardcfr-check-noreturn-calls=always 
-PRELINKERFLAGS ?= -fpie -fstack-protector-strong -fstack-clash-protection ${LINKTIMEOPTIMIZATIONS} ${SECTIONCODE}
+PRELINKERFLAGS ?= -fpie -fstack-protector-strong -fstack-clash-protection -ftrapv ${LINKTIMEOPTIMIZATIONS} ${SECTIONCODE}
 
 # can set higher but function overhead is pretty small so meh
 INLINELIMIT ?= 15
@@ -53,18 +53,19 @@ LINKRELEASE = ${NO_SANATIZE_FLAGS}
 #-Wl,--strip-all 
 LINKDEBUG = -Wl,--gc-sections ${MEMFLAGS}
 
+DEBUGFLAGS = -ggdb -g -fverbose-asm
 CPPFLAGS = -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L ${XINERAMAFLAGS}
 CCFLAGS  = ${CCVERSION} ${WARNINGFLAGS} ${INCS} ${CPPFLAGS} ${PRELINKERFLAGS} ${BUILD_ARCHITECTURE}
 RELEASEFLAGS = ${CCFLAGS} 
 
-DEBUG 	= -ggdb -g ${SECTIONCODE} ${MEMFLAGS} -fverbose-asm -O0
+DEBUG 	= ${SECTIONCODE} ${DEBUGFLAGS} ${MEMFLAGS} -O0
 
 SIZE  	= ${RELEASEFLAGS} -Os 
 
 SIZEONLY= ${RELEASEFLAGS} -Oz -fno-ident -fno-asynchronous-unwind-tables
 
 # Release Stable (-O2)
-RELEASE = ${RELEASEFLAGS} -O2 
+RELEASE = ${RELEASEFLAGS} -O2
 # Release Speed (-O3)
 RELEASES= ${RELEASEFLAGS} -O3 
 # Release Speed (-O3) (debug)
