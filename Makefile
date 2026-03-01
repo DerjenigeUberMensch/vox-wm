@@ -27,7 +27,7 @@ include config.mk
 # The name of the executable to be created
 BIN_NAME := vox-wm
 MARK = ${BIN_NAME}
-VERSION ?= 4.1.X
+VERSION ?= 4.2.X
 # Extension of source files used in the project
 SRC_EXT = c
 # Path to the source directory, relative to the makefile
