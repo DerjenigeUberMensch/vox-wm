@@ -278,7 +278,7 @@ void NonNullAll managereplies(XCBCookie requests[ManageClientLAST], void *replie
  * RETURN: Client * on Success.
  * RETURN: NULL on Failure.
  */
-Client *NonNullAll manage(XCBWindow window, void *replies[ManageClientLAST]);
+Client *NonNullAll manage(XCBWindow window, bool ignore_unmapped, void *replies[ManageClientLAST]);
 /* Maximizes a client if unmaxed, Sets flag.
  */
 void NonNull maximize(Client *c);
@@ -628,7 +628,7 @@ uint16_t NonNull WIDTH(Client *c);
 uint16_t NonNull HEIGHT(Client *c);
 
 /* manage */
-uint32_t CANMANAGE(XCBWindow win, XCBGetWindowAttributes *waattributes, XCBWindowProperty *wastate);
+uint32_t CANMANAGE(XCBWindow win, bool ignore_unmapped, XCBGetWindowAttributes *waattributes, XCBWindowProperty *wastate);
 
 
 

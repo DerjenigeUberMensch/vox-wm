@@ -507,7 +507,7 @@ PropUpdateManage(
 
     LOCK_WM();
 
-    c = manage(win, replies);
+    c = manage(win, true, replies);
 
     if(c)
     {
