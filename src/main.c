@@ -97,6 +97,19 @@ int WM_ADD_WORK(int (*func)(XCBGenericEvent *event, Arg arg), Arg arg)
                             return ret;
                         }
 
+u32 CLEANMASK(u32 mask) {   
+                            extern WM _wm;
+                            return mask & ~(_wm.numlockmask | XCB_MOD_MASK_LOCK) &
+                                   (
+                                        XCB_MOD_MASK_SHIFT | XCB_MOD_MASK_CONTROL | 
+                                        XCB_MOD_MASK_1|XCB_MOD_MASK_2|XCB_MOD_MASK_3|XCB_MOD_MASK_4|XCB_MOD_MASK_5
+                                   );
+                        }
+u8 CLEANBUTTONMASK(u8 mask)
+                        {
+                            return (mask & (XCBButton5 + 1)) + !mask;
+                        }
+
 
 extern void (*handler[XCBLASTEvent]) (XCBGenericEvent *);
 
@@ -182,6 +195,7 @@ cleanup(void)
     /* Free hashmap */
     cleanupclienthash();
     GArrayWipe(&_wm.clients);
+    GArrayWipe(&_wm.clientstacking);
     GArrayWipe(&_wm.work);
     unsetenv("GTK_CSD");
     if(_wm.dpy)
@@ -214,7 +228,8 @@ eventhandler(XCBGenericEvent *ev)
         WMWork *work = GArrayAt(&_wm.work, i);
 
         if(work->function)
-        {   ret = work->function(ev, work->arg);
+        {   
+            ret = work->function(ev, work->arg);
         }
 
         if(!ret)
@@ -396,6 +411,7 @@ restoresession(void)
             }
         }
     }
+
     focus(NULL);
     /* No need to flush run() syncs for us */
     /* XCBFlush(_wm.dpy) */
@@ -1135,15 +1151,9 @@ setupwm(void)
     const u32 BYPASS_COMPOSITOR = 1;
                                     /* width, height */
     i32 deskgeom[DESK_GEOM_LENGTH] = { _wm.sw, _wm.sh };
+    u32 unused = 0;
     int status;
 
-    setenv("GTK_CSD", "amogus", 1);
-    /* startup wm */
-    _wm.running = 1;
-    _wm.syms = XCBKeySymbolsAlloc(_wm.dpy);
-    _wm.sw = XCBDisplayWidth(_wm.dpy, _wm.screen);
-    _wm.sh = XCBDisplayHeight(_wm.dpy, _wm.screen);
-    _wm.root = XCBRootWindow(_wm.dpy, _wm.screen);
 
     status = GArrayCreateFilled(&_wm.clients, sizeof(XCBWindow), X11_DEFAULT_MAX_WINDOW_LIMIT);
 
@@ -1151,7 +1161,15 @@ setupwm(void)
     if(!ASSERT(status == EXIT_SUCCESS))
     {
         cleanup();
-        DIECAT("%s", "Could not allocate memory for _NET_WM_CLIENT support (OutOfMemory)");
+        DIECAT("%s", "Could not allocate memory for _NET_WM_CLIENT_LIST_STACKING support (OutOfMemory)");
+    }
+
+    status = GArrayCreateFilled(&_wm.clientstacking, sizeof(XCBWindow), X11_DEFAULT_MAX_WINDOW_LIMIT);
+
+    if(!ASSERT(status == EXIT_SUCCESS))
+    {
+        cleanup();
+        DIECAT("%s", "Could not allocate memory for _NET_WM_CLIENT_LIST_STACKING support (OutOfMemory)");
     }
 
     status = GArrayCreateFilled(&_wm.work, sizeof(WMWork), 0);
@@ -1159,9 +1177,23 @@ setupwm(void)
     if(!ASSERT(status == EXIT_SUCCESS))
     {
         cleanup();
-        DIECAT("%s", "Could not allocate memory for work queue.");
+        DIECAT("%s", "Could not allocate memory for work queue. (OutOfMemory)");
+    }
+
+    /* keysyms, which are reuiqre for keybinds, which we only care about 2 keybind and thats SUPER+SHIFT+p, as that exist sthe WM, and SUPER+ENTER, as that opens a termial. */
+    _wm.syms = XCBKeySymbolsAlloc(_wm.dpy);
+
+    if(!ASSERT(_wm.syms))
+    {   
+        cleanup();
+        DIECAT("%s", "Could not establish connection with keyboard (OutOfMemory)");
     }
     
+    /* startup wm */
+    _wm.running = 1;
+    _wm.sw = XCBDisplayWidth(_wm.dpy, _wm.screen);
+    _wm.sh = XCBDisplayHeight(_wm.dpy, _wm.screen);
+    _wm.root = XCBRootWindow(_wm.dpy, _wm.screen);
     /* Most java apps require this see:
      * https://wiki.archlinux.org/title/Java#Impersonate_another_window_manager
      * https://wiki.archlinux.org/title/Java#Gray_window,_applications_not_resizing_with_WM,_menus_immediately_closing
@@ -1171,32 +1203,25 @@ setupwm(void)
      * One example is Ghidra, made by the CIA.
      */
     _wm.wmname = "LG3D";
-
-    if(!_wm.syms)
-    {   
-        cleanup();
-        DIECAT("%s", "Could not establish connection with keyboard (OutOfMemory)");
-    }
-
     /* supporting window for NetWMCheck */
     _wm.wmcheckwin = XCBCreateSimpleWindow(_wm.dpy, _wm.root, 0, 0, 1, 1, 0, 0, 0);
 
     XCBSelectInput(_wm.dpy, _wm.wmcheckwin, XCB_NONE);
 
-    XCBChangeProperty(_wm.dpy, _wm.wmcheckwin, netatom[NetSupportingWMCheck], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&_wm.wmcheckwin, 1);
-    XCBChangeProperty(_wm.dpy, _wm.wmcheckwin, netatom[NetWMName], netatom[NetUtf8String], 8, XCB_PROP_MODE_REPLACE, _wm.wmname, strlen(_wm.wmname) + 1);
-    XCBChangeProperty(_wm.dpy, _wm.wmcheckwin, netatom[NetWMBypassCompositor], XCB_ATOM_CARDINAL, 32, XCB_PROP_MODE_REPLACE, &BYPASS_COMPOSITOR, 1);
-    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupportingWMCheck], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&_wm.wmcheckwin, 1);
+    XCBChangeProperty(_wm.dpy, _wm.wmcheckwin, netatom[NetSupportingWMCheck], XCB_ATOM_WINDOW, 32, XCBPropModeReplace, &_wm.wmcheckwin, 1);
+    XCBChangeProperty(_wm.dpy, _wm.wmcheckwin, netatom[NetWMName], netatom[NetUtf8String], 8, XCBPropModeReplace, _wm.wmname, strlen(_wm.wmname) + 1);
+    XCBChangeProperty(_wm.dpy, _wm.wmcheckwin, netatom[NetWMBypassCompositor], XCB_ATOM_CARDINAL, 32, XCBPropModeReplace, &BYPASS_COMPOSITOR, 1);
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupportingWMCheck], XCB_ATOM_WINDOW, 32, XCBPropModeReplace, &_wm.wmcheckwin, 1);
     /* EWMH support per view */
-    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&netatom, NetLast);
-    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&wmatom, WMLast);
-    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&gtkatom, GTKLAST);
-    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_APPEND, (unsigned char *)&motifatom, 1);
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCBPropModeReplace, &netatom, NetLast);
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_APPEND, &wmatom, WMLast);
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_APPEND, &gtkatom, GTKLAST);
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_APPEND, &motifatom, 1);
 
-    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetDesktopGeometry], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)deskgeom, DESK_GEOM_LENGTH);
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetDesktopGeometry], XCB_ATOM_ATOM, 32, XCBPropModeReplace, deskgeom, DESK_GEOM_LENGTH);
 
-    XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetClientList]);
-    XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking]);
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientList], XCB_ATOM_WINDOW, 32, XCBPropModeReplace, &unused, 0);
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], XCB_ATOM_WINDOW, 32, XCBPropModeReplace, &unused, 0);
 }
 
 void

@@ -371,57 +371,38 @@ restack(Desktop *desk)
     }
 
     Client *c = NULL;
-    Client *slist = NULL;
     u8 config = 0;
     u8 instack = 0;
-    i32 i = 0;
-    XCBWindow winstack[X11_DEFAULT_MAX_WINDOW_LIMIT];
     
     c = startstack(desk);
 
     for(; c; c = nextstack(c))
     {
+        /* if the client isnt attached which would be very unlikely, then just attach it or 'config' it as seen below */
         instack = nextrstack(c) || prevrstack(c);
-        /* Client holds both lists so we just check if the next's are the same if not configure it */
+        /* Client holds both lists so we just check if the next's are the same if not configure it, see above for instack */
         config = nextrstack(c) != nextstack(c) || !instack;
+
         if(config)
         {   
             XCBConfigureWindow(_wm.dpy, c->win, XCB_CONFIG_WINDOW_SIBLING|XCB_CONFIG_WINDOW_STACK_MODE, &wc);
             Debug("Configured window: %s", c->netwmname);
         }
+
         wc.sibling = c->win;
+        /* replace linked lists with current list */
         c->rprev = c->sprev;
         c->rnext = c->snext;
 
     }
+
+    /* replace tail pointers for linked list to be accurate */
+
     desk->rstack = desk->stack;;
     desk->rlast = desk->slast;
 
-    slist = laststack(desk);
-
-    /* reset client list */
-    if(slist)
-    {   
-        XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&slist->win, 1);
-    }
-    else
-    {   
-        winstack[0] = 0;
-        XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, winstack, 0);
-    }
-
-    for(slist = prevstack(slist); slist; slist = prevstack(slist))
-    {
-        winstack[i++] = slist->win;
-        if(i == X11_DEFAULT_MAX_WINDOW_LIMIT)
-        {   
-            XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_APPEND, (unsigned char *)winstack, i);
-            i = 0;
-        }
-    }
-    if(i)
-    {    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_APPEND, (unsigned char *)winstack, i);
-    }
+    /* update _NET_WM_CLIENT_LIST_STACKING */
+    updateclientstackinglist();
 }
 
 void
@@ -666,7 +647,6 @@ updatedesktopnames(void)
 
         ++length;
 
-        Debug("%s", buff);
         XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetDesktopNames], netatom[NetUtf8String], 8, XCB_PROP_MODE_APPEND, buff, length);
     }
 }

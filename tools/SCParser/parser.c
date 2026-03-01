@@ -31,7 +31,7 @@
 #include "parser.h"
 
 
-#include "tools/DynamicArray/dynamic_array.h"
+#include "tools/GArray/garray.h"
 #include "khash.h"
 
 /* hashing */

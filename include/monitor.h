@@ -94,7 +94,11 @@ void setupcursors(void);
  *                  1       Removes the specified win.
  *                  2       Reloads the entire list.
  * _NET_WM_CLIENT_LIST */
-void updateclientlist(XCBWindow win, uint8_t type);
+void updateclientlist(XCBWindow win, enum ClientListModes type);
+/* Updates then_NET_WM_CLIENT_LIST_STACKING_
+ * This should generally ONLY be used for IN restack(), as this updates the list based on the current desktop.
+ */
+void updateclientstackinglist(void);
 /* Updates Geometry for external monitors based on if they have different geometry */
 int  updategeom(void);
 /* checks and updates mask if numlock is active */

@@ -14,7 +14,7 @@
 #include "x.h"
 #include "safebool.h"
 #include "util.h"
-#include "DynamicArray/dynamic_array.h"
+#include "GArray/garray.h"
 
 
 #ifndef VERSION
@@ -28,10 +28,6 @@
 #define __CLIENTS__ __CLIENTS__
 
 /* CONSTANTS */
-#define CLEANMASK(mask)         (mask & ~(_wm.numlockmask|XCB_MOD_MASK_LOCK) & \
-                                (XCB_MOD_MASK_SHIFT|XCB_MOD_MASK_CONTROL| \
-                                 XCB_MOD_MASK_1|XCB_MOD_MASK_2|XCB_MOD_MASK_3|XCB_MOD_MASK_4|XCB_MOD_MASK_5))
-#define CLEANBUTTONMASK(mask)   ((mask % (XCBButton5 + 1)) + !mask)
 #define INTERSECT(x,y,w,h,m)    (MAX(0, MIN((x)+(w),(m)->wx+(m)->ww) - MAX((x),(m)->wx)) \
                                 * MAX(0, MIN((y)+(h),(m)->wy+(m)->wh) - MAX((y),(m)->wy)))
 #define LENGTH(X)               (sizeof X / sizeof X[0])
@@ -138,9 +134,9 @@ WM
     uint8_t restart;                /* Restart Flag         */
     uint8_t pad[3];
 
-    /* store _NET_CLIENT_LIST */
-    GArray clients;
-    GArray work;
+    GArray clients;                 /* _NET_CLIENT_LIST     */
+    GArray clientstacking;          /* above, but _STACKING */
+    GArray work;                    /* WM work handle       */
 };
 
 struct 
@@ -264,5 +260,7 @@ uint32_t IS_WM_WINDOW(XCBWindow win);
  */
 int WM_ADD_WORK(int (*func)(XCBGenericEvent *event, Arg arg), Arg arg);
 
+uint32_t CLEANMASK(uint32_t mask);
+uint8_t CLEANBUTTONMASK(uint8_t MASK);
 
 #endif 

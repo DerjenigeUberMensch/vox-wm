@@ -121,7 +121,7 @@ XCBISelectEvents(
 
     const size_t SIZE_REAL = sizeof(xcb_input_event_mask_t);
     const size_t SIZE = MAX_EVENT_MASK_LENGTH + SIZE_REAL;
-    const xcb_input_xi_event_mask_t ev[SIZE];
+    xcb_input_xi_event_mask_t ev[SIZE];
 
 
     xcb_input_event_mask_t mask;

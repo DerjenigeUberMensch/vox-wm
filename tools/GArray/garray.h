@@ -105,7 +105,9 @@ GArrayCreateFilled(
     garray_i base_allocate
     );
 
-/*
+
+/* Wipes a array, removing any data existing in it.
+ *
  * RETURN: EXIT_SUCCESS on Sucesss.
  * RETURN: EXIT_FAILURE on Failure.
  */
@@ -113,6 +115,25 @@ void
 GArrayWipe(
     GArray *array
     );
+
+
+/* This resizes the array to the base_allocate, and moves the head pointer back to 0, as if its new array.
+ */
+void
+GArrayClear(
+        GArray *array
+        );
+
+/* Moves the head pointer to a index, less than the current head pointer index.
+ *
+ * RETURN: EXIT_FAILURE if the head pointer to move to is graeter than the current one.
+ * RETURN: EXIT_SUCCESS otherwise.
+ */
+int
+GArrayMoveHead(
+        GArray *array,
+        garray_i index_to_move_to
+        );
 
 /*
  * RETURN: EXIT_SUCCESS on Sucesss.
@@ -199,6 +220,7 @@ int
 GArrayGetArray(
     GArray *array,
     void **array_return,
+    size_t *item_len_return,
     size_t *sizeof_array_return,
     size_t *item_size_return
     );
