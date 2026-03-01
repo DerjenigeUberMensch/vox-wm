@@ -526,7 +526,7 @@ u32 HASWMSAVEYOURSELF(Client *c){ return c->ewmhflags & WStateFlagWMSaveYourself
 u32 HASWMDELETEWINDOW(Client *c){ return c->ewmhflags & WStateFlagWMDeleteWindow; }
 
 /* manage */
-u32 CANMANAGE(XCBWindow win, XCBGetWindowAttributes *waattributes, XCBWindowProperty *wastate) {
+u32 CANMANAGE(XCBWindow win, bool ignore_unmaped, XCBGetWindowAttributes *waattributes, XCBWindowProperty *wastate) {
                     u32 *data = NULL;
                     uint32_t size = 0;
                     int status = 0;
@@ -539,7 +539,7 @@ u32 CANMANAGE(XCBWindow win, XCBGetWindowAttributes *waattributes, XCBWindowProp
                         status = XCBGetWindowPropertyValueSize(wastate, &size);
                     }
 
-                    if(waattributes && waattributes->override_redirect)
+                    if(waattributes)
                     {
                         if(waattributes->override_redirect)
                         {
@@ -547,7 +547,7 @@ u32 CANMANAGE(XCBWindow win, XCBGetWindowAttributes *waattributes, XCBWindowProp
                             goto NO_MANAGE;
                         }
 
-                        if(waattributes->map_state != XCBIsViewable)
+                        if(waattributes->map_state != XCBIsViewable && !ignore_unmaped)
                         {   goto NO_MANAGE;
                         }
                     }
@@ -556,7 +556,7 @@ u32 CANMANAGE(XCBWindow win, XCBGetWindowAttributes *waattributes, XCBWindowProp
                     {
                         if(status != NO_FORMAT && data)
                         {   
-                            if(*data == XCB_ICCCM_WM_STATE_WITHDRAWN)
+                            if(*data != XCB_WINDOW_NORMAL_STATE && *data != XCB_WINDOW_ICONIC_STATE && !ignore_unmaped)
                             {   goto NO_MANAGE;
                             }
                         }
@@ -1275,7 +1275,7 @@ managereplies(XCBCookie requests[ManageClientLAST], void *replies[ManageClientLA
 
 
 Client *
-manage(XCBWindow win, void *replies[ManageClientLAST])
+manage(XCBWindow win, bool ignore_unmaped, void *replies[ManageClientLAST])
 {
     Monitor *m = NULL;
     Client *c = NULL;
@@ -1319,7 +1319,7 @@ manage(XCBWindow win, void *replies[ManageClientLAST])
     u32 *strutp = strutp = strutpreply ? XCBGetWindowPropertyValue(strutpreply) : NULL;
     u32 *strut = strut = strutreply ? XCBGetWindowPropertyValue(strutpreply) : NULL;
 
-    if(!CANMANAGE(win, waattributes, wastatereply))
+    if(!CANMANAGE(win, ignore_unmaped, waattributes, wastatereply))
     {   goto FAILURE;
     }
 

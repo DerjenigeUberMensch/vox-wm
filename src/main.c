@@ -953,7 +953,7 @@ scan(void)
 
                 index = ManageClientLAST * i;
 
-                manage(wins[i], managereplys + index);
+                manage(wins[i], false, managereplys + index);
             }
 
             /* now the transients */
@@ -964,7 +964,7 @@ scan(void)
                 {
                     index = ManageClientLAST * i;
 
-                    manage(wins[i], managereplys + index);
+                    manage(wins[i], false, managereplys + index);
                 }
             }
             /* cleanup */
