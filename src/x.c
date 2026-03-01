@@ -123,7 +123,7 @@ XCBSetAtomState(XCBDisplay *display, XCBWindow win, XCBAtom type, XCBAtom atom, 
 { 
     void *data = NULL;
     u32 len = 0;
-    u32 propmode = XCB_PROP_MODE_REPLACE;
+    u32 propmode = XCBPropModeReplace;
 
     if(prop)
     {
@@ -171,7 +171,7 @@ XCBSetAtomState(XCBDisplay *display, XCBWindow win, XCBAtom type, XCBAtom atom, 
             }
             else    /* set propmode to append cause we didnt find it */
             {   
-                propmode = XCB_PROP_MODE_APPEND;
+                propmode = XCBPropModeAppend;
                 len = 1;
                 data = &atom;
             }

@@ -567,7 +567,7 @@ updateclientlist(XCBWindow win, enum ClientListModes type)
     */
     
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientList], 
-            XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (const char *)data, item_len);
+            XCB_ATOM_WINDOW, 32, XCBPropModeReplace, (const char *)data, item_len);
 }
 
 void
@@ -644,7 +644,7 @@ updateclientstackinglist(void)
     */
 
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], 
-            XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (const char *)data, item_len);
+            XCB_ATOM_WINDOW, 32, XCBPropModeReplace, (const char *)data, item_len);
 }
 
 /* this function is really slow, slower than malloc use only in startup or rare mapping changes */

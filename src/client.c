@@ -932,7 +932,7 @@ focus(Client *c)
         XCBWindow empty = 0;
 
         XCBSetInputFocus(_wm.dpy, _wm.root, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
-        XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, &empty, 1);
+        XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow], XCB_ATOM_WINDOW, 32, XCBPropModeReplace, &empty, 1);
     }
     desk->sel = c;
 
@@ -1349,6 +1349,7 @@ manage(XCBWindow win, bool ignore_unmaped, void *replies[ManageClientLAST])
     updatewmhints(c, wmh);
     updatemotifhints(c, motifreply);
     updateicon(c, iconreply);
+    updateclientdesktop(c);
     /* check if should be floating after, all size hints and other things are set. */
     clientinitfloat(c);
     clientinitdecor(c);
@@ -1664,6 +1665,7 @@ setclientdesktop(Client *c, Desktop *desk)
     attach(c);
     attachstack(c);
     attachfocus(c);
+    updateclientdesktop(c);
 }
 
 void
@@ -1671,7 +1673,7 @@ setclientstate(Client *c, u8 state)
 {
     /* Due to windows only having 1 map state we can set this without needing to replace other data */
     const i32 data[2] = { state, XCB_NONE };
-    XCBChangeProperty(_wm.dpy, c->win, wmatom[WMState], wmatom[WMState], 32, XCB_PROP_MODE_REPLACE, (unsigned char *)data, 2);
+    XCBChangeProperty(_wm.dpy, c->win, wmatom[WMState], wmatom[WMState], 32, XCBPropModeReplace, (unsigned char *)data, 2);
 }
 
 void
@@ -1895,7 +1897,7 @@ setshowdecor(Client *c, uint8_t state)
         }
     }
     SETFLAG(c->flags, ClientFlagShowDecor, !!state);
-    XCBChangeProperty(_wm.dpy, c->win, netatom[NetWMFrameExtents], XCB_ATOM_CARDINAL, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)data, 4);
+    XCBChangeProperty(_wm.dpy, c->win, netatom[NetWMFrameExtents], XCB_ATOM_CARDINAL, 32, XCBPropModeReplace, (unsigned char *)data, 4);
 }
 
 void
@@ -1939,7 +1941,7 @@ setfocus(Client *c)
     if(!NEVERHOLDFOCUS(c))
     {
         XCBSetInputFocus(_wm.dpy, c->win, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
-        XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, &c->win, 1);
+        XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow], XCB_ATOM_WINDOW, 32, XCBPropModeReplace, &c->win, 1);
         setclientnetstate(c, netatom[NetWMStateFocused], 1);
         SETFLAG(c->ewmhflags, WStateFlagFocused, 1);
     }
@@ -2070,7 +2072,7 @@ unfocus(Client *c, uint8_t setfocus)
         XCBWindow noactivewindow = XCB_NONE;
 
         XCBSetInputFocus(_wm.dpy, _wm.root, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
-        XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, &noactivewindow, 1);
+        XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow], XCB_ATOM_WINDOW, 32, XCBPropModeReplace, &noactivewindow, 1);
     }
 
     SETFLAG(c->ewmhflags, WStateFlagFocused, 0);
@@ -2100,6 +2102,30 @@ void
 updateborderwidth(Client *c)
 {
     XCBSetWindowBorderWidth(_wm.dpy, c->win, c->bw);
+}
+
+void
+updateclientdesktop(Client *c)
+{
+    int wrapToMax = -1;
+    u32 deskindex;
+
+    if(c->desktop)
+    {   deskindex = c->desktop->num;
+    }
+    else
+    {
+        if(ISSTICKY(c))
+        {   deskindex = wrapToMax;
+        }
+        else
+        {   
+            Debug("Attempted to call updateclientdesktop of unattached client, on: [%d]", c->win);
+            return;
+        }
+    }
+
+    XCBChangeProperty(_wm.dpy, c->win, netatom[NetWMDesktop], XCB_ATOM_CARDINAL, 32, XCBPropModeReplace, &deskindex, 1);
 }
 
 void
