@@ -1214,9 +1214,9 @@ setupwm(void)
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupportingWMCheck], XCB_ATOM_WINDOW, 32, XCBPropModeReplace, &_wm.wmcheckwin, 1);
     /* EWMH support per view */
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCBPropModeReplace, &netatom, NetLast);
-    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_APPEND, &wmatom, WMLast);
-    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_APPEND, &gtkatom, GTKLAST);
-    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_APPEND, &motifatom, 1);
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCBPropModeAppend, &wmatom, WMLast);
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCBPropModeAppend, &gtkatom, GTKLAST);
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCBPropModeAppend, &motifatom, 1);
 
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetDesktopGeometry], XCB_ATOM_ATOM, 32, XCBPropModeReplace, deskgeom, DESK_GEOM_LENGTH);
 

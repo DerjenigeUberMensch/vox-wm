@@ -506,6 +506,8 @@ void NonNull updateborder(Client *c);
 void NonNull updatebordercol(Client *c);
 /* Updates the Clients border width to the XServer */
 void NonNull updateborderwidth(Client *c);
+/* updates client desktop to the X Server */
+void updateclientdesktop(Client *c);
 /* updates motif hints if they are set */
 void NonNullArg(1) updatemotifhints(Client *c, XCBWindowProperty *motifprop);
 /* Updates a Clients sizehints property using the provided hints pointer "size".

@@ -235,7 +235,7 @@ buttonpress(XCBGenericEvent *event)
         }
         /* if no selected window, this should just set input focus to root, failsafe for above basically */
         XCBSetInputFocus(_wm.dpy, eventwin, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
-        XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow], XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&(eventwin), 1);
+        XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow], XCB_ATOM_WINDOW, 32, XCBPropModeReplace, (unsigned char *)&(eventwin), 1);
         /* shouldnt need to sync, but too lazy to test */
         sync = 1;
     }
@@ -1443,7 +1443,7 @@ clientmessage(XCBGenericEvent *event)
              * See comment on top setshowdecor().
              */
             const u32 _data[4] = { 0, 0, 0, 0 };
-            XCBChangeProperty(_wm.dpy, c->win, netatom[NetRequestFrameExtents], XCB_ATOM_CARDINAL, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)_data, 4);
+            XCBChangeProperty(_wm.dpy, c->win, netatom[NetRequestFrameExtents], XCB_ATOM_CARDINAL, 32, XCBPropModeReplace, (unsigned char *)_data, 4);
         }
         else if (atom == netatom[NetNumberOfDesktops])
         {   /* ignore */

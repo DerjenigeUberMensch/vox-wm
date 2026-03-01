@@ -614,7 +614,7 @@ updatedesktop(void)
         Debug0("Desktop num is negative, FIXME");
     }
 
-    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetCurrentDesktop], XCB_ATOM_CARDINAL, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&num, 1);
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetCurrentDesktop], XCB_ATOM_CARDINAL, 32, XCBPropModeReplace, (unsigned char *)&num, 1);
 }
 
 void
@@ -629,7 +629,7 @@ updatedesktopnames(void)
 
     char *unused = "";
 
-    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetDesktopNames], netatom[NetUtf8String], 8, XCB_PROP_MODE_REPLACE, unused, 0);
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetDesktopNames], netatom[NetUtf8String], 8, XCBPropModeReplace, unused, 0);
 
     for(desk = _wm.selmon->desktops; desk; desk = nextdesktop(desk))
     {
@@ -647,7 +647,7 @@ updatedesktopnames(void)
 
         ++length;
 
-        XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetDesktopNames], netatom[NetUtf8String], 8, XCB_PROP_MODE_APPEND, buff, length);
+        XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetDesktopNames], netatom[NetUtf8String], 8, XCBPropModeAppend, buff, length);
     }
 }
 
@@ -655,7 +655,7 @@ void
 updatedesktopnum(void)
 {
     i32 data = _wm.selmon->deskcount;
-    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetNumberOfDesktops], XCB_ATOM_CARDINAL, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&data, 1);
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetNumberOfDesktops], XCB_ATOM_CARDINAL, 32, XCBPropModeReplace, (unsigned char *)&data, 1);
 }
 
 void
@@ -672,7 +672,7 @@ updatedesktopviewport(void)
     data[y] = NO_SUPPORT_LARGE_DESKTOPS;
     
 
-    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetDesktopViewport], XCB_ATOM_CARDINAL, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)data, data_spec);
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetDesktopViewport], XCB_ATOM_CARDINAL, 32, XCBPropModeReplace, (unsigned char *)data, data_spec);
 }
 
 void
