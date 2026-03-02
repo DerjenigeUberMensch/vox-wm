@@ -27,7 +27,6 @@ include config.mk
 # The name of the executable to be created
 BIN_NAME := vox-wm
 MARK = ${BIN_NAME}
-VERSION ?= 4.2.X
 # Extension of source files used in the project
 SRC_EXT = c
 # Path to the source directory, relative to the makefile
@@ -43,7 +42,7 @@ ARCH64 = -march=x86-64
 ARCH = ${ARCH64} ${ARCHALL}
 # General compiler flags
 COMPILE_FLAGS = ${CCFLAGS} ${PRELINKERFLAGS} ${ARCH} 
-COMPILE_FLAGS += -DXINERAMA -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L -DVERSION=\"${VERSION}\" -DMARK=\"${MARK}\"
+COMPILE_FLAGS += -DXINERAMA -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L -DMARK=\"${MARK}\"
 # Additional release-specific flags
 RCOMPILE_FLAGS = ${RELEASES} -DNDEBUG
 SCOMPILE_FLAGS = ${SIZEONLY} -DNDEBUG
@@ -101,6 +100,27 @@ export V := false
 export CMD_PREFIX := @
 ifeq ($(V),true)
 	CMD_PREFIX :=
+endif
+
+# Version macros
+# Comment/remove this section to remove versioning
+USE_VERSION := false
+# If this isn't a git repo or the repo has no tags, git describe will return non-zero
+ifneq ($(shell git describe > /dev/null 2>&1 ; echo $$?), 0)
+	USE_VERSION = true
+	VERSION = $(shell git describe --tags --long --dirty --always | sed 's/v\([0-9]*\)\.\([0-9]*\)\.\([0-9]*\)-\?.*-\([0-9]*\)-\(.*\)/\1 \2 \3 \4 \5/g')
+	VERSION_MAJOR = $(word 1, $(VERSION))
+	VERSION_MINOR = $(word 2, $(VERSION))
+	VERSION_PATCH = $(word 3, $(VERSION))
+	VERSION_REVISION = $(word 4, $(VERSION))
+	VERSION_HASH = $(shell git rev-parse --short HEAD)
+	VERSION_STRING = "$(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_PATCH).$(VERSION_REVISION)-$(VERSION_HASH)"
+	COMPILE_FLAGS += \
+    -DVERSION_MAJOR=$(VERSION_MAJOR) \
+    -DVERSION_MINOR=$(VERSION_MINOR) \
+    -DVERSION_PATCH=$(VERSION_PATCH) \
+    -DVERSION_REVISION=$(VERSION_REVISION) \
+    -DVERSION_HASH=\"$(VERSION_HASH)\"
 endif
 
 # Combine compiler and linker flags
@@ -168,28 +188,6 @@ else
 		echo `date -u -d @$$st '+%H:%M:%S'`
 endif
 
-# Version macros
-# Comment/remove this section to remove versioning
-USE_VERSION := false
-# If this isn't a git repo or the repo has no tags, git describe will return non-zero
-ifeq ($(shell git describe > /dev/null 2>&1 ; echo $$?), 0)
-	USE_VERSION := true
-	VERSION := $(shell git describe --tags --long --dirty --always | \
-		sed 's/v\([0-9]*\)\.\([0-9]*\)\.\([0-9]*\)-\?.*-\([0-9]*\)-\(.*\)/\1 \2 \3 \4 \5/g')
-	VERSION_MAJOR := $(word 1, $(VERSION))
-	VERSION_MINOR := $(word 2, $(VERSION))
-	VERSION_PATCH := $(word 3, $(VERSION))
-	VERSION_REVISION := $(word 4, $(VERSION))
-	VERSION_HASH := $(word 5, $(VERSION))
-	VERSION_STRING := \
-		"$(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_PATCH).$(VERSION_REVISION)-$(VERSION_HASH)"
-	override CFLAGS := $(CFLAGS) \
-		-D VERSION_MAJOR=$(VERSION_MAJOR) \
-		-D VERSION_MINOR=$(VERSION_MINOR) \
-		-D VERSION_PATCH=$(VERSION_PATCH) \
-		-D VERSION_REVISION=$(VERSION_REVISION) \
-		-D VERSION_HASH=\"$(VERSION_HASH)\"
-endif
 
 # Standard, non-optimized release build
 .PHONY: release

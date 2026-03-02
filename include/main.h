@@ -16,11 +16,6 @@
 #include "util.h"
 #include "GArray/garray.h"
 
-
-#ifndef VERSION
-#define VERSION     "NOT_SET.NOT_SET.NOT_SET"
-#endif
-
 #ifndef MARK
 #define MARK    "Generic X Server Event Handler (XEH)"
 #endif

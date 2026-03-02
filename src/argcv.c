@@ -37,8 +37,9 @@ const struct ArgCVCommand
 __double__commands__[] = 
 {
     ARG_CV_NEW_COMMAND("help", "Help Information.", ArgcvDisplayHelp)
-    ARG_CV_NEW_COMMAND("version", "Help Information.", ArgcvDisplayHelp)
+    ARG_CV_NEW_COMMAND("version", "Version Information.", ArgcvDisplayCompilerInfo)
     ARG_CV_NEW_COMMAND("die-cat", "Calls 'DIECAT' immediatly", ArgcvDisplayDIECAT)
+    ARG_CV_NEW_COMMAND("license", "Get License Information.", ArgcDisplayLicense)
 /* TODO: implement this */
 /*    ARG_CV_NEW_COMMAND("verbose", "Enables Verbose Debugging Info.", NULL) */
 };
@@ -204,7 +205,8 @@ ArgcvDisplayCompilerInfo(
             "  BYTE_ORDER:      [%d]\n"
             "  POINTER_SIZE:    [%d]\n"
             "Version Information.\n"
-            "  VERSION:         [%s]\n"
+            "  VERSION:         [v%d.%d.%d+%d]\n"
+            "  COMMIT HASH:     [%s]\n"
             "  MARK:            [%s]\n"
             ,
             /* TODO __DATE__ has an extra space for some reason? */ 
@@ -214,7 +216,8 @@ ArgcvDisplayCompilerInfo(
             __STDC__, __STDC_HOSTED__, __STDC_VERSION__,
             byteorder,
             pointersize,
-            VERSION,
+            VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, VERSION_REVISION,
+            VERSION_HASH,
             MARK
           );
 
@@ -235,6 +238,34 @@ ArgcvDisplayDIECAT(
 	)
 {
     DIECAT("%s", "MANUALLY TRIGGERED.");
+}
+
+void
+ArgcDisplayLicense(
+    void
+    )
+{
+    /* TODO REMOVE LINKS AND JUST PUT THE LICENSE HERE */
+    /* TODO THIS LOOKS UGLY */
+    printf(
+            "--------------------------------- LICENSE START --------------------------------------" "\n"
+            ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> MAIN PROJECT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" "\n"
+            MARK ":   (MPL-2):  https://www.mozilla.org/en-US/MPL/2.0/" "\n"
+            ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> KHASH <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" "\n"
+            "khash     (MIT):    https://github.com/attractivechaos/klib/blob/master/LICENSE.txt" "\n"
+            ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> THPOOL <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" "\n"
+            "thpool    (MIT):    https://github.com/Pithikos/C-Thread-Pool/blob/master/LICENSE" "\n"
+            ">>>>>>>>>>>>>>>>>>>>>>>>>>>> Sub Licensed By DerjenigeUberMensch <<<<<<<<<<<<<<<<<<<<<" "\n"
+            "FNotify   (MIT)" "\n"
+            "GArray    (MIT)" "\n"
+            "SCParser  (MIT)" "\n"
+            "TPromises (MIT)" "\n"
+            "XCB-TRL   (MIT)" "\n"
+            "file_util (MIT)" "\n"
+            "util      (MIT)" "\n"
+            "--------------------------------- LICENSE END ----------------------------------------" "\n"
+            );
+    exit(EXIT_SUCCESS);
 }
 
 void
