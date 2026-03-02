@@ -263,6 +263,7 @@ ArgcDisplayLicense(
             "XCB-TRL   (MIT)" "\n"
             "file_util (MIT)" "\n"
             "util      (MIT)" "\n"
+            "safebool  (MIT)" "\n"
             "--------------------------------- LICENSE END ----------------------------------------" "\n"
             );
     exit(EXIT_SUCCESS);
