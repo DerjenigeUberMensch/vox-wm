@@ -36,6 +36,11 @@ ArgcvDisplayDIECAT(
 	);
 
 void
+ArgcDisplayLicense(
+    void
+    );
+
+void
 ArgcvSingleCommandHandler(
         char *str
         );
