@@ -29,7 +29,7 @@ LINKMODE = ${DYNAMICLINK}
 MEMFLAGSALWAYS = -fno-omit-frame-pointer
 MEMFLAGSDEBUG = -fsanitize=address,pointer-compare,pointer-subtract,undefined,leak -fasynchronous-unwind-tables
 MEMFLAGS = ${MEMFLAGSALWAYS}
-#MEMFLAGS += ${MEMFLAGSDEBUG}
+MEMFLAGS += ${MEMFLAGSDEBUG}
 
 WARNINGDEFAULT = -pedantic -Wall -Wno-deprecated-declarations -Wshadow -Wuninitialized -Werror=format-security 
 WARNINGEXTRAS = -Wunreachable-code -Waggregate-return -Wstrict-overflow=4 -Wpointer-arith
