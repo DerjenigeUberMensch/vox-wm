@@ -1,5 +1,5 @@
-#ifndef USER_SETTINGS
-#define USER_SETTINGS
+#ifndef __SETTINGS__H__
+#define __SETTINGS__H__
 
 #include <stdint.h>
 
@@ -7,8 +7,6 @@
 #include "FNotify/fnotify.h"
 
 #include "util.h"
-
-
 
 /* non-extension compliant 'switch' statment. */
 #define VOX_ADD_MEMBER_SCTypeNoType(DEFAULT_SETTING)     { .data64 = { DEFAULT_SETTING } }
@@ -28,20 +26,23 @@
 #define VOX_ADD_MEMBER_TYPED(TYPE, DEFAULT_SETTING) \
         VOX_ADD_MEMBER_##TYPE(DEFAULT_SETTING)
 
-#define VOX_ADD_MEMBER(NAME, TYPE, OFFSET, SIZE, DEFAULT_SETTING)       \
+#define VOX_ADD_MEMBER(NAME, TYPE, OFFSET, SIZE, DEFAULT_SETTING, UPDATE_FUNCTION)\
         [NAME] =                                                        \
         {                                                               \
             .name = #NAME,                                              \
             .name_len = sizeof(#NAME),                                  \
+            .update_func = UPDATE_FUNCTION,                             \
             .type = TYPE,                                               \
             .offset = OFFSET,                                           \
             .size = SIZE,                                               \
-            .default_data = VOX_ADD_MEMBER_TYPED(TYPE, DEFAULT_SETTING) \
+            .default_data = VOX_ADD_MEMBER_TYPED(TYPE, DEFAULT_SETTING), \
+            .data = VOX_ADD_MEMBER_TYPED(TYPE, DEFAULT_SETTING)         \
         },
 
-#define VOX_ADD_MEMBER_SETTING(NAME, TYPE, DEFAULT_SETTING) \
-        VOX_ADD_MEMBER(NAME, TYPE, offsetof(UserSettings, NAME), FIELD_SIZEOF(UserSettings, NAME), DEFAULT_SETTING)
+#define VOX_ADD_MEMBER_SETTING(NAME, TYPE, DEFAULT_SETTING, UPDATE_FUNCTION) \
+        VOX_ADD_MEMBER(NAME, TYPE, offsetof(UserSettings, NAME), FIELD_SIZEOF(UserSettings, NAME), DEFAULT_SETTING, UPDATE_FUNCTION)
 
+#define VOX_GENERATE_SETTING_LIST(LIST_NAME, LIST) SCSetting LIST_NAME[] = { LIST };
 
 /* User Settings Flags */
 
@@ -53,10 +54,12 @@ SCSetting
 {
     const Generic default_data;
     const char *const name;
+    const void (*update_func)(UserSettings *RESTRICT prev, UserSettings *RESTRICT cur);
     const enum SCType type;
     const uint8_t name_len;
     const uint8_t size;
     const uint16_t offset;
+    Generic data;
 };
 
 
@@ -64,52 +67,7 @@ struct
 UserSettings
 {
     SCParser *cfg;          /* Cfg holder                                                       */
-
-    float MFact;            /* factor of master area size [0.05..0.95]                          */
-    float GapRatio;         /* invisible border pixel of windows (CFG_BORDER_PX not affected)   */
-    uint16_t MCount;        /* number of clients in master area                                 */
-    uint16_t Snap;          /* snap window to border in pixels; 0 to disable (NOT RECOMMENDED)  */
-    uint16_t RefreshRate;   /* max refresh rate when resizing, moving windows;  0 to disable    */
-
-    /* Not bool or bitfield for portability */
-    uint8_t HoverFocus;
-    uint8_t UseDecorations;
-    uint8_t UseClientSideDecorations;
-    uint8_t PreferClientSideDecorations;            /* This option is to disable server side decorations and prefer client side if applicable */
-
-
-    /* Bar Setting Data */
-    /* Holds Ratios of size(s) relative to the monitor 
-     * 0.0f -> 1.0f
-     */
-    float BarLX;    /* Ratio of Monitor x offset    */
-    float BarLY;    /* Ratio of Monitor y offset    */
-    float BarLW;    /* Ratio of Monitor w size      */
-    float BarLH;    /* Ratio of Monitor h size      */
-
-    /* Holds Ratios of size(s) relative to the monitor 
-     * 0.0f -> 1.0f
-     */
-    float BarRX;    /* Ratio of Monitor x offset    */
-    float BarRY;    /* Ratio of Monitor y offset    */
-    float BarRW;    /* Ratio of Monitor w size      */
-    float BarRH;    /* Ratio of Monitor h size      */
-
-    /* Holds Ratios of size(s) relative to the monitor 
-     * 0.0f -> 1.0f
-     */
-    float BarTX;    /* Ratio of Monitor x offset    */
-    float BarTY;    /* Ratio of Monitor y offset    */
-    float BarTW;    /* Ratio of Monitor w size      */
-    float BarTH;    /* Ratio of Monitor h size      */
-
-    /* Holds Ratios of size(s) relative to the monitor 
-     * 0.0f -> 1.0f
-     */
-    float BarBX;    /* Ratio of Monitor x offset    */
-    float BarBY;    /* Ratio of Monitor y offset    */
-    float BarBW;    /* Ratio of Monitor w size      */
-    float BarBH;    /* Ratio of Monitor h size      */
+    SCSetting *holder;
 
     pthread_mutex_t mutex;
     pthread_cond_t exitcond;
@@ -118,6 +76,7 @@ UserSettings
 };
 
 enum
+UserSettingType
 {
     MFact,
     GapRatio,
@@ -177,6 +136,11 @@ USSave(
 void NonNull
 USLoad(
         UserSettings *settings
+        );
+Generic
+USDefaultSetting(
+        UserSettings *settings,
+        enum UserSettingType type
         );
 /* Free settings data */
 void NonNull

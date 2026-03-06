@@ -193,6 +193,16 @@ union ARGB
 #define GET_BOOL(X) ((X) ? "true" : "false")
 #endif
 
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
+  #define RESTRICT restrict
+#else
+  #define RESTRICT 
+#endif
+
+#ifndef EXPAND
+#define EXPAND(X) X
+#endif
+
 #ifndef NDEBUG
 
 #ifndef Debug

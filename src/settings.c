@@ -16,43 +16,6 @@
 #include "threading.h"
 #include "main.h"
 
-static const SCSetting
-__USER__SETTINGS__DATA__[] = 
-{
-    VOX_ADD_MEMBER_SETTING(MFact, SCTypeFLOAT, 0.55f)
-    VOX_ADD_MEMBER_SETTING(GapRatio, SCTypeFLOAT, 0.95f)
-    VOX_ADD_MEMBER_SETTING(MCount, SCTypeUSHORT, 1)
-    VOX_ADD_MEMBER_SETTING(Snap, SCTypeUSHORT, 10)
-    VOX_ADD_MEMBER_SETTING(RefreshRate, SCTypeUSHORT, 60)
-
-    /* BOOL Types */
-    VOX_ADD_MEMBER_SETTING(HoverFocus, SCTypeBOOL, false)
-    VOX_ADD_MEMBER_SETTING(UseDecorations, SCTypeBOOL, false)
-    VOX_ADD_MEMBER_SETTING(UseClientSideDecorations, SCTypeBOOL, true)
-    VOX_ADD_MEMBER_SETTING(PreferClientSideDecorations, SCTypeBOOL, true)
-
-
-    /* bar data */
-    VOX_ADD_MEMBER_SETTING(BarLX, SCTypeFLOAT, 0.0f)    /*   lx    */
-    VOX_ADD_MEMBER_SETTING(BarLY, SCTypeFLOAT, 0.0f)    /*   ly    */
-    VOX_ADD_MEMBER_SETTING(BarLW, SCTypeFLOAT, 0.15f)   /*   lw    */
-    VOX_ADD_MEMBER_SETTING(BarLH, SCTypeFLOAT, 1.0f)    /*   lh    */
-
-    VOX_ADD_MEMBER_SETTING(BarRX, SCTypeFLOAT, 0.85f)   /* rx - rw */
-    VOX_ADD_MEMBER_SETTING(BarRY, SCTypeFLOAT, 0.0f)    /*   ry    */
-    VOX_ADD_MEMBER_SETTING(BarRW, SCTypeFLOAT, 0.15f)   /*   rw    */
-    VOX_ADD_MEMBER_SETTING(BarRH, SCTypeFLOAT, 1.0f)    /*   rh    */
-
-    VOX_ADD_MEMBER_SETTING(BarTX, SCTypeFLOAT, 0.0f)    /*   tx    */
-    VOX_ADD_MEMBER_SETTING(BarTY, SCTypeFLOAT, 0.0f)    /*   ty    */
-    VOX_ADD_MEMBER_SETTING(BarTW, SCTypeFLOAT, 1.0f)    /*   tw    */
-    VOX_ADD_MEMBER_SETTING(BarTH, SCTypeFLOAT, 0.15f)   /*   th    */
-
-    VOX_ADD_MEMBER_SETTING(BarBX, SCTypeFLOAT, 0.0f)    /*   bx    */
-    VOX_ADD_MEMBER_SETTING(BarBY, SCTypeFLOAT, 0.85f)   /* bx - bh */
-    VOX_ADD_MEMBER_SETTING(BarBW, SCTypeFLOAT, 1.0f)    /*   bw    */
-    VOX_ADD_MEMBER_SETTING(BarBH, SCTypeFLOAT, 0.15f)   /*   bh    */
-};
 
 void
 USSetupCFGVars(
@@ -64,7 +27,7 @@ USSetupCFGVars(
     }
 
     SCParser *cfg = us->cfg;
-    const SCSetting *usdata = __USER__SETTINGS__DATA__;
+    const SCSetting *usdata = us->holder;
 
     i32 i;
     u8 err = 0;
@@ -93,7 +56,7 @@ USSetupCFGDefaults(
     void *data;
     i32 i;
 
-    const SCSetting *usdata = __USER__SETTINGS__DATA__;
+    const SCSetting *usdata = us->holder;
 
     for(i = 0; i < UserSettingsLAST; ++i)
     {
@@ -127,6 +90,17 @@ USInit(
         USSetupCFGDefaults(settings_init);
         USLoad(settings_init);
     }
+}
+
+Generic
+USDefaultSetting(
+        UserSettings *settings,
+        enum UserSettingType setting
+        )
+{
+    const SCSetting *usdata = settings->holder;
+
+    return usdata[setting].default_data;
 }
 
 void
@@ -171,11 +145,11 @@ USLoad(
     i32 i;
     void *data;
 
-    const SCSetting *usdata = __USER__SETTINGS__DATA__;
+    const SCSetting *usdata = settings->holder;
 
     for(i = 0; i < UserSettingsLAST; ++i)
     {
-        data = ((uint8_t *)settings) + usdata->offset;
+        data = ((uint8_t *)usdata) + usdata->offset;
         item = SCParserSearch(cfg, usdata->name);
 
         if(!item)
@@ -200,40 +174,6 @@ USLoad(
                 }
             #endif
 
-                /*
-                   Debug("%f", _cfg.MFact);
-                   Debug("%f", _cfg.GapRatio);
-                   Debug("%d", _cfg.MCount);
-                   Debug("%d", _cfg.Snap);
-                   Debug("%d", _cfg.RefreshRate);
-
-                   Debug("%s", GET_BOOL(_cfg.HoverFocus));
-                   Debug("%s", GET_BOOL(_cfg.UseDecorations));
-                   Debug("%s", GET_BOOL(_cfg.UseClientSideDecorations));
-                   Debug("%s", GET_BOOL(_cfg.PreferClientSideDecorations));
-
-                   Debug("%f", _cfg.BarLX);
-                   Debug("%f", _cfg.BarLY);
-                   Debug("%f", _cfg.BarLW);
-                   Debug("%f", _cfg.BarLH);
-
-                   Debug("%f", _cfg.BarRX);
-                   Debug("%f", _cfg.BarRY);
-                   Debug("%f", _cfg.BarRW);
-                   Debug("%f", _cfg.BarRH);
-
-                   Debug("%f", _cfg.BarTX);
-                   Debug("%f", _cfg.BarTY);
-                   Debug("%f", _cfg.BarTW);
-                   Debug("%f", _cfg.BarTH);
-
-                   Debug("%f", _cfg.BarBX);
-                   Debug("%f", _cfg.BarBY);
-                   Debug("%f", _cfg.BarBW);
-                   Debug("%f", _cfg.BarBH);
-                   */
-
-
             if(status)
             {   Debug("Failed to LOAD, \"%s\"", usdata->name);
             }
@@ -241,6 +181,7 @@ USLoad(
         else
         {   Debug("Failed to FIND, \"%s\"", usdata->name);
         }
+
         ++usdata;
     }
 
@@ -262,7 +203,7 @@ USSave(
     UserSettings *s = settings;
     i32 i;
 
-    const SCSetting *usdata = __USER__SETTINGS__DATA__;
+    const SCSetting *usdata = us->settings;
 
     for(i = 0; i < UserSettingsLAST; ++i)
     {   
