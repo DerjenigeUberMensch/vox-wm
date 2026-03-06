@@ -27,7 +27,7 @@ DYNAMICLINK= -ldl
 SECTIONCODE= -ffunction-sections -fdata-sections
 LINKMODE = ${DYNAMICLINK}
 MEMFLAGSALWAYS = -fno-omit-frame-pointer
-MEMFLAGSDEBUG = -fsanitize=address,pointer-compare,pointer-subtract,undefined,leak -fasynchronous-unwind-tables
+MEMFLAGSDEBUG = -fsanitize=address,pointer-compare,pointer-subtract,undefined,leak -fasynchronous-unwind-tables -ftrapv 
 MEMFLAGS = ${MEMFLAGSALWAYS}
 MEMFLAGS += ${MEMFLAGSDEBUG}
 
@@ -38,7 +38,7 @@ WARNINGFLAGS = ${WARNINGDEFAULT} ${WARNINGEXTRAS}
 LINKTIMEOPTIMIZATIONS = -flto -flto=auto
 
 #SAFETYFLAGS = -fcf-protection=full -fharden-compares -fstack-protector-all -fstack-clash-protection -fharden-compares -fharden-conditional-branches -fharden-control-flow-redundancy  -fhardcfr-check-exceptions  -fhardcfr-check-returning-calls -fhardcfr-check-noreturn-calls=always 
-PRELINKERFLAGS ?= -fpie -fstack-protector-strong -fstack-clash-protection -ftrapv ${LINKTIMEOPTIMIZATIONS} ${SECTIONCODE}
+PRELINKERFLAGS ?= -fpie -fstack-protector-strong -fstack-clash-protection ${LINKTIMEOPTIMIZATIONS} ${SECTIONCODE}
 
 # can set higher but function overhead is pretty small so meh
 INLINELIMIT ?= 15
@@ -48,17 +48,17 @@ X86 = -m32
 X86_64 = -m64
 BUILD_ARCHITECTURE = ${X86_64}
 LINKLIBS = -lpthread -lm
-LINKFLAGS = ${LINKMODE} -Wl,--as-needed,--relax,-z,now,-z,noexecstack,-z,defs,-pie -finline-limit=${INLINELIMIT}  ${LINKTIMEOPTIMIZATIONS} ${LINKLIBS} ${BUILD_ARCHITECTURE}
+LINKFLAGS = ${LINKMODE} -Wl,--as-needed,--relax,--gc-sections,-z,now,-z,noexecstack,-z,defs,-pie ${LINKTIMEOPTIMIZATIONS} ${LINKLIBS} ${BUILD_ARCHITECTURE}
 LINKRELEASE = ${NO_SANATIZE_FLAGS} 
 #-Wl,--strip-all 
-LINKDEBUG = -Wl,--gc-sections ${MEMFLAGS}
+LINKDEBUG = ${MEMFLAGS}
 
 DEBUGFLAGS = -ggdb -g -fverbose-asm
 CPPFLAGS = -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L ${XINERAMAFLAGS}
 CCFLAGS  = ${CCVERSION} ${WARNINGFLAGS} ${INCS} ${CPPFLAGS} ${PRELINKERFLAGS} ${BUILD_ARCHITECTURE}
 RELEASEFLAGS = ${CCFLAGS} 
 
-DEBUG 	= ${SECTIONCODE} ${DEBUGFLAGS} ${MEMFLAGS} -O0
+DEBUG 	= ${DEBUGFLAGS} ${MEMFLAGS} -O0
 
 SIZE  	= ${RELEASEFLAGS} -Os 
 
