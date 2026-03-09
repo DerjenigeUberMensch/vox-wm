@@ -68,7 +68,8 @@ USSetupCFGDefaults(
 
 void
 USInit(
-        UserSettings *settings_init
+        UserSettings *settings_init,
+        SCSetting *items
         )
 {
     int status;
@@ -81,27 +82,19 @@ USInit(
     status = pthread_mutex_init(&settings_init->mutex, NULL);
 
     if(!status)
-    {   settings_init->use_threads = 1;
+    {   
+        settings_init->use_threads = 1;
     }
 
     if(settings_init->cfg)
     {
+        settings_init->holder = items;
         USSetupCFGVars(settings_init);
         USSetupCFGDefaults(settings_init);
         USLoad(settings_init);
     }
 }
 
-Generic
-USDefaultSetting(
-        UserSettings *settings,
-        enum UserSettingType setting
-        )
-{
-    const SCSetting *usdata = settings->holder;
-
-    return usdata[setting].default_data;
-}
 
 void
 USLoad(
@@ -143,13 +136,13 @@ USLoad(
     }
 
     i32 i;
-    void *data;
+    SCSetting *data;
 
-    const SCSetting *usdata = settings->holder;
+    SCSetting *usdata = settings->holder;
 
     for(i = 0; i < UserSettingsLAST; ++i)
     {
-        data = ((uint8_t *)usdata) + usdata->offset;
+        data = &usdata[i];
         item = SCParserSearch(cfg, usdata->name);
 
         if(!item)
@@ -166,6 +159,8 @@ USLoad(
                 memcpy(tmp, data, MIN(usdata->size, SAFE_TYPE_BUFF_SIZE));
             #endif
 
+            Generic prev = data->data;
+
             status = SCParserLoad(item, data, usdata->size, usdata->type);
 
             #if DEBUG
@@ -176,6 +171,9 @@ USLoad(
 
             if(status)
             {   Debug("Failed to LOAD, \"%s\"", usdata->name);
+            }
+            else
+            {   data->update_func(prev, data->data);
             }
         }
         else
@@ -207,7 +205,7 @@ USSave(
 
     for(i = 0; i < UserSettingsLAST; ++i)
     {   
-        SCParserSaveVar(cfg, usdata->name, ((uint8_t *)s) + usdata->offset);
+        SCParserSaveVar(cfg, usdata->name, ((uint8_t *)usdata) + usdata->offset);
         ++usdata;
     }
 
@@ -239,6 +237,60 @@ USSave(
     }
 UNLOCK:
     pthread_mutex_unlock(&settings->mutex);
+}
+
+Generic
+USDefaultSetting(
+        UserSettings *settings,
+        unsigned int setting
+        )
+{
+    Generic ret;
+
+    pthread_mutex_lock(&setting->mutex);
+
+    const SCSetting *usdata = settings->holder;
+
+    ret = usdata[setting].default_data;
+
+    pthread_mutex_unlock(&setting->mutex);
+
+    return ret;
+}
+
+Generic
+USGetSetting(
+        UserSettings *settings,
+        unsigned int setting
+        )
+{
+    Generic ret;
+
+    pthread_mutex_lock(&setting->mutex);
+
+    const SCSetting *usdata = settings->holder;
+
+    ret = usdata[setting].data;
+
+    pthread_mutex_unlock(&setting->mutex);
+
+    return ret;
+}
+
+void
+USSetSetting(
+        UserSettings *settings,
+        unsigned int setting,
+        Generic data
+        )
+{
+    pthread_mutex_lock(&setting->mutex);
+
+    const SCSetting *usdata = settings->holder;
+
+    usdata[setting].data = data;
+
+    pthread_mutex_unlock(&setting->mutex);
 }
 
 void

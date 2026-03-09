@@ -338,15 +338,16 @@ DragWindowHandler(
     XCBButtonReleaseEvent *brev = NULL;
     XCBUnmapNotifyEvent *umev = NULL;
     XCBDestroyNotifyEvent *dnev = NULL;
+    u16 refreshrate = 0;
 
     switch(XCB_EVENT_RESPONSE_TYPE(event))
     {
         case XCB_MOTION_NOTIFY:
             mev = (XCBMotionNotifyEvent *)event;
-
-            if(_cfg.RefreshRate)
+            refreshrate = USGetSetting(&_cfg, RefreshRate).dataf[0];
+            if(refreshrate)
             {
-                const float FRAME_TIME = 1000.0f / (_cfg.RefreshRate + !_cfg.RefreshRate);
+                const float FRAME_TIME = 1000.0f / (refreshrate + !refreshrate);
 
                 if((mev->time - lasttime) <= FRAME_TIME)
                 {   break;
@@ -655,15 +656,17 @@ ResizeWindowHandler(
     XCBButtonPressEvent *bpev = NULL;
     XCBUnmapNotifyEvent *umev = NULL;
     XCBDestroyNotifyEvent *dnev = NULL;
+    u16 refreshrate = 0;
 
     switch(XCB_EVENT_RESPONSE_TYPE(event))
     {   
         case XCB_MOTION_NOTIFY:
             mev = (XCBMotionNotifyEvent *)event;
+            refreshrate = USGetSetting(&_cfg, RefreshRate).dataf[0];
 
-            if(_cfg.RefreshRate)
+            if(refreshrate)
             {
-                const float FRAME_TIME = 1000.0f / (_cfg.RefreshRate + !_cfg.RefreshRate);
+                const float FRAME_TIME = 1000.0f / (refreshrate+ !refreshrate);
 
                 if((mev->time - lasttime) <= FRAME_TIME)
                 {   break;

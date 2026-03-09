@@ -193,10 +193,10 @@ updatebargeom(Monitor *m)
     {   return;
     }
 
-    f32 bxr;
-    f32 byr;
-    f32 bwr;
-    f32 bhr;
+    Generic bxr;
+    Generic byr;
+    Generic bwr;
+    Generic bhr;
     enum BarSides side = GETBARSIDE(m, bar, 0);
     enum BarSides prev = GETBARSIDE(m, bar, 1);
 
@@ -209,67 +209,96 @@ updatebargeom(Monitor *m)
         switch(side)
         {   
             case BarSideLeft:
-                bxr = _cfg.BarLX;
-                byr = _cfg.BarLY;
-                bwr = _cfg.BarLW;
-                bhr = _cfg.BarLH;
+                bxr = USGetSetting(&_cfg, BarLX);
+                byr = USGetSetting(&_cfg, BarLY);
+                bwr = USGetSetting(&_cfg, BarLW);
+                bhr = USGetSetting(&_cfg, BarLH);
                 break;
             case BarSideRight:
-                bxr = _cfg.BarRX;
-                byr = _cfg.BarRY;
-                bwr = _cfg.BarRW;
-                bhr = _cfg.BarRH;
+                bxr = USGetSetting(&_cfg, BarRX);
+                byr = USGetSetting(&_cfg, BarRY);
+                bwr = USGetSetting(&_cfg, BarRW);
+                bhr = USGetSetting(&_cfg, BarRH);
                 break;
             case BarSideTop:
-                bxr = _cfg.BarTX;
-                byr = _cfg.BarTY;
-                bwr = _cfg.BarTW;
-                bhr = _cfg.BarTH;
+                bxr = USGetSetting(&_cfg, BarTX);
+                byr = USGetSetting(&_cfg, BarTY);
+                bwr = USGetSetting(&_cfg, BarTW);
+                bhr = USGetSetting(&_cfg, BarTH);
                 break;
             case BarSideBottom:
-                bxr = _cfg.BarBX;
-                byr = _cfg.BarBY;
-                bwr = _cfg.BarBW;
-                bhr = _cfg.BarBH;
+                bxr = USGetSetting(&_cfg, BarBX);
+                byr = USGetSetting(&_cfg, BarBY);
+                bwr = USGetSetting(&_cfg, BarBW);
+                bhr = USGetSetting(&_cfg, BarBH);
                 break;
         }
-        x = m->mx + (m->mw * bxr);
-        y = m->my + (m->mh * byr);
-        w = m->mw * bwr;
-        h = m->mh * bhr;
+
+        x = m->mx + (m->mw * bxr.dataf[0]);
+        y = m->my + (m->mh * byr.dataf[0]);
+        w = m->mw * bwr.dataf[0];
+        h = m->mh * bhr.dataf[0];
+
         resize(bar, x, y, w, h, 1);
     }
     else
     {
+        f32 x = bar->x;
+        f32 y = bar->y;
+        f32 w = bar->w;
+        f32 h = bar->h;
+
+        f32 mw = m->mw;
+        f32 mh = m->mh;
+
+        if(!ASSERT(mw != 0 && mh != 0))
+        {   return;
+        }
+
+        /* prevent div by 0 hardware exceptions */
+        bxr = (Generic) { .dataf[0] = (x - m->mx) / m->mw };
+        byr = (Generic) { .dataf[0] = (y - m->my) / m->mh };
+        bwr = (Generic) { .dataf[0] = w / m->mw };
+        bhr = (Generic) { .dataf[0] = h / m->mh };
+
         switch(side)
         {
             case BarSideLeft:
-                _cfg.BarLX = bar->x;
-                _cfg.BarLY = bar->y;
-                _cfg.BarLW = bar->w;
-                _cfg.BarLH = bar->h;
+                USSetSetting(&_cfg, BarLX, bxr);
+                USSetSetting(&_cfg, BarLY, byr);
+                USSetSetting(&_cfg, BarLW, bwr);
+                USSetSetting(&_cfg, BarLH, bhr);
                 break;
             case BarSideRight:
-                _cfg.BarRX = bar->x;
-                _cfg.BarRY = bar->y;
-                _cfg.BarRW = bar->w;
-                _cfg.BarRH = bar->h;
+                USSetSetting(&_cfg, BarRX, bxr);
+                USSetSetting(&_cfg, BarRY, byr);
+                USSetSetting(&_cfg, BarRW, bwr);
+                USSetSetting(&_cfg, BarRH, bhr);
                 break;
             case BarSideTop:
-                _cfg.BarTX = bar->x;
-                _cfg.BarTY = bar->y;
-                _cfg.BarTW = bar->w;
-                _cfg.BarTH = bar->h;
+                USSetSetting(&_cfg, BarTX, bxr);
+                USSetSetting(&_cfg, BarTY, byr);
+                USSetSetting(&_cfg, BarTW, bwr);
+                USSetSetting(&_cfg, BarTH, bhr);
                 break;
             case BarSideBottom:
-                _cfg.BarBX = bar->x;
-                _cfg.BarBY = bar->y;
-                _cfg.BarBW = bar->w;
-                _cfg.BarBH = bar->h;
+                USSetSetting(&_cfg, BarBX, bxr);
+                USSetSetting(&_cfg, BarBY, byr);
+                USSetSetting(&_cfg, BarBW, bwr);
+                USSetSetting(&_cfg, BarBH, bhr);
                 break;
         }
     }
 }
+
+/*
+void
+USSetSetting(
+        UserSettings *settings,
+        unsigned int setting,
+        Generic data
+        )
+*/
 
 void
 updatebarpos(Monitor *m)

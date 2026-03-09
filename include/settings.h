@@ -54,7 +54,7 @@ SCSetting
 {
     const Generic default_data;
     const char *const name;
-    const void (*update_func)(UserSettings *RESTRICT prev, UserSettings *RESTRICT cur);
+    const void (*update_func)(Generic prev, Generic cur);
     const enum SCType type;
     const uint8_t name_len;
     const uint8_t size;
@@ -117,15 +117,8 @@ UserSettingType
 /* Initialize Settings */
 void NonNull
 USInit(
-        UserSettings *settings_init
-        );
-/*
- * RETURN: EXIT_SUCCESS on Success
- * RETURN: EXIT_FAILURE on Failure
- */
-int 
-USInitFile(
-        void
+        UserSettings *settings_init,
+        SCSetting *items
         );
 /* Save current settings */
 void NonNull
@@ -137,11 +130,26 @@ void NonNull
 USLoad(
         UserSettings *settings
         );
+
 Generic
 USDefaultSetting(
         UserSettings *settings,
-        enum UserSettingType type
+        unsigned int setting
         );
+
+Generic
+USGetSetting(
+        UserSettings *settings,
+        unsigned int setting
+        );
+
+void
+USSetSetting(
+        UserSettings *settings,
+        unsigned int setting,
+        Generic data
+        );
+
 /* Free settings data */
 void NonNull
 USWipe(

@@ -57,7 +57,6 @@ typedef double f64;
 typedef long double f128;
 
 typedef union Generic Generic;
-typedef union ARGB ARGB;
 
 union 
 Generic
@@ -78,31 +77,6 @@ Generic
 
     float dataf[2];
     double datad[1];
-};
-
-/* ORDER.
- * BLUE + (GREEN << 8) + (RED << 16) + (ALPHA << 24)
- */
-union ARGB
-{
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-    uint8_t a;  /* Alpha value */
-    uint8_t r;  /* Red Value   */
-    uint8_t g;  /* Green Value */
-    uint8_t b;  /* Blue Value  */
-#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-    uint8_t b;  /* Blue Value  */
-    uint8_t g;  /* Green Value */
-    uint8_t r;  /* Red Value   */
-    uint8_t a;  /* Alpha value */
-#else
-    /* 
-     * NO SUPPORTED ENDIAN TYPE.
-     * If you are using PDP_ENDIAN you might have to manually shift the values yourself.
-     */
-    #error "No supported endian type. If you are using PDP_ENDIAN you might have to manually shift the values yourself."
-#endif
-    uint32_t argb;  /* ARGB 32bit value */
 };
 
 #ifndef M_STRINGIFY
@@ -712,9 +686,14 @@ bool memfilled(void *mem, size_t size);
  *
  * RETURN: 1234 if Byte order little endian
  * RETURN: 4321 if Byte order big endian
+ * RETURN: 3412 if Byte order PDP endian.
  * RETURN: 0 if unsupported byte order.
  */
 int GET_BYTE_ORDER(void);
+uint32_t PACK_ARGB(uint8_t a, uint8_t r, uint8_t g, uint8_t b);
+void UNPACK_ARGB(uint32_t argb, uint8_t *a_return, uint8_t *r_return, uint8_t *g_return, uint8_t *b_return);
+
+
 
 void _Breakpoint(void);
 
