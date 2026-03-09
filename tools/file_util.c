@@ -31,31 +31,75 @@
 
 #include "file_util.h"
 
+size_t
+FFGetSysConfigPathLength(
+        void
+        )
+{
+    const char *home = NULL;
+    size_t len = 0;
+
+#ifdef __linux__
+    home = getenv("XDG_CONFIG_HOME");
+
+    if(!home || !*home)
+    {   
+        home = getenv("HOME");
+
+        if(home)
+        {   len = strlen(home) + sizeof("/.config/") - 1;
+        }
+    }
+    else
+    {   
+        len = strlen(home);
+    }
+
+#endif
+    return len;
+}
+
 
 int
 FFGetSysConfigPath(
         char *buff,
-        unsigned int buff_len,
-        unsigned int *len_return
+        size_t buff_len,
+        size_t *len_return
         )
 {
     if(!buff || !buff_len)
     {   return EXIT_FAILURE;
     }
-    char *home = NULL;
+
+    const char *home = NULL;
 #ifdef __linux__
     home = getenv("XDG_CONFIG_HOME");
-    if(!home)
-    {   home = getenv("HOME");
+
+    if(home && *home)
+    {
+        if(len_return)
+        {   *len_return = strlen(home);
+        }
+
+        return EXIT_SUCCESS;
     }
+
+    home = getenv("HOME");
+
     if(home)
     {   
         const int SNPRINTF_FAILURE = -1;
         const char *const LINUX_CONFIG = "/.config/";
         int len = snprintf(buff, buff_len, "%s%s", home, LINUX_CONFIG);
+    
         if(len == SNPRINTF_FAILURE)
         {   return EXIT_FAILURE;
         }
+
+        if((unsigned int)len >= buff_len)
+        {   return EXIT_FAILURE;
+        }
+
         if(len_return)
         {   *len_return = len;
         }

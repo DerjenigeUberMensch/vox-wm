@@ -2,6 +2,7 @@
 #define __SETTINGS__H__
 
 #include <stdint.h>
+#include <stddef.h>
 
 #include "SCParser/parser.h"
 #include "FNotify/fnotify.h"
@@ -21,26 +22,24 @@
 #define VOX_ADD_MEMBER_SCTypeDOUBLE(DEFAULT_SETTING)     { .datad  = { DEFAULT_SETTING } }
 #define VOX_ADD_MEMBER_SCTypeLONG(DEFAULT_SETTING)       { .data64i= { DEFAULT_SETTING } }
 #define VOX_ADD_MEMBER_SCTypeULONG(DEFAULT_SETTING)      { .data64 = { DEFAULT_SETTING } }
-#define VOX_ADD_MEMBER_SCTypeSTRING(DEFAULT_SETTING)     { .v      = { DEFAULT_SETTING } }
+#define VOX_ADD_MEMBER_SCTypeSTRING(DEFAULT_SETTING)     { .datav  = { DEFAULT_SETTING } }
 
 #define VOX_ADD_MEMBER_TYPED(TYPE, DEFAULT_SETTING) \
         VOX_ADD_MEMBER_##TYPE(DEFAULT_SETTING)
 
-#define VOX_ADD_MEMBER(NAME, TYPE, OFFSET, SIZE, DEFAULT_SETTING, UPDATE_FUNCTION)\
+#define VOX_ADD_MEMBER(NAME, TYPE, DEFAULT_SETTING, UPDATE_FUNCTION)\
         [NAME] =                                                        \
         {                                                               \
             .name = #NAME,                                              \
             .name_len = sizeof(#NAME),                                  \
             .update_func = UPDATE_FUNCTION,                             \
             .type = TYPE,                                               \
-            .offset = OFFSET,                                           \
-            .size = SIZE,                                               \
             .default_data = VOX_ADD_MEMBER_TYPED(TYPE, DEFAULT_SETTING), \
             .data = VOX_ADD_MEMBER_TYPED(TYPE, DEFAULT_SETTING)         \
         },
 
 #define VOX_ADD_MEMBER_SETTING(NAME, TYPE, DEFAULT_SETTING, UPDATE_FUNCTION) \
-        VOX_ADD_MEMBER(NAME, TYPE, offsetof(UserSettings, NAME), FIELD_SIZEOF(UserSettings, NAME), DEFAULT_SETTING, UPDATE_FUNCTION)
+        VOX_ADD_MEMBER(NAME, TYPE, DEFAULT_SETTING, UPDATE_FUNCTION)
 
 #define VOX_GENERATE_SETTING_LIST(LIST_NAME, LIST) SCSetting LIST_NAME[] = { LIST };
 
@@ -52,14 +51,14 @@ typedef struct UserSettings UserSettings;
 struct 
 SCSetting
 {
-    const Generic default_data;
-    const char *const name;
-    const void (*update_func)(Generic prev, Generic cur);
-    const enum SCType type;
-    const uint8_t name_len;
-    const uint8_t size;
-    const uint16_t offset;
+    Generic default_data;
     Generic data;
+
+    char *const name;
+    size_t name_len;
+
+    void (*update_func)(Generic prev, Generic cur);
+    enum SCType type;
 };
 
 

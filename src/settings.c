@@ -35,11 +35,10 @@ USSetupCFGVars(
     /* global settings */
     for(i = 0; i < UserSettingsLAST; ++i)
     {   
-        err = SCParserNewVar(cfg, usdata->name, usdata->name_len, READONLY, usdata->size, usdata->type);
+        err = SCParserNewVar(cfg, usdata->name, usdata->name_len, READONLY, 0, usdata->type);
         if(err)
         {   Debug("Failed to create: \"%s\"", usdata->name);
         }
-        ++usdata;
     }
 }
 
@@ -52,17 +51,15 @@ USSetupCFGDefaults(
     {   return;
     }
 
-    UserSettings *s = us;
-    void *data;
+    Generic *data;
     i32 i;
 
-    const SCSetting *usdata = us->holder;
+    SCSetting *usdata = us->holder;
 
     for(i = 0; i < UserSettingsLAST; ++i)
     {
-        data = ((uint8_t *)s) + usdata->offset;
-        memcpy(data, &usdata->default_data, usdata->size);
-        ++usdata;
+        data = &usdata[i].data;
+        memcpy(data, &usdata->default_data, sizeof(usdata[i].data));
     }
 }
 
@@ -107,28 +104,27 @@ USLoad(
     {   goto UNLOCK;
     }
 
-    char __CONFIG__PATH__[FFSysGetConfigPathLengthMAX];
-
     SCParser *cfg = settings->cfg;
     SCItem *item;
-    u8 status;
+    int status;
+    char *configpath;
 
-    status = WMConfigGetSettingsPath(__CONFIG__PATH__, FFSysGetConfigPathLengthMAX, NULL);
+    configpath = (char *)WMConfigGetPath(WMFileConfig);
 
-    if(status)
+    if(!configpath)
     {   
         Debug0("Failed to get system config path, loading defaults");
         goto UNLOCK;
     }
 
-    status = SCParserReadFile(cfg, __CONFIG__PATH__);
+    status = SCParserReadFile(cfg, configpath);
 
     if(status)
     {   
         /* TODO: This sometimes prints, even when it shouldnt. FIXME */
         /*
          * if the file doesnt exist then we probably read the file when it was deleted
-         * if(FFFileExists(__CONFIG__PATH__))
+         * if(FFFileExists(configpath))
          * {   Debug0("Failed to load data?");
          * }
          */
@@ -156,15 +152,15 @@ USLoad(
 
                 char tmp[SAFE_TYPE_BUFF_SIZE];
 
-                memcpy(tmp, data, MIN(usdata->size, SAFE_TYPE_BUFF_SIZE));
+                memcpy(tmp, data, MIN(sizeof(*data), SAFE_TYPE_BUFF_SIZE));
             #endif
 
             Generic prev = data->data;
 
-            status = SCParserLoad(item, data, usdata->size, usdata->type);
+            status = SCParserLoad(item, data, 0, usdata->type);
 
             #if DEBUG
-                if(memcmp(data, tmp, MIN(usdata->size, SAFE_TYPE_BUFF_SIZE)))
+                if(memcmp(data, tmp, MIN(sizeof(*data), SAFE_TYPE_BUFF_SIZE)))
                 {   Debug("Updated: [%s]", usdata->name);
                 }
             #endif
@@ -179,8 +175,6 @@ USLoad(
         else
         {   Debug("Failed to FIND, \"%s\"", usdata->name);
         }
-
-        ++usdata;
     }
 
 UNLOCK:
@@ -198,42 +192,42 @@ USSave(
     }
 
     SCParser *cfg = settings->cfg;
-    UserSettings *s = settings;
     i32 i;
 
-    const SCSetting *usdata = us->settings;
+    SCSetting *usdata = settings->holder;
 
     for(i = 0; i < UserSettingsLAST; ++i)
-    {   
-        SCParserSaveVar(cfg, usdata->name, ((uint8_t *)usdata) + usdata->offset);
-        ++usdata;
+    {   SCParserSaveVar(cfg, usdata->name, &usdata[i].data);
     }
 
-    char __CONFIG__PATH__[FFSysGetConfigPathLengthMAX];
-    u8 status = WMConfigGetSettingsPath(__CONFIG__PATH__, FFSysGetConfigPathLengthMAX, NULL);
+    char *configpath;
+    u8 status;
 
-    if(status)
+    configpath = (char *)WMConfigGetPath(WMFileConfig);
+
+    if(!configpath)
     {   
         Debug0("Failed to get system config path, cannot save settings.");
         goto UNLOCK;
     }
 
-    if(!FFFileExists(__CONFIG__PATH__))
+    if(!FFFileExists(configpath))
     {
-        status = FFCreateFile(__CONFIG__PATH__);
+        status = FFCreateFile(configpath);
+
         if(status == EXIT_FAILURE)
         {   Debug0("Failed to create file, unable to write base config.");
         }
         else
         {
             Debug0("No file found, writing base config...");
-            SCParserWrite(cfg, __CONFIG__PATH__);
+            SCParserWrite(cfg, configpath);
         }
     }
-    else if(FFIsFileEmpty(__CONFIG__PATH__))
+    else if(FFIsFileEmpty(configpath))
     {
         Debug0("Empty file found, writing base config...");
-        SCParserWrite(cfg, __CONFIG__PATH__);
+        SCParserWrite(cfg, configpath);
     }
 UNLOCK:
     pthread_mutex_unlock(&settings->mutex);
@@ -247,13 +241,13 @@ USDefaultSetting(
 {
     Generic ret;
 
-    pthread_mutex_lock(&setting->mutex);
+    pthread_mutex_lock(&settings->mutex);
 
     const SCSetting *usdata = settings->holder;
 
     ret = usdata[setting].default_data;
 
-    pthread_mutex_unlock(&setting->mutex);
+    pthread_mutex_unlock(&settings->mutex);
 
     return ret;
 }
@@ -266,13 +260,13 @@ USGetSetting(
 {
     Generic ret;
 
-    pthread_mutex_lock(&setting->mutex);
+    pthread_mutex_lock(&settings->mutex);
 
     const SCSetting *usdata = settings->holder;
 
     ret = usdata[setting].data;
 
-    pthread_mutex_unlock(&setting->mutex);
+    pthread_mutex_unlock(&settings->mutex);
 
     return ret;
 }
@@ -284,13 +278,13 @@ USSetSetting(
         Generic data
         )
 {
-    pthread_mutex_lock(&setting->mutex);
+    pthread_mutex_lock(&settings->mutex);
 
-    const SCSetting *usdata = settings->holder;
+    SCSetting *usdata = settings->holder;
 
     usdata[setting].data = data;
 
-    pthread_mutex_unlock(&setting->mutex);
+    pthread_mutex_unlock(&settings->mutex);
 }
 
 void

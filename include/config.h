@@ -1,41 +1,31 @@
 #ifndef __WM__CONFIG__H__
 #define __WM__CONFIG__H__
 
+#include "usersettings.h"
+
 #include <stdint.h>
 
-/*
- * RETURN: EXIT_SUCCESS on Success.
- * RETURN: EXIT_FAILURE on Failure.
- */
+enum
+WMFiles
+{
+    WMFileConfig,
+    WMFileSession,
+    WMFileLAST
+};
+
 int
-WMConfigGetFilePath(
-        char *buff,
-        uint32_t buff_length,
-        uint32_t *len_return
-        );
-/*
- * RETURN: EXIT_SUCCESS on Success.
- * RETURN: EXIT_FAILURE on Failure.
- */
-int
-WMConfigGetSessionPath(
-        char *buff,
-        uint32_t buff_length,
-        uint32_t *len_return
-        );
-/*
- * RETURN: EXIT_SUCCESS on Success.
- * RETURN: EXIT_FAILURE on Failure.
- */
-int
-WMConfigGetSettingsPath(
-        char *buff,
-        uint32_t buff_length,
-        uint32_t *len_return
+WMConfigInit(
+        void
         );
 
+void
+WMConfigDestroy(
+        void
+        );
 
-
-
+const char *
+WMConfigGetPath(
+        enum WMFiles file
+        );
 
 #endif

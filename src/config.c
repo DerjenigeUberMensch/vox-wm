@@ -6,103 +6,86 @@
 #include "file_util.h"
 #include "config.h"
 
+static const char *const WM_FOLDER = "/vox-wm/";
+static const char *const WM_FILE_LIST[WMFileLAST] = 
+{
+    [WMFileConfig] = "vox.cfg",
+    [WMFileSession] = "session.cfg"
+};
+
+static char *WM_FILES[WMFileLAST] = 
+{
+    [WMFileConfig] = NULL,
+    [WMFileSession] = NULL,
+};
+
+
 int
-WMConfigGetConfigPath(
-        char *buff,
-        uint32_t buff_length,
-        uint32_t *len_return
+WMConfigInit(
+        void
         )
 {
-    if(!buff || !buff_length)
-    {   return EXIT_FAILURE;
-    }
-    enum { CONFIG_DIR_LENGTH_NAME = sizeof("vox-wm/") };
-    const char *const CONFIG_DIR_NAME = "vox-wm/";
+    size_t configpathlen = FFGetSysConfigPathLength();
 
-    unsigned int len = 0;
-    int status;
-
-    status = FFGetSysConfigPath(buff, buff_length, &len);
-
-    if(status == EXIT_FAILURE)
-    {   return EXIT_FAILURE;
+    if(configpathlen == 0)
+    {   
+        DebugI("%s", "Failed to get config path.");
+        return EXIT_FAILURE;
     }
 
-    if(len + CONFIG_DIR_LENGTH_NAME > buff_length)
-    {   return EXIT_FAILURE;
+    int i;
+    u8 status;
+
+    for(i = 0; i < WMFileLAST; ++i)
+    {
+        size_t wmfolderlen = strlen(WM_FOLDER);
+        size_t wmfilelen = strlen(WM_FILE_LIST[i]);
+        size_t size = sizeof(char) + sizeof(char) * (configpathlen + wmfolderlen + wmfilelen);
+        size_t lencur = 0;
+
+        WM_FILES[i] = malloc(size);
+
+        if(!WM_FILES[i])
+        {   continue;
+        }
+
+        status = FFGetSysConfigPath(WM_FILES[i], size, &lencur);
+
+        if(unlikely(status == EXIT_FAILURE) || !ASSERT(lencur == configpathlen))
+        {   
+            free(WM_FILES[i]);
+            WM_FILES[i] = NULL;
+            continue;
+        }
+
+        memcpy(WM_FILES[i] + lencur, WM_FOLDER, wmfolderlen);
+        lencur += wmfolderlen;
+        memcpy(WM_FILES[i] + lencur, WM_FILE_LIST[i], wmfilelen);
+
+        WM_FILES[i][size - 1] = '\0';
     }
 
-    memcpy(buff + len, CONFIG_DIR_NAME, CONFIG_DIR_LENGTH_NAME);
-    len += CONFIG_DIR_LENGTH_NAME;
 
-    if(len_return)
-    {   *len_return = len;
-    }
     return EXIT_SUCCESS;
 }
 
-int
-WMConfigGetSessionPath(
-        char *buff,
-        uint32_t buff_length,
-        uint32_t *len_return
+void
+WMConfigDestroy(
+        void
         )
 {
-    if(!buff || !buff_length)
-    {   return EXIT_FAILURE;
+    int i;
+
+    for(i = 0; i < WMFileLAST; ++i)
+    {   
+        free(WM_FILES[i]);
+        WM_FILES[i] = NULL;
     }
-
-    enum { SESSION_FILE_NAME_LENGTH = sizeof("session.cfg") };
-    const char *const SESSION_FILE_NAME = "session.cfg";
-
-    int status;
-    uint32_t len = 0;
-
-    status = WMConfigGetConfigPath(buff, buff_length, &len);
-
-    if(status == EXIT_FAILURE)
-    {   return EXIT_FAILURE;
-    }
-    if(len + SESSION_FILE_NAME_LENGTH > buff_length)
-    {   return EXIT_FAILURE;
-    }
-    memcpy(buff + len - 1, SESSION_FILE_NAME, SESSION_FILE_NAME_LENGTH);
-
-    if(len_return)
-    {   *len_return = len;
-    }
-    return EXIT_SUCCESS;
 }
 
-int
-WMConfigGetSettingsPath(
-        char *buff,
-        uint32_t buff_length,
-        uint32_t *len_return
+const char *
+WMConfigGetPath(
+        enum WMFiles file
         )
-{
-    if(!buff || !buff_length)
-    {   return EXIT_FAILURE;
-    }
-
-    enum { SETTINGS_FILE_NAME_LENGTH = sizeof("vox.cfg") };
-    const char *const SETTINGS_FILE_NAME = "vox.cfg";
-
-    int status;
-    uint32_t len = 0;
-
-    status = WMConfigGetConfigPath(buff, buff_length, &len);
-
-    if(status == EXIT_FAILURE)
-    {   return EXIT_FAILURE;
-    }
-    if(len + SETTINGS_FILE_NAME_LENGTH > buff_length)
-    {   return EXIT_FAILURE;
-    }
-    memcpy(buff + len - 1, SETTINGS_FILE_NAME, SETTINGS_FILE_NAME_LENGTH);
-
-    if(len_return)
-    {   *len_return = len;
-    }
-    return EXIT_SUCCESS;
+{   return (const char *)WM_FILES[file];
 }
