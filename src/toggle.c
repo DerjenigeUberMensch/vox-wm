@@ -346,7 +346,7 @@ DragWindowHandler(
         case XCB_MOTION_NOTIFY:
             mev = (XCBMotionNotifyEvent *)event;
             refreshrate = USGetSetting(&_cfg, RefreshRate).dataf[0];
-            snap = USGetSetting(&_cfg, Snap).dataf[0];
+            snap = USGetSetting(&_cfg, Snap).data16[0];
 
             if(refreshrate)
             {

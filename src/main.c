@@ -173,6 +173,7 @@ cleanup(void)
 
     /* cleanup cfg */
     USWipe(&_cfg);
+    WMConfigDestroy();
 
     cookie = XCBDestroyWindow(_wm.dpy, _wm.wmcheckwin);
     XCBDiscardReply(_wm.dpy, cookie);
@@ -1123,19 +1124,23 @@ setupwatchers(void)
 
     if(path)
     {   
-        /* TODO: Fix Fnotify and this, as this is just a quick fix to get it up and running
-         * FIxing FNotify will be a hassle for now, so skipping...
-         */
-        dir = dirname(path);
-        status = EXIT_FAILURE;
+        dir = strdup(path);
 
-        /* make sure it has a higher dir above it or in it */
-        if(strcmp(dir, invaliddir))
+        if(dir)
         {   
-            status = WatcherAdd(path, IMPL_WM_CONFIG_WATCHER, NULL, 
-                FNotifyClosedWrite|FNotifyFileMovedTo|FNotifyFileCreate|FNotifyFileDeleted
-                |FNotifyFileDeletedSelf|FNotifyFileMovedSelf
-                );
+            dir = dirname(dir);
+            status = EXIT_FAILURE;
+
+            /* make sure it has a higher dir above it or in it */
+            if(strcmp(dir, invaliddir))
+            {   
+                status = WatcherAdd(path, IMPL_WM_CONFIG_WATCHER, NULL, 
+                        FNotifyClosedWrite|FNotifyFileMovedTo|FNotifyFileCreate|FNotifyFileDeleted
+                        |FNotifyFileDeletedSelf|FNotifyFileMovedSelf
+                        );
+            }
+
+            free(dir);
         }
 
     }

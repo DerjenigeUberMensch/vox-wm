@@ -35,9 +35,9 @@ USSetupCFGVars(
     /* global settings */
     for(i = 0; i < UserSettingsLAST; ++i)
     {   
-        err = SCParserNewVar(cfg, usdata->name, usdata->name_len, READONLY, 0, usdata->type);
+        err = SCParserNewVar(cfg, usdata[i].name, usdata[i].name_len, READONLY, 0, usdata[i].type);
         if(err)
-        {   Debug("Failed to create: \"%s\"", usdata->name);
+        {   Debug("Failed to create: \"%s\"", usdata[i].name);
         }
     }
 }
@@ -59,7 +59,7 @@ USSetupCFGDefaults(
     for(i = 0; i < UserSettingsLAST; ++i)
     {
         data = &usdata[i].data;
-        memcpy(data, &usdata->default_data, sizeof(usdata[i].data));
+        memcpy(data, &usdata[i].default_data, sizeof(*data));
     }
 }
 
@@ -79,8 +79,7 @@ USInit(
     status = pthread_mutex_init(&settings_init->mutex, NULL);
 
     if(!status)
-    {   
-        settings_init->use_threads = 1;
+    {   settings_init->use_threads = 1;
     }
 
     if(settings_init->cfg)
@@ -132,17 +131,17 @@ USLoad(
     }
 
     i32 i;
-    SCSetting *data;
+    SCSetting *setting;
 
     SCSetting *usdata = settings->holder;
 
     for(i = 0; i < UserSettingsLAST; ++i)
     {
-        data = &usdata[i];
-        item = SCParserSearch(cfg, usdata->name);
+        setting = &usdata[i];
+        item = SCParserSearch(cfg, usdata[i].name);
 
         if(!item)
-        {   item = SCParserSearchSlow(cfg, usdata->name);
+        {   item = SCParserSearchSlow(cfg, usdata[i].name);
         }
 
         if(item)
@@ -152,28 +151,37 @@ USLoad(
 
                 char tmp[SAFE_TYPE_BUFF_SIZE];
 
-                memcpy(tmp, data, MIN(sizeof(*data), SAFE_TYPE_BUFF_SIZE));
+                memcpy(tmp, &setting->data, MIN(sizeof(setting->data), SAFE_TYPE_BUFF_SIZE));
             #endif
 
-            Generic prev = data->data;
+            Generic prev = setting->data;
+            Generic dsafe;
 
-            status = SCParserLoad(item, data, 0, usdata->type);
+            status = SCParserLoad(item, &setting->data, 0, usdata[i].type);
+
+            dsafe = setting->data;
 
             #if DEBUG
-                if(memcmp(data, tmp, MIN(sizeof(*data), SAFE_TYPE_BUFF_SIZE)))
-                {   Debug("Updated: [%s]", usdata->name);
+                if(memcmp(&setting->data, tmp, MIN(sizeof(setting->data), SAFE_TYPE_BUFF_SIZE)))
+                {   Debug("Updated: [%s]", usdata[i].name);
                 }
             #endif
 
             if(status)
-            {   Debug("Failed to LOAD, \"%s\"", usdata->name);
+            {   Debug("Failed to LOAD, \"%s\"", usdata[i].name);
             }
             else
-            {   data->update_func(prev, data->data);
+            {   
+                if(setting->update_func)
+                {   
+                    pthread_mutex_unlock(&settings->mutex);
+                    setting->update_func(prev, dsafe);
+                    pthread_mutex_lock(&settings->mutex);
+                }
             }
         }
         else
-        {   Debug("Failed to FIND, \"%s\"", usdata->name);
+        {   Debug("Failed to FIND, \"%s\"", usdata[i].name);
         }
     }
 
@@ -197,7 +205,7 @@ USSave(
     SCSetting *usdata = settings->holder;
 
     for(i = 0; i < UserSettingsLAST; ++i)
-    {   SCParserSaveVar(cfg, usdata->name, &usdata[i].data);
+    {   SCParserSaveVar(cfg, usdata[i].name, &usdata[i].data);
     }
 
     char *configpath;
