@@ -367,9 +367,10 @@ motionnotify(XCBGenericEvent *event)
 void
 enternotify(XCBGenericEvent *event)
 {
-    if(!_cfg.HoverFocus)
+    if(!USGetSetting(&_cfg, HoverFocus).data8[0])
     {   return;
     }
+
     XCBEnterNotifyEvent *ev = (XCBEnterNotifyEvent *)event;
     const uint8_t detail    = ev->detail;
     const XCBTimestamp tim  = ev->time;
@@ -1083,7 +1084,7 @@ unmapnotify(XCBGenericEvent *event)
         setmapstate(c, WMMapStateUnmapped);
 
         /* currently decorations are kinda not implemented */
-        if(!_cfg.UseDecorations || 1)
+        if(USGetSetting(&_cfg, UseDecorations).data8[0] || 1)
         {   unmanage(c, 1);
         }
 

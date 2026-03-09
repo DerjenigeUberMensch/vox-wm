@@ -24,11 +24,12 @@
 #ifndef __FILE__UTIL__H
 #define __FILE__UTIL__H
 
+#include <stdio.h>
+
 
 #ifndef __linux__
 #error "OS not supported functions may have undefined behaviour. "
 #endif
-
 
 
 enum
@@ -46,9 +47,23 @@ enum
 #endif
 };
 
-/* 
+
+/*
  *
- * NOTE: Recomended buff length atleast 2550 bytes
+ * NOTE: Guaranteed to be the same length as FFGetSysConfigPath()
+ * NOTE: Guaranteed to end with a backslash '/' for the path include length.
+ *
+ * RETURN: length of config path.
+ */
+size_t
+FFGetSysConfigPathLength(
+        void
+        );
+
+/*  
+ *
+ * NOTE: argument len_return does NOT include the null byte in its length calculation.
+ * NOTE: Recomended buff length FFSysGetConfigPathLengthMAX
  *
  * RETURN: EXIT_SUCCESS on Success.
  * RETURN: EXIT_FAILURE on Failure.
@@ -56,8 +71,8 @@ enum
 int
 FFGetSysConfigPath(
         char *buff,
-        unsigned int buff_len,
-        unsigned int *len_return
+        size_t buff_len,
+        size_t *len_return
         );
 
 /* Directory checking checks if the specified directory exists. 

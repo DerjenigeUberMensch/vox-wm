@@ -2776,7 +2776,7 @@ XCBSetClassHintFast(
         memcpy(dest, src, size);
     }
 
-    mem[instance_name_length + size + sizeof('\0')] = '\0';
+    mem[instance_name_length + size + sizeof(char)] = '\0';
 
     ret = xcb_icccm_set_wm_class(display, window, instance_name_length + class_name_length + NULL_BYTE_COUNT, mem);
 

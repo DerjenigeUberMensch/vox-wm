@@ -63,44 +63,115 @@ memfilled(void *mem, size_t size)
     return true;
 }
 
+uint32_t 
+PACK_ARGB(uint8_t a, uint8_t r, uint8_t g, uint8_t b) 
+{
+    int byteorder = GET_BYTE_ORDER();
+
+    (void)ASSERT(GET_BYTE_ORDER() != 0);
+
+    switch(byteorder)
+    {
+        /* Big Endian */
+        case 1234: return b | (g << 8) | (r << 16) | (a << 24);
+        /* Little Endian */
+        case 4321: return (a << 24) | (r << 16) | (g << 8) | b;
+        /* PDP Endian */
+        case 3412: return (r << 16) | (a << 24) | (b) | (g << 8);
+    }
+
+    return 0;
+}
+
+void
+UNPACK_ARGB(uint32_t argb, uint8_t *a_return, uint8_t *r_return, uint8_t *g_return, uint8_t *b_return)
+{
+    int byteorder = GET_BYTE_ORDER();
+
+    (void)ASSERT(GET_BYTE_ORDER() != 0);
+
+    switch (byteorder)
+    {
+        /* Big Endian */
+        case 1234: 
+            if(b_return) 
+            {   *b_return = argb & 0xFF;
+            }
+            if(g_return) 
+            {   *g_return = (argb >> 8) & 0xFF;
+            }
+            if(r_return) 
+            {   *r_return = (argb >> 16) & 0xFF;
+            }
+            if(a_return) 
+            {   *a_return = (argb >> 24) & 0xFF;
+            }
+        break;
+
+        /* Little Endian */
+        case 4321: 
+            if(a_return) 
+            {   *a_return = (argb >> 24) & 0xFF;
+            }
+            if(r_return) 
+            {   *r_return = (argb >> 16) & 0xFF;
+            }
+            if(g_return) 
+            {   *g_return = (argb >> 8) & 0xFF;
+            }
+            if(b_return) 
+            {   *b_return = argb & 0xFF;
+            }
+            break;
+        /* PDP Endian */
+        case 3412: 
+            if(r_return) 
+            {   *r_return = (argb >> 16) & 0xFF;
+            }
+            if(a_return) 
+            {   *a_return = (argb >> 24) & 0xFF;
+            }
+            if(b_return) 
+            {   *b_return = argb & 0xFF;
+            }
+            if(g_return) 
+            {   *g_return = (argb >> 8) & 0xFF;
+            }
+            break;
+        default:
+            return;
+    }
+}
+
 int
 GET_BYTE_ORDER(void)
 {
-    int byteorder = 0;
-    int knownbyteOrder = 0;
-
-    uint16_t x = 0x0102;
-    unsigned char *p = (unsigned char *)&x;
-
-    if(p[0] == 0x02 && p[1] == 0x01)
-    {   knownbyteOrder = 1234;
-    }
-    else if(p[0] == 0x01 && p[1] == 0x02)
-    {   knownbyteOrder = 4321;
-    }
-
     #if defined(__GNUC__) || defined(__clang__)
-        byteorder = __BYTE_ORDER__;
-        (void)knownbyteOrder;
+        return __BYTE_ORDER__;
     #elif defined(_MSC_VER)
         #if defined(_WIN32)
-            byteorder = 1234;
-            (void)knownbyteOrder;
-        #else
-            byteorder = knownbyteOrder
+            return 1234;
         #endif
     #elif defined(__INTEL__COMPILER)
         #if defined(__GNUC__)
-            byteorder = __BYTE_ORDER__;
-            (void)knownbyteOrder;
-        #else
-            byteorder = knownbyteOrder;
+            return __BYTE_ORDER__;
         #endif
-    #else
-        byteorder = knownbyteOrder;
     #endif
 
-    return byteorder;
+    uint32_t x = 0x11223344;
+    unsigned char *p = (unsigned char *)&x;
+
+    if (p[0] == 0x44 && p[1] == 0x33 && p[2] == 0x22 && p[3] == 0x11)
+    {   return 1234;
+    }
+    else if (p[0] == 0x11 && p[1] == 0x22 && p[2] == 0x33 && p[3] == 0x44)
+    {   return 4321;
+    }
+    else if (p[0] == 0x33 && p[1] == 0x44 && p[2] == 0x11 && p[3] == 0x22)
+    {   return 3412;
+    }
+
+    return 0;
 }
 
 void _Breakpoint(void) { volatile int *e = 0; if(e != (volatile int *)1) { e = (volatile int *)3; } (void)e; }

@@ -29,7 +29,6 @@
 #include "main.h"
 #include "hashing.h"
 #include "getprop.h"
-#include "session.h"
 #include "bar.h"
 #include "keybinds.h"
 #include "safebool.h"
@@ -157,7 +156,6 @@ cleanup(void)
 
     /* save setting data. */
     USSave(&_cfg);
-    SessionSave();
     savesession();
     if(!_wm.dpy)
     {
@@ -175,6 +173,7 @@ cleanup(void)
 
     /* cleanup cfg */
     USWipe(&_cfg);
+    WMConfigDestroy();
 
     cookie = XCBDestroyWindow(_wm.dpy, _wm.wmcheckwin);
     XCBDiscardReply(_wm.dpy, cookie);
@@ -1075,8 +1074,14 @@ setupatoms(void)
 
 void
 setupcfg(void)
-{   
-    USInit(&_cfg);
+{
+    int status = WMConfigInit();
+
+    if(unlikely(status == EXIT_FAILURE))
+    {   Debug0("Failed to init config paths");
+    }
+
+    USInit(&_cfg, UserSettingsDefault);
 }
 void
 setupsys(void)
@@ -1110,36 +1115,37 @@ setupwatchers(void)
     {   return;
     }
 
-    int status;
-    char buff[FFSysGetConfigPathLengthMAX + 1];
+    int status = 0;
     char *dir;
+    char *path;
     const char *const invaliddir = ".";
-    uint32_t len = 0;
 
-    memset(buff, '\0', sizeof(buff));
+    path = (char *)WMConfigGetPath(WMFileConfig);
 
-    status = WMConfigGetSettingsPath(buff, FFSysGetConfigPathLengthMAX, &len);
-
-    if(status == EXIT_SUCCESS)
+    if(path)
     {   
-        /* TODO: Fix Fnotify and this, as this is just a quick fix to get it up and running
-         * FIxing FNotify will be a hassle for now, so skipping...
-         */
-        dir = dirname(buff);
-        status = EXIT_FAILURE;
+        dir = strdup(path);
 
-        /* make sure it has a higher dir above it or in it */
-        if(strcmp(dir, invaliddir))
+        if(dir)
         {   
-            status = WatcherAdd(buff, IMPL_WM_CONFIG_WATCHER, NULL, 
-                FNotifyClosedWrite|FNotifyFileMovedTo|FNotifyFileCreate|FNotifyFileDeleted
-                |FNotifyFileDeletedSelf|FNotifyFileMovedSelf
-                );
+            dir = dirname(dir);
+            status = EXIT_FAILURE;
+
+            /* make sure it has a higher dir above it or in it */
+            if(strcmp(dir, invaliddir))
+            {   
+                status = WatcherAdd(path, IMPL_WM_CONFIG_WATCHER, NULL, 
+                        FNotifyClosedWrite|FNotifyFileMovedTo|FNotifyFileCreate|FNotifyFileDeleted
+                        |FNotifyFileDeletedSelf|FNotifyFileMovedSelf
+                        );
+            }
+
+            free(dir);
         }
 
     }
 
-    if(status == EXIT_FAILURE)
+    if(!path || status == EXIT_FAILURE)
     {   Debug0("WARNING: Could not allocate memory for watchers, FEATURE: file watching is not running");
     }
 }

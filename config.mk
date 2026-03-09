@@ -32,7 +32,7 @@ MEMFLAGS = ${MEMFLAGSALWAYS}
 MEMFLAGS += ${MEMFLAGSDEBUG}
 
 WARNINGDEFAULT = -pedantic -Wall -Wno-deprecated-declarations -Wshadow -Wuninitialized -Werror=format-security 
-WARNINGEXTRAS = -Wunreachable-code -Waggregate-return -Wstrict-overflow=4 -Wpointer-arith
+WARNINGEXTRAS = -Wunreachable-code -Waggregate-return -Wstrict-overflow=4 -Wpointer-arith -Wstrict-aliasing
 WARNINGFLAGS = ${WARNINGDEFAULT} ${WARNINGEXTRAS}
 
 LINKTIMEOPTIMIZATIONS = -flto -flto=auto

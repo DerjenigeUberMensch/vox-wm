@@ -338,15 +338,19 @@ DragWindowHandler(
     XCBButtonReleaseEvent *brev = NULL;
     XCBUnmapNotifyEvent *umev = NULL;
     XCBDestroyNotifyEvent *dnev = NULL;
+    u16 refreshrate = 0;
+    u16 snap = 0;
 
     switch(XCB_EVENT_RESPONSE_TYPE(event))
     {
         case XCB_MOTION_NOTIFY:
             mev = (XCBMotionNotifyEvent *)event;
+            refreshrate = USGetSetting(&_cfg, RefreshRate).dataf[0];
+            snap = USGetSetting(&_cfg, Snap).data16[0];
 
-            if(_cfg.RefreshRate)
+            if(refreshrate)
             {
-                const float FRAME_TIME = 1000.0f / (_cfg.RefreshRate + !_cfg.RefreshRate);
+                const float FRAME_TIME = 1000.0f / (refreshrate + !refreshrate);
 
                 if((mev->time - lasttime) <= FRAME_TIME)
                 {   break;
@@ -359,16 +363,16 @@ DragWindowHandler(
             ny = oldy + mev->event_y - y;
 
             /* snap to window area */
-            if (abs(_wm.selmon->wx - nx) < _cfg.Snap)
+            if (abs(_wm.selmon->wx - nx) < snap)
             {   nx = _wm.selmon->wx;
             }
-            else if (abs((_wm.selmon->wx + _wm.selmon->ww) - (nx + oldw)) < _cfg.Snap)
+            else if (abs((_wm.selmon->wx + _wm.selmon->ww) - (nx + oldw)) < snap)
             {   nx = _wm.selmon->wx + _wm.selmon->ww - oldw;
             }
-            if (abs(_wm.selmon->wy - ny) < _cfg.Snap)
+            if (abs(_wm.selmon->wy - ny) < snap)
             {   ny = _wm.selmon->wy;
             }
-            else if (abs((_wm.selmon->wy + _wm.selmon->wh) - (ny + oldh)) < _cfg.Snap)
+            else if (abs((_wm.selmon->wy + _wm.selmon->wh) - (ny + oldh)) < snap)
             {   ny = _wm.selmon->wy + _wm.selmon->wh - oldh;
             }
 
@@ -655,15 +659,17 @@ ResizeWindowHandler(
     XCBButtonPressEvent *bpev = NULL;
     XCBUnmapNotifyEvent *umev = NULL;
     XCBDestroyNotifyEvent *dnev = NULL;
+    u16 refreshrate = 0;
 
     switch(XCB_EVENT_RESPONSE_TYPE(event))
     {   
         case XCB_MOTION_NOTIFY:
             mev = (XCBMotionNotifyEvent *)event;
+            refreshrate = USGetSetting(&_cfg, RefreshRate).dataf[0];
 
-            if(_cfg.RefreshRate)
+            if(refreshrate)
             {
-                const float FRAME_TIME = 1000.0f / (_cfg.RefreshRate + !_cfg.RefreshRate);
+                const float FRAME_TIME = 1000.0f / (refreshrate+ !refreshrate);
 
                 if((mev->time - lasttime) <= FRAME_TIME)
                 {   break;

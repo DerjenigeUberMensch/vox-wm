@@ -30,7 +30,8 @@
 #include <stdint.h>
 
 
-enum SCType
+enum 
+SCType
 {
     SCTypeNoType,
     SCTypeBOOL,
@@ -47,7 +48,8 @@ enum SCType
     SCTypeSTRING,
 };
 
-enum SCParseCode
+enum 
+SCParseCode
 {
     ParseSuccess,
     ParseError,
