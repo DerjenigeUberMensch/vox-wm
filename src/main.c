@@ -106,7 +106,13 @@ u32 CLEANMASK(u32 mask) {
                         }
 u8 CLEANBUTTONMASK(u8 mask)
                         {
-                            return (mask & (XCBButton5 + 1)) + !mask;
+                            u8 ret = MIN(MAX(mask, 1), XCBButton5);
+
+                            if(ret != mask)
+                            {   Debug("Clamped value mask: [%d] -> [%d]", mask, ret);
+                            }
+
+                            return ret;
                         }
 
 

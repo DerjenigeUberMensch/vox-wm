@@ -1331,6 +1331,7 @@ clientmessage(XCBGenericEvent *event)
             Arg arg;
             Arg status;
             arg.v = &tmp_bev;
+
             /* TODO */
             switch(netwmstate)
             {
