@@ -1122,7 +1122,6 @@ setupwatchers(void)
     }
 
     int status = 0;
-    char *dir;
     char *path;
     const char *const invaliddir = ".";
 
@@ -1130,25 +1129,25 @@ setupwatchers(void)
 
     if(path)
     {   
-        dir = strdup(path);
+        char *dir;
+        char *dir_cpy = strdup(path);
 
-        if(dir)
+        if(dir_cpy)
         {   
-            dir = dirname(dir);
+            dir = dirname(dir_cpy);
             status = EXIT_FAILURE;
 
             /* make sure it has a higher dir above it or in it */
             if(strcmp(dir, invaliddir))
             {   
-                status = WatcherAdd(path, IMPL_WM_CONFIG_WATCHER, NULL, 
+                status = WatcherAdd(dir_cpy, IMPL_WM_CONFIG_WATCHER, NULL, 
                         FNotifyClosedWrite|FNotifyFileMovedTo|FNotifyFileCreate|FNotifyFileDeleted
                         |FNotifyFileDeletedSelf|FNotifyFileMovedSelf
                         );
             }
 
-            free(dir);
         }
-
+        free(dir_cpy);
     }
 
     if(!path || status == EXIT_FAILURE)

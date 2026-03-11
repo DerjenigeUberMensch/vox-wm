@@ -902,3 +902,11 @@ SCParserSaveVar(
     memcpy(item->data, data, item->size);
     return SUCCESS;
 }
+
+
+size_t
+SCParserGetTypeSize(
+        enum SCType type
+        )
+{   return __SC_GET_SIZE_FROM_TYPE(type);
+}
