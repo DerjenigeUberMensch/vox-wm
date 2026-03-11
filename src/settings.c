@@ -116,6 +116,13 @@ USLoad(
         goto UNLOCK;
     }
 
+    if(!FFFileExists(configpath))
+    {
+        pthread_mutex_unlock(&settings->mutex);
+        USSave(settings);
+        return;
+    }
+
     status = SCParserReadFile(cfg, configpath);
 
     if(status)
@@ -157,7 +164,7 @@ USLoad(
             Generic prev = setting->data;
             Generic dsafe;
 
-            status = SCParserLoad(item, &setting->data, 0, usdata[i].type);
+            status = SCParserLoad(item, &setting->data, SCParserGetTypeSize(usdata[i].type), usdata[i].type);
 
             dsafe = setting->data;
 

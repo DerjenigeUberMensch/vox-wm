@@ -205,6 +205,18 @@ SCParserSaveVar(
         void *data
         );
 
+/* 
+ * Get sizeof a SCType variable.
+ *
+ * NOTE: Guranteed to be in acoordinace with _t types such as int32_t int64_t int8_t uint8_t, etc...
+ * NOTE: Guranteed to be sizeof(float) and sizeof(double) for float and double types respectively.
+ *
+ */
+size_t
+SCParserGetTypeSize(
+        enum SCType type
+        );
+
 
 
 #endif
