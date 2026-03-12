@@ -25,6 +25,7 @@
 #define __FILE__UTIL__H
 
 #include <stdio.h>
+#include <stdbool.h>
 
 
 #ifndef __linux__
@@ -162,5 +163,55 @@ FFIsFileEmpty(
         char *const FILE_NAME
         );
 
+/* Gets a new line from a file (usually to read).
+ *
+ * RETURN: 1 on EOF
+ * RETURN: 0 on success
+ * RETURN: -1 on Overflow
+ * RETURN: -2 on Parser Error
+ */
+int
+FFGetNewLine(
+        FILE *f,
+        char *buff,
+        size_t buff_len
+        );
+
+/*
+ * RETURN: 0 on Success.
+ * RETURN: -1 on Failure.
+ */
+int
+FFLockFileRead(
+        int file_descriptor,
+        bool allow_blocking
+        );
+
+/*
+ * RETURN: 0 on Success.
+ * RETURN: -1 on Failure.
+ */
+int
+FFUnlockFileRead(
+        int file_descriptor
+        );
+
+/*
+ * RETURN: 0 on Success.
+ * RETURN: -1 on Failure.
+ */
+int
+FFLockFileWrite(
+        int file_descriptor,
+        bool allow_blocking
+        );
+/*
+ * RETURN: 0 on Success.
+ * RETURN: -1 on Failure.
+ */
+int
+FFUnlockFileWrite(
+        int file_descriptor
+        );
 
 #endif

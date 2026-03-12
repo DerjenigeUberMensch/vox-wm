@@ -35,6 +35,7 @@
 #include "threading.h"
 #include "watchers.h"
 #include "config.h"
+#include "startupapps.h"
 #include "file_util.h"
 /* #include "watchdog.h" */
 
@@ -341,7 +342,7 @@ restoresession(void)
     u8 isclients = 0;
 
     if(!fr)
-    {   return;
+    {   goto END;
     }
 
     enum Causes
@@ -416,8 +417,9 @@ restoresession(void)
             }
         }
     }
-
+END:
     focus(NULL);
+    ReadStartupApps();
     /* No need to flush run() syncs for us */
     /* XCBFlush(_wm.dpy) */
 }
