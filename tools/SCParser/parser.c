@@ -25,7 +25,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <errno.h>
 #include <fcntl.h>
+#include <inttypes.h>
 #include <ctype.h>  /* isdigit() */
 
 #include "parser.h"
@@ -179,8 +181,10 @@ __SC_GET_FORMAT_FROM_TYPE_FILL(const enum SCType t, char fill_buff[SC_PARSER_FOR
         case SCTypeBOOL:    fill_buff[i++] = 's';   break;
         case SCTypeCHAR:    fill_buff[i++] = 'c';   break;
         case SCTypeUCHAR:   fill_buff[i++] = 'd';   break;
-        case SCTypeSHORT:   fill_buff[i++] = 'd';   break;
-        case SCTypeUSHORT:  fill_buff[i++] = 'd';   break;
+        case SCTypeSHORT:   fill_buff[i++] = 'h';   
+                            fill_buff[i++] = 'd';   break;
+        case SCTypeUSHORT:  fill_buff[i++] = 'h';   
+                            fill_buff[i++] = 'u';   break;
         case SCTypeINT:     fill_buff[i++] = 'd';   break;
         case SCTypeUINT:    fill_buff[i++] = 'u';   break;
         case SCTypeFLOAT:   fill_buff[i++] = 'f';   break;
@@ -192,6 +196,9 @@ __SC_GET_FORMAT_FROM_TYPE_FILL(const enum SCType t, char fill_buff[SC_PARSER_FOR
                             fill_buff[i++] = 'u';   break;
         case SCTypeSTRING:  fill_buff[i++] = 's';   break;
     }
+
+    fill_buff[i] = '\0';
+
     return EXIT_SUCCESS;
 }
 static int
@@ -228,6 +235,35 @@ __SC_GET_SIZE_FROM_TYPE(const enum SCType t)
         case SCTypeULONG:   return sizeof(uint64_t);
     }
 }
+
+static const unsigned int
+__SC_IS_NUM_TYPE(const enum SCType t)
+{   
+    return __SC_GET_SIZE_FROM_TYPE(t) != 0;
+}
+
+
+/*
+static const int 
+__SC_COUNT_BITS_UINT(uintmax_t x) 
+{
+    int b = 0;
+
+    while(x)
+    {
+        x >>= 1;
+        ++b;
+    }
+
+    return b;
+}
+
+
+static const int
+__SC_COUNT_BITS_INT(intmax_t x)
+{   return __SC_COUNT_BITS_UINT((uintmax_t)(-(x + 1) + 1));
+}
+*/
 
 static uint32_t
 __SC__PARSER__SEARCH__INDEX__(
@@ -362,17 +398,125 @@ BOOLTYPE:
     }
     /* FALLTHROUGH */
 SINGLETYPE:
-    check = sscanf(item->typename, format, &data);
-    if(check == SSCANF_CHECKSUM)
-    {
-        size_t copysize = bytescopy;
-        if(bytescopy > __SC_GET_SIZE_FROM_TYPE(item->type))
-        {   copysize = __SC_GET_SIZE_FROM_TYPE(item->type);
+    if(__SC_IS_NUM_TYPE(item->type))
+    {   
+        char *endptr;
+
+        if(item->type == SCTypeFLOAT)
+        {
+            errno = 0;
+
+            float f = strtof(item->typename, &endptr);
+
+            if(errno == ERANGE || !endptr || *endptr != '\0')
+            {   return FAILURE;
+            }
+
+            memcpy(data, &f, sizeof(f));
         }
-        memcpy(_return, data, copysize);
-        return SUCCESS;
+        else if(item->type == SCTypeDOUBLE)
+        {
+            errno = 0;
+
+            /* [Insert Funny Joke Here] */
+            double d;
+
+            d = strtod(item->typename, &endptr);
+
+            if(errno == ERANGE || !endptr || *endptr != '\0')
+            {   return FAILURE;
+            }
+
+            memcpy(data, &d, sizeof(d));
+        }
+        else
+        {
+            intmax_t ll;
+            uintmax_t llu;
+            uint8_t using_ll = 0;
+
+            errno = 0;
+
+            switch(item->type)
+            {
+                case SCTypeUCHAR: case SCTypeUSHORT: case SCTypeUINT: case SCTypeULONG:
+                    llu = strtoumax(item->typename, &endptr, 0);
+                    break;
+                case SCTypeCHAR: case SCTypeSHORT: case SCTypeINT: case SCTypeLONG:
+                    ll = strtoimax(item->typename, &endptr, 0);
+                    using_ll = 1;
+                    break;
+                default:
+                    fprintf(stderr, "Reached inpossible state");
+                    return FAILURE;
+            }
+
+            if(errno == ERANGE || !endptr || *endptr != '\0')
+            {   return FAILURE;
+            }
+
+            if(using_ll)
+            {
+                switch(item->type)
+                {
+                    case SCTypeCHAR: if(ll > INT8_MAX || ll < INT8_MIN) { return FAILURE; } break;
+                    case SCTypeSHORT: if(ll > INT16_MAX || ll < INT16_MIN) { return FAILURE; } break;
+                    case SCTypeINT: if(ll > INT32_MAX || ll < INT32_MIN) { return FAILURE; } break;
+                    case SCTypeLONG: if(ll > INT64_MAX || ll < INT64_MIN) { return FAILURE; } break;
+                }
+            }
+            else
+            {
+                switch(item->type)
+                {
+                    case SCTypeUCHAR:  if(llu > UINT8_MAX) { return FAILURE; }  break;
+                    case SCTypeUSHORT: if(llu > UINT16_MAX) { return FAILURE; } break;
+                    case SCTypeUINT:   if(llu > UINT32_MAX) { return FAILURE; } break;
+                    case SCTypeULONG: if(llu > UINT64_MAX) { return FAILURE; }  break;
+                }
+            }
+
+
+            int8_t c;
+            uint8_t uc;
+            int16_t s;
+            uint16_t us;
+            int32_t i;
+            uint32_t ui;
+            int64_t l;
+            uint64_t ul;
+
+            switch(item->type)
+            {
+                case SCTypeCHAR:    c = (int8_t)ll; memcpy(data, &c, sizeof(c));
+                case SCTypeUCHAR:   uc = (uint8_t)llu; memcpy(data, &uc, sizeof(uc));
+                case SCTypeSHORT:   s = (int16_t)ll; memcpy(data, &s, sizeof(s));
+                case SCTypeUSHORT:  us = (uint16_t)llu; memcpy(data, &us, sizeof(us));
+                case SCTypeINT:     i = (int32_t)ll; memcpy(data, &i, sizeof(i));
+                case SCTypeUINT:    ui = (uint32_t)llu; memcpy(data, &ui, sizeof(ui));
+                case SCTypeLONG:    l = (int64_t)ll; memcpy(data, &l, sizeof(l));
+                case SCTypeULONG:   ul = (uint64_t)llu; memcpy(data, &ul, sizeof(ul));
+            }
+        }
     }
-    return FAILURE;
+    else
+    {
+        check = sscanf(item->typename, format, &data);
+
+        if(check != SSCANF_CHECKSUM)
+        {   return FAILURE;
+        }
+    }
+
+    size_t copysize = bytescopy;
+
+    if(bytescopy > __SC_GET_SIZE_FROM_TYPE(item->type))
+    {   copysize = __SC_GET_SIZE_FROM_TYPE(item->type);
+    }
+
+    memcpy(_return, data, copysize);
+
+    return SUCCESS;
 STRINGTYPE:
     str = malloc(item->type_len);
     if(str)
