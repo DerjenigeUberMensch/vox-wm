@@ -27,6 +27,7 @@
 #include <unistd.h>
 
 #include <sys/stat.h>
+#include <fcntl.h>
 #include <errno.h>
 
 #include "file_util.h"
@@ -289,3 +290,118 @@ FFIsFileEmpty(
 
     return ret;
 }
+
+
+int
+FFGetNewLine(
+        FILE *f,
+        char *buff,
+        size_t buff_len
+        )
+{
+    char *nl;
+
+    if(fgets(buff, buff_len, f))
+    {
+        nl = strchr(buff, '\n');
+
+        if(!nl)
+        {
+            if(!feof(f))
+            {   return -1;
+            }
+        } /* remove new line char */
+        else
+        {   *nl = '\0';
+        }
+        return 0;
+    }
+    else
+    {
+        if(ferror(f))
+        {   return -2;
+        }
+        return 1;
+    }
+}
+
+int
+FFLockFileRead(
+        int file_descriptor,
+        bool allow_blocking
+        )
+{
+    struct flock lock = {0};
+    int lock_mode;
+
+    lock.l_type = F_RDLCK;
+    lock.l_whence = SEEK_SET;
+    lock.l_start = 0;
+    lock.l_len = 0;
+
+
+    if(allow_blocking)
+    {   lock_mode = F_SETLK;
+    }
+    else
+    {   lock_mode = F_SETLKW;
+    }
+
+    return fcntl(file_descriptor, lock_mode, &lock);
+}
+
+int
+FFUnlockFileRead(
+        int file_descriptor
+        )
+{
+    struct flock lock = {0};
+
+    lock.l_type = F_RDLCK;
+    lock.l_whence = SEEK_SET;
+    lock.l_start = 0;
+    lock.l_len = 0;
+
+    return fcntl(file_descriptor, F_SETLK, &lock);
+}
+
+int
+FFLockFileWrite(
+        int file_descriptor,
+        bool allow_blocking
+        )
+{
+    struct flock lock = {0};
+    int lock_mode;
+
+    lock.l_type = F_WRLCK;
+    lock.l_whence = SEEK_SET;
+    lock.l_start = 0;
+    lock.l_len = 0;
+
+    if(allow_blocking)
+    {   lock_mode = F_SETLK;
+    }
+    else
+    {   lock_mode = F_SETLKW;
+    }
+
+    return fcntl(file_descriptor, lock_mode, &lock);
+}
+
+
+int
+FFUnlockFileWrite(
+        int file_descriptor
+        )
+{
+    struct flock lock = {0};
+
+    lock.l_type = F_WRLCK;
+    lock.l_whence = SEEK_SET;
+    lock.l_start = 0;
+    lock.l_len = 0;
+
+    return fcntl(file_descriptor, F_SETLK, &lock);
+}
+

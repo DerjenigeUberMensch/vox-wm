@@ -10,7 +10,8 @@ static const char *const WM_FOLDER = "/vox-wm/";
 static const char *const WM_FILE_LIST[WMFileLAST] = 
 {
     [WMFileConfig] = "vox.cfg",
-    [WMFileSession] = "session.cfg"
+    [WMFileSession] = "session.cfg",
+    [WMFileStartup] = "startup.cfg"
 };
 
 static char *WM_FILES[WMFileLAST] = 

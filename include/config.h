@@ -10,6 +10,7 @@ WMFiles
 {
     WMFileConfig,
     WMFileSession,
+    WMFileStartup,
     WMFileLAST
 };
 
