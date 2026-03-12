@@ -151,6 +151,7 @@ FFCreateDir(
         }
         if(*DIR_NAME && *DIR_NAME != ' ' && !FFDirExists(DIR_NAME + base))   
         {
+            errno = 0;
             int mkdirstatus = mkdir(DIR_NAME, 0777);
             if(mkdirstatus && errno != EEXIST)
             {   

@@ -24,8 +24,6 @@
 
 #include "util.h"
 
-
-
 bool 
 memempty(void *mem, size_t size)
 {
