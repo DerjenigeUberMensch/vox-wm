@@ -342,7 +342,9 @@ restoresession(void)
     u8 isclients = 0;
 
     if(!fr)
-    {   goto END;
+    {   
+        ReadStartupApps();
+        goto END;
     }
 
     enum Causes
@@ -419,7 +421,6 @@ restoresession(void)
     }
 END:
     focus(NULL);
-    ReadStartupApps();
     /* No need to flush run() syncs for us */
     /* XCBFlush(_wm.dpy) */
 }
