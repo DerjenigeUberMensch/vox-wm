@@ -80,8 +80,19 @@ ReadStartupApps(
     char buff[MAX_LENGTH];
     wordexp_t word;
     Arg arg = { .v = NULL };
+    char *olddir = NULL;
 
     memset(buff, 0, sizeof(buff));
+
+    olddir = getcwd(NULL, 0);
+
+    /* some apps run from their root dir which would be in .config/vox-wm/startup.cfg or whaever. */
+    if(olddir)
+    {   
+        const char *wmfolder = WMConfigGetPath(WMFileFolder);
+
+        chdir(wmfolder);
+    }
 
     while(true)
     {
@@ -115,10 +126,18 @@ ReadStartupApps(
         }
 
         arg.v = word.we_wordv;
+
     
         SpawnWindow(&arg);
+
         wordfree(&word);
     }
+
+    if(olddir)
+    {   chdir(olddir);
+    }
+
+    free(olddir);
 
     FFUnlockFileRead(fd);
 }

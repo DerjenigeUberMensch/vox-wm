@@ -1128,29 +1128,21 @@ setupwatchers(void)
     char *path;
     const char *const invaliddir = ".";
 
-    path = (char *)WMConfigGetPath(WMFileConfig);
+    path = (char *)WMConfigGetPath(WMFileFolder);
 
     if(path)
     {   
-        char *dir;
-        char *dir_cpy = strdup(path);
+        status = EXIT_FAILURE;
 
-        if(dir_cpy)
+        /* make sure it has a higher dir above it or in it */
+        if(strcmp(path, invaliddir))
         {   
-            dir = dirname(dir_cpy);
-            status = EXIT_FAILURE;
-
-            /* make sure it has a higher dir above it or in it */
-            if(strcmp(dir, invaliddir))
-            {   
-                status = WatcherAdd(dir_cpy, IMPL_WM_CONFIG_WATCHER, NULL, 
-                        FNotifyClosedWrite|FNotifyFileMovedTo|FNotifyFileCreate|FNotifyFileDeleted
-                        |FNotifyFileDeletedSelf|FNotifyFileMovedSelf
-                        );
-            }
-
+            status = WatcherAdd(path, IMPL_WM_CONFIG_WATCHER, NULL, 
+                    FNotifyClosedWrite|FNotifyFileMovedTo|FNotifyFileCreate|FNotifyFileDeleted
+                    |FNotifyFileDeletedSelf|FNotifyFileMovedSelf
+                    );
         }
-        free(dir_cpy);
+
     }
 
     if(!path || status == EXIT_FAILURE)

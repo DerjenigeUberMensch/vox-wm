@@ -11,6 +11,7 @@ WMFiles
     WMFileConfig,
     WMFileSession,
     WMFileStartup,
+    WMFileFolder,
     WMFileLAST
 };
 

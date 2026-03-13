@@ -11,7 +11,8 @@ static const char *const WM_FILE_LIST[WMFileLAST] =
 {
     [WMFileConfig] = "vox.cfg",
     [WMFileSession] = "session.cfg",
-    [WMFileStartup] = "startup.cfg"
+    [WMFileStartup] = "startup.cfg",
+    [WMFileFolder] = "",
 };
 
 static char *WM_FILES[WMFileLAST] = 

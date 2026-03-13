@@ -834,6 +834,7 @@ SpawnWindow(const Arg *arg)
     int pipefds[2];
     int count;
     int err;
+    int fd;
 
     pid_t child;
 
@@ -892,9 +893,19 @@ SpawnWindow(const Arg *arg)
             {   _exit(EXIT_SUCCESS);
             }
 
-            close(STDIN_FILENO);
-            close(STDOUT_FILENO);
-            close(STDERR_FILENO);
+            fd = open("/dev/null", O_RDWR);
+
+            // replace fd to be banished to the ether, since their buggy.
+            if(fd >= 0)
+            {
+                dup2(fd, STDIN_FILENO);
+                dup2(fd, STDOUT_FILENO);
+                dup2(fd, STDERR_FILENO);
+
+                if(fd > 2)
+                {   close(fd);
+                }
+            }
 
             sigemptyset(&sa.sa_mask);
             sa.sa_flags = 0;

@@ -706,10 +706,18 @@ applysizehints(Client *c, i32 *x, i32 *y, i32 *width, i32 *height, uint8_t inter
 void
 cleanupclient(Client *c)
 {
+    Debug("%p", (void *)c);
     free(c->wmname);
     free(c->netwmname);
     free(c->classname);
     free(c->instancename);
+
+    if(c->decor && c->decor->win)
+    {   
+        /* XCBReparentWindow(); */
+        XCBDestroyWindow(_wm.dpy, c->decor->win);
+    }
+
     free(c->decor);
     free(c->icon);
     free(c);
@@ -902,6 +910,7 @@ createclient(void)
     c->netwmname = NULL;
     c->classname = NULL;
     c->instancename = NULL;
+    Debug("%p", (void *)c);
     return c;
 }
 
