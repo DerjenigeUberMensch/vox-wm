@@ -125,6 +125,7 @@ sudo make uninstall
 If you know a bit of C you can change dmenu colours and some keybinds under the directory vox-wm/include/keybinds.h
 ### However...
 There is limited config file support under ~/.config/vox-wm/vox.cfg
+There is startup program support under ~/.config/vox-wm/startup.cfg
 
 ## Mousebinds
 These are the default mousebinds currently used within vox-wm, they are not planned to change (defaults), but will be when or if a configuration is implemented.
@@ -188,7 +189,6 @@ These are actions that expected supporting basic keyboard support.
 | Pause |  Inverts Playing Status (play-pause) |
 | Next | Next Audio Playback |
 | Prev | Previous Audio Playback |
-
 
 
 ## Troubleshoot
