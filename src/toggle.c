@@ -921,7 +921,12 @@ SpawnWindow(const Arg *arg)
 
             Debug0("execvp() failed.");
 
-            write(pipefds[1], &errno, sizeof(int));
+            fd = write(pipefds[1], &errno, sizeof(int));
+
+            /* shut up new compiler warnings */
+            if(fd)
+            {   (void)fd;
+            }
 
             _exit(EXIT_SUCCESS);
             break;
