@@ -112,6 +112,7 @@ WatchDogStart(
     pid_t pid;
     struct rlimit rl;
     int fd;
+    int status;
 
     /* watchdog failed to start */
     if(WatchDogInit(callback_on_stall) != EXIT_SUCCESS)
@@ -130,7 +131,12 @@ WatchDogStart(
             {   exit(EXIT_FAILURE);
             }
 
-            chdir("/");
+            status = chdir("/");
+
+            if(status == -1)
+            {   fprintf(stderr, "Failed to unmount daemon.");
+            }
+
             umask(0);
 
             getrlimit(RLIMIT_NOFILE, &rl);

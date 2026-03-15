@@ -91,7 +91,13 @@ ReadStartupApps(
     {   
         const char *wmfolder = WMConfigGetPath(WMFileFolder);
 
-        chdir(wmfolder);
+        status = chdir(wmfolder);
+
+        if(status == ERROR)
+        {
+            free(olddir);
+            olddir = NULL;
+        }
     }
 
     while(true)
@@ -134,7 +140,12 @@ ReadStartupApps(
     }
 
     if(olddir)
-    {   chdir(olddir);
+    {   
+        status = chdir(olddir);
+
+        if(status == ERROR)
+        {   DebugI("%s", "Unable to rechange dir during ReadStartupApps() function, you may have unexpected program behaviour, it is recommened to restart() " MARK);
+        }
     }
 
     free(olddir);
