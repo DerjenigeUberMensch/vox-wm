@@ -1471,6 +1471,7 @@ clientmessage(XCBGenericEvent *event)
                     if(c->desktop != desk)
                     {   
                         setclientdesktop(c, desk);
+                        showhide(c);
                         sync = 1;
                     }
                 }
@@ -1490,6 +1491,7 @@ clientmessage(XCBGenericEvent *event)
             if(checksticky(l0))
             {   
                 setsticky(c, 1);
+                showhide(c);
                 sync = 1;
             }
             else
@@ -1507,6 +1509,7 @@ clientmessage(XCBGenericEvent *event)
                         if(c->desktop != desk)
                         {   
                             setclientdesktop(c, desk);
+                            showhide(c);
                             sync = 1;
                         }
                     }
