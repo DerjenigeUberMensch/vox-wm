@@ -247,24 +247,20 @@ ArgcDisplayLicense(
 {
     /* TODO REMOVE LINKS AND JUST PUT THE LICENSE HERE */
     /* TODO THIS LOOKS UGLY */
-    printf(
-            "--------------------------------- LICENSE START --------------------------------------" "\n"
-            ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> MAIN PROJECT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" "\n"
-            MARK ":   (MPL-2):  https://www.mozilla.org/en-US/MPL/2.0/" "\n"
-            ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> KHASH <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" "\n"
-            "khash     (MIT):    https://github.com/attractivechaos/klib/blob/master/LICENSE.txt" "\n"
-            ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> THPOOL <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" "\n"
-            "thpool    (MIT):    https://github.com/Pithikos/C-Thread-Pool/blob/master/LICENSE" "\n"
-            ">>>>>>>>>>>>>>>>>>>>>>>>>>>> Sub Licensed By DerjenigeUberMensch <<<<<<<<<<<<<<<<<<<<<" "\n"
-            "FNotify   (MIT)" "\n"
-            "GArray    (MIT)" "\n"
-            "SCParser  (MIT)" "\n"
-            "TPromises (MIT)" "\n"
-            "XCB-TRL   (MIT)" "\n"
-            "file_util (MIT)" "\n"
-            "util      (MIT)" "\n"
-            "safebool  (MIT)" "\n"
-            "--------------------------------- LICENSE END ----------------------------------------" "\n"
+    puts(
+            "--------------------------------LICENSE START--------------------------------------" "\n"
+            MARK ":   (MPL-2)  https://www.mozilla.org/en-US/MPL/2.0/" "\n"
+            "khash     (MIT)    https://github.com/attractivechaos/klib/blob/master/LICENSE.txt" "\n"
+            "thpool    (MIT)    https://github.com/Pithikos/C-Thread-Pool/blob/master/LICENSE" "\n"
+            "FNotify   (MIT)    Sub Licensed By DerjenigeUberMensch" "\n"
+            "GArray    (MIT)    Sub Licensed By DerjenigeUberMensch" "\n"
+            "SCParser  (MIT)    Sub Licensed By DerjenigeUberMensch" "\n"
+            "TPromises (MIT)    Sub Licensed By DerjenigeUberMensch" "\n"
+            "XCB-TRL   (MIT)    Sub Licensed By DerjenigeUberMensch" "\n"
+            "file_util (MIT)    Sub Licensed By DerjenigeUberMensch" "\n"
+            "util      (MIT)    Sub Licensed By DerjenigeUberMensch" "\n"
+            "safebool  (MIT)    Sub Licensed By DerjenigeUberMensch" "\n"
+            "---------------------------------LICENSE END----------------------------------------"
             );
     exit(EXIT_SUCCESS);
 }
