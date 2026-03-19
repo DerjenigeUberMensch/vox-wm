@@ -36,7 +36,6 @@
 #include "watchers.h"
 #include "config.h"
 #include "startupapps.h"
-#include "file_util.h"
 /* #include "watchdog.h" */
 
 /* for HELP/DebugGING see under main() or the bottom */
