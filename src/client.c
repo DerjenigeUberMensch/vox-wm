@@ -1900,6 +1900,11 @@ setskiptaskbar(Client *c, uint8_t state)
 void
 setshowdecor(Client *c, uint8_t state)
 {
+    if(state)
+    {   DebugWarn("decorations are disabled in this version of vox-wm due to compatibilityissues");
+    }
+
+    state = 0;
     enum __FrameExtents
     {
         __FrameExtentsLW,   /* Left "decoration" Width */

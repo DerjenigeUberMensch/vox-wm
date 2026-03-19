@@ -1331,7 +1331,10 @@ specialconds(int argc, char *argv[])
         {   err = NULL;
         }
         else
-        {   DebugError(strerror_l(errno, uselocale((locale_t)0)));
+        {   
+            if(errno != 0)
+            {   DebugError(strerror_l(errno, uselocale((locale_t)0)));
+            }
         }
     }
 

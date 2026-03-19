@@ -854,6 +854,7 @@ SpawnWindow(const Arg *arg)
 
     struct sigaction sa;
 
+    errno = 0;
     switch((child = fork()))
     {
         case -1:
@@ -927,12 +928,14 @@ SpawnWindow(const Arg *arg)
             break;
         default:
             close(pipefds[1]);
+            errno = 0;
             while ((count = read(pipefds[0], &err, sizeof(errno))) == -1)
             {
                 if (errno != EAGAIN && errno != EINTR) 
                 {   break;
                 }
             }
+
             if (count) 
             {
                 Debug("child's execvp(): %s", strerror(err));
@@ -940,16 +943,23 @@ SpawnWindow(const Arg *arg)
                 return;
             }
             close(pipefds[0]);
+            errno = 0;
 #ifdef DEBUG
             /* would do 0, over WNOHANG, but as the name implies we cant hang the window manager any time */
             while (waitpid(child, &err, WNOHANG) == -1)
             {
-                if (errno != EINTR) 
+                if(errno == ECHILD)
+                {   (void)0;
+                }
+                else if(errno == EINTR)
+                {   (void)0;
+                }
+                else
                 {
                     DebugError("WAIT_PID_INTERNAL_ERROR");
                     err = EX_SOFTWARE;
-                    return;
                 }
+                break;
             }
             if (WIFEXITED(err))
             {   Debug("child exited with %d\n", WEXITSTATUS(err));
@@ -959,6 +969,7 @@ SpawnWindow(const Arg *arg)
             }
 #endif
     }
+    errno = 0;
 }
 
 void
