@@ -59,7 +59,7 @@ UserStats(const Arg *arg)
         Debug("INCH:        %d", c->inch);
         Debug("Icon:        (w: %u, h: %u)", c->icon ? c->icon[0] : 0, c->icon ? c->icon[1] : 0);
 
-        Debug0("STATES.");
+        Debug("STATES.");
         Debug("MODAL:               %s", GET_BOOL(ISMODAL(c)));
         Debug("STICKY:              %s", GET_BOOL(ISSTICKY(c)));
         Debug("MAXIMIZED VERT:      %s", GET_BOOL(ISMAXIMIZEDVERT(c)));
@@ -73,11 +73,11 @@ UserStats(const Arg *arg)
         Debug("BELOW:               %s", GET_BOOL(ISBELOW(c)));
         Debug("DEMANDS ATTENTION:   %s", GET_BOOL(DEMANDSATTENTION(c)));
         Debug("FOCUSED:             %s", GET_BOOL(ISFOCUSED(c)));
-        Debug0("Supported States.");
+        Debug("Supported States.");
         Debug("WM_TAKE_FOCUS:       %s", GET_BOOL(HASWMTAKEFOCUS(c)));
         Debug("WM_SAVE_YOURSELF:    %s", GET_BOOL(HASWMSAVEYOURSELF(c)));
         Debug("WM_DELETE_WINDOW:    %s", GET_BOOL(HASWMDELETEWINDOW(c)));
-        Debug0("Window Types.");
+        Debug("Window Types.");
         Debug("DESKTOP:             %s", GET_BOOL(ISDESKTOP(c)));
         Debug("DOCK:                %s", GET_BOOL(ISDOCK(c)));
         Debug("TOOLBAR:             %s", GET_BOOL(ISTOOLBAR(c)));
@@ -92,7 +92,7 @@ UserStats(const Arg *arg)
         Debug("COMBO:               %s", GET_BOOL(ISCOMBO(c)));
         Debug("DND:                 %s", GET_BOOL(ISDND(c)));
         Debug("NORMAL:              %s", GET_BOOL(ISNORMAL(c)));
-        Debug0("Extras.");
+        Debug("Extras.");
         Debug("NEVERFOCUS:          %s", GET_BOOL(NEVERFOCUS(c)));
         Debug("MAP ICONIC:          %s", GET_BOOL(ISMAPICONIC(c)));
         Debug("FLOATING:            %s", GET_BOOL(ISFLOATING(c)));
@@ -128,7 +128,7 @@ UserStats(const Arg *arg)
         {   
             Debug("%s", c->netwmname);
             Debug("%s", c->wmname);
-            Debug0("");
+            Debug("");
         }
 
         Monitor *m;
@@ -141,9 +141,9 @@ UserStats(const Arg *arg)
         }
     }
     else
-    {   Debug0("NULL");
+    {   Debug("NULL");
     }
-    Debug0("Manually flushed win");
+    Debug("Manually flushed win");
     XCBFlush(_wm.dpy);
 }
 
@@ -161,7 +161,7 @@ StickWindow(const Arg *arg)
 
 void
 UserStatsCallStack(const Arg *arg)
-{   Debug0("Not Available");
+{   Debug("Not Available");
 }
 
 void
@@ -170,15 +170,15 @@ FocusMonitor(const Arg *arg)
     Monitor *m;
     if(!_wm.mons)
     {   
-        Debug0("There are no monitors, this should not be possible.");
+        Debug("There are no monitors, this should not be possible.");
         return;
     }
     if(!_wm.mons->next)
-    {   Debug0("There is no other monitor to focus.");
+    {   Debug("There is no other monitor to focus.");
     }
 
     if(!_wm.selmon)
-    {   Debug0("No monitor selected in Context, this should not be possible");
+    {   Debug("No monitor selected in Context, this should not be possible");
     }
 
     if((m = dirtomon(arg->i)) == _wm.selmon)
@@ -455,7 +455,7 @@ DragWindow(
         const Arg *arg
         )
 {
-    Debug0("Called.");
+    Debug("Called.");
 
     if(!arg->v || ((XCBButtonPressEvent *)arg->v)->event == _wm.root)
     {   return (Arg){ .i = EXIT_FAILURE };
@@ -468,7 +468,7 @@ DragWindow(
     status = WM_ADD_WORK(DragWindowHandler, empty);
 
     if(status == EXIT_FAILURE)
-    {   Debug0("Failed to start DragWindow");
+    {   DebugWarn("Failed to start DragWindow");
     }
 
     return (Arg){ .i = status } ;
@@ -778,7 +778,7 @@ ResizeWindowHandler(
 Arg
 ResizeWindow(const Arg *arg)
 {
-    Debug0("Called.");
+    Debug("Called.");
     if(!arg->v || ((XCBButtonPressEvent *)arg->v)->event == _wm.root)
     {   return (Arg){ .i = EXIT_FAILURE };
     }
@@ -789,7 +789,7 @@ ResizeWindow(const Arg *arg)
     status = WM_ADD_WORK(ResizeWindowHandler, noaltmode);
 
     if(status == EXIT_FAILURE)
-    {   Debug0("Failed to start DragWindow");
+    {   DebugWarn("Failed to start DragWindow");
     }
 
     return (Arg){ .i = status };
@@ -798,7 +798,7 @@ ResizeWindow(const Arg *arg)
 Arg
 ResizeWindowAlt(const Arg *arg)
 {
-    Debug0("Called.");
+    Debug("Called.");
     if(!arg->v || ((XCBButtonPressEvent *)arg->v)->event == _wm.root)
     {   return (Arg){ .i = EXIT_FAILURE };
     }
@@ -809,7 +809,7 @@ ResizeWindowAlt(const Arg *arg)
     status = WM_ADD_WORK(ResizeWindowHandler, altmode);
 
     if(status == EXIT_FAILURE)
-    {   Debug0("Failed to start DragWindow");
+    {   DebugWarn("Failed to start DragWindow");
     }
 
     return (Arg){ .i = status };
@@ -840,16 +840,14 @@ SpawnWindow(const Arg *arg)
 
     if(pipe(pipefds))
     {   
-        perror("pipe");
-        Debug0("pipe() failed.");
+        DebugWarn("pipe() failed.");
         err = EX_OSERR;
         return;
     }
 
     if(fcntl(pipefds[1], F_SETFD, fcntl(pipefds[1], F_GETFD) | FD_CLOEXEC))
     {
-        perror("fcntl");
-        Debug0("fcntl() failed.");
+        DebugWarn("fcntl() failed.");
         err = EX_OSERR;
         return;
     }
@@ -859,8 +857,7 @@ SpawnWindow(const Arg *arg)
     switch((child = fork()))
     {
         case -1:
-            perror("fork");
-            Debug0("fork() failed.");
+            DebugWarn("fork() failed.");
             err = EX_OSERR;
             break;
         case 0:
@@ -872,7 +869,6 @@ SpawnWindow(const Arg *arg)
 
             if(setsid() < 0)
             {   
-                perror("setsid");
                 _exit(EXIT_FAILURE);
             }
 
@@ -885,8 +881,7 @@ SpawnWindow(const Arg *arg)
              */
             if(pid2 < 0)
             {
-                perror("fork");
-                Debug0("fork() failed preventing child's appearing under the window manager, ignoring...");
+                DebugWarn("fork() failed preventing child's appearing under the window manager, ignoring...");
             }
             /* exit parent process */
             else if(pid2 > 0)
@@ -919,7 +914,7 @@ SpawnWindow(const Arg *arg)
 
             execvp(((char **)arg->v)[0], (char **)arg->v);
 
-            Debug0("execvp() failed.");
+            DebugError("execvp() failed.");
 
             fd = write(pipefds[1], &errno, sizeof(int));
 
@@ -946,14 +941,12 @@ SpawnWindow(const Arg *arg)
             }
             close(pipefds[0]);
 #ifdef DEBUG
-            Debug0("waiting for child...");
             /* would do 0, over WNOHANG, but as the name implies we cant hang the window manager any time */
             while (waitpid(child, &err, WNOHANG) == -1)
             {
                 if (errno != EINTR) 
                 {
-                    perror("waitpid");
-                    Debug0("waitpid");
+                    DebugError("WAIT_PID_INTERNAL_ERROR");
                     err = EX_SOFTWARE;
                     return;
                 }

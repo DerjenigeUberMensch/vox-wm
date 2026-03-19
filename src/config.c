@@ -31,7 +31,7 @@ WMConfigInit(
 
     if(configpathlen == 0)
     {   
-        DebugI("%s", "Failed to get config path.");
+        DebugWarn("Failed to get config path.");
         return EXIT_FAILURE;
     }
 

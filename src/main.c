@@ -498,7 +498,7 @@ restoreclientsession(Desktop *desk, char *buff, u16 len)
     {   Debug("Restored Client: [%u]", cclient->win);
     }
     else if(check != SCANF_CHECK_SUM)
-    {   Debug("Failed to parse Client str: \"%s\"", buff);
+    {   DebugWarn("Failed to parse Client str: \"%s\"", buff);
     }
     else
     {   Debug("Client Not Found: [%u]", WindowId);
@@ -554,7 +554,7 @@ restoredesktopsession(Monitor *m, char *buff, u16 len)
         return desk;
     }
     else
-    {   Debug("Failed to parse Desktop str: \"%s\"", buff);
+    {   DebugWarn("Failed to parse Desktop str: \"%s\"", buff);
     }
     return NULL;
 }
@@ -662,7 +662,7 @@ restoremonsession(char *buff, u16 len)
         return pullm;
     }
     else
-    {   Debug("Failed to parse Monitor str: \"%s\"", buff);
+    {   DebugWarn("Failed to parse Monitor str: \"%s\"", buff);
     }
     return NULL;
 }
@@ -711,7 +711,7 @@ restorestacksession(Desktop *desk, char *buff, uint16_t len)
         }
         else
         {   /* TODO: Technically we dont need isclientsend, but having that prevents a "fail" due to strcmp("Client.", buff); happening after/ */
-            Debug0("Failed to pass move checksum for client.");
+            DebugWarn("Failed to pass move checksum for client.");
         }
     }
     /* end stream */
@@ -779,7 +779,7 @@ savesession(void)
     Monitor *m;
     FILE *fw = fopen(buff, "w");
     if(!fw)
-    {   Debug0("Failed to alloc FILE(OutOfMemory)");
+    {   DebugWarn("Failed to alloc FILE(OutOfMemory)");
         return;
     }
 
@@ -989,7 +989,7 @@ scan(void)
         free(tree);
     }
     else
-    {   Debug0("Failed to scan for clients.");
+    {   DebugWarn("Failed to scan for clients.");
     }
     /* restore session covers this after */
 }
@@ -1087,7 +1087,7 @@ setupcfg(void)
     int status = WMConfigInit();
 
     if(unlikely(status == EXIT_FAILURE))
-    {   Debug0("Failed to init config paths");
+    {   DebugWarn("Failed to init config paths");
     }
 
     USInit(&_cfg, UserSettingsDefault);
@@ -1146,7 +1146,7 @@ setupwatchers(void)
     }
 
     if(!path || status == EXIT_FAILURE)
-    {   Debug0("WARNING: Could not allocate memory for watchers, FEATURE: file watching is not running");
+    {   DebugWarn("Could not allocate memory for watchers, FEATURE: file watching is not running");
     }
 }
 
@@ -1277,13 +1277,13 @@ sighandler(void)
     sa.sa_handler = sighup;
 
     if(sigaction(SIGHUP, &sa, NULL) == -1) 
-    {   Debug0("WARNING: CANNOT_INSTALL_SIGHUP_HANDLER");
+    {   DebugWarn("CANNOT_INSTALL_SIGHUP_HANDLER");
     }
 
     sa.sa_handler = sigterm;
 
     if(sigaction(SIGINT, &sa, NULL) == -1)
-    {   Debug0("WARNING: CANNOT_INSTALL_SIGINT_HANDLER");
+    {   DebugWarn("CANNOT_INSTALL_SIGINT_HANDLER");
     }
 }
 
@@ -1304,17 +1304,18 @@ specialconds(int argc, char *argv[])
 {
     /* local support */
     char *err = strerror_l(errno, uselocale((locale_t)0));
+
     if(err)
     {   
-	/* if we manually quit the display will sometimes send a error if we quit too quickly.
-	 * This is due to the SIGINT (CTRL+C) interrupting some xlib/xcb syscalls.
-	 */
+        /* if we manually quit the display will sometimes send a error if we quit too quickly.
+         * This is due to the SIGINT (CTRL+C) interrupting some xlib/xcb syscalls.
+         */
         if(_wm.manual_exit && strcmp(err, "Resource Unavailable."))
-	{   err = NULL;
-	}
-	else
-	{   Debug("%s", strerror_l(errno, uselocale((locale_t)0)));
-	}
+        {   err = NULL;
+        }
+        else
+        {   DebugError(strerror_l(errno, uselocale((locale_t)0)));
+        }
     }
 
     err = NULL;
@@ -1376,9 +1377,8 @@ specialconds(int argc, char *argv[])
     }
 
     if(err)
-    {   Debug("%s\nError code: %d", err, _wm.has_error);
+    {   DebugError("%s\nError code: %d", err, _wm.has_error);
     }
-
 
     /* this is the end of the exithandler so we dont really care if we segfault here if at all.
      * But this covers some cases where system skips to here. (AKA manual interrupt)
@@ -1400,7 +1400,7 @@ specialconds(int argc, char *argv[])
             {   execvp(argv[0], argv);
             }
             /* execvp failed, likely the binary no longer exists */
-            Debug("Failed to restart using execvp, defaulting to %s", M_STRINGIFY(SoftRestart));
+            DebugWarn("Failed to restart using execvp, defaulting to %s", M_STRINGIFY(SoftRestart));
             break;
     }
 }
@@ -1479,9 +1479,9 @@ xerror(XCBDisplay *display, XCBGenericError *err)
 {
     if(likely(err))
     {
-        DebugI("%s %s\n", XCBGetErrorMajorCodeText(err->major_code), XCBGetFullErrorText(err->error_code));
+        DebugError("%s %s\n", XCBGetErrorMajorCodeText(err->major_code), XCBGetFullErrorText(err->error_code));
 #if NDEBUG
-        DebugI("error_code: [%d], major_code: [%d], minor_code: [%d]\n"
+        DebugError("error_code: [%d], major_code: [%d], minor_code: [%d]\n"
               "sequence: [%d], response_type: [%d], resource_id: [%d]\n"
               "full_sequence: [%d]\n"
               ,

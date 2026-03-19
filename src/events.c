@@ -10,7 +10,6 @@
 #include "getprop.h"
 #include "settings.h"
 
-
 extern WM _wm;
 extern UserSettings _cfg;
 extern XCBAtom netatom[NetLast];
@@ -69,6 +68,43 @@ void (*handler[XCBLASTEvent]) (XCBGenericEvent *) =
     [XCB_NONE] = errorhandler,
 };
 
+static XCBWindow 
+GET_EVENT_TARGET(XCBWindow eventwin, XCBWindow eventchild)
+{
+    return eventwin;
+    /*
+    if(eventchild == XCBNone)
+    {   return eventwin;
+    }
+
+    Client *c = wintoclient(eventchild);
+
+    if(likely(c))
+    {   return eventchild;
+    }
+
+    Debug0("Parent frame container used by another application...");
+
+    return eventwin;
+    */
+}
+
+static XCBWindow
+PROPOGATE_FRAME_WINDOW_EVENT(XCBGenericEvent *ev, XCBWindow eventwin, XCBWindow eventchild, uint32_t eventmask)
+{
+    XCBWindow target = GET_EVENT_TARGET(eventwin, eventchild);
+
+    /*
+    if(target != eventwin)
+    {   
+        XCBSendEvent(_wm.dpy, target, false, eventmask, (const char *)ev);
+        return XCB_NONE;
+    }
+    */
+
+    return target;
+}
+
 void
 keypress(XCBGenericEvent *event)
 {
@@ -94,6 +130,12 @@ keypress(XCBGenericEvent *event)
     (void)eventchild;
     (void)samescreen;
     (void)tim;
+
+    XCBWindow target = PROPOGATE_FRAME_WINDOW_EVENT(event, eventwin, eventchild, XCBKeyPressMask);
+
+    if(target == XCBNone)
+    {   return;
+    }
 
     const i32 cleanstate = CLEANMASK(state);
     /* ONLY use lowercase cause we dont know how to handle anything else */
@@ -152,6 +194,11 @@ keyrelease(XCBGenericEvent *event)
     (void)samescreen;
     (void)tim;
 
+    XCBWindow target = PROPOGATE_FRAME_WINDOW_EVENT(event, eventwin, eventchild, XCBKeyReleaseMask);
+
+    if(target == XCBNone)
+    {   return;
+    }
 
     const i32 cleanstate = CLEANMASK(state);
     /* ONLY use lowercase cause we dont know how to handle anything else */
@@ -208,6 +255,12 @@ buttonpress(XCBGenericEvent *event)
     (void)samescreen;
     (void)tim;
 
+    XCBWindow target = PROPOGATE_FRAME_WINDOW_EVENT(event, eventwin, eventchild, XCBButtonPressMask);
+
+    if(target == XCBNone)
+    {   return;
+    }
+
     const i32 cleanstate = CLEANMASK(state);
 
     u8 sync = 0;
@@ -218,7 +271,8 @@ buttonpress(XCBGenericEvent *event)
     }
 
     Client *c;
-    if((c = wintoclient(eventwin)))
+
+    if((c = wintoclient(target)))
     {
         focus(c);
         arrangeq(c->desktop);
@@ -233,9 +287,10 @@ buttonpress(XCBGenericEvent *event)
         if(_wm.selmon->desksel->sel)
         {   unfocus(_wm.selmon->desksel->sel, 1);
         }
+
         /* if no selected window, this should just set input focus to root, failsafe for above basically */
-        XCBSetInputFocus(_wm.dpy, eventwin, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
-        XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow], XCB_ATOM_WINDOW, 32, XCBPropModeReplace, (unsigned char *)&(eventwin), 1);
+        XCBSetInputFocus(_wm.dpy, target, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
+        XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow], XCB_ATOM_WINDOW, 32, XCBPropModeReplace, (unsigned char *)&(target), 1);
         /* shouldnt need to sync, but too lazy to test */
         sync = 1;
     }
@@ -258,7 +313,8 @@ buttonpress(XCBGenericEvent *event)
     if(sync)
     {   XCBFlush(_wm.dpy);
     }
-    Debug("ButtonPress: (x: %d, y: %d) [%u]", rootx, rooty, eventwin);
+
+    Debug("ButtonPress: (x: %d, y: %d) [%u]", rootx, rooty, target);
 }
 
 void
@@ -287,6 +343,12 @@ buttonrelease(XCBGenericEvent *event)
     (void)eventchild;
     (void)samescreen;
     (void)tim;
+
+    XCBWindow target = PROPOGATE_FRAME_WINDOW_EVENT(event, eventwin, eventchild, XCBButtonReleaseMask);
+
+    if(target == XCBNone)
+    {   return;
+    }
 
     const i32 cleanstate = CLEANMASK(state);
     u8 sync = 0;
@@ -340,6 +402,12 @@ motionnotify(XCBGenericEvent *event)
     (void)tim;
 
 
+    XCBWindow target = PROPOGATE_FRAME_WINDOW_EVENT(event, eventwin, eventchild, XCBPointerMotionMask);
+
+    if(target == XCBNone)
+    {   return;
+    }
+
     /* due to the mouse being able to move a ton we want to limit the cycles burnt for non root events */
     if(eventwin != _wm.root)
     {   return;
@@ -367,10 +435,6 @@ motionnotify(XCBGenericEvent *event)
 void
 enternotify(XCBGenericEvent *event)
 {
-    if(!USGetSetting(&_cfg, HoverFocus).data8[0])
-    {   return;
-    }
-
     XCBEnterNotifyEvent *ev = (XCBEnterNotifyEvent *)event;
     const uint8_t detail    = ev->detail;
     const XCBTimestamp tim  = ev->time;
@@ -386,7 +450,6 @@ enternotify(XCBGenericEvent *event)
     const uint8_t samescreenfocus = ev->same_screen_focus;
 
 
-
     (void)detail;
     (void)tim;
     (void)eventroot;
@@ -400,21 +463,31 @@ enternotify(XCBGenericEvent *event)
     (void)mode;
     (void)samescreenfocus;
 
+
+    XCBWindow target = PROPOGATE_FRAME_WINDOW_EVENT(event, eventwin, eventchild, XCBEnterWindowMask);
+
+    if(target == XCBNone)
+    {   return;
+    }
+
     Client *c;
     Monitor *m;
     u8 sync = 0;
 
-    if((mode != XCB_NOTIFY_MODE_NORMAL || detail == XCB_NOTIFY_DETAIL_INFERIOR) && eventwin != _wm.root)
+    if((mode != XCB_NOTIFY_MODE_NORMAL || detail == XCB_NOTIFY_DETAIL_INFERIOR) && target != _wm.root)
     {   return;
     }
 
-    c = wintoclient(eventwin);
-    m = c ? c->desktop->mon : wintomon(eventwin);
+    c = wintoclient(target);
+    m = c ? c->desktop->mon : wintomon(target);
 
     setmonsel(m);
 
-    if(c && c != _wm.selmon->desksel->sel)
-    {   focus(c);
+    if(USGetSetting(&_cfg, HoverFocus).data8[0])
+    {   
+        if(c && c != _wm.selmon->desksel->sel)
+        {   focus(c);
+        }
     }
 
     sync = 1;
@@ -453,7 +526,12 @@ leavenotify(XCBGenericEvent *event)
     (void)state;
     (void)mode;
     (void)samescreenfocus;
-    
+
+    XCBWindow target = PROPOGATE_FRAME_WINDOW_EVENT(event, eventwin, eventchild, XCBLeaveWindowMask);
+
+    if(target == XCBNone)
+    {   return;
+    }
 }
 
 /* there are some broken focus acquiring clients needing extra handling */
@@ -469,18 +547,27 @@ focusin(XCBGenericEvent *event)
     (void)detail;
     (void)mode;
 
+    XCBWindow target = eventwin;
+
     u8 sync = 0;
 
     Client *sel = _wm.selmon->desksel->sel;
 
-    if(sel && eventwin != sel->win)
+    if(sel)
     {
-        setfocus(sel);
-        sync = 1;
+        if(sel->win != target)
+        {
+            setfocus(sel);
+            sync = 1;
+            Debug("Re-Focused: [%d]", target);
+        }
+        else
+        {   Debug("Focused: [%d]", target);
+        }
     }
-
-
-    Debug("Focused: [%d]", eventwin);
+    else if(!sel)
+    {   Debug("Ignored focus: [%d]?", target);
+    }
 
     if(sync)
     {   XCBFlush(_wm.dpy);
@@ -584,18 +671,29 @@ circulaterequest(XCBGenericEvent *event)
 
     (void)eventwin;
 
+    Client *c;
+    XCBWindow target = win;
+
+    if((c = wintoclient(win)) && c->win != win)
+    {   target = PROPOGATE_FRAME_WINDOW_EVENT(event, c->win, win, XCBSubstructureRedirectMask);
+    }
+
+    if(target == XCBNone)
+    {   return;
+    }
+
     /* TODO update stack */
-    XCBCirculateSubwindows(_wm.dpy, win, !!place);
+    XCBCirculateSubwindows(_wm.dpy, target, !!place);
     switch(place)
     {   
         case XCB_CIRCULATE_RAISE_LOWEST:
-            Debug("Circulate Up: [%u] ", win);
+            Debug("Circulate Up: [%u] ", target);
             break;
         case XCB_CIRCULATE_LOWER_HIGHEST:
-            Debug("Circulate Down: [%u] ", win);
+            Debug("Circulate Down: [%u] ", target);
             break;
         default:
-            Debug("Circulate Unknown: [%u] ", win);
+            Debug("Circulate Unknown: [%u] ", target);
             break;
     }
 }
@@ -621,9 +719,13 @@ configurerequest(XCBGenericEvent *event)
     u8 sync = 0;
     u8 restack = 0;
     u8 geom = 0;
-    if((c = wintoclient(win)))
+
+    XCBWindow target = win;
+
+    if((c = wintoclient(target)))
     {
         const Monitor *m = c->desktop->mon;
+
         i32 rx = c->x;
         i32 ry = c->y;
         i32 rw = c->w;
@@ -807,7 +909,7 @@ configurerequest(XCBGenericEvent *event)
         wc.border_width = bw;
         wc.sibling = sibling;
         wc.stack_mode = stack;
-        XCBConfigureWindow(_wm.dpy, win, mask, &wc);
+        XCBConfigureWindow(_wm.dpy, target, mask, &wc);
         sync = 1;
     }
     if(sync)
@@ -1083,10 +1185,7 @@ unmapnotify(XCBGenericEvent *event)
 
         setmapstate(c, WMMapStateUnmapped);
 
-        /* currently decorations are kinda not implemented */
-        if(USGetSetting(&_cfg, UseDecorations).data8[0] || 1)
-        {   unmanage(c, 1);
-        }
+        unmanage(c, 1);
 
         /* if desktop was selected re arrange (no need to waste resources if not visbile) */
         if(desk->mon->desksel == desk || sticky)

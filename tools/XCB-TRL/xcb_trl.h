@@ -585,7 +585,8 @@ XCBGetScreen(
 XCBWindow 
 XCBRootWindow(
         XCBDisplay *display, 
-        int screen);
+        int screen
+        );
 /* Returns the default root window of the spcified display and screen. 
  *
  * RETURN: The default root window of the current display.
@@ -593,21 +594,32 @@ XCBRootWindow(
 XCBWindow 
 XCBDefaultRootWindow(
         XCBDisplay *display, 
-        int screen);
+        int screen
+        );
+/* Returns the default visual of the screen and display.
+ *
+ */
+XCBVisual
+XCBDefaultVisual(
+        XCBDisplay *display,
+        int screen
+        );
 /* Returns the width of the specified screen in pixels.
  * RETURN: Display Width.
  */
 uint16_t 
 XCBDisplayWidth(
         XCBDisplay *display, 
-        int screen);
+        int screen
+        );
 /* Returns the height of the specified screen in pixels.
  * RETURN: Display Height.
  */
 uint16_t 
 XCBDisplayHeight(
         XCBDisplay *display, 
-        int screen);
+        int screen
+        );
 /* Returns the current display depth.
  *
  * RETURN: uint8_t;
@@ -615,7 +627,8 @@ XCBDisplayHeight(
 uint8_t 
 XCBDisplayDepth(
         XCBDisplay *display, 
-        int screen);
+        int screen
+        );
 /* Returns the default display depth.
  * 
  * RETURN uint8_t;
@@ -623,7 +636,8 @@ XCBDisplayDepth(
 uint8_t 
 XCBDefaultDepth(
         XCBDisplay *display, 
-        int screen);
+        int screen
+        );
 /* See Xlib's documentation of XSelectInput()
  *
  * NOTE: This function IS buffered and must be Flushed before receiving any thing back. (IE your events you want to listen to.)
@@ -636,7 +650,8 @@ XCBCookie
 XCBSelectInput(
         XCBDisplay *display, 
         XCBWindow window, 
-        uint32_t mask);
+        uint32_t mask
+        );
 /*  
  *  revert_to:          XCB_INPUT_FOCUS_NONE                The focus reverts to `XCB_NONE`, so no window will have the input focus.
  *                      XCB_INPUT_FOCUS_POINTER_ROOT        The focus reverts to `XCB_POINTER_ROOT` respectively. When the focus reverts.

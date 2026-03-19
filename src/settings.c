@@ -37,7 +37,7 @@ USSetupCFGVars(
     {   
         err = SCParserNewVar(cfg, usdata[i].name, usdata[i].name_len, READONLY, 0, usdata[i].type);
         if(err)
-        {   Debug("Failed to create: \"%s\"", usdata[i].name);
+        {   DebugWarn("Failed to create: \"%s\"", usdata[i].name);
         }
     }
 }
@@ -112,7 +112,7 @@ USLoad(
 
     if(!configpath)
     {   
-        Debug0("Failed to get system config path, loading defaults");
+        DebugWarn("Failed to get system config path, loading defaults");
         goto UNLOCK;
     }
 
@@ -131,7 +131,7 @@ USLoad(
         /*
          * if the file doesnt exist then we probably read the file when it was deleted
          * if(FFFileExists(configpath))
-         * {   Debug0("Failed to load data?");
+         * {   DebugWarn("Failed to load data?");
          * }
          */
         goto UNLOCK;
@@ -175,7 +175,7 @@ USLoad(
             #endif
 
             if(status)
-            {   Debug("Failed to LOAD, \"%s\"", usdata[i].name);
+            {   DebugWarn("Failed to LOAD, \"%s\"", usdata[i].name);
             }
             else
             {   
@@ -188,7 +188,7 @@ USLoad(
             }
         }
         else
-        {   Debug("Failed to FIND, \"%s\"", usdata[i].name);
+        {   DebugWarn("Failed to FIND, \"%s\"", usdata[i].name);
         }
     }
 
@@ -222,7 +222,7 @@ USSave(
 
     if(!configpath)
     {   
-        Debug0("Failed to get system config path, cannot save settings.");
+        DebugWarn("Failed to get system config path, cannot save settings.");
         goto UNLOCK;
     }
 
@@ -231,7 +231,7 @@ USSave(
         status = FFCreateFile(configpath);
 
         if(status == EXIT_FAILURE)
-        {   Debug0("Failed to create file, unable to write base config.");
+        {   DebugWarn("Failed to create file, unable to write base config.");
         }
         else
         {

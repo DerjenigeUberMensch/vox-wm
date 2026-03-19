@@ -6,14 +6,18 @@
 
 struct Client;
 
-/* Add Client to hashmap */
-void NonNull addclienthash(struct Client *c);
+/* Add Client to hashmap 
+ *
+ * RETURN: EXIT_SUCCESS on Success,
+ * RETURN: EXIT_FAILURE on Failure.
+ */
+int NonNull addclienthash(struct Client *c, XCBWindow key);
 /* Delete Client hashmap */
 void cleanupclienthash(void);
 /* Get Client * from window */
 struct Client *getclienthash(XCBWindow window);
 /* Remove Client from hashmap */
-void NonNull delclienthash(struct Client *c);
+void delclienthash(XCBWindow key);
 /* Setup Client hashmap */
 void setupclienthash(void);
 

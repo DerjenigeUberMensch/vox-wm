@@ -225,7 +225,9 @@ cleanupdesktop(Desktop *desk)
 {
     Client *c = NULL;
     Client *next = NULL;
+
     c = startclient(desk);
+
     while(c)
     {
         next = nextclient(c);
@@ -242,7 +244,7 @@ createdesktop(void)
     Desktop *desk = calloc(1, sizeof(Desktop));
     if(!desk)
     {
-        Debug("%s", "WARN: FAILED TO CREATE DESKTOP");
+        DebugWarn("FAILED TO CREATE DESKTOP");
         return NULL;
     }
     desk->layout = 0;
@@ -373,6 +375,7 @@ restack(Desktop *desk)
     Client *c = NULL;
     u8 config = 0;
     u8 instack = 0;
+    XCBWindow win;
     
     c = startstack(desk);
 
@@ -383,13 +386,19 @@ restack(Desktop *desk)
         /* Client holds both lists so we just check if the next's are the same if not configure it, see above for instack */
         config = nextrstack(c) != nextstack(c) || !instack;
 
+        win = c->win;
+
+        if(ISDECORACTIVE(c))
+        {   win = c->decor->win;
+        }
+
         if(config)
         {   
-            XCBConfigureWindow(_wm.dpy, c->win, XCB_CONFIG_WINDOW_SIBLING|XCB_CONFIG_WINDOW_STACK_MODE, &wc);
+            XCBConfigureWindow(_wm.dpy, win, XCB_CONFIG_WINDOW_SIBLING|XCB_CONFIG_WINDOW_STACK_MODE, &wc);
             Debug("Configured window: %s", c->netwmname);
         }
 
-        wc.sibling = c->win;
+        wc.sibling = win;
         /* replace linked lists with current list */
         c->rprev = c->sprev;
         c->rnext = c->snext;
@@ -720,12 +729,17 @@ updatestackpriorityfocus(Desktop *desk)
 {
     Client *c;
     int i = 0;
+    bool showdecor = USGetSetting(&_cfg, UseDecorations).data8[0];
+
     for(c = startfocus(desk); c; c = nextfocus(c))
     {
         c->rstacknum = ++i;
+
         if(ISFLOATING(c) && DOCKED(c))
         {   setfloating(c, 0);
         }
+
+        setshowdecor(c, showdecor);
     }
 }
 
