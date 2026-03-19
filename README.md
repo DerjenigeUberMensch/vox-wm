@@ -24,7 +24,7 @@ This build is ***not*** fully feature ready.
 ## Why Use this.
 - **Low Memory Usage under (~10 MiB) (When compiled in Release Mode)**
 - **Low CPU usage (~.1-2%) idle**
-- **Low CPU usage when doing expensive stuff (mapping windows) (~4-10%)**
+- **Low CPU usage when doing expensive stuff (mapping windows) (~3-7%)**
 
 ## Why Not Use this.
 - **Doesnt use C++**
