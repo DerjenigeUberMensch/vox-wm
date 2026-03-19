@@ -279,10 +279,25 @@ getrootptr(i16 *x, i16 *y)
 void
 quit(void)
 {
+    int status;
+
+    status = TRY_LOCK_WM();
+
     _wm.running = 0;
+
+    if(status)
+    {   
+        LOCK_WM();
+        status = 0;
+    }
+
     _wm.manual_exit = 1;
     wakeupconnection(_wm.dpy, _wm.screen);
     Debug0("Exiting...");
+
+    if(!status)
+    {   UNLOCK_WM();
+    }
 }
 
 static u8
@@ -1290,7 +1305,9 @@ sighandler(void)
 void
 sighup(int signo) /* signal */
 {
+    LOCK_WM();
     restarthard();
+    UNLOCK_WM();
 }
 
 void

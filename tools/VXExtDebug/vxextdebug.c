@@ -164,3 +164,5 @@ vxextdebug(enum VXMExtDebugType type, const char *file, const int line, const ch
 #undef COLOR_YELLOW
 #undef COLOR_BLUE
 #undef COLOR_MAGENTA
+#undef RESET_ALL
+#undef COLOR_CYAN

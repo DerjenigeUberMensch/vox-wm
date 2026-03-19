@@ -54,11 +54,11 @@ extern void INTERNAL vxextdebug(enum VXMExtDebugType type, const char *file, con
 
 #else
     #ifndef Debug
-        #define Debug(fmt, ...) ((void)0)
+        #define Debug(...) ((void)0)
     #endif
 
     #ifndef DebugLog
-        #define DebugLog(fmt, ...) ((void)0)
+        #define DebugLog(...) ((void)0)
     #endif
 
     #ifndef Debug0
