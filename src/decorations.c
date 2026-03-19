@@ -2,9 +2,12 @@
 
 #include "decorations.h"
 #include "util.h"
+#include "client.h"
+#include "main.h"
 
-#define _DECOR_FLAGS_PREFER_CSD_    (1 << 0)
+extern WM _wm;
 
+u32 ISDECORACTIVE(Client *c) { return c->decor && c->decor->holding; }
 
 Decoration *
 createdecoration(void)
@@ -13,72 +16,116 @@ createdecoration(void)
 
     if(decor)
     {
+        decor->x = 0;
+        decor->y = 0;
         decor->w = 1;
         decor->h = 1;
-        decor->win = 0;
-        decor->child = 0;
-        decor->flags = 0;
+        decor->holding = 0;
+
+        const u8 depth = XCB_COPY_FROM_PARENT;
+        const XCBVisual visual = XCBDefaultVisual(_wm.dpy, _wm.screen);
+        const u8  class = XCB_WINDOW_CLASS_INPUT_OUTPUT;
+        const u32 mask = XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL | XCB_CW_OVERRIDE_REDIRECT;
+
+        XCBCreateWindowValueList va =
+        {
+            .background_pixel = ~0,
+            .border_pixel = 0,
+            .override_redirect = 0,
+        };
+
+        decor->win = XCBCreateWindow(_wm.dpy, _wm.root, 0, 0, decor->w, decor->h, 0, depth, class, visual, mask, &va);
     }
 
     return decor;
 }
 
-Decoration *
-X11DecorCreate(void)
-{
-    Decoration *decor = malloc(sizeof(Decoration));
-    if(decor)
-    {
-        decor->w = 1;
-        decor->h = 1;
-        decor->win = 0;
-        decor->flags = 0;
-    }
-    return decor;
-}
-
 void 
-X11DecorHoldChild(Decoration *decor, XCBWindow child)
+decorationhold(Decoration *decor, Client *c)
 {
-    if(!decor)
+    if(decor->holding)
     {   return;
     }
-    decor->child = child;
-}
 
-void 
-X11DecorMap(XCBDisplay *display, Decoration *decor)
-{
-    if(!display || !decor)
-    {   return;
-    }
-    XCBMapWindow(display, decor->win);
+    decor->holding = 1;
+
+    decorationupdate(decor, c);
+    XCBMapWindow(_wm.dpy, decor->win);
+    XCBReparentWindow(_wm.dpy, c->win, decor->win, 0, 0);
 }
 
 void
-X11DecorUnmap(XCBDisplay *display, Decoration *decor)
+decorationrelease(Decoration *decor, Client *c)
 {
-    if(!display || !decor)
+    if(!decor->holding)
     {   return;
     }
-    XCBUnmapWindow(display, decor->win);
+
+    decor->holding = 0;
+
+    XCBReparentWindow(_wm.dpy, c->win, _wm.root, c->x, c->y);
+    XCBUnmapWindow(_wm.dpy, decor->win);
 }
 
 void 
-X11DecorSetPreferCSD(Decoration *decor, uint8_t state)
+decorationupdate(Decoration *decor, Client *c)
 {
-    if(!decor)
+    if(!decor->holding)
     {   return;
     }
-    const char *const GTK_CSD = "GTK_CSD";
-    const char *const GTK_REPLACE = "1";
 
-    SETFLAG(decor->flags, _DECOR_FLAGS_PREFER_CSD_, !!state);
+    u32 mask = 0;
 
-    if(state)
-    {   setenv(GTK_CSD, GTK_REPLACE, 1);
+    if(decor->x != c->x)
+    {   
+        decor->x = c->x;
+        mask |= XCB_CONFIG_WINDOW_X;
     }
-    else
-    {   unsetenv(GTK_CSD);
+
+    if(decor->y != c->y)
+    {
+        decor->y = c->y;
+        mask |= XCB_CONFIG_WINDOW_Y;
     }
+
+    if(decor->w != c->w)
+    {
+        decor->w = c->w;
+        mask |= XCB_CONFIG_WINDOW_WIDTH;
+    }
+
+    if(decor->h != c->h)
+    {   
+        decor->h = c->h;
+        mask |= XCB_CONFIG_WINDOW_HEIGHT;
+    }
+
+    XCBWindowChanges changes =
+    {   
+        .x = decor->x,
+        .y = decor->y,
+        .width = decor->w,
+        .height = decor->h,
+    };
+
+    if(mask)
+    {   
+        XCBConfigureWindow(_wm.dpy, decor->win, mask, &changes);
+        mask &= ~(XCB_CONFIG_WINDOW_X|XCB_CONFIG_WINDOW_Y);
+        if(mask)
+        {   XCBConfigureWindow(_wm.dpy, c->win, mask, &changes);
+        }
+    }
+}
+
+void
+decorationfocus(Decoration *decor, Client *c, bool focus)
+{
+}
+
+void 
+cleanupdecoration(Decoration *decor)
+{
+    XCBDestroyWindow(_wm.dpy, decor->win);
+    free(decor);
 }

@@ -124,6 +124,7 @@ static void
 UpdateUseDecorations(Generic prev, Generic current)
 {
     USER_SETTINGS_RETURN_IF_NO_CHANGE(prev, current);
+    UpdateDesktop();
 }
 
 static void 

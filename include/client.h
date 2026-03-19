@@ -198,7 +198,7 @@ void NonNull cleanupclient(Client *c);
 /* Initializes the Clients colormap */
 void NonNullArg(1) clientinitcolormap(Client *c, XCBGetWindowAttributes *wa);
 /* Initializes the Client decoration */
-void NonNull clientinitdecor(Client *c);
+void NonNull clientinitdecor(Client *c, uint32_t inputmask);
 /* Initializes the Clients floating status, based on clients flags/hints. _NET_WM_STATE/_NET_WM_WINDOW_TYPE */
 void NonNull clientinitfloat(Client *c);
 /* Initializes the Client geometry from the specified XCBWindowGeometry struct. 
@@ -490,14 +490,13 @@ Client *NonNull startstack(struct Desktop *desk);
  */
 Client *NonNull startrstack(struct Desktop *desk);
 /* Unfocuses specified client and sets to focus to root if setfocus is true */
-void NonNull unfocus(Client *c, uint8_t setfocus);
+void FuncNullable unfocus(Client *c, uint8_t setfocus);
 /* updates a clients classname from XCBWMClass *_class 
  * No side effects on non filled _class dataw;
  */
 void NonNullArg(1) updateclass(Client *c, XCBWMClass *_class);
 /* Updates the Clients colormap */
 void NonNull updatecolormap(Client *c, XCBColormap colormap);
-void NonNull updatedecor(Client *c);
 /* Updates the Client icon if we find one */
 void NonNullArg(1) updateicon(Client *c, XCBWindowProperty *iconprop);
 /* Updates the Clients border properties to the XServer */

@@ -1,37 +1,32 @@
 #ifndef _WM_DECORATIONS_H_
 #define _WM_DECORATIONS_H_
 
-
 #include "../tools/XCB-TRL/xcb_trl.h"
+
+#include "util.h"
 
 typedef struct Decoration Decoration;
 
+struct Client;
 
-struct Decoration
+struct 
+Decoration
 {
     /* TODO */
+    int16_t x;
+    int16_t y;
     uint16_t w;
     uint16_t h;
     XCBWindow win;
-    XCBWindow child;
-    uint8_t flags;
-    uint8_t pad0[3];
+    uint8_t holding;
 };
 
-/* Allocates a decoration with all properties set to 0 or NULL. 
- * RETURN: Decoration * on Success.
- * RETURN: NULL on Failure.
- */
-Decoration *X11DecorCreate(void);
-/*
- * NOTE: Only 1 child can be held by a decoration.
- */
-void X11DecorHoldChild(Decoration *decor, XCBWindow child);
-/* Maps associated decoration window.
- */
-void X11DecorMap(XCBDisplay *display, Decoration *decor);
-
-void X11DecorPreferCSD(Decoration *decor);
-
+Decoration *createdecoration(void);
+void NonNullAll decorationhold(Decoration *decor, struct Client *c);
+void NonNullAll decorationrelease(Decoration *decor, struct Client *c);
+void NonNullAll decorationupdate(Decoration *decor, struct Client *c);
+void NonNullAll decorationfocus(Decoration *decor, struct Client *c, bool focus);
+void NonNullAll cleanupdecoration(Decoration *decor);
+uint32_t NonNull ISDECORACTIVE(struct Client *c);
 
 #endif

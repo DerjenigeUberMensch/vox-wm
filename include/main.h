@@ -103,7 +103,7 @@ WMWork
 struct 
 WM
 {
-    int running;                    /* Running flag         */
+    volatile int running;           /* Running flag         */
     int numlockmask;                /* numlockmask          */
     int screen;                     /* Screen id            */
 
@@ -124,8 +124,8 @@ WM
     uint8_t flags;                  /* WM Flags,            */
     uint8_t has_error;              /* Error flag           */
     uint8_t use_threads;            /* Use thread Flag      */
-    uint8_t manual_exit;            /* Manual terminate flag*/
     uint8_t use_watcher;            /* Watchers Flag        */
+    uint8_t manual_exit;            /* Manual terminate flag*/
     uint8_t restart;                /* Restart Flag         */
     uint8_t pad[3];
 

@@ -32,7 +32,7 @@ ReadStartupApps(
 
     if(!config)
     {   
-        DebugI("%s", "Failed to load Startup Apps");
+        DebugWarn("Failed to load Startup Apps");
         return;
     }
 
@@ -41,7 +41,7 @@ ReadStartupApps(
         status = FFCreateFile(config);
 
         if(unlikely(status == EXIT_FAILURE))
-        {   Debug0("Failed to create empty file for startup config.");
+        {   DebugWarn("Failed to create empty file for startup config.");
         }
         else
         {   Debug("Created Startup Config! -> %s", config);
@@ -62,7 +62,7 @@ ReadStartupApps(
 
     if(fd == ERROR)
     {   
-        perror("fileno");
+        Debug0("fileno");
         fclose(fr);
         return;
     }
@@ -127,7 +127,7 @@ ReadStartupApps(
 
         if(wordexp(buff, &word, WRDE_NOCMD) != 0)
         {   
-            Debug("Failed to parse %s", buff);
+            DebugWarn("Failed to parse %s", buff);
             continue;
         }
 
@@ -144,7 +144,7 @@ ReadStartupApps(
         status = chdir(olddir);
 
         if(status == ERROR)
-        {   DebugI("%s", "Unable to rechange dir during ReadStartupApps() function, you may have unexpected program behaviour, it is recommened to restart() " MARK);
+        {   DebugWarn("Unable to rechange dir during ReadStartupApps() function, you may have unexpected program behaviour, it is recommened to restart() " MARK);
         }
     }
 

@@ -31,8 +31,11 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <assert.h>
+#include <stdbool.h>
 
 #include "safebool.h"
+#include "file_util.h"
+#include "VXExtDebug/vxextdebug.h"
 
 typedef uint8_t  u8;
 typedef uint16_t u16;
@@ -179,22 +182,6 @@ Generic
 
 #ifndef NDEBUG
 
-#ifndef Debug
-#define Debug(fmt, ...) (fprintf(stderr, "[%s:%d] by %s(): " fmt "\n", __FILE__,__LINE__,__func__,__VA_ARGS__))
-#endif
-
-#ifndef Debug0
-#define Debug0(X) (fprintf(stderr, "[%s:%d] by %s(): " X "\n", __FILE__, __LINE__, __func__))
-#endif
-
-#ifndef DebugI
-#define DebugI(fmt, ...) (fprintf(stderr, "[%s:%d] by %s(): " fmt "\n", __FILE__,__LINE__,__func__,__VA_ARGS__))
-#endif
-
-#ifndef ASSERT
-#include <assert.h>
-#define ASSERT(expr) (assert(likely(expr)), likely(expr))
-#endif
 
 #else
 
@@ -202,21 +189,6 @@ Generic
 STATIC_ASSERT(0, cannot_run_debug_with_ndebug)
 #endif
 
-#ifndef Debug
-#define Debug(fmt, ...) ((void)0)
-#endif
-
-#ifndef Debug0
-#define Debug0(X)       ((void)0)
-#endif
-
-#ifndef DebugI
-#define DebugI(fmt, ...) (fprintf(stderr, "%s(): " fmt "\n", __func__, __VA_ARGS__))
-#endif
-
-#ifndef ASSERT
-#define ASSERT(expr)       (likely(expr))
-#endif
 
 #endif
 

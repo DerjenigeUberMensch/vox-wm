@@ -107,15 +107,18 @@ cleanupmon(Monitor *m)
     Desktop *desk = NULL;
     Desktop *desknext = NULL;
     desk = m->desktops;
+
     while(desk)
     {
         desknext = desk->next;
         cleanupdesktop(desk);
         desk = desknext;
     }
+
     if(m->bar)
-    {   cleanupclient(m->bar);
+    {   unmanage(m->bar, 0);
     }
+
     free(m);
     m = NULL;
 }
@@ -250,7 +253,7 @@ setdesktopcount(Monitor *m, uint16_t desktops)
             }
         }
         if(failurecount)
-        {   Debug("Failed [%d]", failurecount);
+        {   DebugWarn("Failed [%d]", failurecount);
         }
     }
 
@@ -502,7 +505,7 @@ updateclientlist(XCBWindow win, enum ClientListModes type)
             return;
     }
 
-    Debug("%d", GArrayEnd(&_wm.clients));
+    /* Debug("%d", GArrayEnd(&_wm.clients)); */
 
     garray_i it;
 
@@ -518,7 +521,7 @@ updateclientlist(XCBWindow win, enum ClientListModes type)
 
         if(!ASSERT(winsearch))
         {   
-            Debug0("Failed to get window");
+            DebugWarn("Failed to get window");
             continue;
         }
 
@@ -555,7 +558,7 @@ updateclientlist(XCBWindow win, enum ClientListModes type)
 
     if(!ASSERT(item_size == sizeof(XCBWindow)))
     {   
-        Debug0("item size is incorrect size.");
+        DebugError("item size is incorrect size.");
         return;
     }
 
@@ -598,7 +601,7 @@ updateclientstackinglist(void)
 
             /* stacking isnt that important to care about failign to pushback some clients */
             if(!likely(status == EXIT_SUCCESS))
-            {   Debug("Failed to push client for whatever reason: [%d]", c->win);
+            {   DebugWarn("Failed to push client for whatever reason: [%d]", c->win);
             }
         }
     }
@@ -611,7 +614,7 @@ updateclientstackinglist(void)
 
         /* stacking isnt that important to care about failign to pushback some clients */
         if(!likely(status == EXIT_SUCCESS))
-        {   Debug("Failed to push client for whatever reason: [%d]", c->win);
+        {   DebugWarn("Failed to push client for whatever reason: [%d]", c->win);
         }
     }
 

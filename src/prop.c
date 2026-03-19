@@ -523,6 +523,7 @@ PropUpdateManage(
         }
 
         showhide(c);
+        resize(c, c->x, c->y, c->w, c->h, 0);
     }
     else if(_wm.selmon->bar && _wm.selmon->bar->win == win)
     {

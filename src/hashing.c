@@ -8,8 +8,8 @@
 KHASH_MAP_INIT_INT(__CLIENTS__, Client *)
 static khash_t(__CLIENTS__) *hashedclients = NULL;
 
-void
-addclienthash(Client *c)
+int
+addclienthash(Client *c, XCBWindow key)
 {
     /* no SIGSEV protection in khash so we must check ourselvs */
     if(!hashedclients)
@@ -18,12 +18,13 @@ addclienthash(Client *c)
         /* malloc probably failed */
         if(!hashedclients)
         {   
-            Debug0("Failed to reinitialize hashedclients");
-            return;
+            DebugWarn("Failed to reinitialize hashedclients");
+            return EXIT_FAILURE;
         }
     }
+
     int err;
-    khint_t k = kh_put(__CLIENTS__, hashedclients, c->win, &err);
+    khint_t k = kh_put(__CLIENTS__, hashedclients, key, &err);
 
     enum
     {
@@ -37,11 +38,12 @@ addclienthash(Client *c)
     {
         case __KHASH_BAD_OPERATION:
             /* likely malloc() failed. */
-            Debug0("Failed to alloc memory for hash.");
-            return;
+            DebugWarn("Failed to alloc memory for hash.");
+            return EXIT_FAILURE;
         case __KHASH_ALREADY_PRESENT:
             Debug0("Item already present in khash. FIXME");
-            return;
+            (void)ASSERT(0);
+            return EXIT_SUCCESS;
         case __KHASH_FIRST_HASH:
             break;
         /* XCB overflows and reuses ids when ever it can, or should I say, the XServer does that. */
@@ -52,6 +54,8 @@ addclienthash(Client *c)
     if(kh_end(hashedclients) > k)
     {   kh_value(hashedclients, k) = c;
     }
+
+    return EXIT_SUCCESS;
 }
 
 void
@@ -74,13 +78,15 @@ getclienthash(XCBWindow win)
 }
 
 void
-delclienthash(Client *c)
+delclienthash(XCBWindow key)
 {
     /* no SIGSEV protection in khash so we must check ourselvs */
     if(!hashedclients)
     {   return;
     }
-    khint_t k = kh_get(__CLIENTS__, hashedclients, c->win);
+
+    khint_t k = kh_get(__CLIENTS__, hashedclients, key);
+
     if(k != kh_end(hashedclients))
     {   kh_del(__CLIENTS__, hashedclients, k);
     }

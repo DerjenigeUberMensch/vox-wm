@@ -1,3 +1,5 @@
+#include <string.h>
+#include <math.h>
 #include <math.h> /* fabsf() */
 
 #include "main.h"
@@ -5,9 +7,9 @@
 #include "hashing.h"
 #include "getprop.h"
 #include "bar.h"
+#include "decorations.h"
+#include "util.h"
 
-#include <string.h>
-#include <math.h>
 
 extern WM _wm;
 extern UserSettings _cfg;
@@ -327,7 +329,7 @@ __FLOAT__TYPE__IS__FLOATING(
 
     double MAX_SCORE = 100;
 
-    Debug("(h: %lf, g: %lf, p: %lf)", hints, geom, pos);
+    /* Debug("(h: %lf, g: %lf, p: %lf)", hints, geom, pos); */
 
     if(total > MAX_SCORE * .5)
     {   return true;
@@ -358,7 +360,24 @@ SHOULDBEFLOATING(Client *c)
                                     bool ret = __FLOAT__TYPE__IS__FLOATING(c, htype, gtype, ptype);
 
                                     if(!ret)
-                                    {   Debug("[%s] Was Not Floating", c->wmname ? c->wmname : c->netwmname ? c->netwmname : "NULL");
+                                    {   
+                                        char *name = "NULL";
+
+                                        if(c->netwmname)
+                                        {   name = c->netwmname;
+                                        }
+                                        else if(c->wmname)
+                                        {   name = c->wmname;
+                                        }
+                                        else if(c->instancename)
+                                        {   name = c->instancename;
+                                        }
+                                        else if(c->classname)
+                                        {   name = c->classname;
+                                        }
+
+                                        (void)name;
+                                        Debug("[%s] Was Not Floating", name);
                                     }
                                     return ret;
                                 }
@@ -442,12 +461,14 @@ u32 SHOULDMANAGE(const XCBWindow window)
                                 {
                                     Client *c = wintoclient(window);
                                     XCBWindow already_managed_window = c ? c->win : 0;
+                                    XCBWindow already_managed_decor_window = c ? c->decor->win : 0;
                                     const XCBWindow INVALID_WINDOW[] = 
                                     {
                                         XCB_NONE,
                                         _wm.root,
                                         _wm.wmcheckwin,
                                         already_managed_window,
+                                        already_managed_decor_window
                                     };
 
                                     int i;
@@ -463,7 +484,8 @@ u32 SHOULDMANAGE(const XCBWindow window)
 Client *REMOVECLIENTREFERENCES(Client *c)
                                 {
                                     detachcompletely(c);
-                                    delclienthash(c);
+                                    delclienthash(c->win);
+                                    delclienthash(c->decor->win);
                                     return c;
                                 }
 u32 ISFIXED(Client *c)          { return (c->minw != 0) && (c->minh != 0) && (c->minw == c->maxw) && (c->minh == c->maxh); }
@@ -706,19 +728,12 @@ applysizehints(Client *c, i32 *x, i32 *y, i32 *width, i32 *height, uint8_t inter
 void
 cleanupclient(Client *c)
 {
-    Debug("%p", (void *)c);
+    cleanupdecoration(c->decor);
+
     free(c->wmname);
     free(c->netwmname);
     free(c->classname);
     free(c->instancename);
-
-    if(c->decor && c->decor->win)
-    {   
-        /* XCBReparentWindow(); */
-        XCBDestroyWindow(_wm.dpy, c->decor->win);
-    }
-
-    free(c->decor);
     free(c->icon);
     free(c);
     c = NULL;
@@ -735,26 +750,10 @@ clientinitcolormap(Client *c, XCBGetWindowAttributes *wa)
 }
 
 void
-clientinitdecor(Client *c)
+clientinitdecor(Client *c, u32 inputmask)
 {
-    Decoration *decor = c->decor;
-
-    decor->h = 15;
-    decor->w = 10;
-
-    const u8 depth = XCB_COPY_FROM_PARENT;
-    const XCBVisual visual = XCBGetScreen(_wm.dpy)->root_visual;
-    const u8  class = XCB_WINDOW_CLASS_INPUT_OUTPUT;
-    const u32 mask = XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL;
-
-    XCBCreateWindowValueList va =
-    {
-        .background_pixel = ~0,
-        .border_pixel = 0,
-        .override_redirect = 1,
-    };
-
-    decor->win = XCBCreateWindow(_wm.dpy, _wm.root, 0, 0, c->w, c->h, 0, depth, class, visual, mask, &va);
+    XCBSelectInput(_wm.dpy, c->decor->win, inputmask);
+    decorationupdate(c->decor, c);
 }
 
 void
@@ -804,7 +803,6 @@ clientinitmapstate(Client *c, XCBGetWindowAttributes *wa)
         {
             case XCBIsViewable:
                 setmapstate(c, WMMapStateMapped);
-                setwtypemapnormal(c, 1);
                 break;
             /* Unviewable is when parent is unmapped, but implementation wise we can treat this as unmapped.
              * as there is no real difference in terms of error generated from certain operations...
@@ -813,8 +811,6 @@ clientinitmapstate(Client *c, XCBGetWindowAttributes *wa)
             case XCBIsUnviewable:
             case XCBIsUnmapped:
             default:
-                setwtypemapiconic(c, 1);
-
                 setmapstate(c, WMMapStateUnmapped);
                 break;
         }
@@ -880,14 +876,16 @@ createclient(void)
 {
     /* This uses calloc as we are currently testing stuff, but we will juse malloc and zero it out later in production*/
     Client *c = calloc(1, sizeof(Client ));
-    Decoration *decor = X11DecorCreate();
+    Decoration *decor = createdecoration();
     if(!c || !decor)
     {   
-        Debug0("Could not allocate memory for client (OutOfMemory).");
-        Debug("Client:      %p", (void *)c);
-        Debug("Decoration:  %p", (void *)decor);
+        DebugWarn("Could not allocate memory for client (OutOfMemory).");
         free(c);
-        free(decor);
+
+        if(decor)
+        {   cleanupdecoration(decor);
+        }
+
         return NULL;
     }
     c->decor = decor;
@@ -910,7 +908,6 @@ createclient(void)
     c->netwmname = NULL;
     c->classname = NULL;
     c->instancename = NULL;
-    Debug("%p", (void *)c);
     return c;
 }
 
@@ -933,16 +930,13 @@ focus(Client *c)
         }
 
         grabbuttons(c, 1);
-        XCBSetWindowBorder(_wm.dpy, c->win, c->bcol);
+        updatebordercol(c);
         setfocus(c);
     }
     else
-    {
-        XCBWindow empty = 0;
-
-        XCBSetInputFocus(_wm.dpy, _wm.root, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
-        XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow], XCB_ATOM_WINDOW, 32, XCBPropModeReplace, &empty, 1);
+    {   unfocus(NULL, 1);
     }
+
     desk->sel = c;
 
     /* Debug("Attempted to Focus: [%d]", c ? c->win : 0); */
@@ -977,11 +971,9 @@ focusrealize(Client *c)
     return c;
 }
 
-void
-grabbuttons(Client *c, uint8_t focused)
+static void
+__grabbuttons(XCBWindow win, bool neverholdfocus, bool focused)
 {
-    /* make sure no other client steals our grab */
-    xcb_grab_server(_wm.dpy);
     u16 i, j;
     /* numlock is int */
     int modifiers[4] = { 0, XCB_MOD_MASK_LOCK, _wm.numlockmask, _wm.numlockmask|XCB_MOD_MASK_LOCK};
@@ -989,29 +981,15 @@ grabbuttons(Client *c, uint8_t focused)
     /* Always grab these to allow for replay pointer when focusing by mouse click */
     u8 gbuttons[3] = { LMB, MMB, RMB };
 
-    /* ungrab any previously grabbed buttons that are ours */
-    for(i = 0; i < LENGTH(modifiers); ++i)
-    {
-        if(!NEVERHOLDFOCUS(c))
-        {
-            for(j = 0; j < LENGTH(gbuttons); ++j)
-            {   XCBUngrabButton(_wm.dpy, gbuttons[j], modifiers[i], c->win);
-            }
-        }
-        for(j = 0; j < LENGTH(buttons); ++j)
-        {   XCBUngrabButton(_wm.dpy, buttons[j].button, modifiers[i], c->win);
-        }
-    }
-
     if (!focused)
     {
         /* grab focus buttons */
-        if(!NEVERHOLDFOCUS(c))
+        if(!neverholdfocus)
         {
             for (i = 0; i < LENGTH(gbuttons); ++i)
             {
                 for (j = 0; j < LENGTH(modifiers); ++j)
-                {   XCBGrabButton(_wm.dpy, gbuttons[i], modifiers[j], c->win, False, BUTTONMASK, XCB_GRAB_MODE_SYNC, XCB_GRAB_MODE_SYNC, XCB_NONE, XCB_NONE);
+                {   XCBGrabButton(_wm.dpy, gbuttons[i], modifiers[j], win, False, BUTTONMASK, XCB_GRAB_MODE_SYNC, XCB_GRAB_MODE_SYNC, XCB_NONE, XCB_NONE);
                 }
             }
         }
@@ -1022,11 +1000,60 @@ grabbuttons(Client *c, uint8_t focused)
         {
             XCBGrabButton(_wm.dpy, buttons[i].button, 
                     buttons[i].mask | modifiers[j], 
-                    c->win, False, BUTTONMASK, 
+                    win, False, BUTTONMASK, 
                     XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_SYNC, 
                     XCB_NONE, XCB_NONE);
         }
     }
+}
+
+static void
+__ungrabbuttons(XCBWindow win, bool neverholdfocus, bool focused)
+{
+    u16 i, j;
+    /* numlock is int */
+    int modifiers[4] = { 0, XCB_MOD_MASK_LOCK, _wm.numlockmask, _wm.numlockmask|XCB_MOD_MASK_LOCK};
+    /* somewhat taken from i3 */
+    /* Always grab these to allow for replay pointer when focusing by mouse click */
+    u8 gbuttons[3] = { LMB, MMB, RMB };
+
+    /* ungrab any previously grabbed buttons that are ours */
+    for(i = 0; i < LENGTH(modifiers); ++i)
+    {
+        /* direct win grabs */
+        if(!neverholdfocus)
+        {
+            for(j = 0; j < LENGTH(gbuttons); ++j)
+            {   XCBUngrabButton(_wm.dpy, gbuttons[j], modifiers[i], win);
+            }
+        }
+
+        for(j = 0; j < LENGTH(buttons); ++j)
+        {   XCBUngrabButton(_wm.dpy, buttons[j].button, modifiers[i], win);
+        }
+    }
+}
+
+void
+grabbuttons(Client *c, uint8_t focused)
+{
+    /* make sure no other client steals our grab */
+    xcb_grab_server(_wm.dpy);
+
+    __ungrabbuttons(c->decor->win, NEVERHOLDFOCUS(c), focused);
+    __ungrabbuttons(c->win, NEVERHOLDFOCUS(c), focused);
+
+    XCBWindow grab;
+
+    if(ISDECORACTIVE(c))
+    {   grab = c->decor->win;
+    }
+    else
+    {   grab = c->win;
+    }
+
+    __grabbuttons(grab, NEVERHOLDFOCUS(c), focused);
+
     xcb_ungrab_server(_wm.dpy);
 }
 
@@ -1076,6 +1103,7 @@ killclient(Client *c, enum KillType type)
     else
     {
         XCBWindow win = c->win;
+
         switch(type)
         {
             case Graceful:
@@ -1288,6 +1316,7 @@ manage(XCBWindow win, bool allow_unmapped_window, void *replies[ManageClientLAST
 {
     Monitor *m = NULL;
     Client *c = NULL;
+
     /* checks */
     if(IS_WM_WINDOW(win))
     {   goto FAILURE;
@@ -1300,7 +1329,7 @@ manage(XCBWindow win, bool allow_unmapped_window, void *replies[ManageClientLAST
 
     const u16 bw = 0;
     const u32 bcol = 0;
-    const u8 showdecor = 1;
+    const u8 showdecor = USGetSetting(&_cfg, UseDecorations).data8[0];
 
     const u32 inputmask = XCB_EVENT_MASK_ENTER_WINDOW|XCB_EVENT_MASK_FOCUS_CHANGE|XCB_EVENT_MASK_PROPERTY_CHANGE|XCB_EVENT_MASK_STRUCTURE_NOTIFY;
 
@@ -1350,7 +1379,6 @@ manage(XCBWindow win, bool allow_unmapped_window, void *replies[ManageClientLAST
     setclientpid(c, pid ? *pid : 0);
     setborderwidth(c, bw);
     setbordercolor32(c, bcol);
-    setshowdecor(c, showdecor);
     updatetitle(c, getnamefromreply(netwmnamereply), getnamefromreply(wmnamereply));
     updateborder(c);
     updatesizehints(c, hints);
@@ -1361,8 +1389,9 @@ manage(XCBWindow win, bool allow_unmapped_window, void *replies[ManageClientLAST
     updateclientdesktop(c);
     /* check if should be floating after, all size hints and other things are set. */
     clientinitfloat(c);
-    clientinitdecor(c);
+    clientinitdecor(c, inputmask);
     clientinitmapstate(c, waattributes);
+    setshowdecor(c, showdecor);
     XCBSelectInput(_wm.dpy, win, inputmask);
     grabbuttons(c, 0);
 
@@ -1382,7 +1411,8 @@ manage(XCBWindow win, bool allow_unmapped_window, void *replies[ManageClientLAST
         }
     }
 
-    addclienthash(c);
+    (void)addclienthash(c, c->win);
+    (void)addclienthash(c, c->decor->win);
 
     attach(c);
     attachstack(c);
@@ -1403,7 +1433,9 @@ manage(XCBWindow win, bool allow_unmapped_window, void *replies[ManageClientLAST
 
     goto CLEANUP;
 FAILURE:
-    free(c);
+    if(c)
+    {   cleanupclient(c);
+    }
     c = NULL;
 CLEANUP:
     return c;
@@ -1562,10 +1594,16 @@ resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
      * 3.) Prevent the window from moving itself back into view, when it should be hidden.
      * 4.) Incase a window does want focus, we switch to that desktop respectively and let showhide() do the work.
      */
-    if(ISVISIBLE(c))
+    if(ISVISIBLE(c) || 1)
     {
         if(mask)
-        {   XCBConfigureWindow(_wm.dpy, c->win, mask, &changes);
+        {   
+            if(ISDECORACTIVE(c))
+            {   decorationupdate(c->decor, c);
+            }
+            else
+            {   XCBConfigureWindow(_wm.dpy, c->win, mask, &changes);
+            }
         }
     }
     else
@@ -1575,19 +1613,8 @@ resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
     /* only send config if changed */
     if(mask)
     {   
-        if(DOCKEDVERT(c) && !ISMAXVERT(c))
-        {   setclientnetstate(c, netatom[NetWMStateMaximizedVert], 1);
-        }
-        if(!DOCKEDVERT(c) && ISMAXVERT(c))
-        {   setclientnetstate(c, netatom[NetWMStateMaximizedVert], 0);
-        }
-
-        if(DOCKEDHORZ(c) && !ISMAXHORZ(c))
-        {   setclientnetstate(c, netatom[NetWMStateMaximizedHorz], 1);
-        }
-        if(!DOCKEDHORZ(c) && ISMAXHORZ(c))
-        {   setclientnetstate(c, netatom[NetWMStateMaximizedHorz], 0);
-        }
+        setclientnetstate(c, netatom[NetWMStateMaximizedVert], !!ISMAXVERT(c));
+        setclientnetstate(c, netatom[NetWMStateMaximizedHorz], !!ISMAXHORZ(c));
         configure(c);
     }
 }
@@ -1873,10 +1900,10 @@ setskiptaskbar(Client *c, uint8_t state)
 void
 setshowdecor(Client *c, uint8_t state)
 {
-    /* TODO, Implement this.
-     * As of now this is not implemented but for the sake of being NetWM Compliant, 
-     * We just set the decorations to be 0, (AKA No decorations)
-     */
+    if(state)
+    {   DebugWarn("decorations are disabled in this version of vox-wm due to compatibilityissues");
+    }
+
     state = 0;
     enum __FrameExtents
     {
@@ -1885,27 +1912,18 @@ setshowdecor(Client *c, uint8_t state)
         __FrameExtentsTW,   /* Top "decoration" Width, AKA the Height */
         __FrameExtentsBW,   /* Bottom "decoration" Width, AKA the Height */
     };
+
     u32 data[4] = { 0, 0, 0, 0 };
+
     if(state)
-    {   
-        if(c->decor->win)
-        {   
-            Decoration *decor = c->decor;
-            XCBMapWindow(_wm.dpy, decor->win);   
-            /* as of now not supported but eventually */
-            data[0] = 0;
-            data[1] = 0;
-            data[2] = decor->h;
-            data[3] = 0;
-        }
+    {   decorationhold(c->decor, c);
     }
     else
-    {
-        if(c->decor->win)
-        {   XCBUnmapWindow(_wm.dpy, c->decor->win);
-        }
+    {   decorationrelease(c->decor, c);
     }
+
     SETFLAG(c->flags, ClientFlagShowDecor, !!state);
+
     XCBChangeProperty(_wm.dpy, c->win, netatom[NetWMFrameExtents], XCB_ATOM_CARDINAL, 32, XCBPropModeReplace, (unsigned char *)data, 4);
 }
 
@@ -2034,15 +2052,13 @@ showhide(Client *c)
     Monitor *m = c->desktop->mon;
 
     if(ISVISIBLE(c))
-    {   
-        x = c->x;
+    {   x = c->x;
     }
     else
-    {   
-        x = -c->w - m->mx;
+    {   x = -c->w - m->mx;
     }
 
-    XCBMoveResizeWindow(_wm.dpy, c->win, x, c->y, c->w, c->h);
+    resizemove(c, x, c->y, 1);
 }
 
 Client *
@@ -2072,9 +2088,12 @@ startrstack(Desktop *desk)
 void
 unfocus(Client *c, uint8_t setfocus)
 {
-    grabbuttons(c, 0);
-    XCBSetWindowBorder(_wm.dpy, c->win, c->bcol);
-    setclientnetstate(c, netatom[NetWMStateFocused], 0);
+    if(c)
+    {
+        grabbuttons(c, 0);
+        updatebordercol(c);
+        setclientnetstate(c, netatom[NetWMStateFocused], 0);
+    }
 
     if(setfocus)
     {   
@@ -2084,7 +2103,9 @@ unfocus(Client *c, uint8_t setfocus)
         XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow], XCB_ATOM_WINDOW, 32, XCBPropModeReplace, &noactivewindow, 1);
     }
 
-    SETFLAG(c->ewmhflags, WStateFlagFocused, 0);
+    if(c)
+    {   SETFLAG(c->ewmhflags, WStateFlagFocused, 0);
+    }
 }
 
 void
@@ -2104,13 +2125,31 @@ updateborder(Client *c)
 void
 updatebordercol(Client *c)
 {
-    XCBSetWindowBorder(_wm.dpy, c->win, c->bcol);
+    XCBWindow win;
+
+    if(ISDECORACTIVE(c))
+    {   win = c->decor->win;
+    }
+    else
+    {   win = c->win;
+    }
+
+    XCBSetWindowBorder(_wm.dpy, win, c->bcol);
 }
 
 void
 updateborderwidth(Client *c)
 {
-    XCBSetWindowBorderWidth(_wm.dpy, c->win, c->bw);
+    XCBWindow win;
+
+    if(ISDECORACTIVE(c))
+    {   win = c->decor->win;
+    }
+    else
+    {   win = c->win;
+    }
+
+    XCBSetWindowBorderWidth(_wm.dpy, win, c->bw);
 }
 
 void
@@ -2144,12 +2183,13 @@ unmanage(Client *c, uint8_t destroyed)
 
     /* prevent dangling pointer here woops */
     if(!destroyed)
-    {   grabbuttons(c, ISFOCUSED(c));
+    {   
+        grabbuttons(c, ISFOCUSED(c));
+        decorationrelease(c->decor, c);
         /* TODO causes alot of errors for some reason even if its not "destroyed" */
     }
 
-    delclienthash(c);
-    detachcompletely(c);
+    REMOVECLIENTREFERENCES(c);
     /* Destroy colormap */
     updatecolormap(c, 0);
     updateclientlist(win, ClientListRemove);
@@ -2289,12 +2329,14 @@ __update_motif_decor(Client *c, uint32_t hints)
     {   
         (void)hints;
     }
+
     if(hints & DECOR_TITLE)
-    {   setshowdecor(c, 1);
+    {   (void)hints;
     }
     else
-    {   setshowdecor(c, 0);
+    {   (void)hints;
     }
+
     if(hints & DECOR_MENU)
     {   (void)hints;
     }
@@ -3017,12 +3059,12 @@ wintoclient(XCBWindow win)
         {
             for(c = startclient(desk); c; c = nextclient(c))
             {
-                if(c->win == win)
+                if(c->win == win || c->decor->win == win)
                 {   
                     Debug0("Found non hashed client.");
                     Debug0("Hashing...");
                     /* try and re-add it to the hasmap */
-                    addclienthash(c);
+                    addclienthash(c, win);
                     return c;
                 }
             }

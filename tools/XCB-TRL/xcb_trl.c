@@ -382,7 +382,26 @@ XCBDefaultRootWindow(
     if(scr) 
     {   return scr->root;
     }
-    return 0; /* AKA NULL; AKA we didnt find a screen */
+
+    return XCB_NONE; /* AKA NULL; AKA we didnt find a screen */
+}
+
+XCBVisual
+XCBDefaultVisual(
+        XCBDisplay *display,
+        int screen
+        )
+{
+    XCBCookie ret = { .sequence = 0 };
+    _xcb_push_func(ret);
+
+    XCBScreen *scr = screen_of_display(display, screen);
+
+    if(scr) 
+    {   return scr->root_visual;
+    }
+
+    return XCB_NONE; /* AKA NULL; AKA we didnt find a screen */
 }
 
 u16 
@@ -2735,51 +2754,54 @@ XCBSetClassHintFast(
         XCBClassHint *class_hint
         )
 {
-    const uint8_t NULL_BYTE_COUNT = 2;
+    enum { X11_MAX_CLASS_SIZE = USHRT_MAX };
+    enum { NULL_BYTE_COUNT = 2 };
+    enum { MAX_LEN = X11_MAX_CLASS_SIZE - NULL_BYTE_COUNT };
 
-    char mem[USHRT_MAX];
+    char mem[X11_MAX_CLASS_SIZE];
     char *src;
     char *dest;
 
-    uint16_t MAX_LEN = USHRT_MAX - NULL_BYTE_COUNT;
     size_t size;
-
+    size_t total_size = 0;
     XCBCookie ret;
 
     if(instance_name_length > MAX_LEN)
     {   instance_name_length = MAX_LEN;
     }
 
-    if(class_name_length > MAX_LEN)
-    {   class_name_length = MAX_LEN;
-    }
-
     if(class_hint->instance_name && instance_name_length)
     {
-        /* shrink next posible cpy size */
-        MAX_LEN -= instance_name_length;
-
         src = class_hint->instance_name;
         dest = mem;
         size = instance_name_length;
-        memcpy(mem, src, size);
-    }
-    mem[instance_name_length] = '\0';
 
-    size = 0;
-    if(class_hint->instance_name && class_name_length)
+        memcpy(dest, src, size);
+        total_size += size;
+    }
+
+    mem[total_size++] = '\0';
+
+    size_t remaining = (total_size <= MAX_LEN) ? (MAX_LEN - total_size) : 0;
+
+    if(class_name_length > remaining)
+    {   class_name_length = (uint16_t)remaining;
+    }
+
+    if(class_hint->class_name && class_name_length)
     {
         src = class_hint->class_name;
-        dest = mem + instance_name_length + 1;
-        /* get smallest */
-        size = class_name_length > MAX_LEN ? MAX_LEN : class_name_length;
+        dest = mem + total_size;
+        size = class_name_length;
+
         memcpy(dest, src, size);
+
+        total_size += size;
     }
 
-    mem[instance_name_length + size + sizeof(char)] = '\0';
+    mem[total_size++] = '\0';
 
-    ret = xcb_icccm_set_wm_class(display, window, instance_name_length + class_name_length + NULL_BYTE_COUNT, mem);
-
+    ret = xcb_icccm_set_wm_class(display, window, total_size, mem);
 
     _xcb_push_func(ret);
     (void)ret;
