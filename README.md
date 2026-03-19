@@ -105,6 +105,7 @@ sudo make uninstall
 3. Locate binary 
     - if installed should be **"vox-wm"**
     - else should be located under **"bin/release/"** folder as **"vox-wm"**
+4. For customization and helpful tips see [Configuration](#Configuration)
 
 ### Normal Usage
 4. Put **"exec YOUR_BINARY_LOCATION"** in **~/.xinitrc** or similiar XServer configuration.
@@ -120,12 +121,20 @@ sudo make uninstall
 
 ## Configuration
 
-****Currently Configuration is not GUI format in this version of vox-wm****
-### However...
+### Recommendations for running alongside of vox-wm
+alttab   (Task switcher)
+
+numlockx (Numlock key on)
+
+feh      (Background)
+
+### Keybinds and context menus as of this version are currently locked to manually setting via compilation.
 If you know a bit of C you can change dmenu colours and some keybinds under the directory vox-wm/include/keybinds.h
-### However...
-There is limited config file support under ~/.config/vox-wm/vox.cfg
-There is startup program support under ~/.config/vox-wm/startup.cfg
+### Config
+config support is under ~/.config/vox-wm/vox.cfg
+### Startup
+startup program support is under ~/.config/vox-wm/startup.cfg
+There is no syntax highlighting nor comment support in this startup file, as it is ***HIGHLY*** recommened to just use this as a alias for running a seperate shell script for example just putting ./my_shell_script.sh and just putting all the startup stuff you want in my_shell_script.sh.
 
 ## Mousebinds
 These are the default mousebinds currently used within vox-wm, they are not planned to change (defaults), but will be when or if a configuration is implemented.
