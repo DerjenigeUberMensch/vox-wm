@@ -260,6 +260,7 @@ ArgcDisplayLicense(
             "file_util (MIT)    Sub Licensed By DerjenigeUberMensch" "\n"
             "util      (MIT)    Sub Licensed By DerjenigeUberMensch" "\n"
             "safebool  (MIT)    Sub Licensed By DerjenigeUberMensch" "\n"
+            "VXExtDebug(MIT)    Sub Licensed by DerjenigeUberMensch" "\n"
             "---------------------------------LICENSE END----------------------------------------"
             );
     exit(EXIT_SUCCESS);
