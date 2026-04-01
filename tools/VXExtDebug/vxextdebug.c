@@ -131,7 +131,10 @@ vxextdebug(enum VXMExtDebugType type, const char *file, const int line, const ch
     vsnprintf(msg, sizeof(msg), fmt, args);
     va_end(args);
 
-    // Truncate message if too wide
+    /* Truncate message if too wide
+     *
+     * TODO: Remove this.
+     */
     size_t msg_len = strlen(msg);
 
     if (msg_len > event_w) 
@@ -148,7 +151,13 @@ vxextdebug(enum VXMExtDebugType type, const char *file, const int line, const ch
 
     if (!vxext_no_winsize && log_count % (vxext_w.ws_row - 2) == 1) 
     {
-        fprintf(stderr, "%-*s %-*s %-*s %-*s %-*s %s\n",
+        fprintf(stderr, 
+                "%-*s "
+                "%-*s "
+                "%-*s "
+                "%-*s "
+                "%-*s "
+                "%s\n",
                 TIME_W, "Time",
                 TYPE_W, "Type",
                 FILE_W, "File",
@@ -159,7 +168,8 @@ vxextdebug(enum VXMExtDebugType type, const char *file, const int line, const ch
     }
 
 
-    fprintf(stderr, "%02d:%02d:%02d "
+    fprintf(stderr, 
+                    "%02d:%02d:%02d "
                     "%s %s %s "
                     "%-*s "
                     "%-*d "

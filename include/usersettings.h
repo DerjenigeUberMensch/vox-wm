@@ -5,10 +5,4 @@
 
 extern SCSetting UserSettingsDefault[];
 
-
-
-
-
-
-
 #endif

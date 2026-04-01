@@ -17,6 +17,7 @@
 #include "main.h"
 
 
+
 void
 USSetupCFGVars(
         UserSettings *us
@@ -175,7 +176,13 @@ USLoad(
             #endif
 
             if(status)
-            {   DebugWarn("Failed to LOAD, \"%s\"", usdata[i].name);
+            {   
+                if(!memcmp(&usdata[i].data, &usdata[i].default_data, sizeof(usdata[i].data)))
+                {   DebugWarn("\"%s\" NOT FOUND, check your config for it.", usdata[i].name);
+                }
+                else
+                {   DebugWarn("Failed to LOAD, \"%s\"", usdata[i].name);
+                }
             }
             else
             {   

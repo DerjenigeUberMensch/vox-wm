@@ -8,6 +8,7 @@
 #include "getprop.h"
 #include "bar.h"
 #include "decorations.h"
+#include "settings.h"
 #include "util.h"
 
 
@@ -357,7 +358,18 @@ SHOULDBEFLOATING(Client *c)
                                     const double gtype = COULDBEFLOATINGGEOM(c);
                                     const double ptype = COULDBEFLOATINGPOSITION(c);
 
-                                    bool ret = __FLOAT__TYPE__IS__FLOATING(c, htype, gtype, ptype);
+                                    bool ret;
+
+                                    if(USGetSetting(&_cfg, UseLegacyFloatingSystem).data8[0])
+                                    {   
+                                        ret = LEGACY_SHOULDBEFLOATING(c);
+                                        (void)htype;
+                                        (void)gtype;
+                                        (void)ptype;
+                                    }
+                                    else
+                                    {   ret = __FLOAT__TYPE__IS__FLOATING(c, htype, gtype, ptype);
+                                    }
 
                                     if(!ret)
                                     {   
