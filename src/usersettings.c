@@ -8,6 +8,7 @@
 #include "usersettings.h"
 
 
+
 #define USER_SETTINGS_RETURN_IF_NO_CHANGE(prev, current) if(!memcmp(&prev, &current, sizeof(current))) { return; }
 
 
@@ -21,6 +22,10 @@ static void UpdateMCount(Generic prev, Generic current);
 static void UpdateSnap(Generic prev, Generic current);
 static void UpdateRefreshRate(Generic prev, Generic current);
 static void UpdateHoverFocus(Generic prev, Generic current);
+
+/* legacy */
+static void UpdateUseLegacyFloatingSystem(Generic prev, Generic current);
+
 static void UpdateUseDecorations(Generic prev, Generic current);
 static void UpdateUseClientSideDecorations(Generic prev, Generic current);
 static void UpdatePreferClientSideDecorations(Generic prev, Generic current);
@@ -40,6 +45,10 @@ UserSettingsDefault[] =
     VOX_ADD_MEMBER_SETTING(UseDecorations, SCTypeBOOL, false, UpdateUseDecorations)
     VOX_ADD_MEMBER_SETTING(UseClientSideDecorations, SCTypeBOOL, true, UpdateUseClientSideDecorations)
     VOX_ADD_MEMBER_SETTING(PreferClientSideDecorations, SCTypeBOOL, true, UpdatePreferClientSideDecorations)
+
+    /* legacy */
+
+    VOX_ADD_MEMBER_SETTING(UseLegacyFloatingSystem, SCTypeBOOL, false, UpdateUseLegacyFloatingSystem)
 
 
     /* bar data */
@@ -117,6 +126,12 @@ UpdateRefreshRate(Generic prev, Generic current)
 
 static void 
 UpdateHoverFocus(Generic prev, Generic current)
+{   return;
+}
+
+
+static void 
+UpdateUseLegacyFloatingSystem(Generic prev, Generic current)
 {   return;
 }
 

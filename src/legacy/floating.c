@@ -1,5 +1,21 @@
+#include <math.h>
+#include <string.h>
+
+#include "main.h"
+
 #include "legacy/floating.h"
 
+enum
+FloatType
+{
+    DefinitelyFloating,
+    ProbablyFloating,
+    CouldBeFloating,
+    ProbablyNotFloating,
+    DefinitelyNotFloating,
+
+    FLOATINGLAST,
+};
 
 
 static const unsigned int
@@ -9,7 +25,7 @@ LEGACY__COULD__BE__FLOATING__GEOM__FITS(Client *c, const float WIDTH_RATIO, cons
     return c->w <= (m->mw * WIDTH_RATIO) || c->h <= (m->mh * HEIGHT_RATIO);
 }
 
-static float LEGACY___SIGMOID__SCALING(int i , float k, float z0)
+static float LEGACY__SIGMOID__SCALING(int i , float k, float z0)
 {   return 1.0f / (1.0f + expf(-k * (i - z0)));
 }
 
@@ -17,7 +33,8 @@ static float LEGACY___SIGMOID__SCALING(int i , float k, float z0)
  * We could maybe have a timer or something that would make all configure requests apply this also.
  * Still dont know why, they do this (firefox), wouldnt it look better to do it before? IDK.
  */
-enum FloatType LEGACY_COULDBEFLOATINGGEOM(Client *c)  
+static enum FloatType 
+LEGACY_COULDBEFLOATINGGEOM(Client *c)  
                                 {
                                     const float k = .8f;
                                     const float z0 = 0x0;
@@ -48,7 +65,7 @@ enum FloatType LEGACY_COULDBEFLOATINGGEOM(Client *c)
                                     }
                                     return ProbablyNotFloating;
                                 }
-u32 
+static u32 
 LEGACY__COULD__BE__FLOATING__POSITION__FITS(const Client *c, float width_ratio, float height_ratio)
 {
     const Monitor *m = c->desktop->mon;
@@ -79,7 +96,9 @@ LEGACY__COULD__BE__FLOATING__POSITION__FITS(const Client *c, float width_ratio, 
     */
     return isratiox || isratioy;
 }
-enum FloatType LEGACY_COULDBEFLOATINGPOSITION(Client *c)
+
+static enum FloatType 
+LEGACY_COULDBEFLOATINGPOSITION(Client *c)
                                 {
                                     const float k = 0.8f;
                                     const float z0 = 3.6f;
@@ -95,7 +114,8 @@ enum FloatType LEGACY_COULDBEFLOATINGPOSITION(Client *c)
                                     }
                                     return ProbablyNotFloating;
                                 }
-enum FloatType LEGACY_COULDBEFLOATINGHINTS(Client *c)
+static enum FloatType 
+LEGACY_COULDBEFLOATINGHINTS(Client *c)
                                 {
                                     /* This check is mostly for (some) popup windows 
                                      * Mainly those which dont matter, like steams startup display, but are nice to have's.

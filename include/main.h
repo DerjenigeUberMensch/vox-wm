@@ -15,6 +15,7 @@
 #include "safebool.h"
 #include "util.h"
 #include "GArray/garray.h"
+#include "legacy/floating.h"
 
 #ifndef MARK
 #define MARK    "Generic X Server Event Handler (XEH)"

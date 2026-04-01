@@ -9,6 +9,47 @@
 
 #include "util.h"
 
+enum
+UserSettingType
+{
+    MFact,
+    GapRatio,
+    MCount,
+    Snap,
+    RefreshRate,
+
+    HoverFocus,
+    UseDecorations,
+    UseClientSideDecorations,
+    PreferClientSideDecorations,
+
+    /* legacy */
+    UseLegacyFloatingSystem,
+
+    BarLX,
+    BarLY,
+    BarLW,
+    BarLH,
+
+    BarRX,
+    BarRY,
+    BarRW,
+    BarRH,
+
+    BarTX,
+    BarTY,
+    BarTW,
+    BarTH,
+
+    BarBX,
+    BarBY,
+    BarBW,
+    BarBH,
+
+    UserSettingsLAST,
+};
+
+
 /* non-extension compliant 'switch' statment. */
 #define VOX_ADD_MEMBER_SCTypeNoType(DEFAULT_SETTING)     { .data64 = { DEFAULT_SETTING } }
 #define VOX_ADD_MEMBER_SCTypeBOOL(DEFAULT_SETTING)       { .data8  = { DEFAULT_SETTING } }
@@ -74,44 +115,6 @@ UserSettings
     FNotify fnotify;   /* NOTE: Access of this pointer is restricted to USInit */
 };
 
-enum
-UserSettingType
-{
-    MFact,
-    GapRatio,
-    MCount,
-    Snap,
-    RefreshRate,
-
-    HoverFocus,
-    UseDecorations,
-    UseClientSideDecorations,
-    PreferClientSideDecorations,
-
-    BarLX,
-    BarLY,
-    BarLW,
-    BarLH,
-
-    BarRX,
-    BarRY,
-    BarRW,
-    BarRH,
-
-    BarTX,
-    BarTY,
-    BarTW,
-    BarTH,
-
-    BarBX,
-    BarBY,
-    BarBW,
-    BarBH,
-
-    UserSettingsLAST,
-};
-
-
 
 /* Initialize Settings */
 void NonNull
@@ -154,18 +157,5 @@ void NonNull
 USWipe(
         UserSettings *settings
         );
-
-
-/* Setter getters */
-
-uint32_t HASHOVERFOCUS(UserSettings *settings);
-uint32_t HASSERVERDECOR(UserSettings *settings);
-uint32_t HASCLIENTDECOR(UserSettings *settings);
-uint32_t PREFERCLIENTDECOR(UserSettings *settings);
-
-void USSetHoverFocus(UserSettings *settings, uint8_t state);
-void USSetUseServerDecor(UserSettings *settings, uint8_t state);
-void USSetUseClientDecor(UserSettings *settings, uint8_t state);
-void USSetPreferClientDecor(UserSettings *settings, uint8_t state);
 
 #endif
