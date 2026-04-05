@@ -270,18 +270,22 @@ void
 setdesktopsel(Monitor *mon, Desktop *desksel)
 {
     if(desksel->mon != mon)
-    {   /* TODO maybe add functionality to detach desktop or something? */
+    {   
+        /* TODO maybe add functionality to detach desktop or something? */
         Debug0("Cant set desktop of different monitor, FIXME");
         return;
     }
+
     if(mon->desksel != desksel)
     {
         mon->desksel = desksel;
         Desktop *desk;
         Client *c;
+
         for(c = startstack(desksel); c; c = nextstack(c))
         {   showhide(c);
         }
+
         for(desk = mon->desktops; desk; desk = nextdesktop(desk))
         {
             for(c = laststack(desk); c; c = prevstack(c))
@@ -289,12 +293,19 @@ setdesktopsel(Monitor *mon, Desktop *desksel)
                 if(ISSTICKY(c))
                 {   setclientdesktop(c, desksel);
                 }
+
                 if(desk != desksel)
                 {   showhide(c);
                 }
             }
         }
+
         updatedesktop();
+
+        /* clear optimization stack if its active */
+        if(_wm.stack_region_active)
+        {   VXRegionClear(&_wm.stackregion);
+        }
     }
     else
     {   Debug0("Same desktop, no change.");

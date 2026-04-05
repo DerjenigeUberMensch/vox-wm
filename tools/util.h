@@ -36,6 +36,7 @@
 #include "safebool.h"
 #include "file_util.h"
 #include "VXExtDebug/vxextdebug.h"
+#include "Shapes/shapes.h"
 
 typedef uint8_t  u8;
 typedef uint16_t u16;
@@ -668,12 +669,6 @@ void UNPACK_ARGB(uint32_t argb, uint8_t *a_return, uint8_t *r_return, uint8_t *g
 
 
 void _Breakpoint(void);
-
-#ifndef __intersect_area
-#define __intersect_area(x1_start, y1_start, x1_end, y1_end, x2_start, y2_start, x2_end, y2_end) \
-    ((MAX(0, MIN(x1_end, x2_end) - MAX(x1_start, x2_start))) * (MAX(0, MIN(y1_end, y2_end) - MAX(y1_start, y2_start))))
-#endif
-
 
 #ifdef __linux__ 
 

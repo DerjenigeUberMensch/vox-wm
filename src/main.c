@@ -1200,6 +1200,10 @@ setupwm(void)
         DIECAT("%s", "Could not allocate memory for work queue. (OutOfMemory)");
     }
 
+    status = VXRegionCreateFilled(&_wm.stackregion, XCBDisplayWidth(_wm.dpy, _wm.screen), XCBDisplayHeight(_wm.dpy, _wm.screen), .50);
+
+    _wm.stack_region_active = status == EXIT_SUCCESS;
+
     /* keysyms, which are reuiqre for keybinds, which we only care about 2 keybind and thats SUPER+SHIFT+p, as that exist sthe WM, and SUPER+ENTER, as that opens a termial. */
     _wm.syms = XCBKeySymbolsAlloc(_wm.dpy);
 

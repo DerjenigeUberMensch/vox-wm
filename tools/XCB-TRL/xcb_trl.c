@@ -3454,3 +3454,4 @@ XCBWipeGetWMClass(
     xcb_icccm_get_wm_class_reply_wipe(class);
     class->_reply = NULL;
 }
+

@@ -34,6 +34,7 @@ u32 ISFLOATING(Client *c)       { return c->flags & ClientFlagFloating; }
 u32 ISOVERRIDEREDIRECT(Client *c) { return c->flags & ClientFlagOverrideRedirect; }
 u32 ISBYPASSCOMPOSITOR(Client *c) { return c->flags & ClientFlagBypassCompositor; }
 u32 ISNOPREFERENCECOMPOSITOR(Client *c) { return c->flags & ClientFlagNoPreferenceCompositor; }
+u32 ISPENDINGRESIZE(Client *c) { return c->flags & ClientFlagPendingResize; }
 u32 KEEPFOCUS(Client *c)        { return c->flags & ClientFlagKeepFocus; }
 u32 DISABLEBORDER(Client *c)    { return c->flags & ClientFlagDisableBorder; }
 
@@ -1600,6 +1601,68 @@ resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
         .height = height,
     };
 
+
+
+    if(_wm.stack_region_active)
+    {
+        Client *ci;
+
+        VXRegionClear(&_wm.stackregion);
+
+        for (ci = startstack(c->desktop); ci; ci = nextstack(ci))
+        {
+            i16 ix = ci->x;
+            i16 iy = ci->y;
+            i16 iw = ci->w;
+            i16 ih = ci->h;
+
+            if(ix < 0)
+            {   
+                iw += ix;
+                ix = 0;
+            }
+
+            if(iy < 0)
+            {
+                ih += iy;
+                iy = 0;
+            }
+
+            if(iw <= 0 || ih <= 0)
+            {   continue;
+            }
+
+            if(!ASSERT(ix >= 0) || !ASSERT(iy >= 0))
+            {   continue;
+            }
+
+            if(VXRegionAreaIsUsed(&_wm.stackregion, ix, iy, iw, ih))
+            {
+                if(ci == c)
+                {   SETFLAG(c->flags, ClientFlagPendingResize, 1);
+                }
+            }
+            else
+            {
+                if(ci->flags & ClientFlagPendingResize)
+                {
+                    SETFLAG(ci->flags, ClientFlagPendingResize, 0);
+                    XCBMoveResizeWindow(_wm.dpy, ci->win, ci->x, ci->y, ci->w, ci->h);
+                }
+            }
+
+            VXRegionReserve(&_wm.stackregion, ix, iy, iw, ih);
+        }
+        VXRegionDebugPrint(&_wm.stackregion);
+    }
+
+
+    if(!mask)
+    {   
+        Debug("[%u] Not visible", c->win);
+        return;
+    }
+
     /* Process resize requests only to visible clients as to.
      * 1.) Save resources, no need to handle non visible windows.
      * 2.) Incase that the window does get visible make it not appear to be movable (different desktop).
@@ -1608,27 +1671,17 @@ resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
      */
     if(ISVISIBLE(c) || 1)
     {
-        if(mask)
-        {   
-            if(ISDECORACTIVE(c))
-            {   decorationupdate(c->decor, c);
-            }
-            else
-            {   XCBConfigureWindow(_wm.dpy, c->win, mask, &changes);
-            }
+        if(ISDECORACTIVE(c))
+        {   decorationupdate(c->decor, c);
+        }
+        else
+        {   XCBConfigureWindow(_wm.dpy, c->win, mask, &changes);
         }
     }
-    else
-    {   Debug("[%u] Not visible", c->win);
-    }
 
-    /* only send config if changed */
-    if(mask)
-    {   
-        setclientnetstate(c, netatom[NetWMStateMaximizedVert], !!ISMAXVERT(c));
-        setclientnetstate(c, netatom[NetWMStateMaximizedHorz], !!ISMAXHORZ(c));
-        configure(c);
-    }
+    setclientnetstate(c, netatom[NetWMStateMaximizedVert], !!ISMAXVERT(c));
+    setclientnetstate(c, netatom[NetWMStateMaximizedHorz], !!ISMAXHORZ(c));
+    configure(c);
 }
 
 void

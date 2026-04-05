@@ -1057,6 +1057,7 @@ ToggleDesktop(const Arg *arg)
     if(!_wm.selmon || !_wm.selmon->desktops)
     {   return;
     }
+
     u32 index = arg->ui;
     Desktop *desk;
     for(desk = _wm.selmon->desktops; desk; desk = nextdesktop(desk))
