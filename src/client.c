@@ -1653,7 +1653,7 @@ resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
 
             VXRegionReserve(&_wm.stackregion, ix, iy, iw, ih);
         }
-        VXRegionDebugPrint(&_wm.stackregion);
+        //VXRegionDebugPrint(&_wm.stackregion);
     }
 
 

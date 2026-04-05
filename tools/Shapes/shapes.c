@@ -183,13 +183,11 @@ VXRegionAreaIsUsedAtAll(VXRegion *region, uint32_t x, uint32_t y, uint32_t width
 
     for(uint32_t cy = gy; cy < maxy; ++cy)
     {
-        uint64_t row = (uint64_t)cy * region->nx;
+        int64_t rowStart = (uint64_t)cy * region->nx + gx;
+        uint64_t rowEnd = (uint64_t)cy * region->nx + maxx;
 
-        for(uint32_t cx = gx; cx < maxx; ++cx)
-        {
-            if(!FreeListIsFree(&region->grid, row + cx))
-            {   return true;
-            }
+        if (FreeListIsUsedRangeAny(&region->grid, rowStart, rowEnd))
+        {   return true;
         }
     }
 
@@ -216,21 +214,11 @@ VXRegionAreaIsUsed(VXRegion *region, uint32_t x, uint32_t y, uint32_t width, uin
 
     for(uint32_t cy = gy; cy < maxy; ++cy)
     {
-        uint64_t row = (uint64_t)cy * region->nx;
+        uint64_t rowStart = (uint64_t)cy * region->nx + gx;
+        uint64_t rowEnd = (uint64_t)cy * region->nx + maxx;
 
-         uint64_t rowStart = (uint64_t)cy * region->nx;
-        uint64_t startBit = rowStart + gx;
-        uint64_t endBit   = rowStart + maxx;
-
-        // Check the whole row segment using FreeList
-        if (!FreeListIsFreeRange(&region->grid, startBit, endBit)) {
-            return false;
-        }
-        for(uint32_t cx = gx; cx < maxx; ++cx)
-        {
-            if(FreeListIsFree(&region->grid, row + cx))
-            {   return false;
-            }
+        if (!FreeListIsUsedRangeAll(&region->grid, rowStart, rowEnd))
+        {   return false;
         }
     }
 

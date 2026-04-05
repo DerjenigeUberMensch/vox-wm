@@ -1502,7 +1502,19 @@ xerror(XCBDisplay *display, XCBGenericError *err)
 {
     if(likely(err))
     {
-        DebugError("%s %s\n", XCBGetErrorMajorCodeText(err->major_code), XCBGetFullErrorText(err->error_code));
+        char *major_code = XCBGetErrorMajorCodeText(err->major_code);
+        char *minor_code = XCBGetErrorMinorCodeText(err->minor_code);
+        char *error_code = XCBGetFullErrorText(err->error_code);
+        DebugError(
+                "%s "
+                "%s "
+                "%s, "
+                "(%d|%d)\n", 
+                major_code ? major_code : "NULL", 
+                minor_code ? minor_code : "NULL",
+                error_code ? error_code : "NULL", 
+                err->major_code, err->error_code
+                );
 #if NDEBUG
         DebugError("error_code: [%d], major_code: [%d], minor_code: [%d]\n"
               "sequence: [%d], response_type: [%d], resource_id: [%d]\n"
