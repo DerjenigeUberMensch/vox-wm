@@ -1,0 +1,6 @@
+[submodule "tools/lua"]
+	path = tools/lua
+	url = https://github.com/lua/lua.git
+[submodule "tools/XCB-TRL"]
+	path = tools/XCB-TRL
+	url = https://github.com/DerjenigeUberMensch/XCB-TRL.git
