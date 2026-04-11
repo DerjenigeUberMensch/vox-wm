@@ -1612,7 +1612,7 @@ resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
      * 3.) Prevent the window from moving itself back into view, when it should be hidden.
      * 4.) Incase a window does want focus, we switch to that desktop respectively and let showhide() do the work.
      */
-    if(ISVISIBLE(c) || 1)
+    if(ISVISIBLE(c))
     {
         if(ISDECORACTIVE(c))
         {   decorationupdate(c->decor, c);
@@ -2066,7 +2066,7 @@ showhide(Client *c)
     {   x = -c->w - m->mx;
     }
 
-    resizemove(c, x, c->y, 1);
+    XCBMoveWindow(_wm.dpy, c->win, x, c->y);
 }
 
 Client *

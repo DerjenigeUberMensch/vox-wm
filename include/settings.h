@@ -23,9 +23,6 @@ UserSettingType
     UseClientSideDecorations,
     PreferClientSideDecorations,
 
-    /* optmizatons */
-    UseResizeOptimizations,
-
     /* legacy */
     UseLegacyFloatingSystem,
 
