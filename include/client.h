@@ -72,7 +72,6 @@ ClientFlags
     ClientFlagMapped = 1u << 7,   /* desktop optimizations */
     ClientFlagBypassCompositor = 1u << 8,
     ClientFlagNoPreferenceCompositor = 1u << 8,
-    ClientFlagPendingResize = 1u << 9,
 };
 
 /* kill client type */
@@ -128,7 +127,6 @@ struct Client
 
     uint16_t oldw;      /* Previous Width           */
     uint16_t oldh;      /* Previous Height          */
-
 
     uint16_t bw;        /* Border Width             */
     uint16_t oldbw;     /* Old Border Width         */
@@ -557,7 +555,6 @@ uint32_t NonNull ISFLOATING(Client *c);
 uint32_t NonNull ISOVERRIDEREDIRECT(Client *c);
 uint32_t NonNull ISBYPASSCOMPOSITOR(Client *c);
 uint32_t NonNull ISNOPREFERENCECOMPOSITOR(Client *c);
-uint32_t NonNull ISPENDINGRESIZE(Client *c);
 uint32_t NonNull KEEPFOCUS(Client *c);
 uint32_t NonNull DISABLEBORDER(Client *c);
 uint32_t NonNull DOCKEDVERT(Client *c);

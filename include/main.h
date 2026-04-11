@@ -129,13 +129,11 @@ WM
     uint8_t use_watcher;            /* Watchers Flag        */
     uint8_t manual_exit;            /* Manual terminate flag*/
     uint8_t restart;                /* Restart Flag         */
-    uint8_t stack_region_active;    /* stack region optmize */
-    uint8_t pad[3];
+    uint8_t pad[2];
 
     GArray clients;                 /* _NET_CLIENT_LIST     */
     GArray clientstacking;          /* above, but _STACKING */
     GArray work;                    /* WM work handle       */
-    VXRegion stackregion;           /* stack region optmize */
 };
 
 struct 

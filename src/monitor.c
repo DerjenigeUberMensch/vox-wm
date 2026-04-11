@@ -301,11 +301,6 @@ setdesktopsel(Monitor *mon, Desktop *desksel)
         }
 
         updatedesktop();
-
-        /* clear optimization stack if its active */
-        if(_wm.stack_region_active)
-        {   VXRegionClear(&_wm.stackregion);
-        }
     }
     else
     {   Debug0("Same desktop, no change.");

@@ -34,7 +34,6 @@ u32 ISFLOATING(Client *c)       { return c->flags & ClientFlagFloating; }
 u32 ISOVERRIDEREDIRECT(Client *c) { return c->flags & ClientFlagOverrideRedirect; }
 u32 ISBYPASSCOMPOSITOR(Client *c) { return c->flags & ClientFlagBypassCompositor; }
 u32 ISNOPREFERENCECOMPOSITOR(Client *c) { return c->flags & ClientFlagNoPreferenceCompositor; }
-u32 ISPENDINGRESIZE(Client *c) { return c->flags & ClientFlagPendingResize; }
 u32 KEEPFOCUS(Client *c)        { return c->flags & ClientFlagKeepFocus; }
 u32 DISABLEBORDER(Client *c)    { return c->flags & ClientFlagDisableBorder; }
 
@@ -67,7 +66,6 @@ u32 DOCKEDHORZ(Client *c)       {   const i16 wx = c->desktop->mon->wx;
                                     return (wx == x) && (ww == w);
                                 }
 u32 DOCKED(Client *c)           { return DOCKEDVERT(c) && DOCKEDHORZ(c); }
-
 
 
 /* Unfortunatly this seems to kinda not work with some applications, mainly because some set their location AFTER being mapped.
@@ -787,6 +785,7 @@ clientinitgeom(Client *c, XCBWindowGeometry *wg)
     /* Give initial values. */
     c->x = c->oldx = 0;
     c->y = c->oldy = 0;
+
     c->w = c->oldw = _wm.selmon->ww;
     c->h = c->oldh = _wm.selmon->wh;
     c->bw = 0; /* TODO */
@@ -1600,62 +1599,6 @@ resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
         .width = width,
         .height = height,
     };
-
-
-
-    if(_wm.stack_region_active)
-    {
-        Client *ci;
-
-        VXRegionClear(&_wm.stackregion);
-
-        for (ci = startstack(c->desktop); ci; ci = nextstack(ci))
-        {
-            i16 ix = ci->x;
-            i16 iy = ci->y;
-            i16 iw = ci->w;
-            i16 ih = ci->h;
-
-            if(ix < 0)
-            {   
-                iw += ix;
-                ix = 0;
-            }
-
-            if(iy < 0)
-            {
-                ih += iy;
-                iy = 0;
-            }
-
-            if(iw <= 0 || ih <= 0)
-            {   continue;
-            }
-
-            if(!ASSERT(ix >= 0) || !ASSERT(iy >= 0))
-            {   continue;
-            }
-
-            if(VXRegionAreaIsUsed(&_wm.stackregion, ix, iy, iw, ih))
-            {
-                if(ci == c)
-                {   SETFLAG(c->flags, ClientFlagPendingResize, 1);
-                }
-            }
-            else
-            {
-                if(ci->flags & ClientFlagPendingResize)
-                {
-                    SETFLAG(ci->flags, ClientFlagPendingResize, 0);
-                    XCBMoveResizeWindow(_wm.dpy, ci->win, ci->x, ci->y, ci->w, ci->h);
-                }
-            }
-
-            VXRegionReserve(&_wm.stackregion, ix, iy, iw, ih);
-        }
-        //VXRegionDebugPrint(&_wm.stackregion);
-    }
-
 
     if(!mask)
     {   
