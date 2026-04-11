@@ -16,15 +16,10 @@ extern WM _wm;
 
 
 static void UpdateDesktop(void);
+static void UpdateSkip(Generic prev, Generic current);
 static void UpdateMFact(Generic prev, Generic current);
 static void UpdateGapRatio(Generic prev, Generic current);
 static void UpdateMCount(Generic prev, Generic current);
-static void UpdateSnap(Generic prev, Generic current);
-static void UpdateRefreshRate(Generic prev, Generic current);
-static void UpdateHoverFocus(Generic prev, Generic current);
-
-/* legacy */
-static void UpdateUseLegacyFloatingSystem(Generic prev, Generic current);
 
 static void UpdateUseDecorations(Generic prev, Generic current);
 static void UpdateUseClientSideDecorations(Generic prev, Generic current);
@@ -37,18 +32,21 @@ UserSettingsDefault[] =
     VOX_ADD_MEMBER_SETTING(MFact, SCTypeFLOAT, 0.55f, UpdateMFact)
     VOX_ADD_MEMBER_SETTING(GapRatio, SCTypeFLOAT, 0.95f, UpdateGapRatio)
     VOX_ADD_MEMBER_SETTING(MCount, SCTypeUSHORT, 1, UpdateMCount)
-    VOX_ADD_MEMBER_SETTING(Snap, SCTypeUSHORT, 10, UpdateSnap)
-    VOX_ADD_MEMBER_SETTING(RefreshRate, SCTypeUSHORT, 60, UpdateRefreshRate)
+    VOX_ADD_MEMBER_SETTING(Snap, SCTypeUSHORT, 10, UpdateSkip)
+    VOX_ADD_MEMBER_SETTING(RefreshRate, SCTypeUSHORT, 60, UpdateSkip)
+    VOX_ADD_MEMBER_SETTING(SmartResizing, SCTypeBOOL, true, UpdateSkip)
+    VOX_ADD_MEMBER_SETTING(CenteringBias, SCTypeFLOAT, .0125, UpdateSkip)
+
 
     /* BOOL Types */
-    VOX_ADD_MEMBER_SETTING(HoverFocus, SCTypeBOOL, false, UpdateHoverFocus)
+    VOX_ADD_MEMBER_SETTING(HoverFocus, SCTypeBOOL, false, UpdateSkip)
     VOX_ADD_MEMBER_SETTING(UseDecorations, SCTypeBOOL, false, UpdateUseDecorations)
     VOX_ADD_MEMBER_SETTING(UseClientSideDecorations, SCTypeBOOL, true, UpdateUseClientSideDecorations)
     VOX_ADD_MEMBER_SETTING(PreferClientSideDecorations, SCTypeBOOL, true, UpdatePreferClientSideDecorations)
 
     /* legacy */
 
-    VOX_ADD_MEMBER_SETTING(UseLegacyFloatingSystem, SCTypeBOOL, false, UpdateUseLegacyFloatingSystem)
+    VOX_ADD_MEMBER_SETTING(UseLegacyFloatingSystem, SCTypeBOOL, false, UpdateSkip)
 
 
     /* bar data */
@@ -90,6 +88,14 @@ UpdateDesktop(void)
     UNLOCK_WM();
 }
 
+static void
+UpdateSkip(Generic prev, Generic current)
+{   
+    (void)prev;
+    (void)current;
+    return;
+}
+
 static void 
 UpdateMFact(Generic prev, Generic current)
 {
@@ -112,26 +118,6 @@ UpdateMCount(Generic prev, Generic current)
     USER_SETTINGS_RETURN_IF_NO_CHANGE(prev, current);
 
     UpdateDesktop();
-}
-
-static void 
-UpdateSnap(Generic prev, Generic current)
-{   return;
-}
-
-static void 
-UpdateRefreshRate(Generic prev, Generic current)
-{   return;
-}
-
-static void 
-UpdateHoverFocus(Generic prev, Generic current)
-{   return;
-}
-
-static void 
-UpdateUseLegacyFloatingSystem(Generic prev, Generic current)
-{   return;
 }
 
 static void 

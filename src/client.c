@@ -392,6 +392,23 @@ SHOULDBEFLOATING(Client *c)
                                     }
                                     return ret;
                                 }
+bool
+SHOULDCENTER(Client *c)
+                        {
+                            Monitor *m = c->desktop->mon;
+                            /* If the client is floatnig and in a corner center it because ??? */
+                            /* Most desktop enviroments do this, and sinec its jarring for windows to spawn wher they said they will
+                             * also do this.
+                             */
+                            if(ISFLOATING(c) || ISFIXED(c))
+                            {
+                                /* has the client its coords? */
+                                if(c->x == m->mx && c->y == m->my)
+                                {   return true;
+                                }
+                            }
+                            return false;
+                        }
 /* This covers some apps being able to DragWindow/ResizeWindow, in toggle.c
  * (semi-frequently) a user might "accidentally" click on them (me) and basically we dont want that window to be floating because of that user error.
  * So this is a leeway sort function.
@@ -734,6 +751,44 @@ applysizehints(Client *c, i32 *x, i32 *y, i32 *width, i32 *height, uint8_t inter
     {   *height = MIN(*height, c->maxh);
     }
     return *x != c->x || *y != c->y || *width != c->w || *height != c->h;
+}
+
+void
+centerclient(Client *c)
+{
+    Monitor *m = c->desktop->mon;
+
+    u8 smartresize = USGetSetting(&_cfg, SmartResizing).data8[0];
+    f32 bias = USGetSetting(&_cfg, CenteringBias).dataf[0];
+
+    i32 x;
+    i32 y;
+
+    x = m->wx + (m->ww - WIDTH(c)) / 2;
+    y = m->wy + (m->wh - HEIGHT(c)) / 2;
+
+    if(smartresize)
+    {   
+        i32 w = c->w;
+        i32 h = c->h;
+
+        if(unlikely(h == 0))
+        {   h = 1;
+        }
+
+        f32 aspect = (float)w / h;
+        f32 square_aspect = 1.0f;
+        f32 sensitivity = .01f;
+        f32 maxbias = .085f;
+
+        bias += (aspect - square_aspect) * sensitivity;
+
+        bias = CLAMP(bias, 0.0f, maxbias);
+
+        y -= (HEIGHT(c) * bias);
+    }
+
+    resizemove(c, x, y, !!smartresize);
 }
 
 void
@@ -1409,18 +1464,8 @@ manage(XCBWindow win, bool allow_unmapped_window, void *replies[ManageClientLAST
 
     m = c->desktop->mon;
 
-    /* If the client is floatnig and in a corner center it because ??? */
-    /* Most desktop enviroments do this, and sinec its jarring for windows to spawn wher they said they will
-     * also do this.
-     */
-    if(ISFLOATING(c) || ISFIXED(c))
-    {
-        /* has the client its coords? */
-        if(c->x == m->mx && c->y == m->my)
-        {   
-            /* center it */
-            resizemove(c, m->wx + m->ww / 2 - WIDTH(c) / 2, m->wy + m->wh / 2 - HEIGHT(c) / 2, 1);
-        }
+    if(SHOULDCENTER(c))
+    {   centerclient(c);
     }
 
     (void)addclienthash(c, c->win);
@@ -2512,8 +2557,16 @@ updatesizehints(Client *c, XCBSizeHints *size)
 
     if(size->flags & XCB_SIZE_HINT_P_ASPECT)
     {
-        mina = (float)size->min_aspect_den / (size->min_aspect_num + !size->min_aspect_den);
-        maxa = (float)size->max_aspect_num / (size->max_aspect_den + !size->max_aspect_num);
+        if(size->min_aspect_num == 0)
+        {   size->min_aspect_num = 1;
+        }
+
+        if(size->max_aspect_den == 0)
+        {   size->max_aspect_den = 1;
+        }
+
+        mina = (float)size->min_aspect_den / size->min_aspect_num;
+        maxa = (float)size->max_aspect_num / size->max_aspect_den;
         mina = fabsf(mina);
         maxa = fabsf(maxa);
     }

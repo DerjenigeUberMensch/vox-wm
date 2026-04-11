@@ -17,6 +17,8 @@ UserSettingType
     MCount,
     Snap,
     RefreshRate,
+    SmartResizing,
+    CenteringBias,
 
     HoverFocus,
     UseDecorations,
