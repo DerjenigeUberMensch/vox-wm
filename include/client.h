@@ -128,7 +128,6 @@ struct Client
     uint16_t oldw;      /* Previous Width           */
     uint16_t oldh;      /* Previous Height          */
 
-
     uint16_t bw;        /* Border Width             */
     uint16_t oldbw;     /* Old Border Width         */
 

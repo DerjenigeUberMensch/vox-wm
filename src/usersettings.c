@@ -129,7 +129,6 @@ UpdateHoverFocus(Generic prev, Generic current)
 {   return;
 }
 
-
 static void 
 UpdateUseLegacyFloatingSystem(Generic prev, Generic current)
 {   return;

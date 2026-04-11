@@ -15,6 +15,7 @@
 #include "safebool.h"
 #include "util.h"
 #include "GArray/garray.h"
+#include "Shapes/shapes.h"
 #include "legacy/floating.h"
 
 #ifndef MARK
@@ -128,7 +129,7 @@ WM
     uint8_t use_watcher;            /* Watchers Flag        */
     uint8_t manual_exit;            /* Manual terminate flag*/
     uint8_t restart;                /* Restart Flag         */
-    uint8_t pad[3];
+    uint8_t pad[2];
 
     GArray clients;                 /* _NET_CLIENT_LIST     */
     GArray clientstacking;          /* above, but _STACKING */

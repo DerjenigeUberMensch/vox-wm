@@ -68,7 +68,6 @@ u32 DOCKEDHORZ(Client *c)       {   const i16 wx = c->desktop->mon->wx;
 u32 DOCKED(Client *c)           { return DOCKEDVERT(c) && DOCKEDHORZ(c); }
 
 
-
 /* Unfortunatly this seems to kinda not work with some applications, mainly because some set their location AFTER being mapped.
  * We could maybe have a timer or something that would make all configure requests apply this also.
  * Still dont know why, they do this (firefox), wouldnt it look better to do it before? IDK.
@@ -786,6 +785,7 @@ clientinitgeom(Client *c, XCBWindowGeometry *wg)
     /* Give initial values. */
     c->x = c->oldx = 0;
     c->y = c->oldy = 0;
+
     c->w = c->oldw = _wm.selmon->ww;
     c->h = c->oldh = _wm.selmon->wh;
     c->bw = 0; /* TODO */
@@ -1600,35 +1600,31 @@ resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
         .height = height,
     };
 
+    if(!mask)
+    {   
+        Debug("[%u] Not visible", c->win);
+        return;
+    }
+
     /* Process resize requests only to visible clients as to.
      * 1.) Save resources, no need to handle non visible windows.
      * 2.) Incase that the window does get visible make it not appear to be movable (different desktop).
      * 3.) Prevent the window from moving itself back into view, when it should be hidden.
      * 4.) Incase a window does want focus, we switch to that desktop respectively and let showhide() do the work.
      */
-    if(ISVISIBLE(c) || 1)
+    if(ISVISIBLE(c))
     {
-        if(mask)
-        {   
-            if(ISDECORACTIVE(c))
-            {   decorationupdate(c->decor, c);
-            }
-            else
-            {   XCBConfigureWindow(_wm.dpy, c->win, mask, &changes);
-            }
+        if(ISDECORACTIVE(c))
+        {   decorationupdate(c->decor, c);
+        }
+        else
+        {   XCBConfigureWindow(_wm.dpy, c->win, mask, &changes);
         }
     }
-    else
-    {   Debug("[%u] Not visible", c->win);
-    }
 
-    /* only send config if changed */
-    if(mask)
-    {   
-        setclientnetstate(c, netatom[NetWMStateMaximizedVert], !!ISMAXVERT(c));
-        setclientnetstate(c, netatom[NetWMStateMaximizedHorz], !!ISMAXHORZ(c));
-        configure(c);
-    }
+    setclientnetstate(c, netatom[NetWMStateMaximizedVert], !!ISMAXVERT(c));
+    setclientnetstate(c, netatom[NetWMStateMaximizedHorz], !!ISMAXHORZ(c));
+    configure(c);
 }
 
 void
@@ -2070,7 +2066,7 @@ showhide(Client *c)
     {   x = -c->w - m->mx;
     }
 
-    resizemove(c, x, c->y, 1);
+    XCBMoveWindow(_wm.dpy, c->win, x, c->y);
 }
 
 Client *
