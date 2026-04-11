@@ -191,6 +191,8 @@ void NonNullAll applygravity(const enum XCBBitGravity gravity, int32_t *x, int32
 * RETURN: 0 if the specified x/y/w/h does match after the sizehints applied. (No need to resize.)
 */
 uint8_t NonNullAll applysizehints(Client *c, int32_t *x, int32_t *y, int32_t *width, int32_t *height, uint8_t interact);
+/* centers a client to the screen accouting for settings of course */
+void NonNullAll centerclient(Client *c);
 /* Frees Client and allocated client properties. 
 */
 void NonNull cleanupclient(Client *c);
@@ -563,6 +565,7 @@ uint32_t NonNull DOCKED(Client *c);
 double NonNull COULDBEFLOATINGGEOM(Client *c);
 double NonNull COULDBEFLOATINGHINTS(Client *c);
 bool NonNull SHOULDBEFLOATING(Client *c);
+bool NonNull SHOULDCENTER(Client *c);
 uint32_t NonNull SHOULDMAXIMIZE(Client *c);
 uint32_t NonNull DOCKEDINITIAL(Client *c);
 uint32_t NonNull WASDOCKEDVERT(Client *c);

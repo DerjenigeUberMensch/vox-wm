@@ -112,6 +112,10 @@ Generic
 #define MIN(A, B)               ((A) < (B) ? (A) : (B))
 #endif
 
+#ifndef CLAMP
+#define CLAMP(X, MINIMUM, MAXIMUM)  (MIN(MAX((X), (MINIMUM)), (MAXIMUM)))
+#endif
+
 #ifndef BETWEEN
 #define BETWEEN(X, A, B)        ((A) <= (X) && (X) <= (B))
 #endif
