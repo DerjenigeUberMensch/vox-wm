@@ -32,7 +32,7 @@ SRC_EXT = c
 # Path to the source directory, relative to the makefile
 SRC_PATH = .
 # Exclude dir
-EXCLUDE = tests/
+EXCLUDE = tests tools/lua/testes tools/lua/tools tools/lua/onelua.c tools/lua/lua.c
 # Space-separated pkg-config libraries used by this project
 LIBRARIES = ${LIBS}
 # Compilation Architecture.
@@ -44,7 +44,7 @@ ARCH = ${ARCH64} ${ARCHALL}
 COMPILE_FLAGS = ${CCFLAGS} ${PRELINKERFLAGS} ${ARCH} 
 COMPILE_FLAGS += -DXINERAMA -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L -DMARK=\"${MARK}\"
 # Additional release-specific flags
-RCOMPILE_FLAGS = ${RELEASES} -DNDEBUG
+RCOMPILE_FLAGS = ${RELEASE} -DNDEBUG
 SCOMPILE_FLAGS = ${SIZEONLY} -DNDEBUG
 # Additional debug-specific flags
 DCOMPILE_FLAGS = -DDEBUG -DENABLE_DEBUG -DXCB_TRL_ENABLE_DEBUG ${DEBUG} ${SAFETYFLAGS}
@@ -162,7 +162,7 @@ ifeq ($(SOURCES),)
 endif
 
 # Exclude 
-SOURCES := $(filter-out $(addprefix $(SRC_PATH)/$(EXCLUDE),%), $(SOURCES))
+SOURCES := $(filter-out $(foreach d,$(EXCLUDE),$(SRC_PATH)/$(d)%),$(SOURCES))
 
 # Set the object file names, with the source directory stripped
 # from the path, and the build path prepended in its place
