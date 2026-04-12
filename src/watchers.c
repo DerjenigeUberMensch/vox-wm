@@ -238,14 +238,16 @@ WatcherDestroy(void)
 
     for(i = GArrayStart(&watchers_array); i < GArrayEnd(&watchers_array); ++i)
     {   
-        void *data = GArrayAt(&watchers_array, i);
+        ThreadWorkItem2 *data = GArrayAt(&watchers_array, i);
 
         if(data)
-        {   free(data);
+        {   
+            FNotifyDestroy(data->arg1.datav[0]);
+            free(data->arg1.datav[0]);
         }
-    }
 
-    GArrayWipe(&watchers_array);
+        free(data);
+    }
 
     kill_threads = 1;
 

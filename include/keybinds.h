@@ -8,13 +8,13 @@
 
 /* key definitions */
 /* common keys */
+
 #define ALT         XCBMod1Mask
 #define NUMLOCK     XCBMod2Mask
 #define SUPER       XCBMod4Mask         /* "Command Key" "Windows Key" */
 #define CTRL        XCBControlMask
 #define SHIFT       XCBShiftMask
 #define CAPSLOCK    XCBLockMask
-#define TAB         XK_Tab
 #define LMB         XCBButton1
 #define MMB         XCBButton2
 #define RMB         XCBButton3
@@ -42,6 +42,8 @@
 #define XF11        XK_F11
 #define XF12        XK_F12
 
+#define ESCAPE      XK_Escape
+#define TAB         XK_Tab
 
 /* XF86 */
 #define XAudioMute                  XF86XK_AudioMute

@@ -1,8 +1,6 @@
 #include "wmlua/lua.h"
+#include "wmlua/client.h"
 #include "main.h"
-
-#define VERIFY_CLIENT_ID(id) if(id < 0 || id > UINT32_MAX) { return luaL_error(l, "invalid client id"); }
-#define VERIFY_DESKTOP_ID(id) if(id < 0 || id > UINT32_MAX) { return luaL_error(l, "invalid client id"); }
 
 extern WM _wm;
 
@@ -79,8 +77,6 @@ l_client_get(lua_State *l)
         lua_pushnil(l);
         ++pushedVars;
     }
-
-    UNLOCK_WM();
 
     return pushedVars;
 }
@@ -220,6 +216,80 @@ l_client_focus(lua_State *l)
 }
 
 int
+l_client_focus_next(lua_State *l)
+{
+    int pushedVars = 0;
+
+    Client *c;
+    Client *next = NULL;
+
+    LOCK_WM();
+
+    c = _wm.selmon->desksel->sel;
+
+    if(!c)
+    {   c = _wm.selmon->desksel->focus;
+    }
+
+    if(c)
+    {
+        next = nextfocus(c);
+
+        if(!next)
+        {   next = startfocus(c->desktop);
+        }
+
+        if(next)
+        {   focus(next);
+        }
+    }
+
+    UNLOCK_WM();
+
+    lua_pushboolean(l, next != NULL);
+    ++pushedVars;
+
+    return pushedVars;
+}
+
+int
+l_client_focus_prev(lua_State *l)
+{
+    int pushedVars = 0;
+
+    Client *c;
+    Client *prev = NULL;
+
+    LOCK_WM();
+
+    c = _wm.selmon->desksel->sel;
+
+    if(!c)
+    {   c = _wm.selmon->desksel->focus;
+    }
+
+    if(c)
+    {
+        prev = prevfocus(c);
+
+        if(!prev)
+        {   prev = lastfocus(c->desktop);
+        }
+
+        if(prev)
+        {   focus(prev);
+        }
+    }
+
+    UNLOCK_WM();
+
+    lua_pushboolean(l, prev != NULL);
+    ++pushedVars;
+
+    return pushedVars;
+}
+
+int
 l_client_move(lua_State *l)
 {
     lua_Integer id = luaL_checkinteger(l, 1);
@@ -228,8 +298,9 @@ l_client_move(lua_State *l)
     int pushedVars = 0;
 
     VERIFY_CLIENT_ID(id);
-    CLAMP(x, INT16_MIN, INT16_MAX);
-    CLAMP(y, INT16_MIN, INT16_MAX);
+
+    x = CLAMP(x, INT16_MIN, INT16_MAX);
+    y = CLAMP(y, INT16_MIN, INT16_MAX);
 
     i32 realx = (i32)x;
     i32 realy = (i32)y;
@@ -263,8 +334,9 @@ l_client_resize(lua_State *l)
     int pushedVars = 0;
 
     VERIFY_CLIENT_ID(id);
-    CLAMP(w, 1, UINT16_MAX);
-    CLAMP(h, 1, UINT16_MAX);
+
+    w = CLAMP(w, 1, UINT16_MAX);
+    h = CLAMP(h, 1, UINT16_MAX);
 
     i32 realw = (i32)w;
     i32 realh = (i32)h;
@@ -407,7 +479,7 @@ l_client_list(lua_State *l)
 
         if(likely(win))
         {   
-            lua_pushinteger(l, *win);
+            lua_pushinteger(l, (lua_Integer)*win);
             lua_rawseti(l, -2, ++luatablei);
         }
     }

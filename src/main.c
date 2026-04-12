@@ -36,6 +36,7 @@
 #include "watchers.h"
 #include "config.h"
 #include "startupapps.h"
+#include "wmlua/lua.h"
 /* #include "watchdog.h" */
 
 /* for HELP/DebugGING see under main() or the bottom */
@@ -1031,15 +1032,15 @@ setup(void)
     sighandler();
 
     /* setup threading before any major systems use it */
-    if(_wm.use_threads)
+    if(_wm.use_threads && 0)
     {   _wm.use_threads = InitThreading() == EXIT_SUCCESS;
     }
 
     setupatoms();
     setupcursors();
+    setupwm();
     setupcfg();
     setupwatchers();
-    setupwm();
 
     /* finds any monitor's */
     updategeom();
@@ -1103,8 +1104,15 @@ setupcfg(void)
     if(unlikely(status == EXIT_FAILURE))
     {   DebugWarn("Failed to init config paths");
     }
+    else
+    {   USInit(&_cfg, UserSettingsDefault);
+    }
 
-    USInit(&_cfg, UserSettingsDefault);
+    status = InitLua();
+
+    if(unlikely(status == EXIT_FAILURE))
+    {   DebugWarn("Failed to init lua");
+    }
 }
 void
 setupsys(void)

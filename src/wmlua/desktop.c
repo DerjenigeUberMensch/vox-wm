@@ -1,8 +1,8 @@
 #include "wmlua/lua.h"
+#include "wmlua/util.h"
+#include "wmlua/desktop.h"
 #include "main.h"
 #include "toggle.h"
-
-#define VERIFY_DESKTOP_ID(id) if(id < 0 || id > UINT32_MAX) { return luaL_error(l, "invalid client id"); }
 
 extern WM _wm;
 
