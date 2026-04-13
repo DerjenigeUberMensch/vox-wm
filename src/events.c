@@ -644,21 +644,11 @@ graphicsexpose(XCBGenericEvent *event)
 void
 noexpose(XCBGenericEvent *event)
 {
-    XCBExposeEvent *ev = (XCBExposeEvent *)event;
-    const i16 x                 = ev->x;
-    const i16 y                 = ev->y;
-    const u16 w                 = ev->width;
-    const u16 h                 = ev->height;
-    const u16 count             = ev->count;
-    const XCBWindow win         = ev->window;
+    XCBNoExposeEvent *ev = (XCBNoExposeEvent *)event;
 
+    XCBDrawable drawable = ev->drawable;
 
-    (void)x;
-    (void)y;
-    (void)w;
-    (void)h;
-    (void)count;
-    (void)win;
+    (void)drawable;
 }
 
 void

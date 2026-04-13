@@ -23,7 +23,7 @@ extern XCBAtom motifatom;
 /* Macro definitions */
 
 u16 OLDWIDTH(Client *c)         { return (c->oldw + (c->oldbw * 2)); }
-u16 OLDHEIGHT(Client *c)        { return (c->oldw + (c->oldbw * 2)); }
+u16 OLDHEIGHT(Client *c)        { return (c->oldh + (c->oldbw * 2)); }
 u16 WIDTH(Client *c)            { return (c->w + (c->bw * 2)); }
 u16 HEIGHT(Client *c)           { return (c->h + (c->bw * 2)); } 
 /* Our custom states */
@@ -417,6 +417,7 @@ u32 SHOULDMAXIMIZE(Client *c)   {
                                     if(DOCKED(c))
                                     {   return 0;
                                     }
+
                                     Monitor *m = c->desktop->mon;
                                     const i16 wx = m->wx;
                                     const i16 wy = m->my;
@@ -960,7 +961,6 @@ createclient(void)
     c->w = c->h = 0;
     c->oldx = c->oldy = 0;
     c->oldw = c->oldh = 0;
-    c->ewmhflags = 0;
     c->ewmhflags = 0;
     c->bw = c->oldbw = 0;
     c->bcol = 0;
