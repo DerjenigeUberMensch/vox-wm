@@ -1,5 +1,5 @@
 # compiler 
-COMPILER ?= cc
+COMPILER ?= gcc
 
 # paths
 PREFIX ?= /usr/local/
@@ -33,13 +33,14 @@ MEMFLAGS = ${MEMFLAGSALWAYS}
 MEMFLAGS += ${MEMFLAGSDEBUG}
 
 WARNINGDEFAULT = -Wall -Wno-deprecated-declarations -Wshadow -Wuninitialized -Werror=format-security 
-WARNINGEXTRAS = -Wunreachable-code -Waggregate-return -Wpointer-arith -Wstrict-aliasing -Wno-strict-overflow
+WARNINGEXTRAS = -Wunreachable-code -Wpointer-arith -Wstrict-aliasing -Wno-strict-overflow
 WARNINGFLAGS = ${WARNINGDEFAULT} ${WARNINGEXTRAS}
 
 LINKTIMEOPTIMIZATIONS = -flto -flto=auto
 
 #SAFETYFLAGS = -fcf-protection=full -fharden-compares -fstack-protector-all -fstack-clash-protection -fharden-compares -fharden-conditional-branches -fharden-control-flow-redundancy  -fhardcfr-check-exceptions  -fhardcfr-check-returning-calls -fhardcfr-check-noreturn-calls=always 
-PRELINKERFLAGS ?= -fpie -fstack-protector-strong -fstack-clash-protection ${LINKTIMEOPTIMIZATIONS} ${SECTIONCODE}
+PRELINKERFLAGS ?= -fpie -fstack-protector-strong -fstack-clash-protection ${SECTIONCODE}
+PRELINKERFLAGSRELEASE = ${PRELINKERFLAGS} ${LINKTIMEOPTIMIZATIONS}
 
 # can set higher but function overhead is pretty small so meh
 INLINELIMIT ?= 15
@@ -49,15 +50,15 @@ X86 = -m32
 X86_64 = -m64
 BUILD_ARCHITECTURE = ${X86_64}
 LINKLIBS = -lpthread -lm
-LINKFLAGS = ${LINKMODE} -Wl,--as-needed,--relax,--gc-sections,-z,now,-z,noexecstack,-z,defs,-pie ${LINKTIMEOPTIMIZATIONS} ${LINKLIBS} ${BUILD_ARCHITECTURE}
-LINKRELEASE = ${NO_SANATIZE_FLAGS} 
+LINKFLAGS = ${LINKMODE} -Wl,--as-needed,--relax,--gc-sections,-z,now,-z,noexecstack,-z,defs,-pie ${LINKLIBS} ${BUILD_ARCHITECTURE}
+LINKRELEASE = ${NO_SANATIZE_FLAGS} ${LINKTIMEOPTIMIZATIONS}
 #-Wl,--strip-all 
 LINKDEBUG = ${MEMFLAGS}
 
 DEBUGFLAGS = -ggdb -g -fverbose-asm
 CPPFLAGS = -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L ${XINERAMAFLAGS}
 CCFLAGS  = ${CCVERSION} ${WARNINGFLAGS} ${INCS} ${CPPFLAGS} ${PRELINKERFLAGS} ${BUILD_ARCHITECTURE}
-RELEASEFLAGS = ${CCFLAGS} 
+RELEASEFLAGS = ${CCFLAGS} ${PRELINKERFLAGSRELEASE}
 
 DEBUG 	= ${DEBUGFLAGS} ${MEMFLAGS} -O0
 

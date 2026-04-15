@@ -1,11 +1,14 @@
-#include "wmlua/lua.h"
 #include "util.h"
+#include "config.h"
 
+#include "wmlua/lua.h"
 #include "wmlua/core.h"
 #include "wmlua/desktop.h"
 #include "wmlua/client.h"
 
 lua_State *luastate = NULL;
+lua_State *keybindThread = NULL;
+static clock_t start;
 
 
 /* luau stuff */
@@ -40,11 +43,27 @@ add_func_global(lua_State *L, const char *name, lua_CFunction f)
     lua_pop(L, 1);
 }
 
+static void
+hook(lua_State *L, lua_Debug *ar)
+{
+    (void)ar;
+
+    clock_t tim = clock();
+
+    if(tim - start > CLOCKS_PER_SEC / 60)
+    {   luaL_error(L, "Max instruction count reached, ERROR: MAX_ALLOTED_TIME_EXCEEDED");
+    }
+}
+
 /* funcs */
 
 int
 InitLua(void)
 {
+    if(!ASSERT(!luastate))
+    {   return EXIT_SUCCESS;
+    }
+
     luastate = luaL_newstate();
 
     if(unlikely(luastate == NULL))
@@ -99,6 +118,65 @@ InitLua(void)
     return EXIT_SUCCESS;
 }
 
+int
+LuaRunKeybindThread(void)
+{
+    enum { MAX_INSTR = 1000 };
+
+    if(!luastate)
+    {   return EXIT_FAILURE;
+    }
+
+    const char *wmconfig = WMConfigGetPath(WMFileKeybinds);
+
+    if(unlikely(!wmconfig))
+    {   return EXIT_FAILURE;
+    }
+
+    /* start clock wen thread ready */
+    start = clock();
+
+    keybindThread = lua_newthread(luastate);
+
+    if(!keybindThread)
+    {   return EXIT_FAILURE;
+    }
+
+    lua_sethook(luastate, hook, LUA_MASKCOUNT, MAX_INSTR);
+
+    int status;
+    int nres = 0;
+
+    status = luaL_loadfile(luastate, wmconfig);
+
+    if(status != LUA_OK)
+    {   
+        DebugWarn("While loading keybinds.lua, encountered: %s", lua_tostring(keybindThread, -1));
+        lua_pop(luastate, 1);
+        return EXIT_FAILURE;
+    }
+
+    lua_xmove(luastate, keybindThread, 1);
+
+    status = lua_resume(keybindThread, NULL, 0, &nres);
+
+    (void)nres;
+
+    if(status != LUA_OK && status != LUA_YIELD)
+    {   
+        DebugWarn("Runtime error: %s", lua_tostring(keybindThread, -1));
+        lua_pop(keybindThread, 1);
+        return EXIT_FAILURE;   
+    }
+
+    return EXIT_SUCCESS;
+}
+
+lua_State *
+LuaGetKeybindThread(void)
+{   return keybindThread;
+}
+
 void
 DestroyLua(void)
 {
@@ -107,5 +185,6 @@ DestroyLua(void)
     }
 
     luastate = NULL;
+    keybindThread = NULL;
 }
 

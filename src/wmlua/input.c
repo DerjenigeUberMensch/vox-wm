@@ -358,14 +358,21 @@ struct
 KeyCodeEntry
 {
     const char *name;
-    u16 keycode;
+    u32 keycode;
+};
+
+static const KeyCodeEntry mods_table[] =
+{
+    { "alt", WM_ALT },
+    { "numlock", WM_NUMLOCK },
+    { "super", WM_SUPER },
+    { "capslock", WM_CAPSLOCK },
+    { "ctrl", WM_CTRL },
+    { "shift", WM_SHIFT },
 };
 
 static const KeyCodeEntry keycode_table[] =
 { 
-    { "ctrl", CTRL },
-    { "alt", ALT },
-    { "shift", SHIFT },
     { "tab", TAB },
     { "escape", ESCAPE },
 
@@ -449,8 +456,8 @@ int l_input_bind(lua_State *l)
 
     char *saveptr;
 
-    u32 mask;
-    XCBKeysym keycode;
+    u32 mask = 0;
+    XCBKeysym keycode = 0;
 
     do
     {
@@ -460,10 +467,26 @@ int l_input_bind(lua_State *l)
         {   break;
         }
 
-        if(strcmp_lower(token, "ctrl"))
-        {
+        /* look for modifiers */
+
+        i32 i;
+        bool found = false;
+
+        for(i = 0; i < LENGTH(mods_table); ++i)
+        {   
+            if(!strcmp_lower(token, mods_table[i].name))
+            {   
+                DebugWarn("Found %s", token);
+                found = true;
+                break;
+            }
         }
 
+        if(!found)
+        {   
+            DebugWarn("no found");
+            break;
+        }
 
     } while(1);
 }

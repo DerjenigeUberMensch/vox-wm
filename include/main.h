@@ -206,6 +206,8 @@ void setup(void);
 void setupatoms(void);
 /* Loads CFG data into Settings struct. */
 void setupcfg(void);
+/* Setup lua code */
+void setuplua(void);
 /* Sets up System related data */
 void setupsys(void);
 /* Setup file watchers for the wm */

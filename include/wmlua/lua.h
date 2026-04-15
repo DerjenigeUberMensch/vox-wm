@@ -7,6 +7,7 @@
 
 
 int InitLua(void);
+int LuaRunKeybindThread(void);
 void DestroyLua(void);
 
 

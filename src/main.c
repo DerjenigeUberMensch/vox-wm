@@ -159,6 +159,8 @@ checkotherwm(void)
 void
 cleanup(void)
 {
+    _wm.running = 0;
+
     XCBCookie cookie;
 
     /* save setting data. */
@@ -1032,8 +1034,13 @@ setup(void)
     sighandler();
 
     /* setup threading before any major systems use it */
-    if(_wm.use_threads && 0)
-    {   _wm.use_threads = InitThreading() == EXIT_SUCCESS;
+    if(_wm.use_threads)
+    {   
+        _wm.use_threads = InitThreading() == EXIT_SUCCESS;
+
+        if(!_wm.use_threads)
+        {   pthread_mutex_destroy(&_wm.mutex);
+        }
     }
 
     setupatoms();
@@ -1041,6 +1048,7 @@ setup(void)
     setupwm();
     setupcfg();
     setupwatchers();
+    setuplua();
 
     /* finds any monitor's */
     updategeom();
@@ -1107,13 +1115,34 @@ setupcfg(void)
     else
     {   USInit(&_cfg, UserSettingsDefault);
     }
+}
+
+static void
+IMPL_WM_LUA_RUNNER(Generic *arg)
+{
+    (void)arg;
+
+    LuaRunKeybindThread();
+}
+
+void 
+setuplua(void)
+{
+    int status;
 
     status = InitLua();
 
     if(unlikely(status == EXIT_FAILURE))
-    {   DebugWarn("Failed to init lua");
+    {   
+        DebugWarn("Failed to init lua");
+        return;
+    }
+
+    if(_wm.use_threads)
+    {   ThreadingAddWork(IMPL_WM_LUA_RUNNER, NULL, NULL);
     }
 }
+
 void
 setupsys(void)
 {
