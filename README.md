@@ -4,7 +4,7 @@ The [vox-wm](https://github.com/DerjenigeUberMensch/vox-wm/) project was intiall
 While still maintaing the window manager like feel of multiple different layouts and simpled nature behaviour.
 
 ## Preview (Monocle)
-![example_image_monocle](https://github.com/DerjenigeUberMensch/vox-wm/blob/Experimental/images/example.png)
+![example_image_monocle](./images/example.png)
 
 ## Table of Contents
 1. [Requirements](#Requirements)  
