@@ -11,7 +11,7 @@ WMFiles
     WMFileConfig,
     WMFileSession,
     WMFileStartup,
-    WMFileKeybinds,
+    WMFileLua,
     WMFileFolder,
     WMFileLAST
 };

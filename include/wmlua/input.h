@@ -3,6 +3,7 @@
 
 #include "wmlua/lua.h"
 
+int l_input_bind(lua_State *l);
 
 
 #endif

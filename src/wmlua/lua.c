@@ -1,3 +1,7 @@
+#include <libgen.h>
+#include <stdio.h>
+#include <string.h>
+
 #include "util.h"
 #include "config.h"
 
@@ -5,6 +9,7 @@
 #include "wmlua/core.h"
 #include "wmlua/desktop.h"
 #include "wmlua/client.h"
+#include "wmlua/input.h"
 
 lua_State *luastate = NULL;
 lua_State *keybindThread = NULL;
@@ -110,7 +115,7 @@ InitLua(void)
     add_func(luastate, "workspace", "desktop_list", l_desktop_list);
 
     /* input */
-    //add_func(luastate, "input", "focus", l_client_focus);
+    add_func(luastate, "input", "bind", l_input_bind);
 
     /* wm core */
     add_func_global(luastate, "spawn", l_core_spawn);
@@ -127,7 +132,7 @@ LuaRunKeybindThread(void)
     {   return EXIT_FAILURE;
     }
 
-    const char *wmconfig = WMConfigGetPath(WMFileKeybinds);
+    const char *wmconfig = WMConfigGetPath(WMFileLua);
 
     if(unlikely(!wmconfig))
     {   return EXIT_FAILURE;
@@ -151,7 +156,17 @@ LuaRunKeybindThread(void)
 
     if(status != LUA_OK)
     {   
-        DebugWarn("While loading keybinds.lua, encountered: %s", lua_tostring(keybindThread, -1));
+        char *file = strdup(wmconfig);
+        char *filename = file;
+
+        if(filename)
+        {   basename(filename);
+        }
+
+        DebugWarn("While loading %s, encountered: %s", filename ? filename : "Not Found", lua_tostring(keybindThread, -1));
+
+        free(file);
+
         lua_pop(luastate, 1);
         return EXIT_FAILURE;
     }

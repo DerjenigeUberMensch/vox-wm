@@ -34,15 +34,16 @@ UserSettingsDefault[] =
     VOX_ADD_MEMBER_SETTING(MCount, SCTypeUSHORT, 1, UpdateMCount)
     VOX_ADD_MEMBER_SETTING(Snap, SCTypeUSHORT, 10, UpdateSkip)
     VOX_ADD_MEMBER_SETTING(RefreshRate, SCTypeUSHORT, 60, UpdateSkip)
-    VOX_ADD_MEMBER_SETTING(SmartResizing, SCTypeBOOL, true, UpdateSkip)
     VOX_ADD_MEMBER_SETTING(CenteringBias, SCTypeFLOAT, .0125, UpdateSkip)
 
 
     /* BOOL Types */
+    VOX_ADD_MEMBER_SETTING(SmartResizing, SCTypeBOOL, true, UpdateSkip)
     VOX_ADD_MEMBER_SETTING(HoverFocus, SCTypeBOOL, false, UpdateSkip)
     VOX_ADD_MEMBER_SETTING(UseDecorations, SCTypeBOOL, false, UpdateUseDecorations)
     VOX_ADD_MEMBER_SETTING(UseClientSideDecorations, SCTypeBOOL, true, UpdateUseClientSideDecorations)
     VOX_ADD_MEMBER_SETTING(PreferClientSideDecorations, SCTypeBOOL, true, UpdatePreferClientSideDecorations)
+    VOX_ADD_MEMBER_SETTING(DisableLuaEngine, SCTypeBOOL, false, UpdateSkip)
 
     /* legacy */
 

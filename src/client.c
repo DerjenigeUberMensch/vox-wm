@@ -3132,3 +3132,4 @@ wintoclient(XCBWindow win)
   
     return c;
 }
+

@@ -24,6 +24,7 @@ UserSettingType
     UseDecorations,
     UseClientSideDecorations,
     PreferClientSideDecorations,
+    DisableLuaEngine,
 
     /* legacy */
     UseLegacyFloatingSystem,

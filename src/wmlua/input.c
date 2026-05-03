@@ -365,7 +365,10 @@ static const KeyCodeEntry mods_table[] =
 {
     { "alt", WM_ALT },
     { "numlock", WM_NUMLOCK },
-    { "super", WM_SUPER },
+    { "super", SUPER },
+    { "windowkey", SUPER },
+    { "command", SUPER },
+
     { "capslock", WM_CAPSLOCK },
     { "ctrl", WM_CTRL },
     { "shift", WM_SHIFT },
@@ -408,16 +411,13 @@ static const KeyCodeEntry keycode_table[] =
 
     { "", },
 
-    { "super", SUPER },
-    { "windowkey", SUPER },
-    { "command", SUPER },
-
 };
 
 
 extern WM _wm;
 
-int strcmp_lower(const char *a, const char *b)
+int 
+strcmp_lower(const char *a, const char *b)
 {
     char ca;
     char cb;
@@ -438,7 +438,8 @@ int strcmp_lower(const char *a, const char *b)
     return *a - *b;
 }
 
-int l_input_bind(lua_State *l)
+int 
+l_input_bind(lua_State *l)
 {
     const char *combo = lua_tostring(l, 1);
 
@@ -454,39 +455,48 @@ int l_input_bind(lua_State *l)
 
     strncpy(buff, combo, (BUFF_SIZE - 1) * sizeof(char));
 
-    char *saveptr;
-
     u32 mask = 0;
+    u32 i = 0;
     XCBKeysym keycode = 0;
 
-    do
+    char *saveptr;
+    char *token = strtok_r(buff, "+", &saveptr);
+
+    while (token)
     {
-        char *token = strtok_r(buff, "+", &saveptr);
-
-        if(!token)
-        {   break;
-        }
-
-        /* look for modifiers */
-
-        i32 i;
         bool found = false;
 
-        for(i = 0; i < LENGTH(mods_table); ++i)
-        {   
-            if(!strcmp_lower(token, mods_table[i].name))
-            {   
-                DebugWarn("Found %s", token);
+        // modifier check
+        for (i = 0; i < LENGTH(mods_table); ++i)
+        {
+            if (!strcmp_lower(token, mods_table[i].name))
+            {
+                mask |= mods_table[i].keycode;
                 found = true;
                 break;
             }
         }
 
-        if(!found)
-        {   
+        // keycode check
+        if (!found)
+        {
+            for (i = 0; i < LENGTH(keycode_table); ++i)
+            {
+                if (!strcmp_lower(token, keycode_table[i].name))
+                {
+                    keycode = keycode_table[i].keycode;
+                    found = true;
+                    break;
+                }
+            }
+        }
+
+        if (!found)
+        {
             DebugWarn("no found");
             break;
         }
 
-    } while(1);
+        token = strtok_r(NULL, "+", &saveptr);
+    }
 }
