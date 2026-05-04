@@ -10,6 +10,7 @@
 #include "decorations.h"
 #include "settings.h"
 #include "util.h"
+#include "wmlua/input.h"
 
 
 extern WM _wm;
@@ -1046,7 +1047,7 @@ __grabbuttons(XCBWindow win, bool neverholdfocus, bool focused)
     int modifiers[4] = { 0, XCB_MOD_MASK_LOCK, _wm.numlockmask, _wm.numlockmask|XCB_MOD_MASK_LOCK};
     /* somewhat taken from i3 */
     /* Always grab these to allow for replay pointer when focusing by mouse click */
-    u8 gbuttons[3] = { LMB, MMB, RMB };
+    u8 gbuttons[3] = { WM_LMB, WM_MMB, WM_RMB };
 
     if (!focused)
     {
@@ -1061,6 +1062,8 @@ __grabbuttons(XCBWindow win, bool neverholdfocus, bool focused)
             }
         }
     }
+
+    /*
     for (i = 0; i < LENGTH(buttons); ++i)
     {
         for (j = 0; j < LENGTH(modifiers); ++j)
@@ -1072,6 +1075,7 @@ __grabbuttons(XCBWindow win, bool neverholdfocus, bool focused)
                     XCB_NONE, XCB_NONE);
         }
     }
+    */
 }
 
 static void
@@ -1082,7 +1086,7 @@ __ungrabbuttons(XCBWindow win, bool neverholdfocus, bool focused)
     int modifiers[4] = { 0, XCB_MOD_MASK_LOCK, _wm.numlockmask, _wm.numlockmask|XCB_MOD_MASK_LOCK};
     /* somewhat taken from i3 */
     /* Always grab these to allow for replay pointer when focusing by mouse click */
-    u8 gbuttons[3] = { LMB, MMB, RMB };
+    u8 gbuttons[3] = { WM_LMB, WM_MMB, WM_RMB };
 
     /* ungrab any previously grabbed buttons that are ours */
     for(i = 0; i < LENGTH(modifiers); ++i)
@@ -1095,9 +1099,11 @@ __ungrabbuttons(XCBWindow win, bool neverholdfocus, bool focused)
             }
         }
 
+        /*
         for(j = 0; j < LENGTH(buttons); ++j)
         {   XCBUngrabButton(_wm.dpy, buttons[j].button, modifiers[i], win);
         }
+        */
     }
 }
 
@@ -1129,10 +1135,13 @@ grabkeys(void)
 {
     u32 i, j, k;
     u32 modifiers[4] = { 0, XCB_MOD_MASK_LOCK, _wm.numlockmask, _wm.numlockmask|XCB_MOD_MASK_LOCK };
+    /*
     XCBKeyCode *keycodes[LENGTH(keys)];
+    */
     XCBUngrabKey(_wm.dpy, XCB_GRAB_ANY, XCB_MOD_MASK_ANY, _wm.root);
     
     /* This grabs all the keys */
+    /*
     for(i = 0; i < LENGTH(keys); ++i)
     {   keycodes[i] = XCBKeySymbolsGetKeyCode(_wm.syms, keys[i].keysym);
     }
@@ -1156,6 +1165,7 @@ grabkeys(void)
     for(i = 0; i < LENGTH(keys); ++i)
     {   free(keycodes[i]);
     }
+    */
 }
 
 void 

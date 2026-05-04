@@ -1141,7 +1141,7 @@ mappingnotify(XCBGenericEvent *event)
     {   grabkeys();
     }
     else if(request == XCB_MAPPING_POINTER)
-    {
+    {   grabbuttons();
     }
     XCBFlush(_wm.dpy);
 }
@@ -1396,7 +1396,7 @@ clientmessage(XCBGenericEvent *event)
 
             XCBButtonPressEvent bev = 
             {
-                .state = SUPER,
+                .state = WM_SUPER,
                 .root = _wm.root,
                 .time = XCB_CURRENT_TIME,
                 .child = 0,

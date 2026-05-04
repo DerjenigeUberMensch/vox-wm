@@ -327,7 +327,7 @@ DragWindowHandler(
 
         running = 1;
 
-        //* button event press does nothing */
+        /* button event press does nothing */
         return running;
     }
 
@@ -345,7 +345,7 @@ DragWindowHandler(
     {
         case XCB_MOTION_NOTIFY:
             mev = (XCBMotionNotifyEvent *)event;
-            refreshrate = USGetSetting(&_cfg, RefreshRate).dataf[0];
+            refreshrate = USGetSetting(&_cfg, RefreshRate).data16[0];
             snap = USGetSetting(&_cfg, Snap).data16[0];
 
             if(refreshrate)
@@ -438,14 +438,29 @@ DragWindowHandler(
                 setclientdesktop(c, m->desksel);
                 setmonsel(m);
             }
-            if(DOCKED(c))
-            {   setfloating(c, 0);
-            }
         }
 
         arrange(_wm.selmon->desksel);
         XCBFlush(_wm.dpy);
     }
+
+    if(!running)
+    {
+        XCBUngrabPointer(_wm.dpy, XCB_CURRENT_TIME);
+        Monitor *m;
+        c = wintoclient(win);
+        if(c)
+        {
+            if ((m = recttomon(c->x, c->y, c->w, c->h)) != _wm.selmon) 
+            {
+                setclientdesktop(c, m->desksel);
+                setmonsel(m);
+            }
+        }
+        arrange(_wm.selmon->desksel);
+        XCBFlush(_wm.dpy);
+    }
+
 
     return running;
 }
@@ -665,7 +680,7 @@ ResizeWindowHandler(
     {   
         case XCB_MOTION_NOTIFY:
             mev = (XCBMotionNotifyEvent *)event;
-            refreshrate = USGetSetting(&_cfg, RefreshRate).dataf[0];
+            refreshrate = USGetSetting(&_cfg, RefreshRate).data16[0];
 
             if(refreshrate)
             {
@@ -763,9 +778,6 @@ ResizeWindowHandler(
             {
                 setclientdesktop(c, m->desksel);
                 setmonsel(m);
-            }
-            if(DOCKED(c))
-            {   setfloating(c, 0);
             }
         }
         arrange(_wm.selmon->desksel);
@@ -981,11 +993,10 @@ MaximizeWindow(const Arg *arg)
     {   return;
     }
     if(!DOCKED(c))
-    {   
-        setfloating(c, 0);
-        maximize(c);
+    {   maximize(c);
     }
-    else /* else its maximized */
+    /* else its maximized */
+    else 
     {   
         unmaximize(c);
         setfloating(c, 1);
