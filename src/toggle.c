@@ -242,7 +242,6 @@ DragWindowHandler(
         /* get any requests that may have moved the window back */
         XCBSync(_wm.dpy);
 
-
         XCBCookie GrabPointerCookie = XCBGrabPointerCookie(_wm.dpy, _wm.root, False, MOUSEMASK, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE, cur, XCB_CURRENT_TIME);
 
         XCBGrabPointer *GrabPointer = XCBGrabPointerReply(_wm.dpy, GrabPointerCookie);
@@ -264,15 +263,13 @@ DragWindowHandler(
         XCBCookie QueryPointerCookie = XCBQueryPointerCookie(_wm.dpy, win);
         XCBQueryPointer *pointer = XCBQueryPointerReply(_wm.dpy, QueryPointerCookie);
 
-        if(pointer)
-        {
-            x = pointer->root_x;
-            y = pointer->root_y;
-            free(pointer);
-        }
-        else
+        if(!pointer)
         {   return 0;
         }
+
+        x = pointer->root_x;
+        y = pointer->root_y;
+        free(pointer);
 
         Client *c_tmp = wintoclient(win);
 
@@ -282,19 +279,17 @@ DragWindowHandler(
 
             XCBGeometry *geom = XCBGetGeometryReply(_wm.dpy, GetGeometryCookie);
 
-            if(geom)   
-            {
-                oldx = geom->x;
-                oldy = geom->y;
-                oldw = geom->width;
-                oldh = geom->height;
-                bw = geom->border_width;
-
-                free(geom);
-            }
-            else
+            if(!geom)   
             {   return 0;
             }
+
+            oldx = geom->x;
+            oldy = geom->y;
+            oldw = geom->width;
+            oldh = geom->height;
+            bw = geom->border_width;
+
+            free(geom);
         }
         else
         {
@@ -316,8 +311,10 @@ DragWindowHandler(
             setfloating(c_tmp, 1); 
             /* make sure auto-docking dosent auto dock it */
             c_tmp->x += 1;
+            /* needs extra handling for some reason???? */
+            c_tmp->y += 1;
 
-            arrange(_wm.selmon->desksel);
+            arrange(c_tmp->desktop);
         }
         else
         {   XCBRaiseWindow(_wm.dpy, win);
@@ -551,17 +548,15 @@ ResizeWindowHandler(
         XCBCookie QueryPointerCookie = XCBQueryPointerCookie(_wm.dpy, win);
         XCBQueryPointer *pointer = XCBQueryPointerReply(_wm.dpy, QueryPointerCookie);
 
-        if(pointer)
-        {
-            curx = pointer->root_x;
-            cury = pointer->root_y;
-            nx = pointer->win_x;
-            ny = pointer->win_y;
-            free(pointer);
-        }
-        else
+        if(!pointer)
         {   return running;
         }
+
+        curx = pointer->root_x;
+        cury = pointer->root_y;
+        nx = pointer->win_x;
+        ny = pointer->win_y;
+        free(pointer);
 
         Client *c_tmp = wintoclient(win);
 
@@ -581,34 +576,33 @@ ResizeWindowHandler(
             XCBCookie GetGeometryCookie = XCBGetGeometryCookie(_wm.dpy, win);
             XCBGeometry *wa = XCBGetGeometryReply(_wm.dpy, GetGeometryCookie);
 
-            if(wa)
-            {   
-                oldw = wa->width;
-                oldh = wa->height;
-                oldx = wa->x;
-                oldy = wa->y;
-                free(wa);
-            }
-            else
+            if(!wa)
             {   return running;
             }
+
+            oldw = wa->width;
+            oldh = wa->height;
+            oldx = wa->x;
+            oldy = wa->y;
+            free(wa);
 
             XCBSizeHints hints;
             XCBCookie GetWMNormalHintsCookie = XCBGetWMNormalHintsCookie(_wm.dpy, win);
-            u8 hintsstatus = XCBGetWMNormalHintsReply(_wm.dpy, GetWMNormalHintsCookie, &hints);
-            if(hintsstatus)
-            {
-                Client c1;
 
-                updatesizehints(&c1, &hints);
-                minw = c1.minw;
-                minh = c1.minh;
-                maxw = c1.maxw;
-                maxh = c1.maxh;
-            }
-            else
+            u8 hintsstatus = XCBGetWMNormalHintsReply(_wm.dpy, GetWMNormalHintsCookie, &hints);
+
+            if(!hintsstatus)
             {   return running;
             }
+
+            Client c1;
+
+            updatesizehints(&c1, &hints);
+
+            minw = c1.minw;
+            minh = c1.minh;
+            maxw = c1.maxw;
+            maxh = c1.maxh;
         }
 
         const u8 MIN_SIZE = 5;
@@ -650,9 +644,11 @@ ResizeWindowHandler(
             free(GrabPointer);
             return running;
         }
+
         free(GrabPointer);
 
         /* Prevent it from being detected as non floating */
+
         if(c_tmp)
         {
             setfloating(c_tmp, 1); c_tmp->x += 1;

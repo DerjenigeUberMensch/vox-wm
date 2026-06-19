@@ -9,6 +9,7 @@
 #include "desktop.h"
 #include "getprop.h"
 #include "settings.h"
+#include "toggle.h"
 
 extern WM _wm;
 extern UserSettings _cfg;
@@ -137,18 +138,16 @@ keypress(XCBGenericEvent *event)
     {   return;
     }
 
-    const i32 cleanstate = CLEANMASK(state);
-    /* ONLY use lowercase cause we dont know how to handle anything else */
-    const XCBKeysym sym = XCBKeySymbolsGetKeySym(_wm.syms, keydetail, 0);
-    /* Only use upercase cause we dont know how to handle anything else
-     * sym = XCBKeySymbolsGetKeySym(_wm.syms,  keydetail, 0);
-     */
-    /* This Could work MAYBE allowing for upercase and lowercase Keybinds However that would complicate things due to our ability to mask Shift
-     * sym = XCBKeySymbolsGetKeySym(_wm.syms, keydetail, cleanstate); 
-     */
-    Debug("%d", sym);
-    int i;
+    const u32 cleanmodstate = CLEANMASK(state);
     u8 sync = 0;
+
+    bool ret = WMKeybindHandler(cleanmodstate, keydetail, true);
+
+    sync = ret;
+
+    Debug("%s", ret ? "true" : "false");
+
+    /*
     for(i = 0; i < LENGTH(keys); ++i)
     {
         if(keys[i].type == XCB_KEY_PRESS)
@@ -163,6 +162,7 @@ keypress(XCBGenericEvent *event)
             }
         }
     }
+    */
     if(sync)
     {   XCBFlush(_wm.dpy);
     }
@@ -211,6 +211,7 @@ keyrelease(XCBGenericEvent *event)
      */
     int i;
     u8 sync = 0;
+    /*
     for(i = 0; i < LENGTH(keys); ++i)
     {
         if(keys[i].type == XCB_KEY_RELEASE)
@@ -225,6 +226,7 @@ keyrelease(XCBGenericEvent *event)
             }
         }
     }
+    */
     if(sync)
     {   XCBFlush(_wm.dpy);
     }
@@ -295,6 +297,7 @@ buttonpress(XCBGenericEvent *event)
         sync = 1;
     }
     int i;
+    /*
     for(i = 0; i < LENGTH(buttons); ++i)
     {   
         if(buttons[i].type == XCB_BUTTON_PRESS
@@ -310,6 +313,7 @@ buttonpress(XCBGenericEvent *event)
             break;
         }
     }
+    */
     if(sync)
     {   XCBFlush(_wm.dpy);
     }
@@ -354,6 +358,7 @@ buttonrelease(XCBGenericEvent *event)
     u8 sync = 0;
 
     i16 i;
+    /*
     for(i = 0; i < LENGTH(buttons); ++i)
     {   
         if(buttons[i].type == XCB_BUTTON_RELEASE
@@ -369,6 +374,7 @@ buttonrelease(XCBGenericEvent *event)
             break;
         }
     }
+    */
     
     if(sync)
     {   XCBFlush(_wm.dpy);
@@ -1138,10 +1144,10 @@ mappingnotify(XCBGenericEvent *event)
     /* update the mask */
     updatenumlockmask();
     if(request == XCB_MAPPING_KEYBOARD)
-    {   grabkeys();
+    {   WMKeybindRefresh();
     }
     else if(request == XCB_MAPPING_POINTER)
-    {   grabbuttons();
+    {   
     }
     XCBFlush(_wm.dpy);
 }

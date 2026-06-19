@@ -72,8 +72,31 @@ vxextdebuginit_impl(void)
 static void
 vxextdebuginit(void)
 {
-    pthread_once(&vxext_init, vxextdebuginit_impl);
+    static volatile int intialized = 0;
+    int status;
+
+    status = pthread_once(&vxext_init, vxextdebuginit_impl);
+
+    /* fallback if the world explodes */
+    if(status != 0)
+    {
+        if(intialized)
+        {   return;
+        }
+
+        vxextdebug_lock();
+
+        if(!intialized)
+        {
+            vxextdebuginit();
+            intialized = 1;
+            fprintf(stderr, "vxextdebug: Failed to initialize with pthread_once, falling back to manual initialization\n");
+        }
+
+        vxextdebug_unlock();
+    }
 }
+
 
 void
 vxextdebug(enum VXMExtDebugType type, const char *file, const int line, const char *func, const char *fmt, ...)
@@ -146,6 +169,12 @@ vxextdebug(enum VXMExtDebugType type, const char *file, const int line, const ch
     }
 
     vxextdebug_lock();
+
+    if(!isatty(STDERR_FILENO))
+    {     
+        color = "";
+        colormsg = "";
+    }
 
     log_count++;
 

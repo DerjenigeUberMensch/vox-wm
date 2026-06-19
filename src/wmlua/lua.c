@@ -1,9 +1,14 @@
 #include <libgen.h>
+#include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 
 #include "util.h"
 #include "config.h"
+#include "file_util.h"
+#include "threading.h"
 
 #include "wmlua/lua.h"
 #include "wmlua/core.h"
@@ -12,8 +17,28 @@
 #include "wmlua/input.h"
 
 lua_State *luastate = NULL;
-lua_State *keybindThread = NULL;
-static clock_t start;
+static bool threadRunning = false;
+static u32 luaInstrCount = 0;
+static bool isHalt = false;
+static bool isDead = false;
+
+pthread_mutex_t lua_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t halt_cond = PTHREAD_COND_INITIALIZER;
+
+int
+TryLockLua(void)
+{   return pthread_mutex_trylock(&lua_mutex);
+}
+
+int 
+LockLua(void)
+{   return pthread_mutex_lock(&lua_mutex);
+}
+
+int
+UnlockLua(void)
+{   return pthread_mutex_unlock(&lua_mutex);
+}
 
 
 /* luau stuff */
@@ -48,31 +73,37 @@ add_func_global(lua_State *L, const char *name, lua_CFunction f)
     lua_pop(L, 1);
 }
 
-static void
-hook(lua_State *L, lua_Debug *ar)
-{
-    (void)ar;
-
-    clock_t tim = clock();
-
-    if(tim - start > CLOCKS_PER_SEC / 60)
-    {   luaL_error(L, "Max instruction count reached, ERROR: MAX_ALLOTED_TIME_EXCEEDED");
-    }
-}
-
 /* funcs */
 
 int
 InitLua(void)
 {
+    if(unlikely(pthread_mutex_init(&lua_mutex, NULL) != 0))
+    {   
+        DebugWarn("Failed to initialize Lua mutex");
+        return EXIT_FAILURE;
+    }
+
+    if(unlikely(pthread_cond_init(&halt_cond, NULL) != 0))
+    {
+        DebugWarn("Failed to initialize Lua condition");
+        return EXIT_FAILURE;
+    }
+
+    LockLua();
+
     if(!ASSERT(!luastate))
-    {   return EXIT_SUCCESS;
+    {   
+        UnlockLua();
+        return EXIT_SUCCESS;
     }
 
     luastate = luaL_newstate();
 
     if(unlikely(luastate == NULL))
-    {   return EXIT_FAILURE;
+    {   
+        UnlockLua();
+        return EXIT_FAILURE;
     }
 
     luaL_openlibs(luastate);
@@ -120,34 +151,109 @@ InitLua(void)
     /* wm core */
     add_func_global(luastate, "spawn", l_core_spawn);
 
+    const char *wmconfig = WMConfigGetPath(WMFileLua);
+
+    if(wmconfig)
+    {
+        if(!FFFileExists((char *)wmconfig))
+        {   
+            FFCreateFile((char *)wmconfig);
+            DebugLog("Lua config file not found, creating default at %s", wmconfig);
+        }
+    }
+    
+    enum { FILE_PATH_LEN = 1024 };
+    enum { MAX_PATH_LEN = FFSysGetConfigPathLengthMAX + FILE_PATH_LEN };
+
+    char buff[MAX_PATH_LEN];
+
+    snprintf(buff, MAX_PATH_LEN, 
+        "package.path = '%s' .. package.path",
+        WMConfigGetPath(WMFileFolder)
+    );
+
+    luaL_dostring(luastate, "package.path = './scripts/?.lua;./scripts/?/init.lua;' .. package.path");
+
+    UnlockLua();
+
     return EXIT_SUCCESS;
 }
 
-int
-LuaRunKeybindThread(void)
+bool 
+LuaIsThreadRunning(void)
 {
-    enum { MAX_INSTR = 1000 };
+    bool running;
+
+    LockLua();
+    running = threadRunning;
+    UnlockLua();
+
+    return running;
+}
+
+bool
+LuaIsDead(void)
+{
+    bool dead;
+
+    LockLua();
+    dead = isDead;
+    UnlockLua();
+
+    return dead;
+}
+
+static void
+LUA_INSTR_MAX_REACHED_HOOK(lua_State *L, lua_Debug *dgb)
+{
+    luaInstrCount += LuaInstrLimitIncrement;
+
+    /* we are erroring out so if a cache miss happens here it doesnt matter */
+    if(unlikely(luaInstrCount >= LuaInstrLimitMax))
+    {   luaL_error(L, "Lua instruction limit reached (your banned)");
+    }
+}
+
+static void
+LUA_HALT_HOOK(lua_State *L, lua_Debug *dgb)
+{
+    if(isHalt)
+    {   lua_yield(L, 0);
+    }
+}
+
+static void
+LUA_HOOK_HANDLER(lua_State *L, lua_Debug *dgb)
+{
+    /* must already be locked or we are in a UNSAFE state */
+    ASSERT(TryLockLua() != 0);
+
+    LUA_INSTR_MAX_REACHED_HOOK(L, dgb);
+    LUA_HALT_HOOK(L, dgb);
+}
+
+static void
+LUA_RUN_THREAD_IMPL(Generic *unused)
+{
+    LockLua();
 
     if(!luastate)
-    {   return EXIT_FAILURE;
+    {   goto UNLOCK;
     }
 
     const char *wmconfig = WMConfigGetPath(WMFileLua);
 
     if(unlikely(!wmconfig))
-    {   return EXIT_FAILURE;
+    {   goto UNLOCK;
     }
 
-    /* start clock wen thread ready */
-    start = clock();
+    lua_State *luaThread= NULL;
 
-    keybindThread = lua_newthread(luastate);
+    luaThread = lua_newthread(luastate);
 
-    if(!keybindThread)
-    {   return EXIT_FAILURE;
+    if(!luaThread)
+    {   goto UNLOCK;
     }
-
-    lua_sethook(luastate, hook, LUA_MASKCOUNT, MAX_INSTR);
 
     int status;
     int nres = 0;
@@ -163,43 +269,133 @@ LuaRunKeybindThread(void)
         {   basename(filename);
         }
 
-        DebugWarn("While loading %s, encountered: %s", filename ? filename : "Not Found", lua_tostring(keybindThread, -1));
+        DebugWarn("While loading %s, encountered: %s", filename ? filename : "Not Found", lua_tostring(luaThread, -1));
 
         free(file);
 
         lua_pop(luastate, 1);
-        return EXIT_FAILURE;
+
+        goto UNLOCK;
     }
 
-    lua_xmove(luastate, keybindThread, 1);
+    lua_xmove(luastate, luaThread, 1);
 
-    status = lua_resume(keybindThread, NULL, 0, &nres);
+    threadRunning = true;
 
-    (void)nres;
+    lua_sethook(luaThread, LUA_HOOK_HANDLER, LUA_MASKCOUNT, LuaInstrLimitIncrement);
 
-    if(status != LUA_OK && status != LUA_YIELD)
+    do
+    {
+        status = lua_resume(luaThread, NULL, 0, &nres);
+
+        (void)nres;
+
+        luaInstrCount = 0;
+
+        while(isHalt)
+        {   pthread_cond_wait(&halt_cond, &lua_mutex);
+        }
+
+    } while(status == LUA_YIELD && !isDead);
+
+    if (status != LUA_OK) 
+    {
+        DebugWarn("Runtime error: %s", lua_tostring(luaThread, -1));
+        lua_pop(luaThread, 1);
+    }
+
+    /* unset hook */
+    lua_sethook(luaThread, NULL, 0, 0);
+
+UNLOCK:
+    threadRunning = false;
+    UnlockLua();
+}
+
+int
+LuaRunThread(void)
+{
+    bool running;
+    int status;
+
+    LockLua();
+
+    running = threadRunning;
+
+    if(!running)
+    {
+        if(ThreadingUsesThreads())
+        {   status = ThreadingAddWork(LUA_RUN_THREAD_IMPL, NULL, NULL);
+        }
+    }
+
+    UnlockLua();
+
+    if(running)
+    {   return EXIT_SUCCESS;
+    }
+
+    if(status == EXIT_FAILURE)
     {   
-        DebugWarn("Runtime error: %s", lua_tostring(keybindThread, -1));
-        lua_pop(keybindThread, 1);
-        return EXIT_FAILURE;   
+        DebugWarn("Failed to start Lua keybind thread");
+        return EXIT_FAILURE;
     }
 
     return EXIT_SUCCESS;
 }
 
-lua_State *
-LuaGetKeybindThread(void)
-{   return keybindThread;
+int
+LuaRequestHalt(void)
+{
+    LockLua();
+
+    isHalt = true;
+
+    UnlockLua();
+
+    return EXIT_SUCCESS;
+}
+
+int
+LuaResumeAfterHalt(void)
+{
+    LockLua();
+
+    isHalt = false;
+
+    pthread_cond_signal(&halt_cond);
+
+    UnlockLua();
+
+    return EXIT_SUCCESS;
 }
 
 void
 DestroyLua(void)
 {
+    LuaRequestHalt();
+
+    LockLua();
+
+    isDead = true;
+
+    UnlockLua();
+
+    LuaResumeAfterHalt();
+
+    while(LuaIsThreadRunning());
+
+    LockLua();
+
     if(luastate)
     {   lua_close(luastate);
     }
 
     luastate = NULL;
-    keybindThread = NULL;
-}
+    threadRunning = false;
 
+    UnlockLua();
+
+    pthread_mutex_destroy(&lua_mutex);
+    pthread_cond_destroy(&halt_cond);
+}

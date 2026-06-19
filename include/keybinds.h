@@ -3,6 +3,7 @@
 
 #include <X11/keysym.h>
 #include <X11/XF86keysym.h> 
+#include <stdint.h>
 
 #include "main.h"
 
@@ -25,13 +26,24 @@ WMButton
     WM_RMB = XCBButton3,
     WM_SCROLL_UP = XCBButton4,
     WM_SCROLL_DOWN = XCBButton5,
+    /* non standard */
+    /*
     WM_SCROLL_LEFT = 6,
     WM_SCROLL_RIGHT = 7,
+    */
 };
 
 enum
 WMKeysyms
 {
+    WM_ALT_LEFT = XK_Alt_L,
+    WM_ALT_RIGHT = XK_Alt_R,
+    WM_SHIFT_LEFT = XK_Shift_L,
+    WM_SHIFT_RIGHT = XK_Shift_R,
+    WM_CTRL_LEFT = XK_Control_L,
+    WM_CTRL_RIGHT = XK_Control_R,
+    WM_SUPER_LEFT = XK_Super_L,
+    WM_SUPER_RIGHT = XK_Super_R,
     WM_CAPS_LOCK = XK_Caps_Lock,
     WM_NUM_LOCK = XK_Num_Lock,
     WM_SCROLL_LOCK = XK_Scroll_Lock,
@@ -180,7 +192,7 @@ WMKeysyms
     WM_ROCKER_DOWN  = XF86XK_RockerDown,
     WM_ROCKER_ENTER = XF86XK_RockerEnter,
 
-     WM_BACK            = XF86XK_Back,
+    WM_BACK            = XF86XK_Back,
     WM_FORWARD         = XF86XK_Forward,
     WM_STOP            = XF86XK_Stop,
     WM_REFRESH         = XF86XK_Refresh,
@@ -347,78 +359,48 @@ WMKeysyms
     WM_LOG_GRAB_INFO       = XF86XK_LogGrabInfo,
 };
 
-typedef struct KeyCodeEntry KeyCodeEntry;
+typedef struct Key Key;
 
-struct
-KeyCodeEntry
+struct 
+Key
 {
-    const char *name;
-    u32 keycode;
+    uint16_t type;              /* KeyPress/KeyRelease  */
+    uint16_t mod;               /* Modifier(s)          */
+
+    XCBKeysym *keysyms;         /* For multiple keysyms, NULL if not used */
+    size_t num_keysyms;         /* Number of keysyms in the array, 0 if not used */
+
+    void (*func)(const Key *, const Arg *);  /* Function             */
+    Arg arg;                    /* Argument             */
+    int lua_ref;                /* Lua reference        */
+    bool on_press;              /* On press or release  */
 };
 
-static const KeyCodeEntry mods_table[] =
-{
-    { "alt", WM_ALT },
-    { "numlock", WM_NUMLOCK },
-    { "super", WM_SUPER },
-    { "windowkey", WM_SUPER },
-    { "command", WM_SUPER },
+uint16_t WMKeybindModifierFromString(const char *mod_str);
+XCBKeysym WMKeybindKeysymFromString(const char *keysym_str);
 
-    { "capslock", WM_CAPSLOCK },
-    { "ctrl", WM_CTRL },
-    { "shift", WM_SHIFT },
-};
-
-static const KeyCodeEntry keycode_table[] =
-{ 
-    { "tab", WM_TAB },
-    { "escape", WM_ESCAPE },
-
-    { "lmb", WM_LMB },
-
-    { "mmb", WM_MMB },
-
-    { "rmb", WM_RMB },
-
-    { "scrollup", WM_SCROLL_UP },
-    { "scrolldown", WM_SCROLL_DOWN },
-    { "scrollleft", WM_SCROLL_LEFT },
-    { "scrollright", WM_SCROLL_RIGHT },
-
-    { "capslock", WM_CAPSLOCK },
-    { "caplock", WM_CAPSLOCK },
-
-    { "enter", WM_RETURN },
-    { "return", WM_RETURN },
-
-    { "f1", WM_F1 },
-    { "f2", WM_F2 },
-    { "f3", WM_F3 },
-    { "f4", WM_F4 },
-    { "f5", WM_F5 },
-    { "f6", WM_F6 },
-    { "f7", WM_F7 },
-    { "f8", WM_F8 },
-    { "f9", WM_F9 },
-    { "f10", WM_F10 },
-    { "f11", WM_F11 },
-    { "f12", WM_F12 },
-
-    { "", },
-
-};
-
+/*
+ * Create a new keybind
+ *
+ * RETURN: EXIT_SUCCESS on success
+ * RETURN: EXIT_FAILURE on failure
+ */
+int WMKeybindCreate(Key *keybind_reference, uint16_t modifier_mask_x11, XCBKeysym keysyms[], size_t num_keysyms, void (*func)(const Key *keybind_reference, const Arg *), Arg arg, int lua_ref, bool on_press);
 /* manually add a keybind to the list 
  *
  * RETURN: EXIT_SUCCESS on success
  * RETURN: EXIT_FAILURE on failure
  */
-int WMKeybindAdd(Key *keybind);
-/* manually remove a keybind to the list 
+int WMKeybindAdd(Key *keybind_reference);
+/* Manually refresh the keybind list
  *
  * RETURN: EXIT_SUCCESS on success
  * RETURN: EXIT_FAILURE on failure
  */
-int WMKeybindRemove(Key *keybind);
+int WMKeybindRefresh(void);
+bool WMKeybindHandler(u16 mod, XCBKeyCode code, bool pressed);
+/* Remove all keybinds from list
+ */
+void WMKeybindRemoveAll(void);
 
 #endif

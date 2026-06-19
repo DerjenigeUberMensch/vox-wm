@@ -1,38 +1,57 @@
-#include <string.h>
-#include <ctype.h>
-#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <X11/keysym.h>
+#include <X11/Xlib.h>
 #include <X11/XF86keysym.h> 
 
 #include "wmlua/input.h"
+#include "GArray/garray.h"
+#include "VXExtDebug/vxextdebug.h"
+#include "XCB-TRL/xcb_trl_types.h"
 #include "main.h"
 #include "keybinds.h"
-
+#include "util.h"
+#include "wmlua/lua.h"
 
 extern WM _wm;
 
-int 
-strcmp_lower(const char *a, const char *b)
+void
+LuaKeybindInputHandler(const Key *keybind_reference, const Arg *arg)
 {
-    char ca;
-    char cb;
-
-    while (*a && *b) 
-    {
-        ca = tolower((unsigned char)*a);
-        cb = tolower((unsigned char)*b);
-
-        if (ca != cb) 
-        {   return ca - cb;
-        }
-
-        ++a;
-        ++b;
+    if(!arg || !arg->v)
+    {   
+        DebugError("Invalid keybind reference in LuaKeybindInputHandler\n");
+        return;
     }
 
-    return *a - *b;
+    int ref = keybind_reference->lua_ref;
+    lua_State *l = arg->v;
+
+    if(LuaIsDead())
+    {   
+        DebugWarn("Lua thread is not running");
+        return;
+    }
+
+    extern int LockLua(void);
+    extern int UnlockLua(void);
+
+    LuaRequestHalt();
+
+    LockLua();
+
+    lua_rawgeti(l, LUA_REGISTRYINDEX, ref);
+
+    if(lua_pcall(l, 0, 0, 0) != LUA_OK)
+    {
+        DebugError("Error calling keybind function: %s\n", lua_tostring(l, -1));
+        lua_pop(l, 1);
+    }
+
+    UnlockLua();
+
+    LuaResumeAfterHalt();
 }
 
 int 
@@ -44,6 +63,10 @@ l_input_bind(lua_State *l)
     {   return luaL_error(l, "invalid bind");
     }
 
+    if(!lua_isfunction(l, 2))
+    {   return luaL_error(l, "bind must be a function");
+    }
+
     enum { BUFF_SIZE = 1024 };
 
     char buff[BUFF_SIZE];
@@ -52,50 +75,75 @@ l_input_bind(lua_State *l)
 
     strncpy(buff, combo, (BUFF_SIZE - 1) * sizeof(char));
 
-    u32 mask = 0;
-    u32 i = 0;
-    XCBKeysym keycode = 0;
+    enum { KEYSYM_SIZE = sizeof(XCBKeysym) };
+    GArray keysyms = GARRAY_STATIC_INITIALIZER(KEYSYM_SIZE);
+
+    u16 modmask = 0;
+    int status;
 
     char *saveptr;
     char *token = strtok_r(buff, "+", &saveptr);
 
     while (token)
     {
-        bool found = false;
+        XCBKeysym recognizedsim = 0;
 
-        // modifier check
-        for (i = 0; i < LENGTH(mods_table); ++i)
-        {
-            if (!strcmp_lower(token, mods_table[i].name))
-            {
-                mask |= mods_table[i].keycode;
-                found = true;
-                break;
+        recognizedsim = WMKeybindKeysymFromString(token);
+
+        if(recognizedsim != NoSymbol)
+        {   
+            status = GArrayPushBack(&keysyms, &recognizedsim);
+
+            if(status == EXIT_FAILURE)
+            {   
+                GArrayWipe(&keysyms);
+                return luaL_error(l, "failed to add keysym to array (OutOfMemory)");
             }
         }
-
-        // keycode check
-        if (!found)
-        {
-            for (i = 0; i < LENGTH(keycode_table); ++i)
-            {
-                if (!strcmp_lower(token, keycode_table[i].name))
-                {
-                    keycode = keycode_table[i].keycode;
-                    found = true;
-                    break;
-                }
-            }
-        }
-
-        if (!found)
-        {
-            DebugWarn("no found");
-            break;
+        else
+        {   modmask |= WMKeybindModifierFromString(token);
         }
 
         token = strtok_r(NULL, "+", &saveptr);
     }
 
+    void *arr;
+    size_t length;
+
+    GArrayGetArray(&keysyms, &arr, &length, NULL, NULL);
+
+    Key keybind;
+    int ref;
+    Arg arg;
+
+    /* push the function */
+    lua_pushvalue(l, 2);
+
+    ref = luaL_ref(l, LUA_REGISTRYINDEX);
+
+    arg = (Arg){ .v = l };
+
+    if(modmask != 0 || length > 0)
+    {   status = WMKeybindCreate(&keybind, modmask, arr, length, LuaKeybindInputHandler, arg, ref, true);
+    }
+
+    GArrayWipe(&keysyms);
+
+    if(status == EXIT_FAILURE)
+    {   
+        /* free memory */
+        luaL_unref(l, LUA_REGISTRYINDEX, ref); 
+        return luaL_error(l, "failed to create keybind");
+    }
+
+    if(status == EXIT_SUCCESS)
+    {   WMKeybindAdd(&keybind);
+    }
+
+    status = WMKeybindRefresh();
+
+    (void)ASSERT(status == EXIT_SUCCESS);
+
     return 0;
 }
+

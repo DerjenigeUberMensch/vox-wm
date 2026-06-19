@@ -56,7 +56,6 @@ RestartType
 };
 
 typedef union  Arg Arg;
-typedef struct Key Key;
 typedef struct Button Button;
 typedef struct WM WM;
 typedef struct MotifWmHints MotifWmHints;
@@ -73,16 +72,6 @@ Arg
     float f;                /* f  -> float          */
     double d;               /* d  -> double         */
     void *v;                /* v  -> void pointer   */
-};
-
-struct 
-Key
-{
-    uint16_t type;              /* KeyPress/KeyRelease  */
-    uint16_t mod;               /* Modifier             */
-    XCBKeysym keysym;           /* Key symbol           */
-    void (*func)(const Arg *);  /* Function             */
-    Arg arg;                    /* Argument             */
 };
 
 struct 

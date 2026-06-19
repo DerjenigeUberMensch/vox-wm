@@ -1130,44 +1130,6 @@ grabbuttons(Client *c, uint8_t focused)
     xcb_ungrab_server(_wm.dpy);
 }
 
-void
-grabkeys(void)
-{
-    u32 i, j, k;
-    u32 modifiers[4] = { 0, XCB_MOD_MASK_LOCK, _wm.numlockmask, _wm.numlockmask|XCB_MOD_MASK_LOCK };
-    /*
-    XCBKeyCode *keycodes[LENGTH(keys)];
-    */
-    XCBUngrabKey(_wm.dpy, XCB_GRAB_ANY, XCB_MOD_MASK_ANY, _wm.root);
-    
-    /* This grabs all the keys */
-    /*
-    for(i = 0; i < LENGTH(keys); ++i)
-    {   keycodes[i] = XCBKeySymbolsGetKeyCode(_wm.syms, keys[i].keysym);
-    }
-    for(i = 0; i < LENGTH(keys); ++i)
-    {
-        for(j = 0; keycodes[i][j] != XCB_NO_SYMBOL; ++j)
-        {
-            if(keys[i].keysym == XCBKeySymbolsGetKeySym(_wm.syms, keycodes[i][j], 0))
-            {   
-                for(k = 0; k < LENGTH(modifiers); ++k)
-                {
-                    XCBGrabKey(_wm.dpy, 
-                            keycodes[i][j], keys[i].mod | modifiers[k], 
-                            _wm.root, True, 
-                            XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
-                }
-            }
-        }
-    }
-
-    for(i = 0; i < LENGTH(keys); ++i)
-    {   free(keycodes[i]);
-    }
-    */
-}
-
 void 
 killclient(Client *c, enum KillType type)
 {

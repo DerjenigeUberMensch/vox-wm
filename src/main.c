@@ -203,6 +203,7 @@ cleanup(void)
     /* Free hashmap */
     cleanupclienthash();
     GArrayWipe(&_wm.clients);
+    GArrayWipe(&_wm.clientstacking);
     GArrayWipe(&_wm.work);
 
     unsetenv("GTK_CSD");
@@ -1075,7 +1076,7 @@ setup(void)
     XCBSelectInput(_wm.dpy, _wm.root, wa.event_mask);
     /* init numlock */
     updatenumlockmask();
-    grabkeys();
+    WMKeybindRefresh();
     /* init hash */
     setupclienthash();
     focus(NULL);
@@ -1117,29 +1118,28 @@ setupcfg(void)
     }
 }
 
-static void
-IMPL_WM_LUA_RUNNER(Generic *arg)
-{
-    (void)arg;
-
-    LuaRunKeybindThread();
-}
-
 void 
 setuplua(void)
 {
     int status;
 
-    status = InitLua();
+    if(ThreadingUsesThreads())
+    {
+        status = InitLua();
 
-    if(unlikely(status == EXIT_FAILURE))
-    {   
-        DebugWarn("Failed to init lua");
-        return;
-    }
+        if (unlikely(status == EXIT_FAILURE)) 
+        {
+            DebugWarn("Failed to init lua");
+            return;
+        }
 
-    if(_wm.use_threads)
-    {   ThreadingAddWork(IMPL_WM_LUA_RUNNER, NULL, NULL);
+        status = LuaRunThread();
+
+        if(status == EXIT_FAILURE)
+        {
+            DebugWarn("Failed to start lua thread");
+            return;
+        }
     }
 }
 

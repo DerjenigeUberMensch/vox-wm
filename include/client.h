@@ -237,10 +237,6 @@ Client *FuncNullable focusrealize(Client *c);
  * Basically this just allows us to receive button press/release events from windows.
  */
 void NonNull grabbuttons(Client *c, uint8_t focused);
-/* Grabs a windows keys.
- * Basically this just allows us to receive/intercept key press/release events.
- */
-void grabkeys(void);
 /* Kills the specified window.
  * type:            Graceful            Sends a message to the window to kill itself.
  *                  Safedestroy         Sends a message to the window to kill itself, on failure, forcefully kill the window.

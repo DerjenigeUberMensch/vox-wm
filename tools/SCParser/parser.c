@@ -447,7 +447,7 @@ SINGLETYPE:
                     using_ll = 1;
                     break;
                 default:
-                    fprintf(stderr, "Reached inpossible state");
+                    fprintf(stderr, "Reached impossible state %d %s\n", item->type, item->name ? item->name : "NULL");
                     return FAILURE;
             }
 
@@ -488,14 +488,14 @@ SINGLETYPE:
 
             switch(item->type)
             {
-                case SCTypeCHAR:    c = (int8_t)ll; memcpy(data, &c, sizeof(c));
-                case SCTypeUCHAR:   uc = (uint8_t)llu; memcpy(data, &uc, sizeof(uc));
-                case SCTypeSHORT:   s = (int16_t)ll; memcpy(data, &s, sizeof(s));
-                case SCTypeUSHORT:  us = (uint16_t)llu; memcpy(data, &us, sizeof(us));
-                case SCTypeINT:     i = (int32_t)ll; memcpy(data, &i, sizeof(i));
-                case SCTypeUINT:    ui = (uint32_t)llu; memcpy(data, &ui, sizeof(ui));
-                case SCTypeLONG:    l = (int64_t)ll; memcpy(data, &l, sizeof(l));
-                case SCTypeULONG:   ul = (uint64_t)llu; memcpy(data, &ul, sizeof(ul));
+                case SCTypeCHAR:    c = (int8_t)ll; memcpy(data, &c, sizeof(c));        break;
+                case SCTypeUCHAR:   uc = (uint8_t)llu; memcpy(data, &uc, sizeof(uc));   break;
+                case SCTypeSHORT:   s = (int16_t)ll; memcpy(data, &s, sizeof(s));       break;
+                case SCTypeUSHORT:  us = (uint16_t)llu; memcpy(data, &us, sizeof(us));  break;
+                case SCTypeINT:     i = (int32_t)ll; memcpy(data, &i, sizeof(i));       break;
+                case SCTypeUINT:    ui = (uint32_t)llu; memcpy(data, &ui, sizeof(ui));  break;
+                case SCTypeLONG:    l = (int64_t)ll; memcpy(data, &l, sizeof(l));       break;
+                case SCTypeULONG:   ul = (uint64_t)llu; memcpy(data, &ul, sizeof(ul));  break;
             }
         }
     }
