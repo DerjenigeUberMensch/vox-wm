@@ -68,7 +68,7 @@ Afterwards you must put `exec vox-wm` in your `~/.xinitrc` file. **See Below.**
 ## Compiling
 1. Clone this repository.
 ```
-git clone https://github.com/DerjenigeUberMensch/vox-wm.git
+git clone --recurse-submodules https://github.com/DerjenigeUberMensch/vox-wm.git
 ```
 2. Change Directory to vox-wm.
 ```
