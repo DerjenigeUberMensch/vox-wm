@@ -208,7 +208,7 @@ If you have any **major** **issues** with the **current** commit you can **rever
 Or you can open an **[issue](https://github.com/DerjenigeUberMensch/vox-wm/issues)** about it.
 
 ## Planned Features
-- Panel that user can just click buttons or type values to configure windows (kinda like a dev panel).
+- ~Panel that user can just click buttons or type values to configure windows (kinda like a dev panel).~ (No guranteed plans)
 - Fully Extend XCB-TRL to use other features.
 - More modularity 
 - Less Complex Code Base
