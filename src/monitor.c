@@ -5,6 +5,7 @@
 #include "monitor.h"
 #include "bar.h"
 #include "main.h"
+#include "util.h"
 
 #include <string.h>
 
@@ -40,12 +41,14 @@ attachdesktop(Monitor *m, Desktop *desktop)
     /* can use attach helper here */
     desktop->next = m->desktops;
     m->desktops = desktop;
+
     if(desktop->next)
     {   desktop->next->prev = desktop;
     }
     else
     {   m->desklast = desktop;
     }
+
     desktop->prev = NULL;
 }
 
@@ -55,6 +58,7 @@ attachdesktoplast(Monitor *m, Desktop *desk)
     if(!m->desktops)
     {   
         attachdesktop(m, desk);
+        m->deskcount++;
         return;
     }
 
@@ -66,30 +70,60 @@ attachdesktoplast(Monitor *m, Desktop *desk)
     desk->num = m->deskcount++;
 }
 
+#define __detach_helper(NAME, TYPE, STRUCT, HEAD, NEXT, PREV, LAST)                                       \
+                                                                do                                        \
+                                                                {                                         \
+                                                                    if(!ASSERT(STRUCT))                         \
+                                                                    {   DebugWarn("Struct is NULL");            \
+                                                                    }                                           \
+                                                                    /* Make sure list is valid */               \
+                                                                    else if(!ASSERT(                            \
+                                                                        STRUCT->PREV                            \
+                                                                            ?                                   \
+                                                                            STRUCT->PREV->NEXT == STRUCT        \
+                                                                            :                                   \
+                                                                            HEAD == STRUCT                      \
+                                                                    ))                                          \
+                                                                    {   DebugWarn("Struct does not appear to be connected to list correctly in its previous"); \
+                                                                    }                                           \
+                                                                    /* Make sure list is valid */               \
+                                                                    else if(!ASSERT(                            \
+                                                                        STRUCT->NEXT                            \
+                                                                            ?                                   \
+                                                                            STRUCT->NEXT->PREV == STRUCT        \
+                                                                            :                                   \
+                                                                            LAST == STRUCT                      \
+                                                                    ))                                          \
+                                                                    {   DebugWarn("Struct does not appear to be connected to list correctly in its next");  \
+                                                                    }                                           \
+                                                                    else                                        \
+                                                                    {                                           \
+                                                                        if(STRUCT->PREV)                        \
+                                                                        {   STRUCT->PREV->NEXT = STRUCT->NEXT;  \
+                                                                        }                                       \
+                                                                        else                                    \
+                                                                        {   HEAD = STRUCT->NEXT;                \
+                                                                        }                                       \
+                                                                                                                \
+                                                                        if(STRUCT->NEXT)                        \
+                                                                        {   STRUCT->NEXT->PREV = STRUCT->PREV;  \
+                                                                        }                                       \
+                                                                        else                                    \
+                                                                        {   LAST = STRUCT->PREV;                \
+                                                                        }                                       \
+                                                                                                                \
+                                                                        STRUCT->NEXT = NULL;                    \
+                                                                        STRUCT->PREV = NULL;                    \
+                                                                    }                                           \
+                                                                } while(0)
+
+
 void
 detachdesktop(Monitor *m, Desktop *desktop)
 {
-    Desktop **td;
-    for(td = &m->desktops; *td && *td != desktop; td = &(*td)->next);
-    *td = desktop->next;
-    if(!(*td))
-    {
-        m->desklast = desktop->prev;
-    }
-    else if(desktop->next)
-    {
-        desktop->next->prev = desktop->prev;
-    }
-    else if(desktop->prev)
-    {
-        m->desklast = desktop->prev;
-        desktop->prev->next = NULL;
-    }
-    --m->deskcount;
-
-    desktop->next = NULL;
-    desktop->prev = NULL;
+    __detach_helper(desktop, Desktop, desktop, m->desktops, next, prev, m->desklast);
     desktop->mon = NULL;
+    --m->deskcount;
 }
 
 void
@@ -107,6 +141,19 @@ cleanupmon(Monitor *m)
     Desktop *desk = NULL;
     Desktop *desknext = NULL;
     desk = m->desktops;
+
+    if(_wm.mons == m)
+    {   _wm.mons = m->next;
+    }
+    else
+    {
+        Monitor *mi;
+        for(mi = _wm.mons; mi && mi->next != m; mi= mi->next);
+
+        if(mi)
+        {   mi->next = m->next;
+        }
+    }
 
     while(desk)
     {
@@ -128,6 +175,7 @@ cleanupmons(void)
 {
     Monitor *m = NULL;
     Monitor *mnext = NULL;
+
     m = _wm.mons;
 
     while(m)
@@ -136,6 +184,9 @@ cleanupmons(void)
         cleanupmon(m);
         m = mnext;
     }
+
+    _wm.mons = NULL;
+    _wm.selmon = NULL;
 }
 
 Monitor *
@@ -154,12 +205,32 @@ createmon(void)
     m->wx = m->wy = 0;
     m->ww = m->wh = 0;
     m->next = NULL;
-    /* FIXME: for some reason this cant be 0 because then we would get 2 "0" desktop nums */
-    m->deskcount = 1;
+    m->deskcount = 0;
     setdesktopcount(m, 10);
     m->desksel = m->desktops;
     m->bar = NULL;
     return m;
+}
+
+Desktop *
+desktopnumtodesktop(Monitor *m, u16 num)
+{
+    Desktop *desk = m->desktops;
+
+    for(; desk && desk->num != num; desk = nextdesktop(desk));
+
+    return desk;
+}
+
+Desktop *
+desktopnumindextodesktop(Monitor *m, u16 index)
+{
+    Desktop *desk = m->desktops;
+    u16 i = 0;
+
+    for(; desk && i != index; desk = nextdesktop(desk), ++i);
+
+    return desk;
 }
 
 Monitor *
@@ -178,6 +249,22 @@ dirtomon(u8 dir)
     {   for(m = _wm.mons; m->next != _wm.selmon; m = nextmonitor(m));
     }
     return m;
+}
+
+u32
+rectmoncount(i16 x, i16 y, u16 w, u16 h)
+{
+    Monitor *m;
+    u32 count = 0;
+
+    for(m = _wm.mons; m; m = nextmonitor(m))
+    {   
+        if(INTERSECT(x, y, w, h, m) > 0)
+        {   ++count;
+        }
+    }
+
+    return count;
 }
 
 Monitor *
@@ -204,7 +291,7 @@ void
 setdesktopcount(Monitor *m, uint16_t desktops)
 {
     const u8 MIN_DESKTOPS = 1;
-    if(desktops <= MIN_DESKTOPS)
+    if(desktops < MIN_DESKTOPS)
     {   Debug0("Cannot make desktop count less than possible.");
         return;
     }
@@ -215,47 +302,44 @@ setdesktopcount(Monitor *m, uint16_t desktops)
         return;
     }
 
-    u16 i;
-    Desktop *desk = m->desklast;
+    while(m->deskcount < desktops)
+    {
+        Desktop *desk = createdesktop();
 
-    if(m->deskcount > desktops)
-    {
-        Client *c;
-        Desktop *tmp = NULL;
-        for(i = desktops; i > m->deskcount; --i)
-        {
-            if(desk && prevdesktop(desk))
-            {   
-                for(c = startclient(desk); c; c = nextclient(c))
-                {   
-                    setclientdesktop(c, prevdesktop(desk));
-                } 
-                tmp = prevdesktop(desk);
-                detachdesktop(m, desk);
-                cleanupdesktop(desk);
-            }
-            desk = tmp;
+        if(!desk)
+        {   break;
         }
+
+        attachdesktoplast(m, desk);
     }
-    else
+
+    while(m->deskcount > desktops)
     {
-        u8 failurecount = 0;
-        for(i = 0; i < desktops && failurecount < 10; ++i)
+        Desktop *desk = m->desklast;
+
+        if(!desk || !desk->prev)
+        {   break;
+        }
+
+        Desktop *prev = desk->prev;
+
+        Client *c = startclient(desk);
+
+        while(c)
         {
-            desk = createdesktop();
-            if(desk)
-            {   attachdesktoplast(m, desk);
-            }
-            else
-            {   
-                i--;
-                ++failurecount;
-            }
+            Client *next = nextclient(c);
+            setclientdesktop(c, prev);
+            c = next;
         }
-        if(failurecount)
-        {   DebugWarn("Failed [%d]", failurecount);
+
+        if(m->desksel == desk)
+        {   m->desksel = prev;
         }
+        detachdesktop(m, desk);
+        cleanupdesktop(desk);
     }
+
+
 
     /* this does 2 things.
      * 1. Prevents a crash if m is made in createmon() and has no intialized _wm.selmon
@@ -288,8 +372,10 @@ setdesktopsel(Monitor *mon, Desktop *desksel)
 
         for(desk = mon->desktops; desk; desk = nextdesktop(desk))
         {
-            for(c = laststack(desk); c; c = prevstack(c))
-            {   
+            for(c = laststack(desk); c;)
+            {
+                Client *prev = prevstack(c);
+
                 if(ISSTICKY(c))
                 {   setclientdesktop(c, desksel);
                 }
@@ -297,6 +383,8 @@ setdesktopsel(Monitor *mon, Desktop *desksel)
                 if(desk != desksel)
                 {   showhide(c);
                 }
+
+                c = prev;
             }
         }
 
@@ -308,14 +396,29 @@ setdesktopsel(Monitor *mon, Desktop *desksel)
 }
 
 void 
+setdesktopseli(Monitor *mon, uint16_t num)
+{
+    Desktop *desk = mon->desktops;
+
+    for(; desk && desk->num != num; desk = nextdesktop(desk));
+
+    if(desk)
+    {   setdesktopsel(mon, desk);
+    }
+    else
+    {   Debug0("Desktop was not in range defaulting to no desktop change.");
+    }
+}
+
+void 
 setmonsel(Monitor *m)
 {
     if(_wm.selmon == m)
     {   return;
     }
 
-    if(m->desksel->sel)
-    {   unfocus(m->desksel->sel, 1);
+    if(_wm.selmon && _wm.selmon->desksel->sel)
+    {   unfocus(_wm.selmon->desksel->sel, 1);
     }
 
     _wm.selmon = m;
@@ -357,7 +460,7 @@ updategeom(void)
 {
 	int dirty = 0;
 
-#ifdef XINERAMA
+#ifdef XINERAMA 
     int xienabled = 0;
     int xiactive = 0;
     XCBQueryExtension *extrep = NULL;
@@ -365,7 +468,7 @@ updategeom(void)
 
     /* check if we even have the extension enabled */
     extrep = (XCBQueryExtension *)xcb_get_extension_data(_wm.dpy, &xcb_xinerama_id);
-    xienabled = (extrep && !extrep->present);
+    xienabled = (extrep && extrep->present);
 
     if(xienabled)
     {
@@ -373,6 +476,8 @@ updategeom(void)
         /* let event handler handle a Xinerama error */
         xia = xcb_xinerama_is_active_reply(_wm.dpy, xcookie, NULL);
         xiactive = xia && xia->state;
+
+        free(xia);
     }
     /* assume no error and proceed */
     if(xiactive)
@@ -397,7 +502,7 @@ updategeom(void)
 
         for(n = 0, m = _wm.mons; m; m = m->next, ++n);
 		/* only consider unique geometries as separate screens */
-        unique = calloc(nn, sizeof(xcb_xinerama_query_screens_reply_t));
+        unique = calloc(nn, sizeof(XCBXineramaScreenInfo));
         if(!unique)
         {   return dirty;
         }
@@ -454,8 +559,11 @@ updategeom(void)
                     Client *c1;
 
                     /* move all clients in NOW deleted monitor to the first monitor desktop */
-                    for(c1 = startclient(desk); c1; c1 = nextclient(c1))
-                    {   setclientdesktop(c1, _wm.mons->desktops);
+                    for(c1 = startclient(desk); c1;)
+                    {
+                        Client *next = nextclient(c1);
+                        setclientdesktop(c1, _wm.mons->desktops);
+                        c1 = next;
                     }
                 }
 
@@ -587,7 +695,6 @@ updateclientstackinglist(void)
     Client *c;
     int status;
 
-    m = _wm.selmon;
 
     status = GArrayMoveHead(&_wm.clientstacking, GArrayStart(&_wm.clientstacking));
 
@@ -595,11 +702,26 @@ updateclientstackinglist(void)
     {   return;
     }
 
-    for(desk = m->desklast; desk; desk = prevdesktop(desk))
+    for(m = _wm.mons; m; m = m->next)
     {
-        if(desk == m->desksel)
-        {   continue;
+        for(desk = m->desklast; desk; desk = prevdesktop(desk))
+        {
+            if(desk == m->desksel)
+            {   continue;
+            }
+
+            for(c = laststack(desk); c; c = prevstack(c))
+            {
+                status = GArrayPushBack(&_wm.clientstacking, &c->win);
+
+                /* stacking isnt that important to care about failign to pushback some clients */
+                if(!likely(status == EXIT_SUCCESS))
+                {   DebugWarn("Failed to push client for whatever reason: [%d]", c->win);
+                }
+            }
         }
+
+        desk = m->desksel;
 
         for(c = laststack(desk); c; c = prevstack(c))
         {
@@ -609,18 +731,6 @@ updateclientstackinglist(void)
             if(!likely(status == EXIT_SUCCESS))
             {   DebugWarn("Failed to push client for whatever reason: [%d]", c->win);
             }
-        }
-    }
-
-    desk = m->desksel;
-
-    for(c = laststack(desk); c; c = prevstack(c))
-    {
-        status = GArrayPushBack(&_wm.clientstacking, &c->win);
-
-        /* stacking isnt that important to care about failign to pushback some clients */
-        if(!likely(status == EXIT_SUCCESS))
-        {   DebugWarn("Failed to push client for whatever reason: [%d]", c->win);
         }
     }
 
@@ -664,10 +774,19 @@ updatenumlockmask(void)
     XCBGenericError *err = NULL;
 
     reply = xcb_get_modifier_mapping_reply(_wm.dpy, xcb_get_modifier_mapping(_wm.dpy), &err);
+
     if(err)
-    {   free(reply);
+    {   
+        if(reply)
+        {   free(reply);
+        }
+
         free(err);
         return;
+    }
+
+    if(!reply)
+    {   return;
     }
 
 	xcb_keycode_t *codes = xcb_get_modifier_mapping_keycodes(reply);
@@ -681,6 +800,8 @@ updatenumlockmask(void)
 
 	target = *temp;
 	free(temp);
+
+    _wm.numlockmask = 0;
 
 	for(i = 0; i < 8; i++)
     {

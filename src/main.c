@@ -216,16 +216,15 @@ cleanup(void)
 void __HOT__
 eventhandler(XCBGenericEvent *ev)
 {
-    const int cleanev = XCB_EVENT_RESPONSE_TYPE(ev);
+    int cleanev = XCB_EVENT_RESPONSE_TYPE(ev);
     garray_i i;
-
-    if(LENGTH(handler) < cleanev || cleanev <= -1)
-    {   return;
-    }
 
     LOCK_WM();
 
-    handler[cleanev](ev);
+    if(cleanev < LENGTH(handler) && cleanev >= 0 && handler[cleanev])
+    {   handler[cleanev](ev);
+    }
+
 
     for(i = GArrayStart(&_wm.work); i < GArrayEnd(&_wm.work); ++i)
     {
@@ -278,25 +277,9 @@ getrootptr(i16 *x, i16 *y)
 void
 quit(void)
 {
-    int status;
-
-    status = TRY_LOCK_WM();
-
     _wm.running = 0;
-
-    if(status)
-    {   
-        LOCK_WM();
-        status = 0;
-    }
-
     _wm.manual_exit = 1;
     wakeupconnection(_wm.dpy, _wm.screen);
-    Debug0("Exiting...");
-
-    if(!status)
-    {   UNLOCK_WM();
-    }
 }
 
 static u8
@@ -736,14 +719,12 @@ void
 restart(void)
 {
     _wm.restart = SoftRestart;
-    Debug("Flag set %s", M_STRINGIFY(SoftRestart));
 }
 
 void
 restarthard(void)
 {
     _wm.restart = HardRestart;
-    Debug("Flag set %s", M_STRINGIFY(HardRestart));
 }
 
 void 
@@ -1304,9 +1285,7 @@ sighandler(void)
 void
 sighup(int signo) /* signal */
 {
-    LOCK_WM();
     restarthard();
-    UNLOCK_WM();
 }
 
 void
@@ -1523,7 +1502,7 @@ xerror(XCBDisplay *display, XCBGenericError *err)
         id.sequence = err->sequence;
         (void)id;
 #else
-        XCBDefaultHandlerMsg(display, err);
+        //XCBDefaultHandlerMsg(display, err);
 #endif
     }
 }

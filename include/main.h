@@ -1,9 +1,11 @@
-#ifndef DWM_H
-#define DWM_H
+#ifndef __WM__H__
+#define __WM__H__
+
+#include <stdio.h>
+#include <signal.h>
 
 #include <xcb/xcb.h>
 #include <xcb/xcb_keysyms.h>
-#include <stdio.h>
 
 #include "settings.h"
 #include "client.h"
@@ -105,7 +107,7 @@ WMWork
 struct 
 WM
 {
-    volatile int running;           /* Running flag         */
+    volatile sig_atomic_t running;  /* Running flag         */
     int numlockmask;                /* numlockmask          */
     int screen;                     /* Screen id            */
 

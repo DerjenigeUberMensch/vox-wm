@@ -401,7 +401,6 @@ motionnotify(XCBGenericEvent *event)
     (void)keydetail;
     (void)tim;
 
-
     XCBWindow target = PROPOGATE_FRAME_WINDOW_EVENT(event, eventwin, eventchild, XCBPointerMotionMask);
 
     if(target == XCBNone)
@@ -412,7 +411,6 @@ motionnotify(XCBGenericEvent *event)
     if(eventwin != _wm.root)
     {   return;
     }
-
 
     u8 sync = 0;
     static Monitor *mon = NULL;
@@ -425,6 +423,7 @@ motionnotify(XCBGenericEvent *event)
         setmonsel(m);
         sync = 1;
     }
+
     mon = m;
 
     if(sync)
@@ -863,15 +862,28 @@ configurerequest(XCBGenericEvent *event)
         geom = mask & (XCB_CONFIG_WINDOW_X|XCB_CONFIG_WINDOW_Y|XCB_CONFIG_WINDOW_WIDTH|XCB_CONFIG_WINDOW_HEIGHT);
         if(geom)
         {
+            Monitor *oldmon = recttomon(c->x, c->y, c->w, c->h);
+            Monitor *newmon = recttomon(rx, ry, rw, rh);
+
+            /* ARE WE between monitors????????????? */
+            bool ignoreAutoFloat = oldmon != newmon || oldmon != c->desktop->mon || rectmoncount(rx, ry, rw, rh) > 1;
+
             applygravity(c->gravity, &rx, &ry, rw, rh, c->bw);
             resizeclient(c, rx, ry, rw, rh);
-            if(!SHOULDBEFLOATING(c))
+
+            /* idk make look better lazy */
+            if(ignoreAutoFloat)
+            {   (void)0;
+            }
+            else if(!SHOULDBEFLOATING(c))
             {
                 if(ISFLOATING(c))
                 {   
                     setfloating(c, 0);
                     restack = 1;
                 }
+
+                DebugLog("Did not ignore");
             }
             else
             {
@@ -881,6 +893,7 @@ configurerequest(XCBGenericEvent *event)
                     setfloating(c, 1);
                     restack = 1;
                 }
+                DebugLog("Did not ignore");
             }
         }
 
@@ -950,27 +963,18 @@ resizerequest(XCBGenericEvent *event)
     const u16 w         = ev->width;
     const u16 h         = ev->height;
 
-    
-    u8 sync = 0;
+    XCBGenericEvent gev;
+    memset(&gev, 0, sizeof(XCBGenericEvent));
+    XCBConfigureRequestEvent *config = (XCBConfigureRequestEvent *)&gev;
 
-    Client *c = wintoclient(win);
-    if(c)
-    {   
-        resize(c, c->x, c->y, w, h, 0);
-        if(!ISFLOATING(c) && !DOCKED(c))
-        {   setfloating(c, 1);
-        }
-        sync = 1;
-    }
-    else
-    {   
-        XCBResizeWindow(_wm.dpy, win, w, h);
-        sync = 1;   /* we dont technically need to sync here but its just to catch up on somethings if we fucked up */
-    }
+    config->response_type = XCB_CONFIGURE_REQUEST;
+    config->sequence = XCBNone;
+    config->window = win;
+    config->width = w;
+    config->height = h;
+    config->value_mask = XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT;
 
-    if(sync)
-    {   XCBFlush(_wm.dpy);
-    }
+    configurerequest((XCBGenericEvent *)&gev);
 }
 
 void
@@ -1325,71 +1329,199 @@ clientmessage(XCBGenericEvent *event)
     {   return;
     }
 
+    const u32 l0 = data.data32[0];
+    const u32 l1 = data.data32[1];
+    const u32 l2 = data.data32[2];
+    const u32 l3 = data.data32[3];
+    const u32 l4 = data.data32[4];
+        
     u8 sync = 0;
-    Client *c = wintoclient(win);
+    Client *c = NULL;
+
+    /* unmapped clients may send this message */
+    if(atom == netatom[NetRequestFrameExtents])
+    {
+        /* TODO Implement getframeextents() macro.
+         * See comment on top setshowdecor().
+         */
+        const u32 _data[4] = { 0, 0, 0, 0 };
+
+        XCBChangeProperty(_wm.dpy, win, netatom[NetWMFrameExtents], XCB_ATOM_CARDINAL, 32, XCBPropModeReplace, (unsigned char *)_data, 4);
+
+        sync = 1;
+    } 
+    /* https://specifications.freedesktop.org/wm/latest/ar01s06.html */
+    else if (atom == wmatom[WMProtocols]) 
+    {
+        XCBAtom atom2 = l0;
+        XCBTimestamp timestamp = l1;
+
+        (void)timestamp;
+
+        /* we dont handle _NET_WM_PING in this version */
+        if(atom2 == netatom[NetWMPing])
+        {   (void)0;
+        }
+        /* we dont handle _NET_WM_SYNC_REQUEST in this version */
+        else if(atom2 == netatom[NetWMSyncRequest])
+        {   (void)0;
+        }
+    }
+    else if (atom == netatom[NetNumberOfDesktops])
+    {   /* ignore */
+    }
+    else if (atom == netatom[NetDesktopGeometry])
+    {   /* ignore */
+    }
+    else if (atom == netatom[NetDesktopViewport])
+    {   /* ignore */
+    }
+    else if (atom == netatom[NetShowingDesktop])
+    {   /* TODO
+         * Prob just reserve a desktop and just warp to it/warp back. (of course with no clients.)
+         */
+    }
+    else if (atom == netatom[NetCurrentDesktop])
+    {   
+        u32 desktop = l0;
+        XCBTimestamp timestamp = l1;
+
+        (void)timestamp;
+
+        if(checksticky(desktop))
+        {   DebugWarn("Attempted to switch using sticky desktop protocol, ignoring...");
+        }
+        else
+        {
+            Client *tmpc = wintoclient(win);
+            Monitor *tmpm = tmpc ? tmpc->desktop->mon : wintomon(win);
+
+            if(tmpm != _wm.selmon)
+            {   DebugLog("Attempted to switch desktops on a non-selected monitor.");
+            }
+
+            if(tmpm)
+            {   
+                desktop = MIN(desktop, UINT16_MAX);
+                setdesktopseli(tmpm, desktop);
+            }
+        }
+    }
+    /* if the atom we got is a client message for a window we manage, get the client */
+    else
+    {   c = wintoclient(win);
+    }
+
     if(c)
     {
         /* long data is often used and anything else is just padding */
-        const i32 l0 = data.data32[0];
-        const i32 l1 = data.data32[1];
-        const i32 l2 = data.data32[2];
-        const i32 l3 = data.data32[3];
-        const i32 l4 = data.data32[4];
-        
         /* ICCCM */
         if(atom == wmatom[WMChangeState])
         {
             /* Ok, barely any sensible app does this that isnt something like wine, so yeah basic handling */
+
             const enum XCBWMWindowState state = l0;
-            const u32 neverfocus = NEVERFOCUS(c);
-            const u32 inputflags = neverfocus ? XCB_WM_HINT_INPUT : 0;
-            u32 wasvisible = ISVISIBLE(c);
-            XCBWMHints wmh = 
-            {
-                .flags = 0|XCB_WM_HINT_STATE|inputflags,
-                .input = !neverfocus,
-                .initial_state = state
-            };
-            updatewmhints(c, &wmh);
-            /* arrange if needed, else hide if needed */
-            if((wasvisible && !ISVISIBLE(c)) || (!wasvisible && ISVISIBLE(c)))
+
+            if(likely(state == XCB_WINDOW_ICONIC_STATE))
             {   
-                showhide(c);
-                arrange(c->desktop);
+                const u32 neverfocus = NEVERFOCUS(c);
+                const u32 inputflags = neverfocus ? XCB_WM_HINT_INPUT : 0;
+
+                u32 wasvisible = ISVISIBLE(c);
+
+                XCBWMHints wmh = 
+                {
+                    .flags = 0|XCB_WM_HINT_STATE|inputflags,
+                    .input = !neverfocus,
+                    .initial_state = state
+                };
+
+                updatewmhints(c, &wmh);
+
+                /* arrange if needed, else hide if needed */
+                if((wasvisible && !ISVISIBLE(c)) || (!wasvisible && ISVISIBLE(c)))
+                {   
+                    showhide(c);
+                    arrange(c->desktop);
+                }
             }
-        }
-        else if (atom == wmatom[WMProtocols])
-        {   
-            XCBAtom _atom = l0;
-            XCBTimestamp _time = l1;
-            (void)_time;
-            XCBWMProtocols proto;
-            proto.atoms = &_atom;
-            proto.atoms_len = 1;
-            updatewindowprotocol(c, &proto);
-            sync = 1;
+            else
+            {   DebugWarn("Invalid WM_CHANGE_STATE state: %u", state);
+            }
         }
         /* NET_WM */
         else if(atom == netatom[NetWMState])
         {
-            const u8 action = l0;   /* remove: 0 
-                                     * add: 1 
-                                     * toggle: 2 
-                                     */
+            enum { WM_STATE_REMOVE = 0, WM_STATE_ADD = 1, WM_STATE_TOGGLE = 2, WM_STATE_LAST };
+
+            const u8 action = l0;
             const XCBAtom prop1 = l1;
             const XCBAtom prop2 = l2;
-            updatewindowstate(c, prop1, action);
-            updatewindowstate(c, prop2, action);
-            sync = 1;
+
+            if(likely(action < WM_STATE_LAST))
+            {
+                /* updatewindowstate automatically ignores XCBNone on 0'ed atoms */
+                updatewindowstate(c, prop1, action);
+                updatewindowstate(c, prop2, action);
+
+                /* only sync if we actually changed something or if something should have changed */
+                if(prop1 || prop2)
+                {   sync = 1;
+                }
+            }
+            else
+            {   DebugWarn("Invalid _NET_WM_STATE action: %d", action);
+            }
         }
         else if(atom == netatom[NetActiveWindow])
         {
-            if(c->desktop->sel != c)
+            /* https://specifications.freedesktop.org/wm/latest/ar01s03.html _NET_ACTIVE_WINDOW */
+            enum { SOURCE_UNSPECIFIED = 0, SOURCE_APPLICATION = 1, SOURCE_PAGER = 2, };
+
+            u32 source = l0;
+            XCBTimestamp timestamp = l1;
+            XCBWindow requestor = l2;
+
+            bool swtch = false;
+            bool isimportant = false;
+
+            Client *tmpc = wintoclient(requestor);
+
+            (void)timestamp;
+
+            if(tmpc)
+            {   isimportant = ISDESKTOP(tmpc) || ISDOCK(tmpc) || ISNOTIFICATION(tmpc);
+            }
+
+            /* TODO is important is ignored for now */
+            isimportant = false;
+
+            /* if its a pager its probably important enough to switch */
+            if(source == SOURCE_PAGER || isimportant)
             {   
+                /* TODO: some clients may spoof this */
+                swtch = true;
+            }
+            else
+            {
+                if(tmpc && ISSELECTED(tmpc))
+                {   swtch = true;
+                }
+            }
+
+
+            if(swtch)
+            {
                 focus(c);
                 arrange(c->desktop);
-                sync = 1;
             }
+            else
+            {   
+                DebugLog("Denied _NET_ACTIVE_WINDOW request from [%u] (source: %d)", requestor, source);
+                seturgent(c, 1);
+            }
+
+            sync = 1;
         }
         else if(atom == netatom[NetCloseWindow])
         {   
@@ -1426,7 +1558,7 @@ clientmessage(XCBGenericEvent *event)
 
             extern int DragWindowHandler(XCBGenericEvent *ev, Arg arg);
             extern int ResizeWindowHandler(XCBGenericEvent *ev, Arg arg);
-
+            
             Arg arg;
             Arg status;
             arg.v = &tmp_bev;
@@ -1469,7 +1601,7 @@ clientmessage(XCBGenericEvent *event)
             /* specified as first 7 bits: 
              * https://specifications.freedesktop.org/wm-spec/latest/ar01s04.html
              */
-            const u8 GRAVITY_BITS = (1 << 7) - 1;
+            const u8 GRAVITY_BITS = (1 << 8) - 1;
             const u32 FLAG_BITS = ~(GRAVITY_BITS);
             const i32 x = l1;
             const i32 y = l2;
@@ -1485,35 +1617,47 @@ clientmessage(XCBGenericEvent *event)
             (void)__NET_WM_MOVE_WINDOW_APPLICATION_FLAG;
             (void)__NET_WM_MOVE_WINDOW_PAGER_FLAG;
 
-            const enum XCBBitGravity gravity = l0 & GRAVITY_BITS;
+            enum XCBBitGravity gravity = l0 & GRAVITY_BITS;
 
             const u32 flags = l0 & FLAG_BITS;
 
             u32 tmpgravity = c->gravity;
+
+            if(gravity == XCBNone)
+            {   gravity = c->gravity;
+            }
+
             if(c->gravity != gravity)
             {   c->gravity = gravity;
             }
 
             u32 mask = 0;
+
             if(flags & __NET_WM_MOVE_WINDOW_X)
             {   mask |= XCB_CONFIG_WINDOW_X;
             }
+
             if(flags & __NET_WM_MOVE_WINDOW_Y)
             {   mask |= XCB_CONFIG_WINDOW_Y;
             }
+
             if(flags & __NET_WM_MOVE_WINDOW_WIDTH)
             {   mask |= XCB_CONFIG_WINDOW_WIDTH;
             }
+
             if(flags & __NET_WM_MOVE_WINDOW_HEIGHT)
             {   mask |= XCB_CONFIG_WINDOW_HEIGHT;
             }
 
             XCBGenericEvent _ev;
+            memset(&_ev, 0, sizeof(_ev));
+
             XCBConfigureRequestEvent *gev = (XCBConfigureRequestEvent *)&_ev;
             gev->x = x;
             gev->y = y;
             gev->width = w;
             gev->height = h;
+            gev->window = c->win;
             gev->value_mask = mask;
             /* Should automatically flush. */ 
             configurerequest(&_ev);
@@ -1526,63 +1670,22 @@ clientmessage(XCBGenericEvent *event)
              * Doesnt seem very safe.
              */
             XCBWindow sibling = l1;
-            u8 detail = l2;
-            /* todo figure out what this does */
-            (void)detail;
+            u8 stack_mode = l2;
+
             XCBGenericEvent gev;
             memset(&gev, 0, sizeof(XCBGenericEvent));
             XCBConfigureRequestEvent *config = (XCBConfigureRequestEvent *)&gev;
-            config->window = sibling;
-            config->parent = c->win;
+
+            config->response_type = XCB_CONFIGURE_REQUEST;
+            config->sequence = XCBNone;
+            config->window = c->win;
+            config->sibling = sibling;
+
             config->value_mask = XCB_CONFIG_WINDOW_SIBLING | XCB_CONFIG_WINDOW_STACK_MODE;
+            config->stack_mode = stack_mode;
+
             configurerequest((XCBGenericEvent *)&gev);
             sync = 1;
-        }
-        else if(atom == netatom[NetRequestFrameExtents])
-        {   
-            /* TODO Implement getframeextents() macro.
-             * See comment on top setshowdecor().
-             */
-            const u32 _data[4] = { 0, 0, 0, 0 };
-            XCBChangeProperty(_wm.dpy, c->win, netatom[NetRequestFrameExtents], XCB_ATOM_CARDINAL, 32, XCBPropModeReplace, (unsigned char *)_data, 4);
-        }
-        else if (atom == netatom[NetNumberOfDesktops])
-        {   /* ignore */
-        }
-        else if (atom == netatom[NetDesktopGeometry])
-        {   /* ignore */
-        }
-        else if (atom == netatom[NetDesktopViewport])
-        {   /* ignore */
-        }
-        else if (atom == netatom[NetCurrentDesktop])
-        {   
-            u32 target = l0;
-            Monitor *m = c->desktop->mon;
-            if(m)
-            {
-                Desktop *desk;
-                u32 i = 0;
-                for(desk = m->desktops; desk && i != target; desk = nextdesktop(desk), ++i);
-                if(desk)
-                {   
-                    /* prevent focus/stack breaking if its already there */
-                    if(c->desktop != desk)
-                    {   
-                        setclientdesktop(c, desk);
-                        showhide(c);
-                        sync = 1;
-                    }
-                }
-                else
-                {   Debug0("Desktop was not in range defaulting to no desktop change.");
-                }
-            }
-        }
-        else if (atom == netatom[NetShowingDesktop])
-        {   /* TODO
-             * Prob just reserve a desktop and just warp to it/warp back. (of course with no clients.)
-             */
         }
         else if (atom == netatom[NetWMDesktop])
         {
@@ -1599,9 +1702,8 @@ clientmessage(XCBGenericEvent *event)
                 Monitor *m = c->desktop->mon;
                 if(m)
                 {
-                    Desktop *desk;
-                    u32 i = 0;
-                    for(desk = m->desktops; desk && i != target; desk = nextdesktop(desk), ++i);
+                    Desktop *desk = desktopnumindextodesktop(m, target);
+
                     if(desk)
                     {   
                         /* prevent focus/stack breaking if its already there */
@@ -1622,6 +1724,7 @@ clientmessage(XCBGenericEvent *event)
         {   /* TODO */
         }
     }
+
     if(sync)
     {   XCBFlush(_wm.dpy);
     }
