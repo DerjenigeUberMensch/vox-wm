@@ -72,8 +72,32 @@ vxextdebuginit_impl(void)
 static void
 vxextdebuginit(void)
 {
-    pthread_once(&vxext_init, vxextdebuginit_impl);
+    static volatile int intialized = 0;
+    int status;
+
+    if(intialized)
+    {   return;
+    }
+
+    vxextdebug_lock();
+
+    if(intialized)
+    {   
+        vxextdebug_unlock();       
+        return;
+    }
+
+    status = pthread_once(&vxext_init, vxextdebuginit_impl);
+
+    /* fallback if the world explodes */
+    if(status != 0)
+    {   vxextdebuginit_impl();
+    }
+
+    intialized = 1;
+    vxextdebug_unlock();
 }
+
 
 void
 vxextdebug(enum VXMExtDebugType type, const char *file, const int line, const char *func, const char *fmt, ...)
@@ -83,7 +107,11 @@ vxextdebug(enum VXMExtDebugType type, const char *file, const int line, const ch
     vxextdebuginit();
 
     time_t t = time(NULL);
-    struct tm tm = *localtime(&t);
+    struct tm tm = {0};
+
+    if(!localtime_r(&t, &tm))
+    {   memset(&tm, 0, sizeof(tm));
+    }
 
     const char* typestr;
     const char* color;
@@ -91,12 +119,12 @@ vxextdebug(enum VXMExtDebugType type, const char *file, const int line, const ch
 
     switch(type) 
     {
-        case VXMExtDebugINFO:     typestr = "INFO";     color = COLOR_GREEN;   colormsg = "";           break;
+        case VXMExtDebugINFO:     typestr = "INFO ";    color = COLOR_GREEN;   colormsg = "";           break;
         case VXMExtDebugDEBUG:    typestr = "DEBUG";    color = COLOR_BLUE;    colormsg = "";           break;
-        case VXMExtDebugWARN:     typestr = "WARN";     color = COLOR_YELLOW;  colormsg = COLOR_YELLOW; break;
+        case VXMExtDebugWARN:     typestr = "WARN ";    color = COLOR_YELLOW;  colormsg = COLOR_YELLOW; break;
         case VXMExtDebugERROR:    typestr = "ERROR";    color = COLOR_RED;     colormsg = COLOR_RED;    break; 
-        case VXMExtDebugCRITICAL: typestr = "CRITICAL"; color = COLOR_RED;     colormsg = COLOR_RED;    break;
-        default:                  typestr = "UNKNOWN";  color = COLOR_MAGENTA; colormsg = "";           break;
+        case VXMExtDebugCRITICAL: typestr = "CRIT ";    color = COLOR_RED;     colormsg = COLOR_RED;    break;
+        default:                  typestr = "(\?\?\?)"; color = COLOR_MAGENTA; colormsg = "";           break;
     }
 
     enum LogCols 
@@ -111,45 +139,40 @@ vxextdebug(enum VXMExtDebugType type, const char *file, const int line, const ch
         PADDING = 5
     };
 
+    int event_indent = TIME_W + TYPE_W + FILE_W + LINE_W + FUNC_W + PADDING;
     int event_w;
 
     if(vxext_no_winsize)
     {   event_w = FALLBACK_EVENT_W;
     }
     else
-    {   event_w = vxext_w.ws_col - (TIME_W + TYPE_W + FILE_W + LINE_W + FUNC_W + PADDING);
+    {   event_w = vxext_w.ws_col - event_indent;
     }
 
     if (event_w < MIN_EVENT_W)
     {   event_w = MIN_EVENT_W;
     }
 
-    char msg[1024];
+    enum { MSG_SIZE_MAX = 1024 };
+
+    char msg[MSG_SIZE_MAX] = {0};
 
     va_list args;
     va_start(args, fmt);
     vsnprintf(msg, sizeof(msg), fmt, args);
     va_end(args);
 
-    /* Truncate message if too wide
-     *
-     * TODO: Remove this.
-     */
-    size_t msg_len = strlen(msg);
-
-    if (msg_len > event_w) 
-    {
-        msg[event_w-3] = '.';
-        msg[event_w-2] = '.';
-        msg[event_w-1] = '.';
-        msg[event_w] = '\0';
-    }
-
     vxextdebug_lock();
 
-    log_count++;
+    if(!isatty(STDERR_FILENO))
+    {     
+        color = "";
+        colormsg = "";
+    }
 
-    if (!vxext_no_winsize && log_count % (vxext_w.ws_row - 2) == 1) 
+    ++log_count;
+
+    if (!vxext_no_winsize && vxext_w.ws_row > 2 && log_count % (vxext_w.ws_row - 2) == 1) 
     {
         fprintf(stderr, 
                 "%-*s "
@@ -174,18 +197,47 @@ vxextdebug(enum VXMExtDebugType type, const char *file, const int line, const ch
                     "%-*s "
                     "%-*d "
                     "%-*s "
-                    "%s"
-                    "%-s"
-                    "%s\n",
+                    "%s",
             tm.tm_hour, tm.tm_min, tm.tm_sec,
             color, typestr, COLOR_RESET,
             FILE_W, file,
             LINE_W, line,
             FUNC_W, func,
-            colormsg,
-            msg,
-            RESET_ALL
+            colormsg
             );
+
+    /* extra... */
+    size_t msg_len = strlen(msg);
+    size_t pos = 0;
+
+    while (pos < msg_len)
+    {
+        size_t remaining = msg_len - pos;
+        size_t n = remaining > (size_t)event_w ? (size_t)event_w : remaining;
+
+        /*
+         * If this isn't the first line, indent it
+         * to the beginning of the Event column.
+         */
+        if (pos != 0)
+        {   fprintf(stderr, "%*s%s", event_indent, "", colormsg);
+        }
+
+        fprintf(stderr,
+                "%.*s%s\n",
+                (int)n,
+                msg + pos,
+                RESET_ALL);
+
+        pos += n;
+    }
+
+    /*
+     * Make sure an empty message still produces a line.
+     */
+    if (msg_len == 0)
+    {   fprintf(stderr, "%s\n", RESET_ALL);
+    }
 
     vxextdebug_unlock();
 }
