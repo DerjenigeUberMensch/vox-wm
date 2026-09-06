@@ -59,7 +59,7 @@ arrangedesktop(Desktop *desk)
                                                                         AFTER->NEXT = START->NEXT;      \
                                                                         AFTER->PREV = START;            \
                                                                         if(!START->NEXT)                \
-                                                                        {   LAST = START;               \
+                                                                        {   LAST = AFTER;               \
                                                                         }                               \
                                                                         else                            \
                                                                         {   START->NEXT->PREV = AFTER;  \
@@ -80,24 +80,51 @@ arrangedesktop(Desktop *desk)
                                                                             }                               \
                                                                         } while(0)
 
-#define __detach_helper(NAME, TYPE, STRUCT, HEAD, NEXT, PREV, LAST)   do                                                        \
-                                                                {                                                               \
-                                                                    TYPE **tc;                                                  \
-                                                                    for(tc = &HEAD; *tc && *tc != STRUCT; tc = &(*tc)->NEXT);   \
-                                                                    *tc = STRUCT->NEXT;                                         \
-                                                                    if(!(*tc))                                                  \
-                                                                    {   LAST = STRUCT->PREV;                                    \
-                                                                    }                                                           \
-                                                                    else if(STRUCT->NEXT)                                       \
-                                                                    {   STRUCT->NEXT->PREV = STRUCT->PREV;                      \
-                                                                    }                                                           \
-                                                                    else if(STRUCT->PREV)                                       \
-                                                                    {                                                           \
-                                                                        LAST = STRUCT->PREV;                                    \
-                                                                        STRUCT->PREV->NEXT = NULL;                              \
-                                                                    }                                                           \
-                                                                    STRUCT->NEXT = NULL;                                        \
-                                                                    STRUCT->PREV = NULL;                                        \
+#define __detach_helper(NAME, TYPE, STRUCT, HEAD, NEXT, PREV, LAST)                                       \
+                                                                do                                        \
+                                                                {                                         \
+                                                                    if(!ASSERT(STRUCT))                         \
+                                                                    {   DebugWarn("Struct is NULL");            \
+                                                                    }                                           \
+                                                                    /* Make sure list is valid */               \
+                                                                    else if(!ASSERT(                            \
+                                                                        STRUCT->PREV                            \
+                                                                            ?                                   \
+                                                                            STRUCT->PREV->NEXT == STRUCT        \
+                                                                            :                                   \
+                                                                            HEAD == STRUCT                      \
+                                                                    ))                                          \
+                                                                    {   DebugWarn("Struct does not appear to be connected to list correctly in its previous"); \
+                                                                    }                                           \
+                                                                    /* Make sure list is valid */               \
+                                                                    else if(!ASSERT(                            \
+                                                                        STRUCT->NEXT                            \
+                                                                            ?                                   \
+                                                                            STRUCT->NEXT->PREV == STRUCT        \
+                                                                            :                                   \
+                                                                            LAST == STRUCT                      \
+                                                                    ))                                          \
+                                                                    {   DebugWarn("Struct does not appear to be connected to list correctly in its next");  \
+                                                                    }                                           \
+                                                                    else                                        \
+                                                                    {                                           \
+                                                                        if(STRUCT->PREV)                        \
+                                                                        {   STRUCT->PREV->NEXT = STRUCT->NEXT;  \
+                                                                        }                                       \
+                                                                        else                                    \
+                                                                        {   HEAD = STRUCT->NEXT;                \
+                                                                        }                                       \
+                                                                                                                \
+                                                                        if(STRUCT->NEXT)                        \
+                                                                        {   STRUCT->NEXT->PREV = STRUCT->PREV;  \
+                                                                        }                                       \
+                                                                        else                                    \
+                                                                        {   LAST = STRUCT->PREV;                \
+                                                                        }                                       \
+                                                                                                                \
+                                                                        STRUCT->NEXT = NULL;                    \
+                                                                        STRUCT->PREV = NULL;                    \
+                                                                    }                                           \
                                                                 } while(0)
 
 
@@ -171,18 +198,22 @@ void
 detachcompletely(Client *c)
 {
     Desktop *desk = c->desktop;
+
     if(desk)
     {
         Monitor *m = desk->mon;
+
         if(m->bar == c)
         {   
             m->bar = NULL;
             Debug0("Detaching bar? Potential memory leak");
         }
+
         if(desk->sel == c)
         {   desk->sel = NULL;
         }
     }
+
     detach(c);
     detachstack(c);
     detachfocus(c);

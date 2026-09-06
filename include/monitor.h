@@ -56,7 +56,7 @@ void arrangemons(void);
 void NonNullAll attachdesktop(Monitor *m, Desktop *desk);
 /* Removes desktop fromt specified monitor linked list.
 */
-void NonNullAll detachdesktop(Monitor *m, Desktop *desk);
+void detachdesktop(Monitor *m, Desktop *desk);
 /* Frees allocated cursors.
  */
 void cleanupcursors(void);
@@ -71,11 +71,34 @@ void cleanupmons(void);
  * RETURN: exit(1) on Failure.
  */
 Monitor *createmon(void);
+/* Returns the Desktop if found from the specified monitor and number
+ *
+ * NOTE: Refer to desktopnumindextodesktop() if you want to get a desktop by index instead of number.
+ *
+ * RETURN: Desktop* on Success.
+ * RETURN: NULL on Failure.
+ */
+__DEPRECATED__ Desktop *NonNull desktopnumtodesktop(Monitor *m, u16 num);
+/* Returns the Desktop if found from the specified monitor and index
+ * RETURN: Desktop* on Success.
+ * RETURN: NULL on Failure.
+ */
+Desktop *NonNull desktopnumindextodesktop(Monitor *m, u16 index);
 /* Finds the next monitor based on "dir" AKA Direction. 
  * RETURN: Monitor * on Success.
  * RETURN: NULL on Failure.
  */
 Monitor *dirtomon(uint8_t dir);
+/* Returns the number of monitors that intersect with the specified rectangle.
+ * RETURN: uint32_t on Success.
+ * RETURN: 0 on impossible
+ */
+uint32_t rectmoncount(int16_t x, int16_t y, uint16_t w, uint16_t h);
+/* Returns the monitor that intersects with the specified rectangle.
+ * RETURN: Monitor* on Success.
+ * RETURN: NULL on Failure.
+ */
+Monitor *recttomon(int16_t x, int16_t y, uint16_t w, uint16_t h);
 /* Returns the next Monitor avaible.
  * RETURN: Monitor* on Success.
  * RETURN: NULL on Failure.
@@ -85,6 +108,8 @@ Monitor *FuncNullable nextmonitor(Monitor *monitor);
 void NonNull setdesktopcount(Monitor *m, uint16_t desktops);
 /* Sets the currently selected desktop */
 void NonNullAll setdesktopsel(Monitor *mon, Desktop *desksel);
+/* set the currently selected desktop by index */
+void NonNull setdesktopseli(Monitor *mon, uint16_t num);
 /* Sets the selected monitor and updates mon data */
 void setmonsel(Monitor *m);
 /* Sets up the cursors used for the WM. */

@@ -151,4 +151,5 @@ ReadStartupApps(
     free(olddir);
 
     FFUnlockFileRead(fd);
+    fclose(fr);
 }

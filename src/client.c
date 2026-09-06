@@ -23,7 +23,7 @@ extern XCBAtom motifatom;
 /* Macro definitions */
 
 u16 OLDWIDTH(Client *c)         { return (c->oldw + (c->oldbw * 2)); }
-u16 OLDHEIGHT(Client *c)        { return (c->oldw + (c->oldbw * 2)); }
+u16 OLDHEIGHT(Client *c)        { return (c->oldh + (c->oldbw * 2)); }
 u16 WIDTH(Client *c)            { return (c->w + (c->bw * 2)); }
 u16 HEIGHT(Client *c)           { return (c->h + (c->bw * 2)); } 
 /* Our custom states */
@@ -981,10 +981,11 @@ createclient(void)
 void
 focus(Client *c)
 {
+    c = focusrealize(c);
+
+    /* DO NOT PUT above C because selmon may change and desk may change */
     Monitor *selmon = _wm.selmon;
     Desktop *desk = selmon->desksel;
-
-    c = focusrealize(c);
 
     if(desk->sel && desk->sel != c)
     {   unfocus(desk->sel, 0);
@@ -1647,7 +1648,7 @@ resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
 
     if(!mask)
     {   
-        Debug("[%u] Not visible", c->win);
+        Debug("[%u] No mask changes", c->win);
         return;
     }
 

@@ -70,20 +70,20 @@ void NonNull attachfocusafter(Client *start, Client *after);
 void NonNull attachfocusbefore(Client *start, Client *after);
 /* Removes Client from clients desktop linked list.
 */
-void NonNull detach(Client *c);
+void detach(Client *c);
 /* Removes all connections from clients desktop linked list
  * Analagous to detachstack(c) and detach(c);
 */
-void NonNull detachcompletely(Client *c);
+void detachcompletely(Client *c);
 /* Removes Client from desktop rendering stack order.
 */
-void NonNull detachstack(Client *c);
+void detachstack(Client *c);
 /* Removes Client from previous restack order. (rstack);
  */
-void NonNull detachrestack(Client *c);
+void detachrestack(Client *c);
 /* Removes Client from desktop focus order.
 */
-void NonNull detachfocus(Client *c);
+void detachfocus(Client *c);
 /* Frees desktop and allocated desktop properties.
 */
 void NonNull cleanupdesktop(Desktop *desk);

@@ -18,6 +18,36 @@
 
 
 
+
+static int 
+US_LOCK_MUTEX(UserSettings *us)
+{
+    if(!us)
+    {   return -1;
+    }
+
+    if(us->use_threads)
+    {   return pthread_mutex_lock(&us->mutex);
+    }
+
+    return -1;
+}
+
+static int
+US_UNLOCK_MUTEX(UserSettings *us)
+{
+    if(!us)
+    {   return -1;
+    }
+
+    if(us->use_threads)
+    {   return pthread_mutex_unlock(&us->mutex);
+    }
+    
+    return -1;
+}
+
+
 void
 USSetupCFGVars(
         UserSettings *us
@@ -98,7 +128,7 @@ USLoad(
         UserSettings *settings
         )
 {
-    pthread_mutex_lock(&settings->mutex);
+    US_LOCK_MUTEX(settings);
 
     if(!settings->cfg)
     {   goto UNLOCK;
@@ -119,7 +149,7 @@ USLoad(
 
     if(!FFFileExists(configpath))
     {
-        pthread_mutex_unlock(&settings->mutex);
+        US_UNLOCK_MUTEX(settings);
         USSave(settings);
         return;
     }
@@ -188,9 +218,9 @@ USLoad(
             {   
                 if(setting->update_func)
                 {   
-                    pthread_mutex_unlock(&settings->mutex);
+                    US_UNLOCK_MUTEX(settings);
                     setting->update_func(prev, dsafe);
-                    pthread_mutex_lock(&settings->mutex);
+                    US_LOCK_MUTEX(settings);
                 }
             }
         }
@@ -200,7 +230,7 @@ USLoad(
     }
 
 UNLOCK:
-    pthread_mutex_unlock(&settings->mutex);
+    US_UNLOCK_MUTEX(settings);
 }
 
 void
@@ -208,7 +238,8 @@ USSave(
         UserSettings *settings
         )
 {
-    pthread_mutex_lock(&settings->mutex);
+    US_LOCK_MUTEX(settings);
+
     if(!settings->cfg)
     {   goto UNLOCK;
     }
@@ -252,7 +283,7 @@ USSave(
         SCParserWrite(cfg, configpath);
     }
 UNLOCK:
-    pthread_mutex_unlock(&settings->mutex);
+    US_UNLOCK_MUTEX(settings);
 }
 
 Generic
@@ -263,13 +294,13 @@ USDefaultSetting(
 {
     Generic ret;
 
-    pthread_mutex_lock(&settings->mutex);
+    US_LOCK_MUTEX(settings);
 
     const SCSetting *usdata = settings->holder;
 
     ret = usdata[setting].default_data;
 
-    pthread_mutex_unlock(&settings->mutex);
+    US_UNLOCK_MUTEX(settings);
 
     return ret;
 }
@@ -282,13 +313,13 @@ USGetSetting(
 {
     Generic ret;
 
-    pthread_mutex_lock(&settings->mutex);
+    US_LOCK_MUTEX(settings);
 
     const SCSetting *usdata = settings->holder;
 
     ret = usdata[setting].data;
 
-    pthread_mutex_unlock(&settings->mutex);
+    US_UNLOCK_MUTEX(settings);
 
     return ret;
 }
@@ -300,13 +331,13 @@ USSetSetting(
         Generic data
         )
 {
-    pthread_mutex_lock(&settings->mutex);
+    US_LOCK_MUTEX(settings);
 
     SCSetting *usdata = settings->holder;
 
     usdata[setting].data = data;
 
-    pthread_mutex_unlock(&settings->mutex);
+    US_UNLOCK_MUTEX(settings);
 }
 
 void

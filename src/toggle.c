@@ -433,14 +433,19 @@ DragWindowHandler(
 
         if(c)
         {
-            if ((m = recttomon(c->x, c->y, c->w, c->h)) != _wm.selmon) 
-            {
-                setclientdesktop(c, m->desksel);
-                setmonsel(m);
+            if((m = recttomon(c->x, c->y, c->w, c->h)) != c->desktop->mon)
+            {   setclientdesktop(c, m->desksel);
             }
+
+            if(m != _wm.selmon)
+            {   setmonsel(m);
+            }
+
             if(DOCKED(c))
             {   setfloating(c, 0);
             }
+
+            focus(c);
         }
 
         arrange(_wm.selmon->desksel);
@@ -714,6 +719,19 @@ ResizeWindowHandler(
             {   XCBMoveResizeWindow(_wm.dpy, win, nx, ny, nw, nh);
             }
 
+            DebugLog(
+    "RESIZE root=%d,%d start=%d,%d "
+    "old=%d,%d %ux%u proposed=%d,%d %dx%d "
+    "actual=%d,%d %ux%u mon=%p owner=%p",
+    mev->root_x, mev->root_y,
+    curx, cury,
+    oldx, oldy, oldw, oldh,
+    nx, ny, nw, nh,
+    c->x, c->y, c->w, c->h,
+    recttomon(c->x, c->y, c->w, c->h),
+    c->desktop->mon
+);
+
             XCBFlush(_wm.dpy);
             break;
             /* TODO */
@@ -759,14 +777,19 @@ ResizeWindowHandler(
         c = wintoclient(win);
         if(c)
         {
-            if ((m = recttomon(c->x, c->y, c->w, c->h)) != _wm.selmon) 
-            {
-                setclientdesktop(c, m->desksel);
-                setmonsel(m);
+            if((m = recttomon(c->x, c->y, c->w, c->h)) != c->desktop->mon)
+            {   setclientdesktop(c, m->desksel);
             }
+
+            if(m != _wm.selmon)
+            {   setmonsel(m);
+            }
+
             if(DOCKED(c))
             {   setfloating(c, 0);
             }
+
+            focus(c);
         }
         arrange(_wm.selmon->desksel);
         XCBFlush(_wm.dpy);
