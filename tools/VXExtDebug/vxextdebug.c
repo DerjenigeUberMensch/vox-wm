@@ -199,7 +199,7 @@ vxextdebug(enum VXMExtDebugType type, const char *file, const int line, const ch
                     "%-*s "
                     "%s",
             tm.tm_hour, tm.tm_min, tm.tm_sec,
-            color, typestr, COLOR_RESET,
+            color, typestr, isatty(STDERR_FILENO) ? COLOR_RESET : "",
             FILE_W, file,
             LINE_W, line,
             FUNC_W, func,
