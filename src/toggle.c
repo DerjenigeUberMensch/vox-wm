@@ -719,6 +719,7 @@ ResizeWindowHandler(
             {   XCBMoveResizeWindow(_wm.dpy, win, nx, ny, nw, nh);
             }
 
+            /*
             DebugLog(
     "RESIZE root=%d,%d start=%d,%d "
     "old=%d,%d %ux%u proposed=%d,%d %dx%d "
@@ -731,6 +732,7 @@ ResizeWindowHandler(
     recttomon(c->x, c->y, c->w, c->h),
     c->desktop->mon
 );
+            */
 
             XCBFlush(_wm.dpy);
             break;
