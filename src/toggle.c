@@ -433,7 +433,9 @@ DragWindowHandler(
 
         if(c)
         {
-            if((m = recttomon(c->x, c->y, c->w, c->h)) != c->desktop->mon)
+            u32 movedmon = ((m = recttomon(c->x, c->y, c->w, c->h)) != c->desktop->mon);
+
+            if(movedmon)
             {   setclientdesktop(c, m->desksel);
             }
 
@@ -441,7 +443,7 @@ DragWindowHandler(
             {   setmonsel(m);
             }
 
-            if(DOCKED(c))
+            if(!movedmon && DOCKED(c))
             {   setfloating(c, 0);
             }
 
@@ -779,7 +781,9 @@ ResizeWindowHandler(
         c = wintoclient(win);
         if(c)
         {
-            if((m = recttomon(c->x, c->y, c->w, c->h)) != c->desktop->mon)
+            u32 movedmon = ((m = recttomon(c->x, c->y, c->w, c->h)) != c->desktop->mon);
+
+            if(movedmon)
             {   setclientdesktop(c, m->desksel);
             }
 
@@ -787,7 +791,7 @@ ResizeWindowHandler(
             {   setmonsel(m);
             }
 
-            if(DOCKED(c))
+            if(!movedmon && DOCKED(c))
             {   setfloating(c, 0);
             }
 
@@ -1098,5 +1102,4 @@ ToggleDesktop(const Arg *arg)
         }
     }
 }
-
 
