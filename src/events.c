@@ -862,13 +862,12 @@ configurerequest(XCBGenericEvent *event)
         geom = mask & (XCB_CONFIG_WINDOW_X|XCB_CONFIG_WINDOW_Y|XCB_CONFIG_WINDOW_WIDTH|XCB_CONFIG_WINDOW_HEIGHT);
         if(geom)
         {
+            applygravity(c->gravity, &rx, &ry, rw, rh, c->bw);
+
             Monitor *oldmon = recttomon(c->x, c->y, c->w, c->h);
             Monitor *newmon = recttomon(rx, ry, rw, rh);
-
-            /* ARE WE between monitors????????????? */
             bool ignoreAutoFloat = oldmon != newmon || oldmon != c->desktop->mon || rectmoncount(rx, ry, rw, rh) > 1;
 
-            applygravity(c->gravity, &rx, &ry, rw, rh, c->bw);
             resizeclient(c, rx, ry, rw, rh);
 
             /* idk make look better lazy */

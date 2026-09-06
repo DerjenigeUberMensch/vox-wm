@@ -121,9 +121,55 @@ attachdesktoplast(Monitor *m, Desktop *desk)
 void
 detachdesktop(Monitor *m, Desktop *desktop)
 {
-    __detach_helper(desktop, Desktop, desktop, m->desktops, next, prev, m->desklast);
+    Desktop *d;
+
+    if(!ASSERT(m))
+    {   DebugWarn("Monitor is NULL");
+        return;
+    }
+
+    if(!ASSERT(desktop))
+    {   DebugWarn("Desktop is NULL");
+        return;
+    }
+
+    for(d = m->desktops; d && d != desktop; d = d->next);
+    if(!ASSERT(d))
+    {   DebugWarn("Desktop does not appear to be attached to monitor");
+        return;
+    }
+
+    if(!ASSERT(desktop->prev ? desktop->prev->next == desktop : m->desktops == desktop))
+    {   DebugWarn("Desktop does not appear to be connected to list correctly in its previous");
+        return;
+    }
+
+    if(!ASSERT(desktop->next ? desktop->next->prev == desktop : m->desklast == desktop))
+    {   DebugWarn("Desktop does not appear to be connected to list correctly in its next");
+        return;
+    }
+
+    if(desktop->prev)
+    {   desktop->prev->next = desktop->next;
+    }
+    else
+    {   m->desktops = desktop->next;
+    }
+
+    if(desktop->next)
+    {   desktop->next->prev = desktop->prev;
+    }
+    else
+    {   m->desklast = desktop->prev;
+    }
+
+    desktop->next = NULL;
+    desktop->prev = NULL;
     desktop->mon = NULL;
-    --m->deskcount;
+
+    if(m->deskcount > 0)
+    {   --m->deskcount;
+    }
 }
 
 void
