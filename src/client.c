@@ -884,6 +884,61 @@ clientinitmapstate(Client *c, XCBGetWindowAttributes *wa)
     }
 }
 
+void
+clientinitsizehints(Client *c, XCBSizeHints *size)
+{
+    if(!size)
+    {   return;
+    }
+
+    updatesizehints(c, size);
+
+    i32 x = c->x;
+    i32 y = c->y;
+    i32 w = c->w;
+    i32 h = c->h;
+    u8 geom = 0;
+
+    /* check for resize flags */
+    if(size->flags & XCB_SIZE_HINT_P_SIZE)
+    {
+        if(w != c->w || h != c->h)
+        {
+            w = size->width;
+            h = size->height;
+            geom = 1;
+        }
+    }
+
+    if(size->flags & XCB_SIZE_HINT_P_POSITION)
+    {
+        if(size->x || size->y)
+        {
+            x = size->x;
+            y = size->y;
+            geom = 1;
+        }
+    }
+
+    if(size->flags & XCB_SIZE_HINT_US_SIZE)
+    {
+        w = size->width;
+        h = size->height;
+        geom = 1;
+    }
+
+    if(size->flags & XCB_SIZE_HINT_US_POSITION)
+    {
+        x = size->x;
+        y = size->y;
+        geom = 1;
+    }
+
+    if(geom)
+    {   resize(c, x, y, w, h, 1);
+    }
+}
+
 void 
 clientinitwtype(Client *c, XCBWindowProperty *windowtypereply)
 {
@@ -1000,10 +1055,16 @@ focus(Client *c)
         grabbuttons(c, 1);
         updatebordercol(c);
         setfocus(c);
+
+        if(c->desktop != desk)
+        {   _Breakpoint();
+        }
+        (void)ASSERT(c->desktop == desk);
     }
     else
     {   unfocus(NULL, 1);
     }
+
 
     desk->sel = c;
 
@@ -1013,14 +1074,14 @@ focus(Client *c)
 Client *
 focusrealize(Client *c)
 {
-    Monitor *selmon = _wm.selmon;
+    Monitor *selmon = c ? c->desktop->mon : _wm.selmon;
     Desktop *desk  = selmon->desksel;
 
     if(!c || !ISVISIBLE(c) || NEVERHOLDFOCUS(c))
     {   for(c = startfocus(desk); c && !ISVISIBLE(c) && !KEEPFOCUS(c); c = nextfocus(c));
     }
 
-    if(c && ISFOCUSED(c))
+    if(c)
     {
         if(c->desktop->mon != _wm.selmon)
         {   setmonsel(c->desktop->mon);
@@ -1449,7 +1510,7 @@ manage(XCBWindow win, bool allow_unmapped_window, void *replies[ManageClientLAST
     setbordercolor32(c, bcol);
     updatetitle(c, getnamefromreply(netwmnamereply), getnamefromreply(wmnamereply));
     updateborder(c);
-    updatesizehints(c, hints);
+    clientinitsizehints(c, hints);
     updateclass(c, cls);
     updatewmhints(c, wmh);
     updatemotifhints(c, motifreply);
@@ -1611,6 +1672,10 @@ resize(Client *c, i32 x, i32 y, i32 width, i32 height, uint8_t interact)
 void 
 resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
 {
+    if(width == 800 && height == 600 && (c->w != width && c->h != height))
+    {   _Breakpoint();
+    }
+
     u32 mask = 0;
 
     if(c->x != x)
@@ -1619,24 +1684,28 @@ resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
         c->x = x;
         mask |= XCB_CONFIG_WINDOW_X;
     }
+
     if(c->y != y)
     {
         c->oldy = c->y;
         c->y = y;
         mask |= XCB_CONFIG_WINDOW_Y;
     }
+
     if(c->w != width)
     {
         c->oldw = c->w;
         c->w = width;
         mask |= XCB_CONFIG_WINDOW_WIDTH;
     }
+
     if(c->h != height)
     {   
         c->oldh = c->h;
         c->h = height;
         mask |= XCB_CONFIG_WINDOW_HEIGHT;
     }
+
 
     XCBWindowChanges changes =
     {   
@@ -2511,6 +2580,7 @@ updatesizehints(Client *c, XCBSizeHints *size)
     if(!size)
     {   return;
     }
+
     i32 basew = c->basew;
     i32 baseh = c->baseh;
     i32 minw = c->minw;
@@ -2612,50 +2682,6 @@ updatesizehints(Client *c, XCBSizeHints *size)
     c->inch = inch;
     c->incw = incw;
     c->gravity = gravity;
-
-    i32 x = c->x;
-    i32 y = c->y;
-    i32 w = c->w;
-    i32 h = c->h;
-    u8 geom = 0;
-    /* check for resize flags */
-    if(size->flags & XCB_SIZE_HINT_P_SIZE)
-    {
-        if(w != c->w || h != c->h)
-        {
-            w = size->width;
-            h = size->height;
-            geom = 1;
-        }
-    }
-
-    if(size->flags & XCB_SIZE_HINT_P_POSITION)
-    {
-        if(size->x || size->y)
-        {
-            x = size->x;
-            y = size->y;
-            geom = 1;
-        }
-    }
-
-    if(size->flags & XCB_SIZE_HINT_US_SIZE)
-    {
-        w = size->width;
-        h = size->height;
-        geom = 1;
-    }
-
-    if(size->flags & XCB_SIZE_HINT_US_POSITION)
-    {
-        x = size->x;
-        y = size->y;
-        geom = 1;
-    }
-
-    if(geom)
-    {   resize(c, x, y, w, h, 1);
-    }
 }
 
 void
