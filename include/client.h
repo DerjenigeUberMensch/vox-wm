@@ -207,6 +207,8 @@ void NonNull clientinitfloat(Client *c);
 void NonNullArg(1) clientinitgeom(Client *c, XCBWindowGeometry *geometry);
 /*Initializes the Client window map state, and map iconic states. */
 void NonNullArg(1) clientinitmapstate(Client *c, XCBGetWindowAttributes *wa);
+/* Updates size hints including user specified crap */
+void NonNullArg(1) clientinitsizehints(Client *c, XCBSizeHints *size);
 /* Initializes the Client window type from the specified XCBWindowProperty. */
 void NonNullArg(1) clientinitwtype(Client *c, XCBWindowProperty *windowtypereply);
 /* Initializes the Client window state from the specified XCBWindowProperty. */

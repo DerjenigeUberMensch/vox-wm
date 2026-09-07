@@ -993,16 +993,18 @@ void
 sendmon(Client *c, Monitor *m)
 {
     if(!c->desktop)
-    {   c->desktop = m->desksel;
+    {   
+        c->desktop = m->desksel;
+        DebugWarn("Client [%u] has no desktop, assigning monitor, sel desktop [%d]", c->win, m->desksel->num);
     }
     if(c->desktop->mon == m)
-    {   Debug0("Cant send client to itself.");
+    {   
+        Debug0("Cant send client to itself.");
         return;
     }
     unfocus(c, 1);
     setclientdesktop(c, m->desksel);
     focus(NULL);
-    /* arrangeall() */
 }
 
 void

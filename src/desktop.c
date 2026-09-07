@@ -213,10 +213,15 @@ detachcompletely(Client *c)
         {   desk->sel = NULL;
         }
     }
+    else
+    {   
+        /* no assert since I think maybe the bar has no desktop */
+        DebugWarn("FIXME: Client has no desktop.");
+    }
 
     detach(c);
-    detachstack(c);
     detachfocus(c);
+    detachstack(c);
     detachrestack(c);
 }
 

@@ -407,11 +407,6 @@ motionnotify(XCBGenericEvent *event)
     {   return;
     }
 
-    /* due to the mouse being able to move a ton we want to limit the cycles burnt for non root events */
-    if(eventwin != _wm.root)
-    {   return;
-    }
-
     u8 sync = 0;
     static Monitor *mon = NULL;
     Monitor *m;
@@ -859,40 +854,52 @@ configurerequest(XCBGenericEvent *event)
             }
             restack = 1;
         }
+
         geom = mask & (XCB_CONFIG_WINDOW_X|XCB_CONFIG_WINDOW_Y|XCB_CONFIG_WINDOW_WIDTH|XCB_CONFIG_WINDOW_HEIGHT);
+
         if(geom)
         {
             applygravity(c->gravity, &rx, &ry, rw, rh, c->bw);
 
-            Monitor *oldmon = recttomon(c->x, c->y, c->w, c->h);
-            Monitor *newmon = recttomon(rx, ry, rw, rh);
-            bool ignoreAutoFloat = oldmon != newmon || oldmon != c->desktop->mon || rectmoncount(rx, ry, rw, rh) > 1;
+            /* sometimes clients resend data for no reason using resizerequest() because they think we dont a good enough job
+             * at doing our literal only job, which breaks resizing so we skip the ones that are the same fixing 
+             * 1. broken resizes
+             * 2. we later detect broken resizse again in the other one
+             */
+            if(rx != c->x || ry != c->y || rw != c->w || rh != c->h)
+            {   
+                Monitor *oldmon = recttomon(c->x, c->y, c->w, c->h);
+                Monitor *newmon = recttomon(rx, ry, rw, rh);
 
-            resizeclient(c, rx, ry, rw, rh);
+                /* ARE WE between monitors????????????? */
+                bool ignoreAutoFloat = oldmon != newmon || oldmon != c->desktop->mon || rectmoncount(rx, ry, rw, rh) > 1;
 
-            /* idk make look better lazy */
-            if(ignoreAutoFloat)
-            {   (void)0;
-            }
-            else if(!SHOULDBEFLOATING(c))
-            {
-                if(ISFLOATING(c))
-                {   
-                    setfloating(c, 0);
-                    restack = 1;
+                resizeclient(c, rx, ry, rw, rh);
+
+                /* idk make look better lazy */
+                if(ignoreAutoFloat)
+                {   (void)0;
                 }
+                else if(!SHOULDBEFLOATING(c))
+                {
+                    if(ISFLOATING(c))
+                    {   
+                        setfloating(c, 0);
+                        restack = 1;
+                    }
 
-                DebugLog("Did not ignore");
-            }
-            else
-            {
-                /* these checks are so we maintain wasfloating correctly without messing everything up */
-                if(!ISFLOATING(c) && !DOCKED(c))
-                {   
-                    setfloating(c, 1);
-                    restack = 1;
+                    DebugLog("Did not ignore");
                 }
-                DebugLog("Did not ignore");
+                else
+                {
+                    /* these checks are so we maintain wasfloating correctly without messing everything up */
+                    if(!ISFLOATING(c) && !DOCKED(c))
+                    {   
+                        setfloating(c, 1);
+                        restack = 1;
+                    }
+                    DebugLog("Did not ignore");
+                }
             }
         }
 

@@ -50,6 +50,7 @@ attachdesktop(Monitor *m, Desktop *desktop)
     }
 
     desktop->prev = NULL;
+    m->deskcount++;
 }
 
 void
@@ -58,7 +59,6 @@ attachdesktoplast(Monitor *m, Desktop *desk)
     if(!m->desktops)
     {   
         attachdesktop(m, desk);
-        m->deskcount++;
         return;
     }
 
@@ -121,54 +121,14 @@ attachdesktoplast(Monitor *m, Desktop *desk)
 void
 detachdesktop(Monitor *m, Desktop *desktop)
 {
-    Desktop *d;
-
-    if(!ASSERT(m))
-    {   DebugWarn("Monitor is NULL");
-        return;
-    }
-
-    if(!ASSERT(desktop))
-    {   DebugWarn("Desktop is NULL");
-        return;
-    }
-
-    for(d = m->desktops; d && d != desktop; d = d->next);
-    if(!ASSERT(d))
-    {   DebugWarn("Desktop does not appear to be attached to monitor");
-        return;
-    }
-
-    if(!ASSERT(desktop->prev ? desktop->prev->next == desktop : m->desktops == desktop))
-    {   DebugWarn("Desktop does not appear to be connected to list correctly in its previous");
-        return;
-    }
-
-    if(!ASSERT(desktop->next ? desktop->next->prev == desktop : m->desklast == desktop))
-    {   DebugWarn("Desktop does not appear to be connected to list correctly in its next");
-        return;
-    }
-
-    if(desktop->prev)
-    {   desktop->prev->next = desktop->next;
-    }
-    else
-    {   m->desktops = desktop->next;
-    }
-
-    if(desktop->next)
-    {   desktop->next->prev = desktop->prev;
-    }
-    else
-    {   m->desklast = desktop->prev;
-    }
-
-    desktop->next = NULL;
-    desktop->prev = NULL;
+    __detach_helper(desktop, Desktop, desktop, m->desktops, next, prev, m->desklast);
     desktop->mon = NULL;
 
-    if(m->deskcount > 0)
+    if(ASSERT(m->deskcount > 0))
     {   --m->deskcount;
+    }
+    else
+    {   DebugWarn("FIXME: Attempted to detach too many desktops, ignoring...");
     }
 }
 
@@ -252,6 +212,7 @@ createmon(void)
     m->ww = m->wh = 0;
     m->next = NULL;
     m->deskcount = 0;
+    m->desklast = NULL;
     setdesktopcount(m, 10);
     m->desksel = m->desktops;
     m->bar = NULL;
@@ -337,6 +298,7 @@ void
 setdesktopcount(Monitor *m, uint16_t desktops)
 {
     const u8 MIN_DESKTOPS = 1;
+
     if(desktops < MIN_DESKTOPS)
     {   Debug0("Cannot make desktop count less than possible.");
         return;
@@ -381,6 +343,7 @@ setdesktopcount(Monitor *m, uint16_t desktops)
         if(m->desksel == desk)
         {   m->desksel = prev;
         }
+
         detachdesktop(m, desk);
         cleanupdesktop(desk);
     }
