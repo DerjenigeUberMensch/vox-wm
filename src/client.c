@@ -1056,9 +1056,6 @@ focus(Client *c)
         updatebordercol(c);
         setfocus(c);
 
-        if(c->desktop != desk)
-        {   _Breakpoint();
-        }
         (void)ASSERT(c->desktop == desk);
     }
     else
@@ -1672,10 +1669,6 @@ resize(Client *c, i32 x, i32 y, i32 width, i32 height, uint8_t interact)
 void 
 resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
 {
-    if(width == 800 && height == 600 && (c->w != width && c->h != height))
-    {   _Breakpoint();
-    }
-
     u32 mask = 0;
 
     if(c->x != x)
@@ -1705,7 +1698,6 @@ resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
         c->h = height;
         mask |= XCB_CONFIG_WINDOW_HEIGHT;
     }
-
 
     XCBWindowChanges changes =
     {   
