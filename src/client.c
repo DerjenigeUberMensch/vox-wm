@@ -892,41 +892,33 @@ clientinitsizehints(Client *c, XCBSizeHints *size)
     }
 
     updatesizehints(c, size);
-
-    i32 x = c->x;
-    i32 y = c->y;
-    i32 w = c->w;
-    i32 h = c->h;
-
-    /* historically geom was meant to skip a resize but since resize had optimizations to skip it... this doesnt matter anymore. */
-    /* u8 geom = 0; */
+    /* Apparntly ICCM 2.0 said these numbers are now padding, and not to use them.
+     * The only reason they exist suppodely is for backwards compatibility
+     * But the flags still mean something????
+     * So I guess TODO: Ignore our system of resizing when a flag is inplace.
+     * https://xorg.freedesktop.org/archive/X11R7.7/doc/xorg-docs/icccm/icccm.pdf
+     */
+    (void)size->x;
+    (void)size->y;
+    (void)size->width;
+    (void)size->height;
 
     /* check for resize flags */
 
     /* US -> User Defined is more important than P -> Program Defined */
     if(size->flags & XCB_SIZE_HINT_US_SIZE)
     {
-        w = size->width;
-        h = size->height;
     }
     else if(size->flags & XCB_SIZE_HINT_P_SIZE)
     {
-        w = size->width;
-        h = size->height;
     }
     /* US -> User Defined is more important than P -> Program Defined */
     if(size->flags & XCB_SIZE_HINT_US_POSITION)
     {
-        x = size->x;
-        y = size->y;
     }
     else if(size->flags & XCB_SIZE_HINT_P_POSITION)
     {
-        x = size->x;
-        y = size->y;
     }
-  
-    resize(c, x, y, w, h, 1);
 }
 
 void 
