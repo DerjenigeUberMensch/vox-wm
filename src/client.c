@@ -897,46 +897,36 @@ clientinitsizehints(Client *c, XCBSizeHints *size)
     i32 y = c->y;
     i32 w = c->w;
     i32 h = c->h;
-    u8 geom = 0;
+
+    /* historically geom was meant to skip a resize but since resize had optimizations to skip it... this doesnt matter anymore. */
+    /* u8 geom = 0; */
 
     /* check for resize flags */
-    if(size->flags & XCB_SIZE_HINT_P_SIZE)
-    {
-        if(w != c->w || h != c->h)
-        {
-            w = size->width;
-            h = size->height;
-            geom = 1;
-        }
-    }
 
-    if(size->flags & XCB_SIZE_HINT_P_POSITION)
-    {
-        if(size->x || size->y)
-        {
-            x = size->x;
-            y = size->y;
-            geom = 1;
-        }
-    }
-
+    /* US -> User Defined is more important than P -> Program Defined */
     if(size->flags & XCB_SIZE_HINT_US_SIZE)
     {
         w = size->width;
         h = size->height;
-        geom = 1;
     }
-
+    else if(size->flags & XCB_SIZE_HINT_P_SIZE)
+    {
+        w = size->width;
+        h = size->height;
+    }
+    /* US -> User Defined is more important than P -> Program Defined */
     if(size->flags & XCB_SIZE_HINT_US_POSITION)
     {
         x = size->x;
         y = size->y;
-        geom = 1;
     }
-
-    if(geom)
-    {   resize(c, x, y, w, h, 1);
+    else if(size->flags & XCB_SIZE_HINT_P_POSITION)
+    {
+        x = size->x;
+        y = size->y;
     }
+  
+    resize(c, x, y, w, h, 1);
 }
 
 void 
