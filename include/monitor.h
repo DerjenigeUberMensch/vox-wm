@@ -93,7 +93,7 @@ Monitor *dirtomon(uint8_t dir);
  * RETURN: uint32_t on Success.
  * RETURN: 0 on impossible
  */
-uint32_t rectmoncount(int16_t x, int16_t y, uint16_t w, uint16_t h);
+uint32_t rectmoncount(int32_t x, int32_t y, int32_t w, int32_t h);
 /* Returns the monitor that intersects with the specified rectangle.
  * RETURN: Monitor* on Success.
  * RETURN: NULL on Failure.

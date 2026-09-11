@@ -19,6 +19,7 @@
 #include "main.h"
 #include "toggle.h"
 #include "keybinds.h"
+#include "floating.h"
 
 /*
  * For people wanting to make new functions:
