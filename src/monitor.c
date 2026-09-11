@@ -259,10 +259,19 @@ dirtomon(u8 dir)
 }
 
 u32
-rectmoncount(i16 x, i16 y, u16 w, u16 h)
+rectmoncount(i32 x, i32 y, i32 w, i32 h)
 {
     Monitor *m;
     u32 count = 0;
+
+
+    /* TODO: GCC is complaining about something here */
+    if(unlikely(x > INT16_MAX || y > INT16_MAX || w > UINT16_MAX || h > UINT16_MAX))
+    {   
+        DebugError("FIXME: Overflow in rectmoncount, returning 0. x: %d, y: %d, w: %d, h: %d", x, y, w, h);
+        return 0;
+    }
+
 
     for(m = _wm.mons; m; m = nextmonitor(m))
     {   

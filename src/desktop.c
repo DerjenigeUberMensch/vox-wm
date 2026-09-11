@@ -5,6 +5,7 @@
 #include "desktop.h"
 #include "bar.h"
 #include "main.h"
+#include "floating.h"
 
 extern WM _wm;
 extern UserSettings _cfg;
