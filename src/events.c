@@ -9,6 +9,7 @@
 #include "desktop.h"
 #include "getprop.h"
 #include "settings.h"
+#include "floating.h"
 
 extern WM _wm;
 extern UserSettings _cfg;
@@ -718,8 +719,6 @@ configurerequest(XCBGenericEvent *event)
 
     if((c = wintoclient(target)))
     {
-        const Monitor *m = c->desktop->mon;
-
         i32 rx = c->x;
         i32 ry = c->y;
         i32 rw = c->w;
@@ -729,11 +728,15 @@ configurerequest(XCBGenericEvent *event)
             setborderwidth(c, bw);
             updateborderwidth(c);
         }
+        /* dwm is a dirty liar
+         * rx = m->mx + x
+         * is wrong 
+         */
         if(mask & XCB_CONFIG_WINDOW_X)
-        {   rx = m->mx + x;
+        {   rx = x;
         }
         if(mask & XCB_CONFIG_WINDOW_Y)
-        {   ry = m->my + y;
+        {   ry = y;
         }
         if(mask & XCB_CONFIG_WINDOW_WIDTH)
         {   rw = w;
@@ -1431,7 +1434,16 @@ clientmessage(XCBGenericEvent *event)
             if(likely(state == XCB_WINDOW_ICONIC_STATE))
             {   
                 const u32 neverfocus = NEVERFOCUS(c);
-                const u32 inputflags = neverfocus ? XCB_WM_HINT_INPUT : 0;
+                const u32 isurgent = ISURGENT(c);
+                u32 inputflags = 0;
+
+                if(neverfocus)
+                {   inputflags |= XCB_WM_HINT_INPUT;
+                }
+
+                if(isurgent)
+                {   inputflags |= XCB_WM_HINT_URGENCY;
+                }
 
                 u32 wasvisible = ISVISIBLE(c);
 
