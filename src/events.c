@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <string.h>
 
 #include "events.h"
@@ -546,7 +547,12 @@ focusin(XCBGenericEvent *event)
 
     u8 sync = 0;
 
-    Client *sel = _wm.selmon->desksel->sel;
+    Client *sel = NULL;
+
+    /* idk if it can be null or not maybe ????? */
+    if(_wm.selmon->desksel)
+    {   sel = _wm.selmon->desksel->sel;
+    }
 
     if(sel)
     {
@@ -862,12 +868,24 @@ configurerequest(XCBGenericEvent *event)
 
         if(geom)
         {
-            applygravity(c->gravity, &rx, &ry, rw, rh, c->bw);
+             /* If an Application requests just a new size, its reference point does not move. 
+              * So for example if client window has win_gravity SouthEastGravity and is resized, 
+              * the bottom right corner of its frame will not move but instead the top left corner will be adjusted by the difference in size. 
+              * https://specifications.freedesktop.org/wm/latest-single/#id-1.10.8
+              */
+            if(mask & (XCB_CONFIG_WINDOW_X|XCB_CONFIG_WINDOW_Y))
+            {   applygravity(c->gravity, &rx, &ry, rw, rh, c->bw);
+            }
 
             /* sometimes clients resend data for no reason using resizerequest() because they think we dont a good enough job
              * at doing our literal only job, which breaks resizing so we skip the ones that are the same fixing 
              * 1. broken resizes
              * 2. we later detect broken resizse again in the other one
+             *
+             * HEY YOU, YES YOU
+             * Are you Experiencing trouble with alacritty or RUST APPS?
+             * Have you considered winit changing window size based on DPI when moving windows for seemingly no reason?
+             * Well your in luck because thats EXACTLY what its doing, so please ignore.
              */
             if(rx != c->x || ry != c->y || rw != c->w || rh != c->h)
             {   
@@ -875,7 +893,7 @@ configurerequest(XCBGenericEvent *event)
                 Monitor *newmon = recttomon(rx, ry, rw, rh);
 
                 /* ARE WE between monitors????????????? */
-                bool ignoreAutoFloat = oldmon != newmon || oldmon != c->desktop->mon || rectmoncount(rx, ry, rw, rh) > 1;
+                bool ignoreAutoFloat = oldmon != newmon || oldmon != c->desktop->mon || rectmoncount(c->x, c->y, c->w, c->h) > 1 || rectmoncount(rx, ry, rw, rh) > 1;
 
                 resizeclient(c, rx, ry, rw, rh);
 
@@ -1185,10 +1203,11 @@ unmapnotify(XCBGenericEvent *event)
 
     Client *c = wintoclient(win);
 
+    /* The from_configure member is set to True if the event was generated as a result of a resizing of the window's parent when the window itself had a win_gravity of UnmapGravity. 
+     * https://xorg.freedesktop.org/archive/X11R7.6/doc/libX11/specs/libX11/libX11.html
+     */
     if(isconfigure)
-    {   
-        Debug0("Window unmapped, but will be remaped, AKA: FROM_CONFIGURE");
-        return;
+    {   Debug("[%d] was unmapped using UnmapGravity", win);
     }
 
     if(c)
@@ -1304,6 +1323,11 @@ clientmessage(XCBGenericEvent *event)
         _NET_WM_MOVERESIZE_MOVE_KEYBOARD,   /* move via keyboard */
         _NET_WM_MOVERESIZE_CANCEL,          /* cancel operation */
     };
+
+    /* https://specifications.freedesktop.org/wm/latest/ar01s03.html _NET_ACTIVE_WINDOW, _NET_RESTACK_WINDOW*/
+    /* this is apparently is the fucking source indication 2 years god damn later. */
+    enum { SOURCE_UNSPECIFIED = 0, SOURCE_APPLICATION = 1, SOURCE_PAGER = 2, };
+
 
     /* These cover most of the important message's */
     /*
@@ -1475,6 +1499,10 @@ clientmessage(XCBGenericEvent *event)
             const u8 action = l0;
             const XCBAtom prop1 = l1;
             const XCBAtom prop2 = l2;
+            u8 source = l3;
+
+            /* spec says nothing about the source, so we just ignore it */
+            (void)source;
 
             if(likely(action < WM_STATE_LAST))
             {
@@ -1493,26 +1521,26 @@ clientmessage(XCBGenericEvent *event)
         }
         else if(atom == netatom[NetActiveWindow])
         {
-            /* https://specifications.freedesktop.org/wm/latest/ar01s03.html _NET_ACTIVE_WINDOW */
-            enum { SOURCE_UNSPECIFIED = 0, SOURCE_APPLICATION = 1, SOURCE_PAGER = 2, };
-
             u32 source = l0;
             XCBTimestamp timestamp = l1;
             XCBWindow requestor = l2;
 
             bool swtch = false;
-            bool isimportant = false;
+            u32 isimportant = 0;
 
             Client *tmpc = wintoclient(requestor);
 
             (void)timestamp;
 
+            /* is the requestor important? */
             if(tmpc)
             {   isimportant = ISDESKTOP(tmpc) || ISDOCK(tmpc) || ISNOTIFICATION(tmpc);
             }
 
-            /* TODO is important is ignored for now */
-            isimportant = false;
+            /* is the client important? */
+            if(c)
+            {   isimportant |= ISDESKTOP(c) || ISDOCK(c) || ISNOTIFICATION(c);
+            }
 
             /* if its a pager its probably important enough to switch */
             if(source == SOURCE_PAGER || isimportant)
@@ -1522,7 +1550,11 @@ clientmessage(XCBGenericEvent *event)
             }
             else
             {
+                /* if the selected client is the requestor the most probably user clicked someting */
                 if(tmpc && ISSELECTED(tmpc))
+                {   swtch = true;
+                }
+                if(c && ISSELECTED(c))
                 {   swtch = true;
                 }
             }
@@ -1530,19 +1562,44 @@ clientmessage(XCBGenericEvent *event)
 
             if(swtch)
             {
-                focus(c);
-                arrange(c->desktop);
+                if(c)
+                {
+                    focus(c);
+                    arrange(c->desktop);
+                    DebugLog("Accepted _NET_ACTIVE_WINDOW request from #Previous[%u] #Active[%u] (source: %u) (important: %s)", requestor, c->win, source, isimportant ? "true" : "false");
+                }
             }
             else
             {   
-                DebugLog("Denied _NET_ACTIVE_WINDOW request from [%u] (source: %d)", requestor, source);
-                seturgent(c, 1);
+                char *srcstr = "SOURCE_UNSPECIFIED";
+
+                switch(source)
+                {
+                    case SOURCE_APPLICATION:    srcstr = "SOURCE_APPLICATION";  break;
+                    case SOURCE_PAGER:          srcstr = "SOURCE_PAGER";        break;
+                }
+
+                DebugLog("Denied _NET_ACTIVE_WINDOW request from (Previous: %u) (Active: %u) (source: %s)", requestor, c ? c->win : 0, srcstr);
+
+                if(c)
+                {   seturgent(c, 1);
+                }
             }
 
             sync = 1;
         }
         else if(atom == netatom[NetCloseWindow])
         {   
+            XCBTimestamp timestamp = l0;
+            u8 source = l1;
+
+            (void)timestamp;
+
+            /* spec doesnt asay anything about non-pagers -\(0-0)/- */
+            if(source != SOURCE_PAGER)
+            {   DebugWarn("Non pager source requested _NET_CLOSE_WINDOW");
+            }
+
             killclient(c, Graceful);
             sync = 1;
         }
@@ -1616,11 +1673,10 @@ clientmessage(XCBGenericEvent *event)
         else if(atom == netatom[NetMoveResizeWindow])
         {
             Debug0("NetMoveResizeWindow 'ed");
-            /* specified as first 7 bits: 
+            /* specified as low 8 bits: 
              * https://specifications.freedesktop.org/wm-spec/latest/ar01s04.html
              */
-            const u8 GRAVITY_BITS = (1 << 8) - 1;
-            const u32 FLAG_BITS = ~(GRAVITY_BITS);
+            const u8 GRAVITY_MASK = (1 << 8) - 1;
             const i32 x = l1;
             const i32 y = l2;
             const i32 w = l3;
@@ -1629,15 +1685,25 @@ clientmessage(XCBGenericEvent *event)
             const u16 __NET_WM_MOVE_WINDOW_Y = 1 << 9;
             const u16 __NET_WM_MOVE_WINDOW_WIDTH = 1 << 10;
             const u16 __NET_WM_MOVE_WINDOW_HEIGHT = 1 << 11;
-            const u16 __NET_WM_MOVE_WINDOW_APPLICATION_FLAG = 1 << 12;
-            const u16 __NET_WM_MOVE_WINDOW_PAGER_FLAG = 1 << 13;
 
-            (void)__NET_WM_MOVE_WINDOW_APPLICATION_FLAG;
-            (void)__NET_WM_MOVE_WINDOW_PAGER_FLAG;
+            /* idk make simpler or smt */
+            const u16 __NET_WM_MOVE_WINDOW_SOURCE_MASK = (1 << 12) | 
+                                                         (1 << 13) | 
+                                                         (1 << 14) | 
+                                                         (1 << 15);
+            enum XCBBitGravity gravity = l0 & GRAVITY_MASK;
 
-            enum XCBBitGravity gravity = l0 & GRAVITY_BITS;
+            const u32 __SHIFT_SOURCE_TO_UINT8_MAX_BITS = 12;
 
+            const u32 FLAG_BITS = __NET_WM_MOVE_WINDOW_X     | 
+                                  __NET_WM_MOVE_WINDOW_Y     | 
+                                  __NET_WM_MOVE_WINDOW_WIDTH | 
+                                  __NET_WM_MOVE_WINDOW_HEIGHT;
             const u32 flags = l0 & FLAG_BITS;
+            const u8 source = (l0 & __NET_WM_MOVE_WINDOW_SOURCE_MASK) >> __SHIFT_SOURCE_TO_UINT8_MAX_BITS;
+
+            /* Ignore the source, as the spec doesn't specify what to do with it */
+            (void)source;
 
             u32 tmpgravity = c->gravity;
 
@@ -1677,6 +1743,7 @@ clientmessage(XCBGenericEvent *event)
             gev->height = h;
             gev->window = c->win;
             gev->value_mask = mask;
+            gev->response_type = XCB_CONFIGURE_REQUEST;
             /* Should automatically flush. */ 
             configurerequest(&_ev);
             /* revert back to old gravity. */
@@ -1687,8 +1754,14 @@ clientmessage(XCBGenericEvent *event)
             /* "and therefore the Window Manager should always obey it. "
              * Doesnt seem very safe.
              */
+            u8 source = l0;
             XCBWindow sibling = l1;
             u8 stack_mode = l2;
+
+            /* restacking isnt a problem so just warn cause we dont care who sends it */
+            if(source != SOURCE_PAGER)
+            {   DebugWarn("Non pager source requested _NET_RESTACK_WINDOW");
+            }
 
             XCBGenericEvent gev;
             memset(&gev, 0, sizeof(XCBGenericEvent));
@@ -1707,6 +1780,11 @@ clientmessage(XCBGenericEvent *event)
         }
         else if (atom == netatom[NetWMDesktop])
         {
+            u8 source = l1;
+
+            /* only affects client so we dont care since no other client is affected */
+            (void)source;
+
             /* refer: https://specifications.freedesktop.org/wm-spec/latest/ _NET_WM_DESKTOP */
             if(checksticky(l0))
             {   

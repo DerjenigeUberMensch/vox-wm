@@ -5,7 +5,9 @@
 #include "prop.h"
 #include "queue.h"
 
+void PropInit(void);
 void PropListen(XCBDisplay *display, XCBWindow win, enum PropertyType type);
 void PropListenArg(XCBDisplay *display, XCBWindow win, enum PropertyType type, PropArg arg);
+void PropDestroy(void);
 
 #endif

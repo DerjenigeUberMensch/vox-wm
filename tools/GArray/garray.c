@@ -125,6 +125,17 @@ GArrayResize(
     {   return EXIT_FAILURE;
     }
 
+    if(item_len == 0)
+    {   
+        if(array->data)
+        {   free(array->data);
+        }
+
+        array->data = NULL;
+        array->data_len = 0;
+        array->data_len_real = 0;
+    }
+
     if(array->data_len == item_len)
     {   return EXIT_SUCCESS;
     }
@@ -133,14 +144,6 @@ GArrayResize(
     {   return EXIT_FAILURE;
     }
 
-    if(item_len == 0)
-    {   
-        free(array->data);
-
-        array->data = NULL;
-        array->data_len = 0;
-        array->data_len_real = 0;
-    }
     else if(!array->data)
     {
         garray_i length;

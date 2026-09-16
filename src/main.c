@@ -24,8 +24,10 @@
 /* keycodes */
 #include <X11/keysym.h>
 
+#include "VXExtDebug/vxextdebug.h"
+#include "args.h"
 #include "util.h"
-#include "argcv.h"
+#include "args.h"
 #include "main.h"
 #include "hashing.h"
 #include "getprop.h"
@@ -163,17 +165,22 @@ cleanup(void)
     /* save setting data. */
     USSave(&_cfg);
     savesession();
+
     if(!_wm.dpy)
     {
         /* sometimes due to our own lack of competence we can call quit twice and segfault here */
+        
         if(_wm.selmon)
         {   Debug0("Some data has not been freed exiting due to possible segfault.");
         }
         return;
     }
+
     if(_wm.use_watcher)
     {   WatcherDestroy();
     }
+
+    PropDestroy();
     /* Threads are alawys first to go due to concurrency problems with future cleanup functions */
     ThreadingDestroy();
 
@@ -199,10 +206,13 @@ cleanup(void)
     XCBFlush(_wm.dpy);
     /* Free hashmap */
     cleanupclienthash();
+
     GArrayWipe(&_wm.clients);
+    GArrayWipe(&_wm.clientstacking);
     GArrayWipe(&_wm.work);
 
     unsetenv("GTK_CSD");
+
     if(_wm.dpy)
     {
         XCBCloseDisplay(_wm.dpy);
@@ -351,6 +361,7 @@ restoresession(void)
         err = 2,
         EndOfFile = 3
     };
+
     while(output != EndOfFile)
     {
         memset(str, 0, MAX_LENGTH);
@@ -1010,6 +1021,11 @@ sendmon(Client *c, Monitor *m)
 void
 setup(void)
 {
+    /* setup wm basic data */
+    startupwm();
+    checkotherwm();
+    XCBSetErrorHandler(xerror);
+
     /* clean up any zombies immediately */
     sighandler();
 
@@ -1063,6 +1079,8 @@ setupatoms(void)
     XCBCookie netcookie[NetLast];
     XCBCookie gtkcookie[GTKLAST];
     XCBCookie xembedcookie[XEMBEDLAST];
+
+    enum { BUF_MAX_SIZE = 256 };
 
     motifcookie = XCBInternAtomCookie(_wm.dpy, "_MOTIF_WM_HINTS", False);
     XCBInitWMAtomsCookie(_wm.dpy, (XCBCookie *)wmcookie);
@@ -1157,7 +1175,6 @@ setupwm(void)
     u32 unused = 0;
     int status;
 
-
     status = GArrayCreateFilled(&_wm.clients, sizeof(XCBWindow), X11_DEFAULT_MAX_WINDOW_LIMIT);
 
     /* we failed the assert this should not happen */
@@ -1182,6 +1199,8 @@ setupwm(void)
         cleanup();
         DIECAT("%s", "Could not allocate memory for work queue. (OutOfMemory)");
     }
+
+    PropInit();
 
     /* keysyms, which are reuiqre for keybinds, which we only care about 2 keybind and thats SUPER+SHIFT+p, as that exist sthe WM, and SUPER+ENTER, as that opens a termial. */
     _wm.syms = XCBKeySymbolsAlloc(_wm.dpy);
@@ -1409,10 +1428,7 @@ void
 startup(void)
 {
     setupsys();
-    startupwm();
-    checkotherwm();
     atexit(exithandler);
-    XCBSetErrorHandler(xerror);
 }
 
 void
@@ -1512,10 +1528,11 @@ xerror(XCBDisplay *display, XCBGenericError *err)
 int
 main(int argc, char **argv)
 {
+    WMHandleArgs(argc, argv);
+    startup();
+
     do
     {
-        ArgcvHandler(argc, argv);
-        startup();
         setup();
         scan();
         restoresession();
@@ -1524,7 +1541,8 @@ main(int argc, char **argv)
         specialconds(argc, argv);
     } while(_wm.restart);
 
-    return EXIT_SUCCESS;
+    /* TODO */
+    return _wm.has_error ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
 /* See LICENSE file for copyright and license details.

@@ -680,25 +680,40 @@ PropSetupUpdateProperty(
 }
 
 void
-PropUpdateProperty(
-        XCBDisplay *display,
-        GetPropCookie *cookie
-        )
+PropUpdatePropertyGetCookie(
+    XCBDisplay *display,
+    GetPropCookie *cookie
+    )
 {
     const enum PropertyType type = cookie->type;
-    const XCBWindow win = cookie->win;
+    const u8 validtype = PropValidType(type);
+
+    if(validtype)
+    {
+        cookie->cookie.sequence = 0;
+
+        if(__prophandler__[type].get_cookie)
+        {   cookie->cookie = __prophandler__[type].get_cookie(display, cookie->win);
+        }
+    }
+}
+
+void
+PropUpdatePropertyGetReply(
+    XCBDisplay *display,
+    GetPropCookie *cookie
+)
+{
+    const enum PropertyType type = cookie->type;
     const u8 validtype = PropValidType(type);
     u8 valid_client;
 
     if(validtype)
     {
-        cookie->cookie.sequence = 0;
-        if(__prophandler__[type].get_cookie)
-        {   cookie->cookie = __prophandler__[type].get_cookie(display, win);
-        }
         LOCK_WM();
-        valid_client = cookie->cookie.sequence == 0 || wintoclient(win);
+        valid_client = cookie->cookie.sequence == 0 || wintoclient(cookie->win);
         UNLOCK_WM();
+
         if(valid_client)
         {
             if(__prophandler__[type].get_reply)
@@ -706,10 +721,20 @@ PropUpdateProperty(
             }
         }
         else
-        {   XCBDiscardReply(display, cookie->cookie);
+        {   
+            if(cookie->cookie.sequence != XCBNone)
+            {   XCBDiscardReply(display, cookie->cookie);
+            }
         }
     }
 }
 
-
-
+void
+PropUpdateProperty(
+        XCBDisplay *display,
+        GetPropCookie *cookie
+        )
+{
+    PropUpdatePropertyGetCookie(display, cookie);
+    PropUpdatePropertyGetReply(display, cookie);
+}

@@ -341,6 +341,8 @@ DragWindowHandler(
     XCBDestroyNotifyEvent *dnev = NULL;
     u16 refreshrate = 0;
     u16 snap = 0;
+    Monitor *m = NULL;
+    u32 moncount = 0;
 
     switch(XCB_EVENT_RESPONSE_TYPE(event))
     {
@@ -363,21 +365,44 @@ DragWindowHandler(
             nx = oldx + mev->event_x - x;
             ny = oldy + mev->event_y - y;
 
-            /* snap to window area */
-            if (abs(_wm.selmon->wx - nx) < snap)
-            {   nx = _wm.selmon->wx;
-            }
-            else if (abs((_wm.selmon->wx + _wm.selmon->ww) - (nx + oldw)) < snap)
-            {   nx = _wm.selmon->wx + _wm.selmon->ww - oldw;
-            }
-            if (abs(_wm.selmon->wy - ny) < snap)
-            {   ny = _wm.selmon->wy;
-            }
-            else if (abs((_wm.selmon->wy + _wm.selmon->wh) - (ny + oldh)) < snap)
-            {   ny = _wm.selmon->wy + _wm.selmon->wh - oldh;
+            c = wintoclient(win);
+
+            if(c && (unlikely(oldw != c->w || oldh != c->h)))
+            {   
+                oldw = c->w;
+                oldh = c->h;
+
+                /* winit... alacrity... rust... */
+                DebugWarn("\"%s\" [%d] changed its sized while dragging ",
+                        c->netwmname ? c->netwmname : c->wmname ? c->wmname : "UNKNOWN",
+                        c->win
+                        );
             }
 
-            c = wintoclient(win);
+            m = recttomon(nx, ny, oldw, oldh);
+
+            m = m ? m : _wm.selmon;
+
+            enum { SNAP_DOESNT_BREAK_ON_ONE_MONITOR = 1 };
+            moncount = rectmoncount(nx, ny, oldw, oldh);
+
+            /* do nothing, TODO: Make this look pretty */
+            if(moncount > SNAP_DOESNT_BREAK_ON_ONE_MONITOR)
+            {   (void)0;
+            }
+            /* snap to window area */
+            else if (abs(m->wx - nx) < snap)
+            {   nx = m->wx;
+            }
+            else if (abs((m->wx + m->ww) - (nx + oldw)) < snap)
+            {   nx = m->wx + m->ww - oldw;
+            }
+            if (abs(m->wy - ny) < snap)
+            {   ny = m->wy;
+            }
+            else if (abs((m->wy + m->wh) - (ny + oldh)) < snap)
+            {   ny = m->wy + m->wh - oldh;
+            }
 
             if(c)
             {   resizemove(c, nx, ny, 1);
@@ -429,12 +454,13 @@ DragWindowHandler(
     {
         XCBUngrabPointer(_wm.dpy, XCB_CURRENT_TIME);
 
-        Monitor *m;
         c = wintoclient(win);
 
         if(c)
         {
-            if((m = recttomon(c->x, c->y, c->w, c->h)) != c->desktop->mon)
+            m = recttomon(c->x, c->y, c->w, c->h);
+
+            if(m != c->desktop->mon)
             {   setclientdesktop(c, m->desksel);
             }
 

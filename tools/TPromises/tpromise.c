@@ -21,23 +21,117 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+#include <errno.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "tpromise.h"
 
+static int
+make_deadline(struct timespec *ts, double ms)
+{
+    if(ms < 0.0)
+    {   return EINVAL;
+    }
+
+    if(clock_gettime(CLOCK_MONOTONIC, ts) == -1)
+    {   return errno;
+    }
+
+    long long ns = (long long)(ms * 1000000.0);
+
+    ts->tv_sec  += ns / 1000000000LL;
+    ts->tv_nsec += ns % 1000000000LL;
+
+    if(ts->tv_nsec >= 1000000000L)
+    {
+        ts->tv_sec++;
+        ts->tv_nsec -= 1000000000L;
+    }
+
+    return 0;
+}
 
 void *
 AwaitTPromise(
     TPromise *promise
     )
 {
+    void *data;
+
     pthread_mutex_lock(&promise->mutex);
+
     while(!promise->resolved)
     {   pthread_cond_wait(&promise->cond, &promise->mutex);
     }
+
+    data = promise->data;
+
     pthread_mutex_unlock(&promise->mutex);
-    return promise->data;
+
+    return data;
+}
+
+void *
+AwaitTPromiseTimeout(
+    TPromise *promise,
+    double timeout_ms
+    )
+{
+    void *data = NULL;
+    struct timespec deadline;
+
+    int status = make_deadline(&deadline, timeout_ms);
+
+    if(status)
+    {   return NULL;
+    }
+
+    pthread_mutex_lock(&promise->mutex);
+
+    while(!promise->resolved)
+    {
+        status = pthread_cond_timedwait(&promise->cond, &promise->mutex, &deadline);
+
+        if(status == ETIMEDOUT)
+        {   break;
+        }
+
+        if(status != 0)
+        {   break;
+        }
+    }
+
+    if(promise->resolved)
+    {   data = promise->data;
+    }
+
+    pthread_mutex_unlock(&promise->mutex);
+
+    return data;
+}
+
+void
+ClearTPromise(
+    TPromise *promise
+    )
+{
+    if(!promise)
+    {   return;
+    }
+
+    pthread_mutex_lock(&promise->mutex);
+
+    while(!promise->resolved)
+    {   pthread_cond_wait(&promise->cond, &promise->mutex);
+    }
+
+    promise->data = NULL;
+    promise->resolved = 0;
+
+    pthread_mutex_unlock(&promise->mutex);
 }
 
 void
@@ -50,7 +144,6 @@ DestroyTPromise(
     }
 
     DestroyTPromiseFilled(promise);
-
 
     free(promise);
 }
@@ -114,14 +207,56 @@ NewTPromiseFilled(
     if(!promise_return)
     {   return EXIT_FAILURE;
     }
-    const TPromise _cpy = 
+
+    int status;
+
+    /* check time */
+    struct timespec ts;
+
+    status = clock_gettime(CLOCK_MONOTONIC, &ts);
+
+    if(status == -1)
+    {   return EXIT_FAILURE;
+    }
+
+    promise_return->data = NULL;
+    promise_return->resolved = 0;
+
+    status = pthread_mutex_init(&promise_return->mutex, NULL);
+
+    if(status)
+        return EXIT_FAILURE;
+
+    pthread_condattr_t attr;
+
+    status = pthread_condattr_init(&attr);
+
+    if(status)
     {
-        .data = NULL,
-        .resolved = 0,
-        .mutex = PTHREAD_MUTEX_INITIALIZER,
-        .cond = PTHREAD_COND_INITIALIZER,
-    };
-    *promise_return = _cpy;
+        pthread_mutex_destroy(&promise_return->mutex);
+        return EXIT_FAILURE;
+    }
+
+    status = pthread_condattr_setclock(&attr, CLOCK_MONOTONIC);
+
+    if(status)
+    {
+        pthread_condattr_destroy(&attr);
+        pthread_mutex_destroy(&promise_return->mutex);
+        return EXIT_FAILURE;
+    }
+
+    status = pthread_cond_init(&promise_return->cond, &attr);
+
+    pthread_condattr_destroy(&attr);
+
+    if(status)
+    {
+        pthread_mutex_destroy(&promise_return->mutex);
+        return EXIT_FAILURE;
+    }
+
+
     return EXIT_SUCCESS;
 }
 
@@ -132,11 +267,13 @@ ResolveTPromise(
     )
 {
     pthread_mutex_lock(&promise->mutex);
+
     if(!promise->resolved)
     {   
         promise->data = data;
         promise->resolved = 1;
+        pthread_cond_broadcast(&promise->cond);
     }
-    pthread_cond_signal(&promise->cond);
+
     pthread_mutex_unlock(&promise->mutex);
 }

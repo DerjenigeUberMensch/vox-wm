@@ -8,6 +8,7 @@
 enum PropertyType
 {
     PropNone,
+    PropFirst = PropNone,
     PropTransient,
     PropWindowState,
     PropWindowType,
@@ -66,12 +67,11 @@ struct
 GetPropCookie
 {
     XCBWindow win;
+    XCBCookie cookie;
+
     enum PropertyType type;
     PropArg arg;
-    XCBCookie cookie;
-    uint8_t pad0[4];
 };
-
 
 
 XCBCookie NonNull
@@ -296,7 +296,24 @@ PropUpdateUnsetWState(
         GetPropCookie *cookie
         );
 
+void NonNullAll
+PropUpdatePropertyGetCookie(
+        XCBDisplay *display,
+        GetPropCookie *cookie
+        );
 
+void NonNullAll
+PropUpdatePropertyGetReply(
+        XCBDisplay *display,
+        GetPropCookie *cookie
+        );
+
+
+/* Updates proeprty based on the cookie.
+ *
+ * NOTE: Analagous to calling PropUpdatePropertyGetCookie and PropUpdatePropertyGetReply.
+ *
+ */
 void NonNullAll
 PropUpdateProperty(
         XCBDisplay *display,

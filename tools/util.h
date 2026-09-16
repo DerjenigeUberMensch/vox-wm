@@ -32,6 +32,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <stdbool.h>
+#include <stdarg.h>
 
 #include "safebool.h"
 #include "file_util.h"
@@ -83,6 +84,10 @@ Generic
     double datad[1];
 };
 
+#ifndef LENGTH
+#define LENGTH(X)  (sizeof(X) / sizeof(X[0]))
+#endif
+
 #ifndef M_STRINGIFY
 #define M_STRINGIFY(x)  #x
 #endif
@@ -118,6 +123,10 @@ Generic
 
 #ifndef BETWEEN
 #define BETWEEN(X, A, B)        ((A) <= (X) && (X) <= (B))
+#endif
+
+#ifndef IN_RANGE
+#define IN_RANGE(X, BASE, RANGE)    ((X) >= (BASE) && (X) <= ((BASE) + (RANGE)))
 #endif
 
 #ifndef MOD
@@ -186,7 +195,6 @@ Generic
 #endif
 
 #ifndef NDEBUG
-
 
 #else
 
@@ -669,6 +677,12 @@ bool memfilled(void *mem, size_t size);
 int GET_BYTE_ORDER(void);
 uint32_t PACK_ARGB(uint8_t a, uint8_t r, uint8_t g, uint8_t b);
 void UNPACK_ARGB(uint32_t argb, uint8_t *a_return, uint8_t *r_return, uint8_t *g_return, uint8_t *b_return);
+/* Joins a string with variable arguments, returning a new string (must be freed).
+ *
+ * RETURN: A new string on Success.
+ * RETURN: NULL on Failure.
+ */
+char *strjoin(const char *fmt, ...);
 
 
 

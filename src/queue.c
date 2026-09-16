@@ -132,13 +132,17 @@ void *
 CQueueGetFirst(CQueue *queue)
 {
     void *ret = NULL;
+    
     if(!queue)
     {   return ret;
     }
+
     CQueueLockR(queue);
+
     if(queue->front != -1)
     {   ret = (uint8_t *)queue->data + queue->rear * queue->datasize;
     }
+
     CQueueUnlockR(queue);
     return ret;
 }
@@ -159,26 +163,34 @@ CQueueGetLast(CQueue *queue)
 }
 
 uint8_t
-CQueueCreate(void *data, uint32_t datalen, size_t sizeof_one_item, CQueue *_Q_RETURN)
+CQueueCreate(uint32_t datalen, size_t sizeof_one_item, CQueue *_Q_RETURN)
 {
     pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
     pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
-    _Q_RETURN->data = data;
+
+    _Q_RETURN->data = malloc(sizeof_one_item * datalen);
     _Q_RETURN->datasize = sizeof_one_item;
     _Q_RETURN->datalen = datalen;
     _Q_RETURN->rear = -1;
     _Q_RETURN->front = -1;
     _Q_RETURN->condmutex = mutex;
     _Q_RETURN->cond = cond;
+
+    if(!_Q_RETURN->data)
+    {   return 1;
+    }
+
     if(pthread_rwlock_init(&_Q_RETURN->mutex, NULL))
     {   return 1;
     }
+
     return 0;
 }
 
 void 
 CQueueDestroy(CQueue *queue)
 {
+    free(queue->data);
     pthread_rwlock_destroy(&queue->mutex);
     pthread_mutex_destroy(&queue->condmutex);
     pthread_cond_destroy(&queue->cond);

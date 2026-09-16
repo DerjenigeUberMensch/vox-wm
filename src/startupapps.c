@@ -6,19 +6,28 @@
 #include <string.h>
 
 
+#include "args.h"
 #include "config.h"
+#include "settings.h"
 #include "toggle.h"
 #include "util.h"
 #include "file_util.h"
 
 #include "startupapps.h"
 
-
 void
 ReadStartupApps(
         void
         )
 {
+    const ArgOpt *skipfile = WMCheckArg(WMArgSkipStartupFile);
+
+    if(skipfile && skipfile->found)
+    {   
+        Debug("Skipping startup file...");
+        return;
+    }
+
     enum { ERROR = -1 };
     enum { OVERFLOW_RETURN = -1 };
     enum { PARSER_ERROR = -2 };

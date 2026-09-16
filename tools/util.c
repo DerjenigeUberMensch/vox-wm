@@ -172,6 +172,64 @@ GET_BYTE_ORDER(void)
     return 0;
 }
 
+
+#ifndef __GLIBC__
+char *
+strjoin(const char *fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+
+    va_list copy;
+    va_copy(copy, args);
+
+    int len = vsnprintf(NULL, 0, fmt, copy);
+
+    va_end(copy);
+
+    if (len < 0) 
+    {
+        va_end(args);
+        return NULL;
+    }
+
+    size_t lensafe = (size_t)len + 1;
+
+    char *str = malloc(lensafe);
+
+    if (!str) 
+    {
+        va_end(args);
+        return NULL;
+    }
+
+    vsnprintf(str, lensafe, fmt, args);
+    va_end(args);
+
+    return str;
+}
+
+#else
+
+char *
+strjoin(const char *fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+
+    char *ret = NULL;
+
+    if (vasprintf(&ret, fmt, args) == -1)
+    {   ret = NULL;
+    }
+
+    va_end(args);
+
+    return ret;
+}
+
+#endif
+
 void _Breakpoint(void) { volatile int *e = 0; if(e != (volatile int *)1) { e = (volatile int *)3; } (void)e; }
 
 
