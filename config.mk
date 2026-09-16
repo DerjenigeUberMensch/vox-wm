@@ -26,8 +26,8 @@ STATICLINK = -static
 DYNAMICLINK= -ldl
 SECTIONCODE= -ffunction-sections -fdata-sections
 LINKMODE = ${DYNAMICLINK}
-MEMFLAGSALWAYS = -fno-omit-frame-pointer
-MEMFLAGSDEBUG = -fsanitize=address,pointer-compare,pointer-subtract,undefined,leak -fasynchronous-unwind-tables -ftrapv
+MEMFLAGSALWAYS = -fno-omit-frame-pointer 
+MEMFLAGSDEBUG = -fsanitize=address,pointer-compare,pointer-subtract,undefined,leak -fasynchronous-unwind-tables -ftrapv -finstrument-functions
 #-fsanitize=undefined,thread -fasynchronous-unwind-tables -ftrapv -D_FORTIFY_SOURCE=2 
 MEMFLAGS = ${MEMFLAGSALWAYS}
 MEMFLAGS += ${MEMFLAGSDEBUG}
@@ -54,7 +54,7 @@ LINKRELEASE = ${NO_SANATIZE_FLAGS}
 #-Wl,--strip-all 
 LINKDEBUG = ${MEMFLAGS}
 
-DEBUGFLAGS = -ggdb -g -fverbose-asm
+DEBUGFLAGS = -ggdb -g3 -fverbose-asm
 CPPFLAGS = -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L ${XINERAMAFLAGS}
 CCFLAGS  = ${CCVERSION} ${WARNINGFLAGS} ${INCS} ${CPPFLAGS} ${PRELINKERFLAGS} ${BUILD_ARCHITECTURE}
 RELEASEFLAGS = ${CCFLAGS} 
