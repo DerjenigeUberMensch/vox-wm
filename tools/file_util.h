@@ -45,9 +45,85 @@ enum
         6
 #else
         10
+#endif 
+    ,
+    FFSysGetDataPathLengthMAX = 
+    /* MAX_FILENAME */
+        255 *
+#ifdef __linux__
+        /* Assuming /home/user/.local/share/mydir/dirname/filename
+         * x * 2 to allow for upto x2 layers of data directories for wacky stuff
+         */
+        8
+#else
+        12
 #endif
+    ,
+    FFSysGetCachePathLengthMAX = 
+    /* MAX_FILENAME */
+        255 *
+#ifdef __linux__
+        /* Assuming /home/user/.cache/mydir/dirname/filename
+         * x * 2 to allow for upto x2 layers of cache directories for wacky stuff
+         */
+        6
+#else
+        10
+#endif
+     ,
 };
 
+const char *
+FFGetSysHomePath(
+        void
+        );
+
+/*
+ *
+ * NOTE: Guaranteed to be the same length as FFGetSysDataPath()
+ * NOTE: Guaranteed to end with a backslash '/' for the path include length.
+ *
+ * RETURN: length of config path.
+ */
+size_t
+FFGetSysDataPathLength(
+        void
+        );
+
+/* Absolute path to the data directory.
+ *
+ * RETURN: EXIT_SUCCESS on Success.
+ * RETURN: EXIT_FAILURE on Failure.
+ */
+int
+FFGetSysDataPath(
+        char *buff,
+        size_t buff_len,
+        size_t *len_return
+        );
+
+/*
+ *
+ * NOTE: Guaranteed to be the same length as FFGetSysCachePath()
+ * NOTE: Guaranteed to end with a backslash '/' for the path include length.
+ *
+ * RETURN: length of config path.
+*/
+size_t
+FFGetSysCachePathLength(
+        void
+        );
+/* Absolute path to the cache directory.
+ *
+ * RETURN: EXIT_SUCCESS on Success.
+ * RETURN: EXIT_FAILURE on Failure.
+ */
+int
+FFGetSysCachePath(
+        char *buff,
+        size_t buff_len,
+        size_t *len_return
+        );
 
 /*
  *

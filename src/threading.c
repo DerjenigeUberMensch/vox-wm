@@ -4,10 +4,15 @@
 #include <poll.h>
 #include <unistd.h>
 #include <string.h>
+#include <limits.h>
+#include <sys/resource.h>
 
+#include "VXExtDebug/vxextdebug.h"
 #include "thpool/thpool.h"
 #include "threading.h"
 #include "util.h"
+#include "args.h"
+
 
 threadpool __thread__pool = NULL;
 pthread_mutex_t __thread_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -23,9 +28,16 @@ InitThreading(void)
         return EXIT_SUCCESS;
     }
 
-    /* default just use 4 */
     u32 aloc_threads = 4;
-    u32 MAX_THREADS = 64;  /* Anything past 64 threads wouldnt be particularly necessary. */
+    const u32 MAX_THREADS_SYS = 64;  /* Anything past 64 threads wouldnt be particularly necessary. */
+    const u32 MAX_THREADS_ABOVE_ALL = 2048;
+    u64 MAX_THREADS_REAL = MAX_THREADS_SYS;
+
+    struct rlimit r;
+    
+    if(getrlimit(RLIMIT_NPROC, &r) == 0)
+    {   MAX_THREADS_REAL = r.rlim_cur;
+    }
 
     long cores = sysconf(_SC_NPROCESSORS_ONLN);
 
@@ -33,7 +45,36 @@ InitThreading(void)
     {   aloc_threads = MAX(cores - 1, aloc_threads);
     }
 
-    aloc_threads = MIN(aloc_threads, MAX_THREADS);
+    aloc_threads = MIN(aloc_threads, MAX_THREADS_SYS);
+
+    const ArgOpt *opt = WMCheckArg(WMArgThreads);
+
+    if(opt && opt->found && opt->argument_return)
+    {
+        char *end;
+        long val = strtol(opt->argument_return, &end, 10);
+
+        if(*end == '\0')
+        {   
+            aloc_threads = MAX(val, 1);
+
+            if(MAX_THREADS_REAL > LONG_MAX)
+            {   MAX_THREADS_REAL = LONG_MAX;
+            }
+
+            if(MAX_THREADS_REAL > MAX_THREADS_ABOVE_ALL)
+            {   MAX_THREADS_REAL = MAX_THREADS_ABOVE_ALL;
+            }
+
+            aloc_threads = MIN(aloc_threads, MAX_THREADS_REAL);
+
+            DebugLog("Threads manually set to -> %ld", aloc_threads);
+        }
+        else
+        {   DebugLog("Failed to parse %s", opt->argument_return);
+        }
+
+    }
 
     __thread__pool = thpool_init(aloc_threads);
 

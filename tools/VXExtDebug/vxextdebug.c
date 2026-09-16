@@ -98,7 +98,6 @@ vxextdebuginit(void)
     vxextdebug_unlock();
 }
 
-
 void
 vxextdebug(enum VXMExtDebugType type, const char *file, const int line, const char *func, const char *fmt, ...)
 {
@@ -190,7 +189,6 @@ vxextdebug(enum VXMExtDebugType type, const char *file, const int line, const ch
                 );
     }
 
-
     fprintf(stderr, 
                     "%02d:%02d:%02d "
                     "%s %s %s "
@@ -199,7 +197,7 @@ vxextdebug(enum VXMExtDebugType type, const char *file, const int line, const ch
                     "%-*s "
                     "%s",
             tm.tm_hour, tm.tm_min, tm.tm_sec,
-            color, typestr, isatty(STDERR_FILENO) ? COLOR_RESET : "",
+            color, typestr, COLOR_RESET,
             FILE_W, file,
             LINE_W, line,
             FUNC_W, func,

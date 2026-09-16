@@ -6,6 +6,7 @@
 #include "main.h"
 #include "desktop.h"
 #include "usersettings.h"
+#include "gtk.h"
 
 
 
@@ -124,6 +125,7 @@ static void
 UpdateUseDecorations(Generic prev, Generic current)
 {
     USER_SETTINGS_RETURN_IF_NO_CHANGE(prev, current);
+
     UpdateDesktop();
 }
 
@@ -131,6 +133,8 @@ static void
 UpdateUseClientSideDecorations(Generic prev, Generic current)
 {
     USER_SETTINGS_RETURN_IF_NO_CHANGE(prev, current);
+
+    X11GTKSetUseCSD(!!current.data8[0]);
 }
 
 static void 

@@ -87,6 +87,9 @@ arrangedesktop(Desktop *desk)
                                                                     if(!ASSERT(STRUCT))                         \
                                                                     {   DebugWarn("Struct is NULL");            \
                                                                     }                                           \
+                                                                    else if(!STRUCT->PREV && !STRUCT->NEXT && !HEAD && !LAST)\
+                                                                    {   DebugWarn("Struct is not attached to list"); \
+                                                                    }                                           \
                                                                     /* Make sure list is valid */               \
                                                                     else if(!ASSERT(                            \
                                                                         STRUCT->PREV                            \

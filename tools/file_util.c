@@ -21,6 +21,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+#include <X11/X.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,6 +33,177 @@
 #include <errno.h>
 
 #include "file_util.h"
+
+const char *
+FFGetSysHomePath(
+        void
+        )
+{
+    char *home = NULL;
+
+#ifdef __linux__
+    home = getenv("HOME");
+#else
+    #error "Unsupported platform"
+#endif
+
+    return (const char *)home;
+}
+
+size_t
+FFGetSysDataPathLength(
+        void
+        )
+{
+    const char *data = NULL;
+    size_t len = 0;
+
+#ifdef __linux__
+    data = getenv("XDG_DATA_HOME");
+
+    if(!data || !*data)
+    {   
+        data = getenv("HOME");
+
+        if(data)
+        {   len = strlen(data) + sizeof("/.local/share/") - 1;
+        }
+    }
+    else
+    {   
+        len = strlen(data);
+    }
+
+#endif
+    return len;
+}
+
+int
+FFGetSysDataPath(
+        char *buff,
+        size_t buff_len,
+        size_t *len_return
+        )
+{
+    if(!buff || !buff_len)
+    {   return EXIT_FAILURE;
+    }
+
+    const char *data = NULL;
+#ifdef __linux__
+    data = getenv("XDG_DATA_HOME");
+
+    if(data && *data)
+    {
+        if(len_return)
+        {   *len_return = strlen(data);
+        }
+
+        return EXIT_SUCCESS;
+    }
+
+    data = getenv("HOME");
+
+    if(data)
+    {   
+        const int SNPRINTF_FAILURE = -1;
+        const char *const LINUX_CONFIG = "/.local/share/";
+        int len = snprintf(buff, buff_len, "%s%s", data, LINUX_CONFIG);
+    
+        if(len == SNPRINTF_FAILURE)
+        {   return EXIT_FAILURE;
+        }
+
+        if((unsigned int)len >= buff_len)
+        {   return EXIT_FAILURE;
+        }
+
+        if(len_return)
+        {   *len_return = len;
+        }
+        return EXIT_SUCCESS;
+    }
+#endif
+    return EXIT_FAILURE;
+}
+
+size_t
+FFGetSysCachePathLength(
+        void
+        )
+{
+    const char *cache = NULL;
+    size_t len = 0;
+
+#ifdef __linux__
+    cache = getenv("XDG_CACHE_HOME");
+
+    if(!cache || !*cache)
+    {   
+        cache = getenv("HOME");
+
+        if(cache)
+        {   len = strlen(cache) + sizeof("/.cache/") - 1;
+        }
+    }
+    else
+    {   
+        len = strlen(cache);
+    }
+
+#endif
+    return len;
+}
+
+int
+FFGetSysCachePath(
+        char *buff,
+        size_t buff_len,
+        size_t *len_return
+        )
+{
+    if(!buff || !buff_len)
+    {   return EXIT_FAILURE;
+    }
+
+    const char *cache = NULL;
+#ifdef __linux__
+    cache = getenv("XDG_CACHE_HOME");
+
+    if(cache && *cache)
+    {
+        if(len_return)
+        {   *len_return = strlen(cache);
+        }
+
+        return EXIT_SUCCESS;
+    }
+
+    cache = getenv("HOME");
+
+    if(cache)
+    {   
+        const int SNPRINTF_FAILURE = -1;
+        const char *const LINUX_CONFIG = "/.cache/";
+        int len = snprintf(buff, buff_len, "%s%s", cache, LINUX_CONFIG);
+    
+        if(len == SNPRINTF_FAILURE)
+        {   return EXIT_FAILURE;
+        }
+
+        if((unsigned int)len >= buff_len)
+        {   return EXIT_FAILURE;
+        }
+
+        if(len_return)
+        {   *len_return = len;
+        }
+        return EXIT_SUCCESS;
+    }
+#endif
+    return EXIT_FAILURE;
+}
+
 
 size_t
 FFGetSysConfigPathLength(

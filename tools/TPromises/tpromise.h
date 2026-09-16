@@ -56,6 +56,21 @@ AwaitTPromise(
     TPromise *promise
     );
 
+void *
+AwaitTPromiseTimeout(
+    TPromise *promise,
+    double timeout_ms
+    );
+
+/* Clears data from a promise, allowing it to be reused.
+ *
+ * NOTE: This function will indefinitely block until the promise is resolved or has already resolved.
+ */
+void
+ClearTPromise(
+    TPromise *promise
+    );
+
 
 /* Destroys the given promise, usage of promise after being destroyed is undefined.
  * 
