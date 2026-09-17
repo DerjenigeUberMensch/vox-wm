@@ -32,7 +32,8 @@ SRC_EXT = c
 # Path to the source directory, relative to the makefile
 SRC_PATH = .
 # Exclude dir
-EXCLUDE = tests tools/lua/testes tools/lua/tools tools/lua/onelua.c tools/lua/lua.c
+EXCLUDE = tests 
+#tools/lua/testes tools/lua/tools tools/lua/onelua.c tools/lua/lua.c
 # Space-separated pkg-config libraries used by this project
 LIBRARIES = ${LIBS}
 # Compilation Architecture.
