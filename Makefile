@@ -41,8 +41,11 @@ ARCHALL = -mtune=generic
 ARCH32 = -m32 
 ARCH64 = -march=x86-64 
 ARCH = ${ARCH64} ${ARCHALL}
+
+# Hide file system cause security or smt
+HIDEFLAGS = "-ffile-prefix-map=`pwd -P`=/usr/src/$(BIN_NAME)" "-fdebug-prefix-map=`pwd -P`=/usr/src/$(BIN_NAME)"
 # General compiler flags
-COMPILE_FLAGS = ${CCFLAGS} ${PRELINKERFLAGS} ${ARCH} 
+COMPILE_FLAGS = ${CCFLAGS} ${PRELINKERFLAGS} ${ARCH} ${HIDEFLAGS}
 COMPILE_FLAGS += -DXINERAMA -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L -DMARK=\"${MARK}\"
 # Additional release-specific flags
 RCOMPILE_FLAGS = ${RELEASE} -DNDEBUG
@@ -52,7 +55,7 @@ DCOMPILE_FLAGS = -DDEBUG -DENABLE_DEBUG -DXCB_TRL_ENABLE_DEBUG ${DEBUG} ${SAFETY
 # Add additional include paths
 INCLUDES = -I $(SRC_PATH) ${INCS}
 # General linker settings
-LINK_FLAGS = ${LINKERFLAGS} ${ARCH}
+LINK_FLAGS = ${LINKERFLAGS} ${ARCH} ${HIDEFLAGS}
 # Additional release-specific linker settings
 RLINK_FLAGS = ${LINKRELEASE}
 # Additional debug-specific linker settings
