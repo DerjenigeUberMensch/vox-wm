@@ -522,13 +522,6 @@ PropUpdateManage(
             arrange(c->desktop);
         }
 
-        showhide(c);
-        resize(c, c->x, c->y, c->w, c->h, 0);
-    }
-    else if(_wm.selmon->bar && _wm.selmon->bar->win == win)
-    {
-        cf = focusrealize(NULL);
-        arrange(_wm.selmon->desksel);
     }
 
     XCBMapWindow(_wm.dpy, win);

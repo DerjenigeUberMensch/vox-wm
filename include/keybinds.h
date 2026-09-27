@@ -80,11 +80,10 @@ static const char *dimmer[]   = { "brightnessctl", "set", "1%-", NULL };
 #define CFG_DMENU_COL_SEL_BACKGROUND        "#000000" /* dmenu background colour for SELECTED items     */ 
 #define CFG_DMENU_COL_SEL_FOREGROUND        "#ffffff" /* dmenu text colour for SELECTED items           */
 /* commands */
-static char dmenumon[2] = "0"; 
 static const char dmenufont[]   =   {"monospace:size=12"};
 static const char *dmenucmd[] = 
 { 
-    "dmenu_run", "-m", dmenumon, "-fn", dmenufont, 
+    "dmenu_run", "-fn", dmenufont, 
     "-nb", CFG_DMENU_COL_NORM_BACKGROUND, "-nf", CFG_DMENU_COL_NORM_FOREGROUND, 
     "-sb", CFG_DMENU_COL_SEL_BACKGROUND, "-sf", CFG_DMENU_COL_SEL_FOREGROUND, 
     CFG_DMENU_TOP_BAR ? NULL : "-b", CFG_DMENU_FAST_INPUT ? "-f" : NULL ,CFG_DMENU_CASE_SENSITIVE ? "-i" : NULL, NULL

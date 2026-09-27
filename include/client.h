@@ -2,11 +2,13 @@
 #define _WM_CLIENT_H
 
 #include "../tools/XCB-TRL/xcb_trl.h"
+#include "XCB-TRL/xcb_trl_types.h"
 #include "decorations.h"
 #include "safebool.h"
 #include "util.h"
 
 #include <stdint.h>
+#include <sys/types.h>
 /* EWMH window types */
 enum EnumAsBitFlags
 EWMHFlags
@@ -59,6 +61,17 @@ WMMapState
     WMMapStateMapped,
     WMMapStateUnmapped,
 };
+
+enum
+WMStrutDirection
+{
+    WMStrutDirectionLeft,
+    WMStrutDirectionRight,
+    WMStrutDirectionTop,
+    WMStrutDirectionBottom,
+    WMStrutDirectionLAST,
+};
+
 /* Client struct flags */
 enum EnumAsBitFlags
 ClientFlags
@@ -152,6 +165,13 @@ struct Client
     uint16_t minh;      /* Minimum Height           */
 
 
+                        /* Reserved depth of monitor */
+    uint16_t strutdepth[WMStrutDirectionLAST]; 
+                        /* Reserved start of monitor */
+    uint16_t strutstart[WMStrutDirectionLAST]; 
+                        /* Reserved End of monitor   */
+    uint16_t strutend[WMStrutDirectionLAST];   
+
     XCBWindow win;      /* Client Window            */
     pid_t pid;          /* Client Pid               */
 
@@ -207,8 +227,14 @@ void NonNull clientinitfloat(Client *c);
 void NonNullArg(1) clientinitgeom(Client *c, XCBWindowGeometry *geometry);
 /*Initializes the Client window map state, and map iconic states. */
 void NonNullArg(1) clientinitmapstate(Client *c, XCBGetWindowAttributes *wa);
-/* Updates size hints including user specified crap */
-void NonNullArg(1) clientinitsizehints(Client *c, XCBSizeHints *size);
+/* Updates size hints including user specified crap 
+ *
+ * SEE XCB_SIZE_HINTS
+ *
+ * RETURN: 0 on User/Program Defined flags.
+ * RETURN: Non zero on User/Program Defined flags.
+ */
+uint32_t NonNullArg(1) clientinitsizehints(Client *c, XCBSizeHints *size);
 /* Initializes the Client window type from the specified XCBWindowProperty. */
 void NonNullArg(1) clientinitwtype(Client *c, XCBWindowProperty *windowtypereply);
 /* Initializes the Client window state from the specified XCBWindowProperty. */
@@ -516,6 +542,10 @@ void NonNullArg(1) updatemotifhints(Client *c, XCBWindowProperty *motifprop);
  * Doesnt require any data from client, AKA modular. still requires "size" though.
  */
 void NonNullArg(1) updatesizehints(Client *c, XCBSizeHints *size);
+/* Updates a Clients strut property using the provided property pointer "strutprop". */
+void NonNullArg(1) updatestrut(Client *c, XCBWindowProperty *strutprop);
+/* Updates a Clients strut property using the provided property pointer "strutpprop".  */
+void NonNullArg(1) updatestrutp(Client *c, XCBWindowProperty *strutpprop);
 /* Updates Client tile if we find one;
  * if none found default to main.h BROKEN
  */
@@ -619,9 +649,12 @@ uint16_t NonNull OLDHEIGHT(Client *c);
 uint16_t NonNull WIDTH(Client *c);
 uint16_t NonNull HEIGHT(Client *c);
 
+/* STRUT */
+
+uint32_t NonNull HASSTRUT(Client *c);
+
 /* manage */
 uint32_t CANMANAGE(XCBWindow win, bool allow_unmapped_window, XCBGetWindowAttributes *waattributes, XCBWindowProperty *wastate);
-
 
 
 #endif

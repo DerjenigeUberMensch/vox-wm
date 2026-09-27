@@ -570,27 +570,24 @@ restoredesktopsession(Monitor *m, char *buff, u16 len)
 Monitor *
 restoremonsession(char *buff, u16 len)
 {
-    const u8 SCANF_CHECK_SUM = 7;
+    const u8 SCANF_CHECK_SUM = 6;
     u8 check = 0;
 
     int x;
     int y;
     unsigned int h;
     unsigned int w;
-    XCBWindow BarId;
     unsigned int DeskCount;
     unsigned int DeskSelNum;
 
-    x = y = h = w = BarId = DeskCount = DeskSelNum = 0;
+    x = y = h = w = DeskCount = DeskSelNum = 0;
 
     check = sscanf(buff,
                     "(x: %d, y: %d) (w: %u h: %u)" " "
-                    "BarId: %u" " "
                     "DeskCount: %u" " "
                     "DeskSelNum: %u" " "
                     ,
                     &x, &y, &w, &h,
-                    &BarId,
                     &DeskCount,
                     &DeskSelNum
                     );
@@ -644,17 +641,6 @@ restoremonsession(char *buff, u16 len)
         }
         if(pullm)
         {
-            Client *b = wintoclient(BarId);
-            if(b)
-            {   
-                if(pullm->bar && pullm->bar != b)
-                {   
-                    XCBWindow win = pullm->bar->win;
-                    unmanage(pullm->bar, 0);
-                    PropListen(_wm.dpy, win, PropManage);
-                }
-                setupbar(pullm, b);
-            }
             /* TODO */
             setdesktopcount(pullm, DeskCount);
             if(DeskSelNum != pullm->desksel->num)
@@ -882,14 +868,12 @@ savemonsession(FILE *fw, Monitor *m)
             "%s"
             "\n"
             "(x: %d, y: %d) (w: %u h: %u)" " "
-            "BarId: %u" " "
             "DeskCount: %u" " "
             "DeskSelNum: %u" " "
             "\n"
             ,
             IDENTIFIER,
             m->mx, m->my, m->mw, m->mh,
-            m->bar ? m->bar->win : 0,
             m->deskcount,
             m->desksel->num
             );

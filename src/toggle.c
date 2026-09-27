@@ -18,6 +18,7 @@
 #include "util.h"
 #include "main.h"
 #include "toggle.h"
+#include "bar.h"
 #include "keybinds.h"
 #include "floating.h"
 
@@ -163,32 +164,6 @@ StickWindow(const Arg *arg)
 void
 UserStatsCallStack(const Arg *arg)
 {   Debug("Not Available");
-}
-
-void
-FocusMonitor(const Arg *arg)
-{
-    Monitor *m;
-    if(!_wm.mons)
-    {   
-        Debug("There are no monitors, this should not be possible.");
-        return;
-    }
-    if(!_wm.mons->next)
-    {   Debug("There is no other monitor to focus.");
-    }
-
-    if(!_wm.selmon)
-    {   Debug("No monitor selected in Context, this should not be possible");
-    }
-
-    if((m = dirtomon(arg->i)) == _wm.selmon)
-    {   return;
-    }
-
-    setmonsel(m);
-
-    XCBFlush(_wm.dpy);
 }
 
 void
@@ -864,10 +839,13 @@ void
 SetWindowLayout(const Arg *arg)
 {
     const Monitor *m = _wm.selmon;
+
     if(!m) 
     {   return;
     }
+
     setdesktoplayout(m->desksel, arg->i);
+
     arrange(m->desksel);
     XCBFlush(_wm.dpy);
 }
@@ -1074,14 +1052,37 @@ MaximizeWindowHorizontal(const Arg *arg)
 void
 ToggleStatusBar(const Arg *arg)
 {
-    const Monitor *m = _wm.selmon;
-    if(!m || !m->bar)
+    Monitor *m = _wm.selmon;
+    Desktop *desk;
+    u32 hadbars = 0;
+
+    if(!m)
     {   return;
     }
-    sethidden(m->bar, !ISHIDDEN(m->bar));
-    showhide(m->bar);
-    arrange(_wm.selmon->desksel);
-    XCBFlush(_wm.dpy);
+
+    desk = m->desksel;
+
+    if(!desk)
+    {   return;
+    }
+
+    Client *c;
+
+    for(c = startstack(desk); c; c = nextstack(c))
+    {
+        if(ISBAR(c))
+        {
+            sethidden(c, !ISHIDDEN(c));
+            showhide(c);
+            hadbars = 1;
+        }
+    }
+
+    if(hadbars)
+    {
+        arrange(_wm.selmon->desksel);
+        XCBFlush(_wm.dpy);
+    }
 }
 
 void
@@ -1117,5 +1118,3 @@ ToggleDesktop(const Arg *arg)
         }
     }
 }
-
-

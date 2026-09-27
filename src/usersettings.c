@@ -1,7 +1,6 @@
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
+#include "settings.h"
 #include "util.h"
 #include "main.h"
 #include "desktop.h"
@@ -9,9 +8,7 @@
 #include "gtk.h"
 
 
-
 #define USER_SETTINGS_RETURN_IF_NO_CHANGE(prev, current) if(!memcmp(&prev, &current, sizeof(current))) { return; }
-
 
 extern WM _wm;
 
@@ -25,6 +22,7 @@ static void UpdateMCount(Generic prev, Generic current);
 static void UpdateUseDecorations(Generic prev, Generic current);
 static void UpdateUseClientSideDecorations(Generic prev, Generic current);
 static void UpdatePreferClientSideDecorations(Generic prev, Generic current);
+static void UpdateBarUseAutomaticGeometry(Generic prev, Generic current);
 static void UpdateBarXYWHChange(Generic prev, Generic current);
 
 SCSetting
@@ -48,7 +46,7 @@ UserSettingsDefault[] =
     /* legacy */
 
     VOX_ADD_MEMBER_SETTING(UseLegacyFloatingSystem, SCTypeBOOL, false, UpdateSkip)
-
+    VOX_ADD_MEMBER_SETTING(UseAutomaticBarGeometry, SCTypeBOOL, true, UpdateBarUseAutomaticGeometry)
 
     /* bar data */
     VOX_ADD_MEMBER_SETTING(BarLX, SCTypeFLOAT, 0.0f, UpdateBarXYWHChange)    /*   lx    */
@@ -141,6 +139,14 @@ static void
 UpdatePreferClientSideDecorations(Generic prev, Generic current)
 {
     USER_SETTINGS_RETURN_IF_NO_CHANGE(prev, current);
+}
+
+static void
+UpdateBarUseAutomaticGeometry(Generic prev, Generic current)
+{
+    USER_SETTINGS_RETURN_IF_NO_CHANGE(prev, current);
+
+    UpdateDesktop();
 }
 
 static void 

@@ -37,7 +37,6 @@ struct Monitor
     Desktop *desklast;          /* Last Desktop                             */
     Desktop *desksel;           /* Selected Desktop                         */
     Monitor *next;              /* Next Monitor                             */
-    Client *bar;                /* The Associated Task-Bar (can be NULL)    */
 
     uint16_t deskcount;         /* Desktop Counter                          */
     uint8_t pad0[6];
@@ -84,11 +83,16 @@ __DEPRECATED__ Desktop *NonNull desktopnumtodesktop(Monitor *m, u16 num);
  * RETURN: NULL on Failure.
  */
 Desktop *NonNull desktopnumindextodesktop(Monitor *m, u16 index);
-/* Finds the next monitor based on "dir" AKA Direction. 
- * RETURN: Monitor * on Success.
- * RETURN: NULL on Failure.
+/* Returns the direction to the opposite of most monitor used NOT to the nearest empty monitor
+ * RETURN: Cardinal on Success.
+ * RETURN: CardinalCount on Failure.
  */
-Monitor *dirtomon(uint8_t dir);
+Cardinal dirtoemptymonl(Monitor *base);
+/* Finds the next monitor based on "dir" AKA Direction. 
+ * RETURN: Monitor * If exists
+ * RETURN: NULL if not found
+ */
+Monitor *dirtomon(Monitor *base, Cardinal dir);
 /* Returns the number of monitors that intersect with the specified rectangle.
  * RETURN: uint32_t on Success.
  * RETURN: 0 on impossible

@@ -1,21 +1,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-
 #include "bar.h"
+#include "XCB-TRL/xcb_winutil.h"
+#include "client.h"
 #include "settings.h"
 #include "main.h"
+#include "util.h"
+#include "x.h"
 
 extern WM _wm;
+extern XCBAtom netatom[NetLast];
+extern XCBAtom wmatom[WMLast];
 extern UserSettings _cfg;
 
-u32 COULDBEBAR(Client *c, uint8_t strut) 
+u32 ISBAR(Client *c) 
                                 {
-                                    const u8 sticky = !!ISSTICKY(c);
-                                    const u8 isdock = !!(ISDOCK(c));
-                                    const u8 above = !!ISABOVE(c); 
-
-                                    return (sticky && strut && above && isdock);
+                                    return ISSTICKY(c) && ISDOCK(c) && ISABOVE(c) && HASSTRUT(c);
                                 }
 
 
@@ -150,260 +151,295 @@ enum BarSides GETBARSIDE(Monitor *m, Client *bar, uint8_t get_prev)
                                     return side;
                                 }
 
-uint8_t
-checknewbar(Monitor *m, Client *c, uint8_t has_strut_or_strutp)
-{
-    /* barwin checks */
-    u8 checkbar = !m->bar;
-    if(checkbar && COULDBEBAR(c, has_strut_or_strutp))
-    {   
-        setupbar(m, c);
-        return 0;
-    }
-    return 1;
-}
-
 void
 setupbar(Monitor *m, Client *bar)
 {
-    detachcompletely(bar);
-    configure(bar);
-    m->bar = bar;
-    setoverrideredirect(bar, 1);
+    /* some implementations dont handle X11 atoms properly (cough cough alttab) so this is a workaround */
+    if(ISDOCK(bar))
+    {
+        if(!SKIPTASKBAR(bar))
+        {   XCBChangeProperty(_wm.dpy, bar->win, netatom[NetWMState], XCB_ATOM_ATOM, 32, XCB_PROP_MODE_APPEND, &netatom[NetWMStateSkipTaskbar], 1);
+        }
+
+        setskiptaskbar(bar, 1);
+    }
+
     setborderwidth(bar, 0);
     updateborder(bar);
     setdisableborder(bar, 1);
-    setfullscreen(bar, 0);
-    sethidden(bar, 0);
     setsticky(bar, 1);
-    updatebargeom(m);
-    updatebarpos(m);
-    Debug("Found a bar: [%d]", bar->win);
 }
 
 void
-updatebargeom(Monitor *m)
+updatebargeom(Desktop *desk)
 {
-    Client *bar = m->bar;
-    if(!bar || ISHIDDEN(bar))
-    {   return;
-    }
-    /* if the bar is fixed then the geom is impossible to update, also we dont want to update our current bar status cause of that also */
-    if(ISFIXED(bar))
-    {   return;
-    }
+    Monitor *m = desk->mon;
 
+    Client *c;
     Generic bxr;
     Generic byr;
     Generic bwr;
     Generic bhr;
-    enum BarSides side = GETBARSIDE(m, bar, 0);
-    enum BarSides prev = GETBARSIDE(m, bar, 1);
+    enum BarSides side;
+    enum BarSides prev;
 
-    if(prev != side)
+    for(c = startstack(desk); c; c = nextstack(c))
     {
-        i32 x;
-        i32 y;
-        i32 w;
-        i32 h;
-        switch(side)
-        {   
-            case BarSideLeft:
-                bxr = USGetSetting(&_cfg, BarLX);
-                byr = USGetSetting(&_cfg, BarLY);
-                bwr = USGetSetting(&_cfg, BarLW);
-                bhr = USGetSetting(&_cfg, BarLH);
-                break;
-            case BarSideRight:
-                bxr = USGetSetting(&_cfg, BarRX);
-                byr = USGetSetting(&_cfg, BarRY);
-                bwr = USGetSetting(&_cfg, BarRW);
-                bhr = USGetSetting(&_cfg, BarRH);
-                break;
-            case BarSideTop:
-                bxr = USGetSetting(&_cfg, BarTX);
-                byr = USGetSetting(&_cfg, BarTY);
-                bwr = USGetSetting(&_cfg, BarTW);
-                bhr = USGetSetting(&_cfg, BarTH);
-                break;
-            case BarSideBottom:
-                bxr = USGetSetting(&_cfg, BarBX);
-                byr = USGetSetting(&_cfg, BarBY);
-                bwr = USGetSetting(&_cfg, BarBW);
-                bhr = USGetSetting(&_cfg, BarBH);
-                break;
+        if(!ISBAR(c))
+        {   continue;
         }
 
-        x = m->mx + (m->mw * bxr.dataf[0]);
-        y = m->my + (m->mh * byr.dataf[0]);
-        w = m->mw * bwr.dataf[0];
-        h = m->mh * bhr.dataf[0];
-
-        resize(bar, x, y, w, h, 1);
-    }
-    else
-    {
-        f32 x = bar->x;
-        f32 y = bar->y;
-        f32 w = bar->w;
-        f32 h = bar->h;
-
-        f32 mw = m->mw;
-        f32 mh = m->mh;
-
-        if(!ASSERT(mw != 0 && mh != 0))
-        {   return;
+        if(ISHIDDEN(c))
+        {   continue;
         }
 
-        /* prevent div by 0 hardware exceptions */
-        bxr = (Generic) { .dataf[0] = (x - m->mx) / m->mw };
-        byr = (Generic) { .dataf[0] = (y - m->my) / m->mh };
-        bwr = (Generic) { .dataf[0] = w / m->mw };
-        bhr = (Generic) { .dataf[0] = h / m->mh };
+        /* if the bar is fixed then the geom is impossible to update, also we dont want to update our current bar status cause of that also */
+        if(ISFIXED(c))
+        {   continue;
+        }
 
-        switch(side)
+        side = GETBARSIDE(m, c, 0);
+        prev = GETBARSIDE(m, c, 1);
+
+        if(prev != side)
         {
-            case BarSideLeft:
-                USSetSetting(&_cfg, BarLX, bxr);
-                USSetSetting(&_cfg, BarLY, byr);
-                USSetSetting(&_cfg, BarLW, bwr);
-                USSetSetting(&_cfg, BarLH, bhr);
-                break;
-            case BarSideRight:
-                USSetSetting(&_cfg, BarRX, bxr);
-                USSetSetting(&_cfg, BarRY, byr);
-                USSetSetting(&_cfg, BarRW, bwr);
-                USSetSetting(&_cfg, BarRH, bhr);
-                break;
-            case BarSideTop:
-                USSetSetting(&_cfg, BarTX, bxr);
-                USSetSetting(&_cfg, BarTY, byr);
-                USSetSetting(&_cfg, BarTW, bwr);
-                USSetSetting(&_cfg, BarTH, bhr);
-                break;
-            case BarSideBottom:
-                USSetSetting(&_cfg, BarBX, bxr);
-                USSetSetting(&_cfg, BarBY, byr);
-                USSetSetting(&_cfg, BarBW, bwr);
-                USSetSetting(&_cfg, BarBH, bhr);
-                break;
-        }
-    }
-}
+            i32 x;
+            i32 y;
+            i32 w;
+            i32 h;
+            switch(side)
+            {   
+                case BarSideLeft:
+                    bxr = USGetSetting(&_cfg, BarLX);
+                    byr = USGetSetting(&_cfg, BarLY);
+                    bwr = USGetSetting(&_cfg, BarLW);
+                    bhr = USGetSetting(&_cfg, BarLH);
+                    break;
+                case BarSideRight:
+                    bxr = USGetSetting(&_cfg, BarRX);
+                    byr = USGetSetting(&_cfg, BarRY);
+                    bwr = USGetSetting(&_cfg, BarRW);
+                    bhr = USGetSetting(&_cfg, BarRH);
+                    break;
+                case BarSideTop:
+                    bxr = USGetSetting(&_cfg, BarTX);
+                    byr = USGetSetting(&_cfg, BarTY);
+                    bwr = USGetSetting(&_cfg, BarTW);
+                    bhr = USGetSetting(&_cfg, BarTH);
+                    break;
+                case BarSideBottom:
+                    bxr = USGetSetting(&_cfg, BarBX);
+                    byr = USGetSetting(&_cfg, BarBY);
+                    bwr = USGetSetting(&_cfg, BarBW);
+                    bhr = USGetSetting(&_cfg, BarBH);
+                    break;
+            }
 
-/*
-void
-USSetSetting(
-        UserSettings *settings,
-        unsigned int setting,
-        Generic data
-        )
-*/
+            x = m->mx + (m->mw * bxr.dataf[0]);
+            y = m->my + (m->mh * byr.dataf[0]);
+            w = m->mw * bwr.dataf[0];
+            h = m->mh * bhr.dataf[0];
 
-void
-updatebarpos(Monitor *m)
-{
-    /* reset space */
-    m->ww = m->mw;
-    m->wh = m->mh;
-    m->wx = m->mx;
-    m->wy = m->my;
-    Client *bar = m->bar;
-    if(!bar)
-    {   return;
-    }
-    enum BarSides side = GETBARSIDE(m, bar, 0);
-    if(ISFIXED(bar))
-    {
-        if(bar->w > bar->h)
-        {   
-            /* is it top bar ? */
-            if(bar->y + bar->h / 2 <= m->my + m->mh / 2)
-            {   side = BarSideTop;
-            }
-            /* its bottom bar */
-            else
-            {   side = BarSideBottom;
-            }
-        }
-        else if(bar->w < bar->h)
-        {
-            /* is it left bar? */
-            if(bar->x + bar->w / 2 <= m->mx + m->mw / 2)
-            {   side = BarSideLeft;
-            }
-            /* its right bar */
-            else
-            {   side = BarSideRight;
-            }
+            resize(c, x, y, w, h, 1);
         }
         else
-        {   Debug0("Detected bar is a square suprisingly.");
-        }
-    }
-
-    i32 x;
-    i32 y;
-    i32 w;
-    i32 h;
-
-    /* default is top left side */
-    x = m->mx;
-    y = m->my;
-    w = bar->w;
-    h = bar->h;
-
-    if(!ISHIDDEN(bar))
-    {
-        switch(side)
         {
-            case BarSideLeft:
-                m->wx += bar->w;
-                m->ww -= bar->w;
-                Debug0("Bar Placed Left.");
-                break;
-            case BarSideRight:
-                x += m->mw - bar->w;
-                m->ww -= bar->w;
-                Debug0("Bar Placed Right.");
-                break;
-            case BarSideTop:
-                m->wy += bar->h;
-                m->wh -= bar->h;
-                Debug0("Bar Placed Top.");
-                break;
-            case BarSideBottom:
-                y += m->mh - bar->h;
-                m->wh -= bar->h;
-                Debug0("Bar Placed Bottom.");
-                break;
-            default:
-                break;
+            f32 x = c->x;
+            f32 y = c->y;
+            f32 w = c->w;
+            f32 h = c->h;
+
+            f32 mw = m->mw;
+            f32 mh = m->mh;
+
+            if(!ASSERT(mw != 0 && mh != 0))
+            {   continue;
+            }
+
+            /* prevent div by 0 hardware exceptions */
+            bxr = (Generic) { .dataf[0] = (x - m->mx) / m->mw };
+            byr = (Generic) { .dataf[0] = (y - m->my) / m->mh };
+            bwr = (Generic) { .dataf[0] = w / m->mw };
+            bhr = (Generic) { .dataf[0] = h / m->mh };
+
+            switch(side)
+            {
+                case BarSideLeft:
+                    USSetSetting(&_cfg, BarLX, bxr);
+                    USSetSetting(&_cfg, BarLY, byr);
+                    USSetSetting(&_cfg, BarLW, bwr);
+                    USSetSetting(&_cfg, BarLH, bhr);
+                    break;
+                case BarSideRight:
+                    USSetSetting(&_cfg, BarRX, bxr);
+                    USSetSetting(&_cfg, BarRY, byr);
+                    USSetSetting(&_cfg, BarRW, bwr);
+                    USSetSetting(&_cfg, BarRH, bhr);
+                    break;
+                case BarSideTop:
+                    USSetSetting(&_cfg, BarTX, bxr);
+                    USSetSetting(&_cfg, BarTY, byr);
+                    USSetSetting(&_cfg, BarTW, bwr);
+                    USSetSetting(&_cfg, BarTH, bhr);
+                    break;
+                case BarSideBottom:
+                    USSetSetting(&_cfg, BarBX, bxr);
+                    USSetSetting(&_cfg, BarBY, byr);
+                    USSetSetting(&_cfg, BarBW, bwr);
+                    USSetSetting(&_cfg, BarBH, bhr);
+                    break;
+            }
         }
     }
-    else
-    {   
-        switch(side)
-        {
-            case BarSideLeft:
-                x = -bar->w;
-                break;
-            case BarSideRight:
-                x = m->mw;
-                break;
-            case BarSideTop:
-                y = -bar->h;
-                break;
-            case BarSideBottom:
-                y = m->mh;
-                break;
-            default:
-                /* just warp offscreen */
-                x = m->mw;
-                y = m->mh;
-                break;
-        }
-    }
-    resize(bar, x, y, w, h, 1);
 }
 
+void
+updatebarpos(Desktop *desk)
+{
+    Monitor *m = desk->mon;
+    Client *c;
+
+    i32 loff = 0;
+    i32 roff = 0;
+    i32 toff = 0;
+    i32 boff = 0;
+
+    for(c = startstack(desk); c; c = nextstack(c))
+    {
+        if(!ISBAR(c))
+        {   continue;
+        }
+
+        if(ISHIDDEN(c))
+        {   continue;
+        }
+
+        enum BarSides side = GETBARSIDE(m, c, 0);
+
+        i32 x = m->mx;
+        i32 y = m->my;
+        i32 w = c->w;
+        i32 h = c->h;
+
+        switch(side)
+        {
+            case BarSideLeft:
+                x = m->mx + loff;
+                y = m->my;
+
+                loff += c->w;
+
+                break;
+            case BarSideRight:
+                x = m->mx + m->mw - roff - c->w;
+                y = m->my;
+
+                roff += c->w;
+
+                break;
+            case BarSideTop:
+                x = m->mx;
+                y = m->my + toff;
+
+                toff += c->h;
+
+                break;
+            case BarSideBottom:
+                x = m->mx;
+                y = m->my + m->mh - boff - c->h;
+
+                boff += c->h;
+
+                break;
+            default: break;
+        }
+
+        resize(c, x, y, w, h, 1);
+    }
+}
+
+void
+updatebars(Desktop *desk)
+{
+    updatebargeom(desk);
+    updateworkarea(desk);
+    updatebarpos(desk);
+}
+
+void 
+updateworkarea(Desktop *desk)
+{
+    Monitor *m = desk->mon;
+
+    i32 left = 0;
+    i32 right = 0;
+    i32 top = 0;
+    i32 bottom = 0;
+
+    Client *c;
+
+    for(c = startstack(desk); c; c = nextstack(c))
+    {
+        if(!ISBAR(c))
+        {   continue;
+        }
+
+        if(ISHIDDEN(c))
+        {   continue;
+        }
+
+        enum BarSides side = GETBARSIDE(m, c, 0);;
+
+        if(ISFIXED(c))
+        {
+            if(c->w > c->h)
+            {   
+                /* is it top bar ? */
+                if(c->y + c->h / 2 <= m->my + m->mh / 2)
+                {   side = BarSideTop;
+                }
+                /* its bottom bar */
+                else
+                {   side = BarSideBottom;
+                }
+            }
+            else if(c->w < c->h)
+            {
+                /* is it left bar? */
+                if(c->x + c->w / 2 <= m->mx + m->mw / 2)
+                {   side = BarSideLeft;
+                }
+                /* its right bar */
+                else
+                {   side = BarSideRight;
+                }
+            }
+            else
+            {   Debug0("Detected bar is a square suprisingly.");
+            }
+        }
+
+        switch(side)
+        {
+            case BarSideLeft:   left   += c->w; break;
+            case BarSideRight:  right  += c->w; break;
+            case BarSideTop:    top    += c->h; break;
+            case BarSideBottom: bottom += c->h; break;
+            default: break;
+        }
+    }
+
+    m->wx = m->mx + left;
+    m->wy = m->my + top;
+
+    m->ww = m->mw - left - right;
+    m->wh = m->mh - top - bottom;
+
+    if(unlikely(m->ww < 0))
+    {   m->ww = 0;
+    }
+
+    if(unlikely(m->wh < 0))
+    {   m->wh = 0;
+    }
+}
