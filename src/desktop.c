@@ -11,7 +11,6 @@ extern WM _wm;
 extern UserSettings _cfg;
 extern XCBAtom netatom[];
 
-
 void 
 arrangeq(Desktop *desk)
 {
@@ -22,9 +21,7 @@ arrangeq(Desktop *desk)
 void __HOT__
 arrange(Desktop *desk)
 {
-    /* bar stuff */
-    updatebargeom(desk->mon);
-    updatebarpos(desk->mon);
+    updatebars(desk);
 
     reorder(desk);
     arrangedesktop(desk);
@@ -87,7 +84,7 @@ arrangedesktop(Desktop *desk)
                                                                     if(!ASSERT(STRUCT))                         \
                                                                     {   DebugWarn("Struct is NULL");            \
                                                                     }                                           \
-                                                                    else if(!STRUCT->PREV && !STRUCT->NEXT && !HEAD && !LAST)\
+                                                                    else if(!STRUCT->PREV && !STRUCT->NEXT && HEAD != STRUCT && LAST != STRUCT)\
                                                                     {   DebugWarn("Struct is not attached to list"); \
                                                                     }                                           \
                                                                     /* Make sure list is valid */               \
@@ -176,7 +173,7 @@ attachfocusafter(Client *start, Client *after)
     }
     Desktop *desk = start->desktop;
     detachfocus(after);
-    __attach_after(start, after, fnext, fprev, desk->focus, desk->slast);
+    __attach_after(start, after, fnext, fprev, desk->focus, desk->flast);
 }
 
 void
@@ -187,7 +184,7 @@ attachfocusbefore(Client *start, Client *after)
     }
     Desktop *desk = start->desktop;
     detachfocus(after);
-    __attach_before(start, after, fnext, fprev, desk->focus, desk->slast, attachfocus);
+    __attach_before(start, after, fnext, fprev, desk->focus, desk->flast, attachfocus);
     /* block 'unused' variable warnings */
     (void)desk;
 }
@@ -205,21 +202,13 @@ detachcompletely(Client *c)
 
     if(desk)
     {
-        Monitor *m = desk->mon;
-
-        if(m->bar == c)
-        {   
-            m->bar = NULL;
-            Debug0("Detaching bar? Potential memory leak");
-        }
-
         if(desk->sel == c)
         {   desk->sel = NULL;
         }
     }
     else
     {   
-        /* no assert since I think maybe the bar has no desktop */
+        /* no assert since this is a bug but its a no-op */
         DebugWarn("FIXME: Client has no desktop.");
     }
 
@@ -247,9 +236,7 @@ detachfocus(Client *c)
     __detach_helper(focus, Client, c, c->desktop->focus, fnext, fprev, c->desktop->flast);
 
     Desktop *desk = c->desktop;
-    /* "detach" */
-    c->fprev = NULL;
-    c->fnext = NULL;
+
     /* this just updates desktop->sel */
     if (c == desk->sel)
     {
@@ -403,14 +390,8 @@ restack(Desktop *desk)
     XCBWindowChanges wc;
 
     wc.stack_mode = XCB_STACK_MODE_BELOW;
-
-    if(desk->mon->bar && !ISHIDDEN(desk->mon->bar))
-    {   wc.sibling = desk->mon->bar->win;
-    }
-    else
-    {   /* TODO: Maybe use wc.sibling = _wm.root? That causes error to be generated though. */
-        wc.sibling = _wm.wmcheckwin;
-    }
+    /* TODO: Maybe use wc.sibling = _wm.root? That causes error to be generated though. */
+    wc.sibling = _wm.wmcheckwin;
 
     Client *c = NULL;
     u8 config = 0;
@@ -623,9 +604,8 @@ tile(Desktop *desk)
             nh *= bgwr;
 
             resize(c, nx, ny, nw, nh, 0);
-            if (my + HEIGHT(c) < m->wh) 
-            {   my += HEIGHT(c);
-            }
+
+            my += h;
         }
         else
         {
@@ -641,9 +621,8 @@ tile(Desktop *desk)
             nh *= bgwr;
 
             resize(c, nx, ny, nw, nh, 0);
-            if (ty + HEIGHT(c) < m->wh) 
-            {   ty += HEIGHT(c);
-            }
+
+            ty += h;
         }
         ++i;
     }

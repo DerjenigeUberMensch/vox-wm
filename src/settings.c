@@ -17,8 +17,6 @@
 #include "main.h"
 
 
-
-
 static int 
 US_LOCK_MUTEX(UserSettings *us)
 {

@@ -10,8 +10,6 @@ void NonNull UserStats(const Arg *arg);
 void NonNull StickWindow(const Arg *arg);
 /* Mostly a testing function */
 void NonNull UserStatsCallStack(const Arg *arg);
-/* Switch to a monitor based on the argument int arg i */
-void NonNull FocusMonitor(const Arg *arg);
 /* Kills the current window */
 void NonNull KillWindow(const Arg *arg);
 /* Attempts to kill the current window directly instead of just sending a signal and waiting for the window to respond */

@@ -1,9 +1,13 @@
+#include <math.h>
+#include <float.h>
+
 #include <X11/cursorfont.h>
 /* keycodes */
 #include <X11/keysym.h>
 
 #include "monitor.h"
 #include "bar.h"
+#include "client.h"
 #include "main.h"
 #include "util.h"
 
@@ -12,7 +16,6 @@
 extern WM _wm;
 extern XCBCursor cursors[];
 extern XCBAtom netatom[];
-
 
 void
 arrangemon(Monitor *m)
@@ -76,7 +79,7 @@ attachdesktoplast(Monitor *m, Desktop *desk)
                                                                     if(!ASSERT(STRUCT))                         \
                                                                     {   DebugWarn("Struct is NULL");            \
                                                                     }                                           \
-                                                                    else if(!STRUCT->PREV && !STRUCT->NEXT && !HEAD && !LAST)\
+                                                                    else if(!STRUCT->PREV && !STRUCT->NEXT && HEAD != STRUCT && LAST != STRUCT)\
                                                                     {   DebugWarn("Struct is not attached to list"); \
                                                                     }                                           \
                                                                     /* Make sure list is valid */               \
@@ -149,6 +152,7 @@ cleanupmon(Monitor *m)
 {
     Desktop *desk = NULL;
     Desktop *desknext = NULL;
+
     desk = m->desktops;
 
     if(_wm.mons == m)
@@ -169,10 +173,6 @@ cleanupmon(Monitor *m)
         desknext = desk->next;
         cleanupdesktop(desk);
         desk = desknext;
-    }
-
-    if(m->bar)
-    {   unmanage(m->bar, 0);
     }
 
     free(m);
@@ -218,7 +218,6 @@ createmon(void)
     m->desklast = NULL;
     setdesktopcount(m, 10);
     m->desksel = m->desktops;
-    m->bar = NULL;
     return m;
 }
 
@@ -243,22 +242,202 @@ desktopnumindextodesktop(Monitor *m, u16 index)
     return desk;
 }
 
-Monitor *
-dirtomon(u8 dir)
+Cardinal 
+dirtoemptymonl(Monitor *base)
 {
-    Monitor *m = NULL;
+    if(!base)
+    {   return CardinalCount;
+    }
 
-    if(dir > 0)
-    {   if(!(m = _wm.selmon->next)) m = _wm.mons;
-    }
-    else if (_wm.selmon == _wm.mons)
+    enum { DX, DY, D_LAST};
+
+    /* when meauring a triangle in gemoetry class we learned that...
+     * A right triangle has a hypotenuse of length 1, and the two legs are of equal length.
+     * The length of each leg is 1/sqrt(2), which is approximately 0.7071.
+     * idk - chatgpt
+     *
+     */
+    const float inv_sqrt2 = 0.7071f;
+
+    static const double key[CardinalCount][D_LAST] =
     {
-        for(m = _wm.mons; m->next; m = nextmonitor(m));
+        [North]     = {  0.0,       -1.0       },
+        [NorthEast] = {  inv_sqrt2, -inv_sqrt2 },
+        [East]      = {  1.0,        0.0       },
+        [SouthEast] = {  inv_sqrt2,  inv_sqrt2 },
+        [South]     = {  0.0,        1.0       },
+        [SouthWest] = { -inv_sqrt2,  inv_sqrt2 },
+        [West]      = { -1.0,        0.0       },
+        [NorthWest] = { -inv_sqrt2, -inv_sqrt2 },
+    };
+
+    const double bx = base->mx + base->mw / 2.0;
+    const double by = base->my + base->mh / 2.0;
+
+    double rx = 0.0;
+    double ry = 0.0;
+
+    u32 nmons = 0;
+
+    Monitor *m;
+
+    for(m = _wm.mons; m; m = nextmonitor(m))
+    {
+        if(m == base)
+        {   continue;
+        }
+
+        const double mx = m->mx + m->mw / 2.0;
+        const double my = m->my + m->mh / 2.0;
+
+        double dx = mx - bx;
+        double dy = my - by;
+
+        const double len = sqrt(dx * dx + dy * dy);
+
+        if(len <= 0.0)
+        {   continue;
+        }
+
+        dx /= len;
+        dy /= len;
+
+        rx -= dx;
+        ry -= dy;
+
+        ++nmons;
     }
-    else
-    {   for(m = _wm.mons; m->next != _wm.selmon; m = nextmonitor(m));
+
+    if(!nmons)
+    {   return CardinalCount;
     }
-    return m;
+
+    Cardinal best = CardinalCount;
+    Cardinal dir;
+
+    const float MIN_PRECISION = .0000001f;
+
+    if(fabs(rx) > MIN_PRECISION || fabs(ry) > MIN_PRECISION)
+    {
+        double bestscore = -DBL_MAX;
+
+        for(dir = 0; dir < CardinalCount; ++dir)
+        {
+            const double score = rx * key[dir][DX] + ry * key[dir][DY];
+
+            if(score > bestscore)
+            {
+                bestscore = score;
+                best = dir;
+            }
+        }
+
+        return best;
+    }
+
+    double bestpressure = DBL_MAX;
+
+    for(dir = 0; dir < CardinalCount; dir++)
+    {
+        double pressure = 0.0;
+
+        for(m = _wm.mons; m; m = nextmonitor(m))
+        {
+            if(m == base)
+            {   continue;
+            }
+
+            const double mx = m->mx + m->mw / 2.0;
+            const double my = m->my + m->mh / 2.0;
+
+            double dx = mx - bx;
+            double dy = my - by;
+
+            const double len = sqrt(dx * dx + dy * dy);
+
+            if(len <= 0.0)
+            {   continue;
+            }
+
+            dx /= len;
+            dy /= len;
+
+            const double dot = dx * key[dir][DX] + dy * key[dir][DY];
+
+            if(dot > 0.0)
+            {   pressure += dot;
+            }
+        }
+
+        if(pressure < bestpressure)
+        {
+            bestpressure = pressure;
+            best = dir;
+        }
+    }
+
+    return best;
+}
+
+Monitor *
+dirtomon(Monitor *base, Cardinal dir)
+{
+    enum { DX, DY, D_LAST};
+
+    static const i8 key[CardinalCount][D_LAST] =
+    {
+        [North]     = { [DX] = 0,  [DY] = -1 },
+        [South]     = { [DX] = 0,  [DY] = 1  },
+        [East]      = { [DX] = 1,  [DY] = 0  },
+        [West]      = { [DX] = -1, [DY] = 0  },
+        [NorthEast] = { [DX] = 1,  [DY] = -1 },
+        [NorthWest] = { [DX] = -1, [DY] = -1 },
+        [SouthEast] = { [DX] = 1,  [DY] = 1  },
+        [SouthWest] = { [DX] = -1, [DY] = 1  }
+    };
+
+    Monitor *m;
+    Monitor *pick = NULL;
+
+    i32 bx = base->mx + base->mw / 2;
+    i32 by = base->my + base->mh / 2;
+
+    i64 best = INT64_MAX;
+
+    for(m = _wm.mons; m; m = nextmonitor(m))
+    {
+        if(m == base)
+        {   continue;
+        }
+
+        i32 mx = m->mx + m->mw / 2;
+        i32 my = m->my + m->mh / 2;
+
+        i32 rx = mx - bx;
+        i32 ry = my - by;
+
+        i32 forward = rx * key[dir][DX] + ry * key[dir][DY];
+
+        if(forward <= 0 )
+        {   continue;
+        }
+
+        i32 side = rx * key[dir][DY] - ry * key[dir][DX];
+
+        if(labs(side) > forward)
+        {   continue;
+        }
+
+        i64 score = side * side * 4 + forward * forward;
+
+        if(score < best)
+        {
+            best = score;
+            pick = m;
+        }
+    }
+
+    return pick;
 }
 
 u32
@@ -383,17 +562,21 @@ setdesktopsel(Monitor *mon, Desktop *desksel)
 
     if(mon->desksel != desksel)
     {
-        mon->desksel = desksel;
+        Desktop *prevdesk = mon->desksel;
         Desktop *desk;
         Client *c;
 
-        for(c = startstack(desksel); c; c = nextstack(c))
-        {   showhide(c);
-        }
+        mon->desksel = desksel;
 
         for(desk = mon->desktops; desk; desk = nextdesktop(desk))
         {
-            for(c = laststack(desk); c;)
+            if(desk == desksel)
+            {   continue;
+            }
+
+            c = laststack(desk);
+
+            while(c)
             {
                 Client *prev = prevstack(c);
 
@@ -401,12 +584,18 @@ setdesktopsel(Monitor *mon, Desktop *desksel)
                 {   setclientdesktop(c, desksel);
                 }
 
-                if(desk != desksel)
-                {   showhide(c);
-                }
-
                 c = prev;
             }
+        }
+
+        /* show currrent desktop */
+        for(c = laststack(desksel); c; c = prevstack(c))
+        {   showhide(c);
+        }
+
+        /* hide previous dekstops */
+        for(c = laststack(prevdesk); c; c = prevstack(c))
+        {   showhide(c);
         }
 
         updatedesktop();
@@ -558,7 +747,8 @@ updategeom(void)
 				m->mw = m->ww = unique[i].width;
 				m->mh = m->wh = unique[i].height;
                 /* we should update the bar position if we have one */
-                updatebarpos(m);
+                //updatebarpos(m);
+                //ASSERT(0);
 			}
 		/* removed monitors if n > nn */
 		for (i = nn; i < n; ++i)
@@ -607,7 +797,8 @@ updategeom(void)
 			_wm.mons->mw = _wm.mons->ww = _wm.sw;
 			_wm.mons->mh = _wm.mons->wh = _wm.sh;
             /* we should update the bar position if we have one */
-            updatebarpos(_wm.mons);
+            //updatebarpos(_wm.mons);
+            //ASSERT(0);
 		}
 	}
 	if (dirty) 
@@ -841,16 +1032,11 @@ wintomon(XCBWindow win)
 {
     i16 x, y;
     Client *c;
-    Monitor *m;
+
     if(win == _wm.root && getrootptr(&x, &y)) 
     {   return recttomon(x, y, 1, 1);
     }
-    for (m = _wm.mons; m; m = m->next)
-    {   
-        if (m->bar && win == m->bar->win) 
-        {   return m;
-        }
-    }
+
     if ((c = wintoclient(win))) 
     {   return c->desktop->mon;
     }

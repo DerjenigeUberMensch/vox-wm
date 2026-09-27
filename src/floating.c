@@ -354,12 +354,25 @@ SHOULDCENTER(Client *c)
                                 if(c->x == m->mx && c->y == m->my)
                                 {   return true;
                                 }
+                                /* is the client on root? */
+                                if(c->x == 0 && c->y == 0)
+                                {   return true;
+                                }
 
                                 /* leeway some clients calculations have roundring errors*/
                                 const int LEEWAY_PX = MAX_ROUNDING_ERROR();
                                 
+                                /* Monitor */
                                 bool xleeway = IN_RANGE(c->x, m->mx, LEEWAY_PX);
                                 bool yleeway = IN_RANGE(c->y, m->my, LEEWAY_PX);
+
+                                if(xleeway && yleeway)
+                                {   return true;
+                                }
+
+                                /* root */
+                                xleeway = IN_RANGE(c->x, 0, LEEWAY_PX);
+                                yleeway = IN_RANGE(c->y, 0, LEEWAY_PX);
 
                                 if(xleeway && yleeway)
                                 {   return true;

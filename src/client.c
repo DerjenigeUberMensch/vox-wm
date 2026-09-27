@@ -1,14 +1,15 @@
 #include "client.h"
 #include <string.h>
-#include <math.h>
 #include <math.h> /* fabsf() */
 
+#include "XCB-TRL/xcb_trl.h"
 #include "main.h"
 #include "keybinds.h"
 #include "hashing.h"
 #include "getprop.h"
 #include "bar.h"
 #include "decorations.h"
+#include "monitor.h"
 #include "settings.h"
 #include "util.h"
 #include "floating.h"
@@ -100,6 +101,27 @@ u32 WSTATENONE(Client *c)       { return (c->ewmhflags & ~WStateFlagFocused) == 
 u32 HASWMTAKEFOCUS(Client *c)   { return c->ewmhflags & WStateFlagWMTakeFocus; }
 u32 HASWMSAVEYOURSELF(Client *c){ return c->ewmhflags & WStateFlagWMSaveYourself; }
 u32 HASWMDELETEWINDOW(Client *c){ return c->ewmhflags & WStateFlagWMDeleteWindow; }
+
+/* STRUT */
+u32 HASSTRUT(Client *c)          { 
+                                    int i;
+
+                                    const uint16_t *strutdepth = c->strutdepth;
+                                    const uint16_t *strutstart = c->strutstart;
+                                    const uint16_t *strutend = c->strutend;
+
+                                    uint16_t result = 0;
+
+                                    /* idk man */
+                                    for(i = 0; i < WMStrutDirectionLAST; i++)
+                                    {
+                                        result |= strutdepth[i];
+                                        result |= strutstart[i];
+                                        result |= strutend[i];
+                                    }
+
+                                    return result;
+                                 }
 
 void
 applygravity(const enum XCBBitGravity gravity, int32_t *x, int32_t *y, const uint32_t w, const uint32_t h, const uint32_t bw)
@@ -369,11 +391,11 @@ clientinitmapstate(Client *c, XCBGetWindowAttributes *wa)
     }
 }
 
-void
+uint32_t
 clientinitsizehints(Client *c, XCBSizeHints *size)
 {
     if(!size)
-    {   return;
+    {   return 0;
     }
 
     updatesizehints(c, size);
@@ -409,8 +431,11 @@ clientinitsizehints(Client *c, XCBSizeHints *size)
     {
     }
 
+
     /* apply contraints */
     resize(c, c->x, c->y, c->w, c->h, 1);
+
+    return size->flags & (XCB_SIZE_HINT_US_SIZE|XCB_SIZE_HINT_P_SIZE|XCB_SIZE_HINT_US_POSITION|XCB_SIZE_HINT_P_POSITION);
 }
 
 void 
@@ -956,6 +981,7 @@ manage(XCBWindow win, bool allow_unmapped_window, void *replies[ManageClientLAST
 
     u32 *strutp = strutp = strutpreply ? XCBGetWindowPropertyValue(strutpreply) : NULL;
     u32 *strut = strut = strutreply ? XCBGetWindowPropertyValue(strutpreply) : NULL;
+    u32 sizehints = 0;
 
     if(!CANMANAGE(win, allow_unmapped_window, waattributes, wastatereply))
     {   goto FAILURE;
@@ -966,6 +992,13 @@ manage(XCBWindow win, bool allow_unmapped_window, void *replies[ManageClientLAST
     }
 
     c->win = win;
+
+    if(strutp)
+    {   updatestrutp(c, strutpreply);
+    }
+    else if(strut)
+    {   updatestrut(c, strutreply);
+    }
 
     /* this sets up the desktop which is quite important for some operations */
     clientinitcolormap(c, waattributes);
@@ -981,7 +1014,7 @@ manage(XCBWindow win, bool allow_unmapped_window, void *replies[ManageClientLAST
     setbordercolor32(c, bcol);
     updatetitle(c, getnamefromreply(netwmnamereply), getnamefromreply(wmnamereply));
     updateborder(c);
-    clientinitsizehints(c, hints);
+    sizehints = clientinitsizehints(c, hints);
     updateclass(c, cls);
     updatewmhints(c, wmh);
     updatemotifhints(c, motifreply);
@@ -997,8 +1030,14 @@ manage(XCBWindow win, bool allow_unmapped_window, void *replies[ManageClientLAST
 
     m = c->desktop->mon;
 
-    if(SHOULDCENTER(c))
-    {   centerclient(c);
+    if(sizehints & (XCB_SIZE_HINT_US_POSITION|XCB_SIZE_HINT_P_POSITION))
+    {   DebugLog("Ignoring auto center");
+    }
+    else
+    {
+        if(SHOULDCENTER(c))
+        {   centerclient(c);
+        }
     }
 
     (void)addclienthash(c, c->win);
@@ -1015,10 +1054,9 @@ manage(XCBWindow win, bool allow_unmapped_window, void *replies[ManageClientLAST
     /* propagates border_width, if size doesn't change */
     configure(c);
 
-    /* add to hash */
     /* if its a new bar we dont want to return it as the monitor now manages it */
-    if(!checknewbar(m, c, strut || strutp))
-    {   c = NULL;
+    if(ISBAR(c))
+    {   setupbar(m, c);
     }
 
     goto CLEANUP;
@@ -1055,7 +1093,7 @@ maximizevert(Client *c)
 {
     const Monitor *m = c->desktop->mon;
     i32 x = c->x;
-    i32 y = m->my;
+    i32 y = m->wy;
     i32 w = c->w;
     i32 h = m->wh - (HEIGHT(c) - c->h);
     resize(c, x, y, w, h, 0);
@@ -1205,6 +1243,7 @@ resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
 
     setclientnetstate(c, netatom[NetWMStateMaximizedVert], !!ISMAXVERT(c));
     setclientnetstate(c, netatom[NetWMStateMaximizedHorz], !!ISMAXHORZ(c));
+
     configure(c);
 }
 
@@ -1634,20 +1673,135 @@ seturgent(Client *c, uint8_t state)
     /* drawbar */
 }
 
+static void
+hidecoords(Client *c, Cardinal side, i32 *x, i32 *y)
+{
+    enum { DX, DY, D_LAST };
+
+    /* when meauring a triangle in gemoetry class we learned that...
+     * A right triangle has a hypotenuse of length 1, and the two legs are of equal length.
+     * The length of each leg is 1/sqrt(2), which is approximately 0.7071.
+     * idk - chatgpt
+     *
+     */
+    const float inv_sqrt2 = 0.7071f;
+
+    static const double key[CardinalCount][D_LAST] =
+    {
+        [North]     = {  0.0,       -1.0       },
+        [NorthEast] = {  inv_sqrt2, -inv_sqrt2 },
+        [East]      = {  1.0,        0.0       },
+        [SouthEast] = {  inv_sqrt2,  inv_sqrt2 },
+        [South]     = {  0.0,        1.0       },
+        [SouthWest] = { -inv_sqrt2,  inv_sqrt2 },
+        [West]      = { -1.0,        0.0       },
+        [NorthWest] = { -inv_sqrt2, -inv_sqrt2 },
+    };
+
+    i32 minx = INT32_MAX;
+    i32 miny = INT32_MAX;
+    i32 maxx = INT32_MIN;
+    i32 maxy = INT32_MIN;
+
+    for(Monitor *m = _wm.mons; m; m = nextmonitor(m))
+    {
+        minx = MIN(minx, m->mx);
+        miny = MIN(miny, m->my);
+
+        maxx = MAX(maxx, m->mx + m->mw);
+        maxy = MAX(maxy, m->my + m->mh);
+    }
+
+    const double vx = key[side][DX];
+    const double vy = key[side][DY];
+
+    const double w = WIDTH(c);
+    const double h = HEIGHT(c);
+
+    /* How far we need to travel  */
+    double t = 0.0;
+
+    if(vx < 0.0)
+    {
+        double d = ((double)c->x + w - minx) / -vx;
+
+        t = MAX(t, d);
+    }
+    else if(vx > 0.0)
+    {
+        double d = ((double)maxx - c->x) / vx;
+
+        t = MAX(t, d);
+    }
+
+    if(vy < 0.0)
+    {
+        double d = ((double)c->y + h - miny) / -vy;
+
+        t = MAX(t, d);
+    }
+    else if(vy > 0.0)
+    {
+        double d = ((double)maxy - c->y) / vy;
+
+        t = MAX(t, d);
+    }
+
+    /*
+     * Small extra margin so the border/shadow/compositor doesn't
+     * leave a pixel hanging around.
+     */
+    t += 32.0;
+
+    *x = (i32)(c->x + vx * t);
+    *y = (i32)(c->y + vy * t);
+}
+
 void
 showhide(Client *c)
 {
-    i16 x;
+    i32 x;
+    i32 y;
     Monitor *m = c->desktop->mon;
 
-    if(ISVISIBLE(c))
-    {   x = c->x;
-    }
-    else
-    {   x = -c->w - m->mx;
+    x = c->x;
+    y = c->y;
+
+    if(!ISVISIBLE(c))
+    {   
+        Cardinal side;
+
+        if(!ISBAR(c))
+        {
+            side = dirtoemptymonl(m);
+
+            y = -HEIGHT(c) * 2;
+
+            /* default to moving up */
+            if(side == CardinalCount)
+            {   
+                side = North;
+                Debug0("No empty monitor found.");
+            }
+        }
+        else
+        {
+            /* bars have special privelages */
+            enum BarSides bside = GETBARSIDE(m, c, 0);
+
+            switch(bside)
+            {
+                case BarSideTop:    side = North; break;
+                case BarSideBottom: side = South; break;
+                case BarSideLeft:   side = West;  break;
+                case BarSideRight:  side = East;  break;
+            }
+        }
+
+        hidecoords(c, side, &x, &y);
     }
 
-    XCBMoveWindow(_wm.dpy, c->win, x, c->y);
+    XCBMoveWindow(_wm.dpy, c->win, x, y);
 }
 
 Client *
@@ -1825,6 +1979,7 @@ unmaximizevert(Client *c)
     i32 y = c->oldy;
     i32 w = c->w;
     i32 h = c->oldh;
+
     if(DOCKEDVERT(c))
     {
         if(WASDOCKEDVERT(c))
@@ -2151,16 +2306,176 @@ updatesizehints(Client *c, XCBSizeHints *size)
 }
 
 void
+updatestrut(Client *c, XCBWindowProperty *strutprop)
+{
+    if(!strutprop)
+    {   return;
+    }
+
+    const size_t UNIT_SIZE = sizeof(uint32_t);
+    const size_t LEN_SIZE = 4;
+    uint32_t len = 0;
+
+    int status;
+
+    /* ignore, X said that this property does not exist on the window but it succceds with response_type = 1, if this were a error rpesonse tpy would be 0, I think */
+    if(strutprop->format == 0 && strutprop->length == 0 && strutprop->response_type == 1)
+    {   return;
+    }
+
+    if(strutprop->format != 32)
+    {   
+        DebugWarn("WindowProperty Value has wrong format");
+        return;
+    }
+
+    status = XCBGetWindowPropertyValueLength(strutprop, UNIT_SIZE, &len);
+
+    if(status)
+    {   
+        DebugWarn("WindowProperty Value has no length");
+        return;
+    }
+
+    if(len != LEN_SIZE)
+    {
+        DebugWarn("WindowProperty Value has wrong length");
+        return;
+    }
+
+    void *data = XCBGetWindowPropertyValue(strutprop);
+
+    if(!data)
+    {
+        DebugWarn("WindowProperty Value has no data");
+        return;
+    }
+
+    uint32_t *dataclean = data;
+
+    uint32_t left = dataclean[0];
+    uint32_t right = dataclean[1];
+    uint32_t top = dataclean[2];
+    uint32_t bottom = dataclean[3];
+
+    int i;
+
+    for(i = 0; i < WMStrutDirectionLAST; ++i)
+    {   c->strutstart[i] = 0;
+    }
+
+    c->strutend[WMStrutDirectionLeft] = _wm.sw;
+    c->strutend[WMStrutDirectionRight] = _wm.sw;
+    c->strutend[WMStrutDirectionTop] = _wm.sh;
+    c->strutend[WMStrutDirectionBottom] = _wm.sh;
+
+    c->strutdepth[WMStrutDirectionLeft] = left;
+    c->strutdepth[WMStrutDirectionRight] = right;
+    c->strutdepth[WMStrutDirectionTop] = top;
+    c->strutdepth[WMStrutDirectionBottom] = bottom;
+}
+
+void
+updatestrutp(Client *c, XCBWindowProperty *strutpprop)
+{
+    /* strut normal */
+    const size_t UNIT_SIZE = sizeof(uint32_t);
+    const size_t LEN_SIZE = 12;
+    uint32_t len = 0;
+
+    int status;
+
+    /* ignore, X said that this property does not exist on the window but it succceds with response_type = 1, if this were a error rpesonse tpy would be 0, I think */
+    if(strutpprop->format == 0 && strutpprop->length == 0 && strutpprop->response_type == 1)
+    {   return;
+    }
+
+    if(strutpprop->format != 32)
+    {   
+        DebugWarn("WindowProperty Value has wrong format");
+        return;
+    }
+
+    status = XCBGetWindowPropertyValueLength(strutpprop, UNIT_SIZE, &len);
+
+    if(status)
+    {   
+        DebugWarn("WindowProperty Value has no length");
+        return;
+    }
+
+    if(len != LEN_SIZE)
+    {
+        DebugWarn("WindowProperty Value has wrong length");
+        return;
+    }
+
+    void *data = XCBGetWindowPropertyValue(strutpprop);
+
+    if(!data)
+    {
+        DebugWarn("WindowProperty Value has no data");
+        return;
+    }
+
+    uint32_t *dataclean = data;
+
+    /* _NET_WM_STRUT_PARTIAL */
+
+    uint32_t left = dataclean[0];
+    uint32_t right = dataclean[1];
+
+    uint32_t top = dataclean[2];
+    uint32_t bottom = dataclean[3];
+
+
+    uint32_t left_start_y = dataclean[4];
+    uint32_t left_end_y = dataclean[5];
+
+    uint32_t right_start_y = dataclean[6];
+    uint32_t right_end_y = dataclean[7];
+
+    uint32_t top_start_x = dataclean[8];
+    uint32_t top_end_x = dataclean[9];
+
+    uint32_t bottom_start_x = dataclean[10];
+    uint32_t bottom_end_x = dataclean[11];
+
+
+    c->strutdepth[WMStrutDirectionLeft] = left;
+    c->strutdepth[WMStrutDirectionRight] = right;
+
+    c->strutdepth[WMStrutDirectionTop] = top;
+    c->strutdepth[WMStrutDirectionBottom] = bottom;
+
+    c->strutstart[WMStrutDirectionLeft] = left_start_y;
+    c->strutend[WMStrutDirectionLeft] = left_end_y;
+
+    c->strutstart[WMStrutDirectionRight] = right_start_y;
+    c->strutend[WMStrutDirectionRight] = right_end_y;
+
+    c->strutstart[WMStrutDirectionTop] = top_start_x;
+    c->strutend[WMStrutDirectionTop] = top_end_x;
+
+    c->strutstart[WMStrutDirectionBottom] = bottom_start_x;
+    c->strutend[WMStrutDirectionBottom] = bottom_end_x;
+}
+
+void
 updatetitle(Client *c, char *netwmname, char *wmname)
 {
     if(c->wmname != wmname)
-    {   free(c->wmname);
+    {   
+        free(c->wmname);
         c->wmname = NULL;
     }
+
     if(c->netwmname != netwmname)
-    {   free(c->netwmname);
+    {   
+        free(c->netwmname);
         c->netwmname = NULL;
     }
+
     c->wmname = wmname;
     c->netwmname = netwmname;
 }
@@ -2254,11 +2569,18 @@ updatewindowstate(Client *c, XCBAtom state, uint8_t add_remove_toggle)
         }
         else
         {   
+
             if(add_remove_toggle)
-            {   maximizehorz(c);
+            {   
+                if(!ISMAXHORZ(c))
+                {   maximizehorz(c);
+                }
             }
             else
-            {   unmaximizehorz(c);
+            {   
+                if(ISMAXHORZ(c))
+                {   unmaximizehorz(c);
+                }
             }
             setmaximizedhorz(c, add_remove_toggle);
         }
@@ -2281,10 +2603,16 @@ updatewindowstate(Client *c, XCBAtom state, uint8_t add_remove_toggle)
         else
         {
             if(add_remove_toggle)
-            {   maximizevert(c);
+            {   
+                if(!ISMAXVERT(c))
+                {   maximizevert(c);
+                }
             }
             else
-            {   unmaximizevert(c);
+            {   
+                if(ISMAXVERT(c))
+                {   unmaximizevert(c);
+                }
             }
             setmaximizedvert(c, add_remove_toggle);
         }

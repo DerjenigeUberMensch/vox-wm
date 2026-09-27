@@ -27,6 +27,7 @@ UserSettingType
 
     /* legacy */
     UseLegacyFloatingSystem,
+    UseAutomaticBarGeometry,
 
     BarLX,
     BarLY,

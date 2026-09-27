@@ -632,6 +632,26 @@ STATIC_ASSERT(0, cannot_run_debug_with_ndebug)
     HEAD = __s__;
 #endif
 
+typedef enum Cardinal Cardinal;
+
+enum
+Cardinal
+{
+    North,
+    South,
+    East,
+    West,
+
+    NorthEast,
+    NorthWest,
+
+    SouthEast,
+    SouthWest,
+
+    CardinalCount,
+};
+
+
 /* Functions */
 
 /*

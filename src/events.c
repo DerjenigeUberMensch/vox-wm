@@ -767,13 +767,13 @@ configurerequest(XCBGenericEvent *event)
                 {
                     case XCB_STACK_MODE_ABOVE:
                         if(c1)
-                        {   attachfocusbefore(c, c1);
+                        {   attachfocusbefore(c1, c);
                         }
                         Debug("Raised Client: [%u] above [%u]", c->win, ev->sibling);
                         break;
                     case XCB_STACK_MODE_BELOW:
                         if(c1)
-                        {   attachfocusafter(c, c1);
+                        {   attachfocusafter(c1, c);
                         }
                         Debug("Lowered Client: [%u] below [%u]", c->win, ev->sibling);
                         break;
@@ -793,8 +793,8 @@ configurerequest(XCBGenericEvent *event)
                         {   
                             if(stackpriority(c, c1))
                             {   
-                                if(c->desktop->slast != c)
-                                {   attachfocusafter(c->desktop->slast, c);
+                                if(c->desktop->flast != c)
+                                {   attachfocusafter(c->desktop->flast, c);
                                 }
                             }
                         }
@@ -805,8 +805,8 @@ configurerequest(XCBGenericEvent *event)
                         {   
                             if(stackpriority(c, c1))
                             {   
-                                if(c->desktop->slast != c)
-                                {   attachfocusafter(c->desktop->slast, c);
+                                if(c->desktop->flast != c)
+                                {   attachfocusafter(c->desktop->flast, c);
                                 }
                             }
                             else
@@ -1055,14 +1055,6 @@ configurenotify(XCBGenericEvent *event)
         Debug("(w: %d, h: %d)", w, h);
         if(updategeom() || dirty)
         {
-            Monitor *m;
-            /* update the bar */
-            for(m = _wm.mons; m; m = nextmonitor(m))
-            {
-                if(m->bar && m->bar->win)
-                {   XCBMoveResizeWindow(_wm.dpy, m->bar->win, m->wx, m->bar->y, m->ww, m->bar->h);
-                }
-            }
             arrangemons();
             sync = 1;
         }
@@ -1861,10 +1853,11 @@ propertynotify(XCBGenericEvent *event)
             return;
         case XCB_ATOM_WM_CLASS:
             type = PropWMClass;
+            DebugWarn("Broken window requesting WM CLASS after leaving withdrawn state.");
             break;
         case XCB_ATOM_WM_CLIENT_MACHINE:
             /* ignore */
-            break;
+            return;
         default:
             /* other atoms */
             if(atom == motifatom)
@@ -1876,8 +1869,13 @@ propertynotify(XCBGenericEvent *event)
             else if(atom == netatom[NetWMWindowType])
             {   type = PropWindowType;
             }
+            /* A Client wishing to change the state of a window MUST send a _NET_WM_STATE client message to the root window 
+             *(MUST keep this property updated to reflect the current state of the window. 
+             */
             else if(atom == netatom[NetWMState])
-            {   type = PropWindowState;
+            {   
+                /* type = PropWindowState; */
+                return;
             }
             else if(atom == wmatom[WMProtocols])
             {   type = PropWMProtocol;
@@ -1885,6 +1883,7 @@ propertynotify(XCBGenericEvent *event)
             else if(atom == netatom[NetWMStrut])
             {   type = PropStrut;
             }
+            /* bug, this needs to also detect on atom delete, but for now since we dont use much it doesnt matter.. */
             else if(atom == netatom[NetWMStrutPartial])
             {   type = PropStrutp;
             }
