@@ -420,7 +420,12 @@ DragWindowHandler(XCBGenericEvent *event, Arg arg)
             m = recttomon(c->x, c->y, c->w, c->h);
 
             if(m && m != c->desktop->mon)
-            {   setclientdesktop(c, m->desksel);
+            {   
+                Monitor *prevm = c->desktop->mon;
+
+                setclientdesktop(c, m->desksel);
+
+                arrange(prevm->desksel);
             }
 
             if(DOCKED(c))
@@ -612,7 +617,12 @@ ResizeWindowHandler(
             m = recttomon(c->x, c->y, c->w, c->h);
 
             if(m && m != c->desktop->mon)
-            {   setclientdesktop(c, m->desksel);
+            {   
+                Monitor *prevm = c->desktop->mon;
+
+                setclientdesktop(c, m->desksel);
+
+                arrange(prevm->desksel);
             }
 
             if(DOCKED(c))
