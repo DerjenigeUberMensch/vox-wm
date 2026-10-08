@@ -14,7 +14,6 @@
 #include <string.h>
 
 extern WM _wm;
-extern XCBCursor cursors[];
 extern XCBAtom netatom[];
 
 void
@@ -139,15 +138,6 @@ detachdesktop(Monitor *m, Desktop *desktop)
 }
 
 void
-cleanupcursors(void)
-{
-    int i;
-    for(i = 0; i < CurLast; ++i) 
-    {   XCBFreeCursor(_wm.dpy, cursors[i]); 
-    }
-}
-
-void
 cleanupmon(Monitor *m)
 {
     Desktop *desk = NULL;
@@ -247,6 +237,17 @@ dirtoemptymonl(Monitor *base)
 {
     if(!base)
     {   return CardinalCount;
+    }
+
+    if(moncount() == 1)
+    {   return CardinalCount;
+    }
+
+    if(_wm.mons)
+    {
+        if(!nextmonitor(_wm.mons))
+        {   return CardinalCount;
+        }
     }
 
     enum { DX, DY, D_LAST};
@@ -479,6 +480,21 @@ recttomon(i16 x, i16 y, u16 w, u16 h)
 	return r;
 }
 
+
+i32
+moncount(void)
+{
+    Monitor *m;
+    i32 count = 0;
+
+    for(m = _wm.mons; m; m = nextmonitor(m))
+    {   ++count;
+    }
+
+    return count;
+}
+
+
 Monitor *
 nextmonitor(Monitor *m)
 {
@@ -642,15 +658,6 @@ setmonsel(Monitor *m)
     updatedesktop();
 
     /* Debug0("Changed Monitor."); */
-}
-
-void
-setupcursors(void)
-{
-    cursors[CurNormal] = XCBCreateFontCursor(_wm.dpy, XC_left_ptr);
-    cursors[CurResizeTopL] = XCBCreateFontCursor(_wm.dpy, XC_top_left_corner);
-    cursors[CurResizeTopR] = XCBCreateFontCursor(_wm.dpy, XC_top_right_corner);
-    cursors[CurMove] = XCBCreateFontCursor(_wm.dpy, XC_fleur);
 }
 
 #ifdef XINERAMA

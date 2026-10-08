@@ -16,7 +16,7 @@ extern UserSettings _cfg;
 
 u32 ISBAR(Client *c) 
                                 {
-                                    return ISSTICKY(c) && ISDOCK(c) && ISABOVE(c) && HASSTRUT(c);
+                                    return (ISDOCK(c) && HASSTRUT(c)) || (ISABOVE(c) && ISDOCK(c) && ISSTICKY(c));
                                 }
 
 

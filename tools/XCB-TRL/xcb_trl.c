@@ -40,6 +40,7 @@
 #include <string.h>
 #include <limits.h> /* UINT_MAX */
 #include <stdarg.h>
+#include <poll.h>
 
 
 
@@ -1419,6 +1420,82 @@ XCBRecolorCursor(
     return ret;
 }
 
+int
+XCBCursorContextNew(
+        XCBDisplay *display,
+        int screen,
+        XCBCursorContext **context_return
+        )
+{
+
+    int status;
+
+    XCBScreen *scrn = xcb_aux_get_screen(display, screen);
+    
+    status = xcb_cursor_context_new(display, scrn, context_return);
+
+    XCBCookie ret = { .sequence = 0 };
+
+    _xcb_push_func(ret);
+
+    return status;
+}
+
+void
+XCBCursorContextFree(
+        XCBCursorContext *context
+        )
+{
+    if(context)
+    {   xcb_cursor_context_free(context);
+    }
+
+    XCBCookie ret = { .sequence = 0 };
+    _xcb_push_func(ret);
+}
+
+
+XCBCursor
+XCBCursorLoadCursor(
+        XCBDisplay *display,
+        XCBCursorContext *context,
+        const char *name
+        )
+{
+    XCBCursor cur;
+
+    (void)display;
+
+    cur = xcb_cursor_load_cursor(context, name);
+
+    XCBCookie ret = { .sequence = 0 };
+
+    _xcb_push_func(ret);
+
+    return cur;
+}
+
+XCBCursor
+XCBCursorLibraryLoadCursor(
+        XCBDisplay *display,
+        XCBCursorContext *context,
+        const char *name
+        )
+{   
+    XCBCursor cur;
+
+    (void)display;
+
+    cur = xcb_cursor_load_cursor(context, name);
+
+    XCBCookie ret = { .sequence = 0 };
+
+    _xcb_push_func(ret);
+
+    return cur;
+}
+
+
 XCBCookie
 XCBOpenFont(
         XCBDisplay *display, 
@@ -1495,7 +1572,6 @@ XCBGetTextPropertyReply(
         XCBGetWindowPropertyValueLength(reply_return->_reply, sizeof(char), &reply_return->name_len);
     }
 
-    free(reply);
     return status;
 }
 int
@@ -2025,6 +2101,84 @@ XCBNextEvent(
     return !((*event_return = xcb_wait_for_event(display)));
 }
 
+int
+XCBNextEventTimed(
+        XCBDisplay *display, 
+        XCBGenericEvent **event_return,
+        int64_t timeout_ms
+        )
+{
+    if(timeout_ms == -1 )
+    {   return XCBNextEvent(display, event_return);
+    }
+
+    struct pollfd pen;
+    int ready;
+
+    ready = XCBNextEventTimedAnyDpy(&display, 1, &event_return, &pen, timeout_ms);
+
+    if(ready > 0)
+    {   
+        *event_return = xcb_poll_for_event(display);
+
+        return 0;
+    }
+
+    if(xcb_connection_has_error(display))
+    {   return -1;
+    }
+
+    return 1;
+}
+
+int
+XCBNextEventTimedAnyDpy(
+        XCBDisplay *displays[],
+        size_t display_count,
+        XCBGenericEvent **event_return[],
+        struct pollfd *pollfds,
+        int64_t timeout_ms
+        )
+{
+    size_t i;
+
+    for(i = 0; i < display_count; ++i)
+    {
+        pollfds[i].fd = xcb_get_file_descriptor(displays[i]);
+        pollfds[i].events = POLLIN;
+        pollfds[i].revents = 0;
+    }
+
+    int ret;
+
+    ret = poll(pollfds, display_count, timeout_ms);
+
+    if(ret > 0)
+    {
+        for(i = 0; i < display_count; ++i)
+        {
+            if(pollfds[i].revents & POLLIN)
+            {   *event_return[i] = xcb_poll_for_event(displays[i]);
+            }
+        }
+
+        return ret;
+    }
+    else if(ret == 0)
+    {   return 0;
+    }
+    
+    for(i = 0; i < display_count; ++i)
+    {
+        if(xcb_connection_has_error(displays[i]))
+        {   return -1;
+        }
+    }
+
+    return 0;
+}
+
+
 XCBGenericEvent *
 XCBWaitForEvent(
         XCBDisplay *display
@@ -2042,6 +2196,34 @@ XCBPollForEvent(
     /* TODO */
     /* If I/O error do something */
    return  xcb_poll_for_event(display);
+}
+
+int
+XCBPending(
+        XCBDisplay *display
+        )
+{
+    int fd;
+    int ret;
+    struct pollfd pen;
+
+    fd = xcb_get_file_descriptor(display);
+    pen.fd = fd;
+    pen.events = POLLIN;
+
+    ret = poll(&pen, 1, 0);
+
+    if(ret > 0)
+    {
+        if(pen.revents & POLLIN)
+        {   return 1;
+        }
+    }
+    else if(ret == 0)
+    {   return 0;
+    }
+
+    return 0;
 }
 
 XCBGenericEvent *

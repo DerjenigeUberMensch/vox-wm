@@ -221,7 +221,7 @@ GArrayPushBack(
     void *item_cpy
     )
 {
-    if(!array || !item_cpy)
+    if(!array)
     {   return EXIT_FAILURE;
     }
 
@@ -236,7 +236,12 @@ GArrayPushBack(
             uint8_t *src = item_cpy;
             garray_i size = array->item_size;
 
-            memmove(dest, src, size);
+            if(src)
+            {   memmove(dest, src, size);
+            }
+            else
+            {   memset(dest, 0, size);
+            }
         }
     }
     return status;

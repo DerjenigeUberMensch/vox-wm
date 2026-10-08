@@ -3,8 +3,10 @@
 #include <math.h> /* fabsf() */
 
 #include "XCB-TRL/xcb_trl.h"
+
+#include "XCB-TRL/xcb_trl_types.h"
+#include"keybind/keybinds.h"
 #include "main.h"
-#include "keybinds.h"
 #include "hashing.h"
 #include "getprop.h"
 #include "bar.h"
@@ -56,8 +58,11 @@ u32 NEVERFOCUS(Client *c)       { return c->ewmhflags & WStateFlagNeverFocus; }
  * What does polybar do?:
  * It used to break the whole WM, but that was mitagated from another i3 feature of replay pou32ing only the main button(s).
  * Now its only unusable if grabbuttons(), twice, basically the "focus" part of grabbuttons(), which is undisireable.
+ *
+ * OKAY SO apaprntly polybar grabs its own buttons for jackshit all, and is why it breaks, doing  ISDOCK() for now....
+ *
  */
-u32 NEVERHOLDFOCUS(Client *c)   { return (NEVERFOCUS(c) && !HASWMTAKEFOCUS(c)) || ISDOCK(c);}
+u32 NEVERHOLDFOCUS(Client *c)   { return (NEVERFOCUS(c) && !HASWMTAKEFOCUS(c)) || ISDOCK(c); }
 
 u32 ISMAPPED(Client *c)         { return c->flags & ClientFlagMapped; }
 u32 SHOWDECOR(Client *c)        { return c->flags & ClientFlagShowDecor; }
@@ -481,13 +486,14 @@ configure(Client *c)
     memset(&ev, 0, sizeof(XCBGenericEvent));
     XCBConfigureNotifyEvent *ce = (XCBConfigureNotifyEvent *)&ev;
     ce->response_type = XCB_CONFIGURE_NOTIFY;
-    ce->event = _wm.root;
+    ce->event = c->win;
     ce->window = c->win;
     ce->x = c->x;
     ce->y = c->y;
     ce->width = c->w;
     ce->height = c->h;
     ce->border_width = c->bw;
+    ce->above_sibling = XCBNone;
     ce->override_redirect = False;
     XCBSendEvent(_wm.dpy, c->win, False, XCB_EVENT_MASK_STRUCTURE_NOTIFY, (const char *)&ev);
 }
@@ -514,7 +520,6 @@ createclient(void)
     c->w = c->h = 0;
     c->oldx = c->oldy = 0;
     c->oldw = c->oldh = 0;
-    c->ewmhflags = 0;
     c->ewmhflags = 0;
     c->bw = c->oldbw = 0;
     c->bcol = 0;
@@ -596,124 +601,16 @@ focusrealize(Client *c)
     return c;
 }
 
-static void
-__grabbuttons(XCBWindow win, bool neverholdfocus, bool focused)
-{
-    u16 i, j;
-    /* numlock is int */
-    int modifiers[4] = { 0, XCB_MOD_MASK_LOCK, _wm.numlockmask, _wm.numlockmask|XCB_MOD_MASK_LOCK};
-    /* somewhat taken from i3 */
-    /* Always grab these to allow for replay pointer when focusing by mouse click */
-    u8 gbuttons[3] = { LMB, MMB, RMB };
-
-    if (!focused)
-    {
-        /* grab focus buttons */
-        if(!neverholdfocus)
-        {
-            for (i = 0; i < LENGTH(gbuttons); ++i)
-            {
-                for (j = 0; j < LENGTH(modifiers); ++j)
-                {   XCBGrabButton(_wm.dpy, gbuttons[i], modifiers[j], win, False, BUTTONMASK, XCB_GRAB_MODE_SYNC, XCB_GRAB_MODE_SYNC, XCB_NONE, XCB_NONE);
-                }
-            }
-        }
-    }
-    for (i = 0; i < LENGTH(buttons); ++i)
-    {
-        for (j = 0; j < LENGTH(modifiers); ++j)
-        {
-            XCBGrabButton(_wm.dpy, buttons[i].button, 
-                    buttons[i].mask | modifiers[j], 
-                    win, False, BUTTONMASK, 
-                    XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_SYNC, 
-                    XCB_NONE, XCB_NONE);
-        }
-    }
-}
-
-static void
-__ungrabbuttons(XCBWindow win, bool neverholdfocus, bool focused)
-{
-    u16 i, j;
-    /* numlock is int */
-    int modifiers[4] = { 0, XCB_MOD_MASK_LOCK, _wm.numlockmask, _wm.numlockmask|XCB_MOD_MASK_LOCK};
-    /* somewhat taken from i3 */
-    /* Always grab these to allow for replay pointer when focusing by mouse click */
-    u8 gbuttons[3] = { LMB, MMB, RMB };
-
-    /* ungrab any previously grabbed buttons that are ours */
-    for(i = 0; i < LENGTH(modifiers); ++i)
-    {
-        /* direct win grabs */
-        if(!neverholdfocus)
-        {
-            for(j = 0; j < LENGTH(gbuttons); ++j)
-            {   XCBUngrabButton(_wm.dpy, gbuttons[j], modifiers[i], win);
-            }
-        }
-
-        for(j = 0; j < LENGTH(buttons); ++j)
-        {   XCBUngrabButton(_wm.dpy, buttons[j].button, modifiers[i], win);
-        }
-    }
-}
-
 void
 grabbuttons(Client *c, uint8_t focused)
 {
-    /* make sure no other client steals our grab */
-    xcb_grab_server(_wm.dpy);
-
-    __ungrabbuttons(c->decor->win, NEVERHOLDFOCUS(c), focused);
-    __ungrabbuttons(c->win, NEVERHOLDFOCUS(c), focused);
-
-    XCBWindow grab;
-
-    if(ISDECORACTIVE(c))
-    {   grab = c->decor->win;
-    }
-    else
-    {   grab = c->win;
-    }
-
-    __grabbuttons(grab, NEVERHOLDFOCUS(c), focused);
-
-    xcb_ungrab_server(_wm.dpy);
+    WMKeybindGrabButtons(c, focused);
 }
 
 void
 grabkeys(void)
 {
-    u32 i, j, k;
-    u32 modifiers[4] = { 0, XCB_MOD_MASK_LOCK, _wm.numlockmask, _wm.numlockmask|XCB_MOD_MASK_LOCK };
-    XCBKeyCode *keycodes[LENGTH(keys)];
-    XCBUngrabKey(_wm.dpy, XCB_GRAB_ANY, XCB_MOD_MASK_ANY, _wm.root);
-    
-    /* This grabs all the keys */
-    for(i = 0; i < LENGTH(keys); ++i)
-    {   keycodes[i] = XCBKeySymbolsGetKeyCode(_wm.syms, keys[i].keysym);
-    }
-    for(i = 0; i < LENGTH(keys); ++i)
-    {
-        for(j = 0; keycodes[i][j] != XCB_NO_SYMBOL; ++j)
-        {
-            if(keys[i].keysym == XCBKeySymbolsGetKeySym(_wm.syms, keycodes[i][j], 0))
-            {   
-                for(k = 0; k < LENGTH(modifiers); ++k)
-                {
-                    XCBGrabKey(_wm.dpy, 
-                            keycodes[i][j], keys[i].mod | modifiers[k], 
-                            _wm.root, True, 
-                            XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
-                }
-            }
-        }
-    }
-
-    for(i = 0; i < LENGTH(keys); ++i)
-    {   free(keycodes[i]);
-    }
+    WMKeybindGrabKeys();
 }
 
 void 
@@ -980,7 +877,7 @@ manage(XCBWindow win, bool allow_unmapped_window, void *replies[ManageClientLAST
     XCBWindow *trans = replies[ManageClientTransient];
 
     u32 *strutp = strutp = strutpreply ? XCBGetWindowPropertyValue(strutpreply) : NULL;
-    u32 *strut = strut = strutreply ? XCBGetWindowPropertyValue(strutpreply) : NULL;
+    u32 *strut = strut = strutreply ? XCBGetWindowPropertyValue(strutreply) : NULL;
     u32 sizehints = 0;
 
     if(!CANMANAGE(win, allow_unmapped_window, waattributes, wastatereply))
@@ -1030,11 +927,33 @@ manage(XCBWindow win, bool allow_unmapped_window, void *replies[ManageClientLAST
 
     m = c->desktop->mon;
 
-    if(sizehints & (XCB_SIZE_HINT_US_POSITION|XCB_SIZE_HINT_P_POSITION))
-    {   DebugLog("Ignoring auto center");
+    /* user specified position  */
+    if(sizehints & (XCB_SIZE_HINT_US_POSITION))
+    {   
+        if(SHOULDCENTER(c))
+        {   
+            DebugLog("Ignoring Program set default position \"(%d, %d)\"", c->x, c->y);
+            centerclient(c);
+        }
+        else
+        {   DebugLog("Ignoring auto center");
+        }
     }
     else
     {
+        /* Some toolkits set the position hint, but don't actually set the position resulting in (0, 0) being the default position
+         * Most of the times this doesnt matter since the client will be big enough to be considered 'DOCKED'
+         * But sometimes dialog boxes are too small and need to be centered.
+         */
+        if(sizehints & XCB_SIZE_HINT_P_POSITION)
+        {
+            if(SHOULDCENTER(c))
+            {   
+                DebugLog("Ignoring Program set default position \"(%d, %d)\"", c->x, c->y);
+                centerclient(c);
+            }
+        }
+
         if(SHOULDCENTER(c))
         {   centerclient(c);
         }
@@ -1775,13 +1694,22 @@ showhide(Client *c)
         {
             side = dirtoemptymonl(m);
 
-            y = -HEIGHT(c) * 2;
-
             /* default to moving up */
-            if(side == CardinalCount)
+            if(side == CardinalCount && moncount() > 1)
             {   
                 side = North;
                 Debug0("No empty monitor found.");
+            }
+            else
+            {
+                /* scroll left */
+                if(!dirtomon(m, West) && !dirtomon(m, East))
+                {   side = East;
+                }
+                /* scroll north */
+                else if(!dirtomon(m, North) && !dirtomon(m, South))
+                {   side = South;
+                }
             }
         }
         else
@@ -2202,17 +2130,31 @@ updatesizehints(Client *c, XCBSizeHints *size)
     {   return;
     }
 
-    i32 basew = c->basew;
-    i32 baseh = c->baseh;
-    i32 minw = c->minw;
-    i32 minh = c->minh;
-    i32 maxw = c->maxw;
-    i32 maxh = c->maxh;
-    i32 incw = c->incw;
-    i32 inch = c->inch;       
-    float mina = c->mina + 0.0f;   /* make sure sign is positive */
-    float maxa = c->maxa + 0.0f;   /* make sure sign is positive */
-    i32 gravity = c->gravity;
+    /* https://xorg.freedesktop.org/archive/X11R6.7.0/PDF/icccm.pdf */
+    /*
+     * min_width INT32 If missing, assume base_width
+     * min_height INT32 If missing, assume base_height
+     * max_width INT32
+     * max_height INT32
+     * width_inc INT32
+     * height_inc INT32
+     * min_aspect (INT32,INT32)
+     * max_aspect (INT32,INT32)
+     * base_width INT32 If missing, assume min_width
+     * base_height INT32 If missing, assume min_height
+     * win_gravity INT32 If missing, assume NorthWest
+     */
+    i32 basew = 0;
+    i32 baseh = 0;
+    i32 minw = 0;
+    i32 minh = 0;
+    i32 maxw = 0;
+    i32 maxh = 0;
+    i32 incw = 0;
+    i32 inch = 0;
+    float mina = 0.0f;
+    float maxa = 0.0f;
+    i32 gravity = XCBNorthWestGravity;
 
     if(size->flags & XCB_SIZE_HINT_P_MIN_SIZE)
     {
@@ -2266,6 +2208,7 @@ updatesizehints(Client *c, XCBSizeHints *size)
     if(size->flags & XCB_SIZE_HINT_P_WIN_GRAVITY)
     {   gravity = size->win_gravity;
     }
+
     /* clamp */
     minw = MIN(minw, UINT16_MAX);
     minh = MIN(minh, UINT16_MAX);

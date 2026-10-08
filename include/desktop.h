@@ -3,6 +3,7 @@
 
 #include "client.h"
 #include "settings.h"
+#include "util.h"
 
 /* layout(s) */
 enum LayoutType
@@ -117,6 +118,11 @@ Desktop *FuncNullable nextdesktop(Desktop *desktop);
 Desktop *FuncNullable prevdesktop(Desktop *desk);
 /* Reorders(restacks) clients in current desk->stack */
 void NonNull restack(Desktop *desk);
+/* Restacks a specific client in the desktop's stack.
+ * If force is 1, the client will be restacked regardless of its current position.
+ * If force is 0, the client will only be restacked if it is not already in the correct position.
+ */
+void NonNull restackc(Desktop *desk, uint8_t force);
 /* "Restacks" clients on from linked list no effect unless restack called*/
 void NonNull reorder(Desktop *desk);
 /* Sets the desktops layouts, (not automatic arrange must be called after to apply changes.) */

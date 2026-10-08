@@ -55,7 +55,17 @@ typedef xcb_setup_t XCBSetup;
 typedef xcb_screen_iterator_t XCBScreenIterator;
 typedef xcb_screen_t XCBScreen;
 typedef xcb_window_t XCBWindow;
+/* Button type, see buttons below other buttons may not be defined as a enum.
+ * XCBButtonAny,
+ * XCBButton1
+ * XCBButton2
+ * XCBButton3
+ * XCBButton4
+ * XCBButton5
+ */
+typedef xcb_button_t XCBButton;
 typedef xcb_cursor_t XCBCursor;
+typedef xcb_cursor_context_t XCBCursorContext;
 typedef xcb_icccm_get_text_property_reply_t XCBTextProperty;
 typedef xcb_grab_keyboard_reply_t XCBGrabKeyboard;
 typedef xcb_grab_pointer_reply_t XCBGrabPointer;

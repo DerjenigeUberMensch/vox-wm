@@ -285,7 +285,7 @@ FFGetSysConfigPath(
 
 int
 FFDirExists(
-        char *const DIR_NAME
+        const char *DIR_NAME
         )
 {
     if(!DIR_NAME)
@@ -305,18 +305,20 @@ FFDirExists(
 
 int 
 FFCreateDir(
-        char *const DIR_NAME
+        char *DIR_NAME
         )
 {
     if(!DIR_NAME)
     {   return EXIT_FAILURE;
     }
+
     unsigned long long int i = 0;
     unsigned long long int base = 0;
 
     enum { DIR_CHAR = '/' };
 
     char replaced_char;
+
     while(DIR_NAME[i])
     {   
         replaced_char = DIR_NAME[i];
@@ -348,7 +350,7 @@ FFCreateDir(
 
 int
 FFCreatePath(
-        char *const FULL_PATH
+        char *FULL_PATH
         )
 {
     if(!FULL_PATH)
@@ -401,7 +403,7 @@ FFCreatePath(
 
 int
 FFPathExists(
-        char *const FULL_PATH
+        const char *FULL_PATH
         )
 {
     if(!FULL_PATH)
@@ -413,7 +415,7 @@ FFPathExists(
 
 int
 FFFileExists(
-        char *const FILE_NAME
+        const char *FILE_NAME
         )
 {   
     if(!FILE_NAME)
@@ -434,14 +436,14 @@ FFFileExists(
 
 int
 FFCreateFile(
-        char *const FILE_NAME
+        char *FILE_NAME
         )
 {   return FFCreatePath(FILE_NAME);
 }
 
 int
 FFIsFileEmpty(
-        char *const FILE_NAME
+        const char *FILE_NAME
         )
 {
     int ret = 0;

@@ -20,8 +20,10 @@ static ArgOpt ARGS_LONG[] =
     [WMArgDieCat] = ARGCV_STATIC_INITIALIZER("die-cat", sizeof("die-cat") - 1, false),
     [WMArgLicense] = ARGCV_STATIC_INITIALIZER("license", sizeof("license") - 1, false),
     [WMArgSupport] = ARGCV_STATIC_INITIALIZER("support", sizeof("support") - 1, false),
-    [WMArgThreads] = ARGCV_STATIC_INITIALIZER("threads N", sizeof("threads") - 1, true),
     [WMArgSkipStartupFile] = ARGCV_STATIC_INITIALIZER("skip-startup-file", sizeof("skip-startup-file") - 1, false),
+
+    [WMArgThreads] = ARGCV_STATIC_INITIALIZER("threads N", sizeof("threads") - 1, true),
+    [WMArgXDisplay] = ARGCV_STATIC_INITIALIZER("display STRING", sizeof("display") - 1, true),
 };
 
 static char *ARG_DESCRIPTIONS[] = 
@@ -31,8 +33,10 @@ static char *ARG_DESCRIPTIONS[] =
     [WMArgDieCat] = "Calls 'CATDIE immediately and exits",
     [WMArgLicense] = "Get License Information",
     [WMArgSupport] = "Support Information",
-    [WMArgThreads] = "Request a specific number of threads to use for the thread pool",
     [WMArgSkipStartupFile] = "Skip the startup file",
+
+    [WMArgThreads] = "Request a specific number of threads to use for the thread pool",
+    [WMArgXDisplay] = "Request a display to use",
 };
 
 void 

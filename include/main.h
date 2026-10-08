@@ -57,12 +57,9 @@ RestartType
 };
 
 typedef union  Arg Arg;
-typedef struct Key Key;
-typedef struct Button Button;
 typedef struct WM WM;
 typedef struct MotifWmHints MotifWmHints;
 typedef struct WMWork WMWork;
-
 
 union 
 Arg
@@ -76,31 +73,12 @@ Arg
     void *v;                /* v  -> void pointer   */
 };
 
-struct 
-Key
-{
-    uint16_t type;              /* KeyPress/KeyRelease  */
-    uint16_t mod;               /* Modifier             */
-    XCBKeysym keysym;           /* Key symbol           */
-    void (*func)(const Arg *);  /* Function             */
-    Arg arg;                    /* Argument             */
-};
-
-struct 
-Button
-{
-    uint8_t type;                   /* ButtonPress/ButtonRelease    */
-    uint8_t button;                 /* Button                       */
-    uint16_t mask;                  /* Modifier                     */
-    Arg (*func)(const Arg *arg);    /* Function                     */
-    Arg arg;                        /* Argument                     */
-};
-
 struct
 WMWork
 {
     int (*function)(XCBGenericEvent *event, Arg arg);
     Arg arg;
+    bool allocated;
 };
 
 struct 
@@ -154,12 +132,21 @@ void checkotherwm(void);
 /* Cleanups and frees any data previously allocated.
 */
 void cleanup(void);
-/* Jumps to the specified function handler for the provided event.
-*/
+/* Cleans up the cursors. */
+void cleanupcursors(void);
+/* Jumps to the specified function handler for the provided event. */
 void NonNull eventhandler(XCBGenericEvent *ev);
-/* handles atexit.
-*/
-void exithandler(void);
+/* Poll callback for eventhandler */
+void eventhandlercallback(int fd, int events, Generic arg);
+
+#ifdef __GLIBC__
+    /* handles atexit. */
+    void glibc_exithandler(int status, void *arg);
+#else
+    /* handles atexit. */
+    /* handles atexit. */
+    void exithandler(void);
+#endif
 /* Gets the root ptr location if possible, */
 int8_t NonNullAll getrootptr(int16_t *x, int16_t *y);
 /* Sends a event to the main event loop to stop running.
@@ -207,6 +194,7 @@ void setup(void);
 void setupatoms(void);
 /* Loads CFG data into Settings struct. */
 void setupcfg(void);
+void setupcursors(void);
 /* Sets up System related data */
 void setupsys(void);
 /* Setup file watchers for the wm */
@@ -256,9 +244,9 @@ uint32_t IS_WM_WINDOW(XCBWindow win);
  * RETURN: EXIT_SUCCESS on Success.
  * RETURN: EXIT_FAILURE on Failure.
  */
-int WM_ADD_WORK(int (*func)(XCBGenericEvent *event, Arg arg), Arg arg);
+int WM_ADD_WORK(int (*func)(XCBGenericEvent *event, Arg arg), Arg arg, bool free_on_end);
 
 uint32_t CLEANMASK(uint32_t mask);
-uint8_t CLEANBUTTONMASK(uint8_t MASK);
+uint8_t __DEPRECATED__ CLEANBUTTONMASK(uint8_t MASK);
 
 #endif 

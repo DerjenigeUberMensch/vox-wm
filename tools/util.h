@@ -704,6 +704,50 @@ void UNPACK_ARGB(uint32_t argb, uint8_t *a_return, uint8_t *r_return, uint8_t *g
  */
 char *strjoin(const char *fmt, ...);
 
+/* Returns the opposite cardinal direction.
+ *
+ * RETURN: Cardinal
+ */
+Cardinal OPPOSITE_CARDINAL(Cardinal c);
+/* Returns the string representation of a cardinal direction.
+ *
+ * NOTE: CardinalCount is not a valid cardinal direction.
+ *
+ * RETURN: char * on Success.
+ * RETURN: NULL on Failure.
+ */
+char *CARDINAL_TO_STRING(Cardinal c);
+
+#ifdef __USE_POSIX
+
+#include <stdint.h>
+#include <poll.h>
+
+enum { UPOLL_UNIT_SIZE = sizeof(struct pollfd) };
+
+/* Polls for one file descriptor for events, returning the number of ready file descriptors.
+ *
+ * NOTE: Check errno for the error code on failure.
+ * NOTE: Possible error codes include: EFAULT, EINTR, EINVAL, ENOMEM.
+ *
+ * RETURN: Number of ready file descriptors on Success.
+ * RETURN: 0 on Timeout or Interrupt.
+ * RETURN: -1 on Failure.
+ */
+int upoll_poll(int fd, int events, i64 timeout_ms);
+/* Polls multiple file descriptors for events, returning the number of ready file descriptors.
+ *
+ * NOTE: Check errno for the error code on failure.
+ * NOTE: Possible error codes include: EFAULT, EINTR, EINVAL, ENOMEM.
+ * NOTE: poll_buffer must be atleast fds_count * UPOLL_UNIT_SIZE;
+ *
+ * RETURN: Number of ready file descriptors on Success.
+ * RETURN: 0 on Timeout or Interrupt.
+ * RETURN: -1 on Failure.
+ */
+int upoll_poll_mult(int *fds, int *events, int *revents, void *poll_buffer, size_t fds_count, i64 timeout_ms);
+
+#endif
 
 
 void _Breakpoint(void);

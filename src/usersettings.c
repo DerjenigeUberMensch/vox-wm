@@ -25,7 +25,7 @@ static void UpdatePreferClientSideDecorations(Generic prev, Generic current);
 static void UpdateBarUseAutomaticGeometry(Generic prev, Generic current);
 static void UpdateBarXYWHChange(Generic prev, Generic current);
 
-SCSetting
+SCSetting 
 UserSettingsDefault[] = 
 {
     VOX_ADD_MEMBER_SETTING(MFact, SCTypeFLOAT, 0.55f, UpdateMFact)
@@ -35,7 +35,6 @@ UserSettingsDefault[] =
     VOX_ADD_MEMBER_SETTING(RefreshRate, SCTypeUSHORT, 60, UpdateSkip)
     VOX_ADD_MEMBER_SETTING(SmartResizing, SCTypeBOOL, true, UpdateSkip)
     VOX_ADD_MEMBER_SETTING(CenteringBias, SCTypeFLOAT, .0125, UpdateSkip)
-
 
     /* BOOL Types */
     VOX_ADD_MEMBER_SETTING(HoverFocus, SCTypeBOOL, false, UpdateSkip)
@@ -130,8 +129,16 @@ UpdateUseDecorations(Generic prev, Generic current)
 static void 
 UpdateUseClientSideDecorations(Generic prev, Generic current)
 {
-    USER_SETTINGS_RETURN_IF_NO_CHANGE(prev, current);
+    static int first = 1;
 
+    if(first)
+    {
+        first = 0;
+        goto CALL;
+    }
+
+    USER_SETTINGS_RETURN_IF_NO_CHANGE(prev, current);
+CALL:
     X11GTKSetUseCSD(!!current.data8[0]);
 }
 

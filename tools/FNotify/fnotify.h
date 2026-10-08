@@ -84,6 +84,19 @@ FNotifyCreateFilled(
         enum FNotifyFlags flags
         );
 
+/* Returns the file descriptor of the fnotify structure.
+ *
+ * NOTE: This file descriptor can be used with select() or poll() to wait for events.
+ * NOTE: But should not be used to read() events, use FNotifyWaitForEvent() or FNotifyPollForEvent() instead.
+ *
+ * RETURN: file descriptor on Success.
+ * RETURN: -1 on Failure.
+ */
+int
+FNotifyGetFileDescriptor(
+        FNotify *notify
+        );
+
 /* Waits for a fnotify event to occur, and fills event_fill data, respecting events_len_fill_max.
  *
  * NOTE: return of event_count MAY return 0.

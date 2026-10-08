@@ -235,6 +235,15 @@ UNLOCK:
 }
 
 void
+XCBDefaultHandlerMsg(
+		xcb_connection_t *display, 
+		xcb_generic_error_t *error
+        )
+{
+	_xcb_handler(display, error);
+}
+
+void
 _xcb_trl_err_handler(
         xcb_connection_t *display, 
         xcb_generic_error_t *error

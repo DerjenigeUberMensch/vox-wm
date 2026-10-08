@@ -25,31 +25,30 @@ double COULDBEFLOATINGGEOM(Client *c)
                                     enum { ARRAY_LENGTH = 7 };
                                     enum { SCALE, WEIGHT, WEIGHT_LENGHT };
 
-
                                     const double 
                                     SCALE_SIZE_WEIGHTS_LONG[ARRAY_LENGTH][WEIGHT_LENGHT] = 
                                     {
                                         /* SCALE | MULTIPLIER */
-                                        {   .95,        1      },
-                                        {   .90,       .95     },
-                                        {   .80,       .85     },
+                                        {   .95,        0      },
+                                        {   .90,       .05     },
+                                        {   .80,       .15     },
                                         {   .65,       .50     },
-                                        {   .50,       .30     },
-                                        {   .25,       .15     },
-                                        {   .10,       .0      },
+                                        {   .50,       .70     },
+                                        {   .25,       .85     },
+                                        {   .10,       1       },
                                     };
 
                                     const double 
                                     SCALE_SIZE_WEIGHTS_SHORT[ARRAY_LENGTH][WEIGHT_LENGHT] = 
                                     {
                                         /* SCALE | MULTIPLIER */
-                                        {   .95,        1      },
-                                        {   .90,       .95     },
-                                        {   .80,       .90     },
-                                        {   .65,       .65     },
-                                        {   .50,       .40     },
-                                        {   .25,       .25     },
-                                        {   .10,       .05     },
+                                        {   .95,       .00     },
+                                        {   .90,       .05     },
+                                        {   .80,       .10     },
+                                        {   .65,       .35     },
+                                        {   .50,       .60     },
+                                        {   .25,       .75     },
+                                        {   .10,       .95     },
                                     };
 
                                     bool widthBigger = c->w > c->h;
@@ -167,7 +166,8 @@ double COULDBEFLOATINGPOSITION(Client *c)
                                         }
                                     }
 
-                                    return score;
+                                    /* if its less than 2% the center then its basically centered already... so return 0 since we didnt match it */
+                                    return i == ARRAY_LENGTH ? 0 : score;
                                 }
 double COULDBEFLOATINGHINTS(Client *c)
                                 {

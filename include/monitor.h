@@ -56,9 +56,6 @@ void NonNullAll attachdesktop(Monitor *m, Desktop *desk);
 /* Removes desktop fromt specified monitor linked list.
 */
 void detachdesktop(Monitor *m, Desktop *desk);
-/* Frees allocated cursors.
- */
-void cleanupcursors(void);
 /* Frees Monitor and allocated Monitor properties.
 */
 void NonNull cleanupmon(Monitor *m);
@@ -103,6 +100,8 @@ uint32_t rectmoncount(int32_t x, int32_t y, int32_t w, int32_t h);
  * RETURN: NULL on Failure.
  */
 Monitor *recttomon(int16_t x, int16_t y, uint16_t w, uint16_t h);
+/* Returns the number of monitors. */
+i32 moncount(void);
 /* Returns the next Monitor avaible.
  * RETURN: Monitor* on Success.
  * RETURN: NULL on Failure.
@@ -116,8 +115,6 @@ void NonNullAll setdesktopsel(Monitor *mon, Desktop *desksel);
 void NonNull setdesktopseli(Monitor *mon, uint16_t num);
 /* Sets the selected monitor and updates mon data */
 void setmonsel(Monitor *m);
-/* Sets up the cursors used for the WM. */
-void setupcursors(void);
 /* Updates 
  * type:            0       Adds the client win .
  *                  1       Removes the specified win.
@@ -137,10 +134,6 @@ void updatenumlockmask(void);
  * RETURN: NULL on Failure.
  */
 Monitor *wintomon(XCBWindow win);
-
-
-
-
 
 
 
