@@ -6,6 +6,7 @@
 #include "bar.h"
 #include "main.h"
 #include "floating.h"
+#include "util.h"
 
 extern WM _wm;
 extern UserSettings _cfg;
@@ -387,6 +388,12 @@ prevdesktop(Desktop *desk)
 void
 restack(Desktop *desk)
 {
+    restackc(desk, 0);
+}
+
+void
+restackc(Desktop *desk, uint8_t force)
+{
     XCBWindowChanges wc;
 
     wc.stack_mode = XCB_STACK_MODE_BELOW;
@@ -402,10 +409,16 @@ restack(Desktop *desk)
 
     for(; c; c = nextstack(c))
     {
-        /* if the client isnt attached which would be very unlikely, then just attach it or 'config' it as seen below */
-        instack = nextrstack(c) || prevrstack(c);
-        /* Client holds both lists so we just check if the next's are the same if not configure it, see above for instack */
-        config = nextrstack(c) != nextstack(c) || !instack;
+        config = 1;
+
+        /* optimizations */
+        if(!force)
+        {
+            /* if the client isnt attached which would be very unlikely, then just attach it or 'config' it as seen below */
+            instack = nextrstack(c) || prevrstack(c);
+            /* Client holds both lists so we just check if the next's are the same if not configure it, see above for instack */
+            config = nextrstack(c) != nextstack(c) || !instack;
+        }
 
         win = c->win;
 
@@ -470,27 +483,70 @@ setdesktoplayout(Desktop *desk, uint8_t layout)
     desk->layout = layout;
 }
 
+
+static void
+__normalize_stackpriority(u32 *ewmhflags1, u16 *flags1, u32 *ewmhflags2, u16 *flags2)
+{
+    struct 
+    StackPriorityRules
+    {
+        u32 required;
+        u32 remove;
+    };
+
+    static const struct StackPriorityRules RULES[] = 
+    {
+        /* docks sometimes have priority over above windows because they also set above
+         * But docks shoudlnt be above windows that are above
+         * basically ignore above if dock,
+         */
+        { WTypeFlagDock, WStateFlagAbove },
+    };
+
+    /* flags1 / flags 2 */
+    static const struct StackPriorityRules RULES_CUSTOM[] = 
+    {
+    };
+
+    int i;
+
+    for(i = 0; i < LENGTH(RULES); ++i)
+    {
+        if((*ewmhflags1 & RULES[i].required) == RULES[i].required)
+        {   CLEARFLAG(*ewmhflags1, RULES[i].remove);
+        }
+    }
+
+    for(i = 0; i < LENGTH(RULES_CUSTOM); ++i)
+    {
+        if((*ewmhflags2 & RULES_CUSTOM[i].required) == RULES_CUSTOM[i].required)
+        {   CLEARFLAG(*ewmhflags2, RULES_CUSTOM[i].remove);
+        }
+    }
+}
+
 int
 stackpriority(Client *c1, Client *c2)
 {
-    const u32 ewmhflag1 = c1->ewmhflags;
-    const u32 floating1 = c1->desktop->layout == Floating;
-    const u16 flags1 = c1->flags;
-    const u16 rstacknum1 = c1->rstacknum;
-    const u32 ewmhflag2 = c2->ewmhflags;
-    const u32 floating2 = c2->desktop->layout == Floating;
-    const u16 flags2 = c2->flags;
-    const u16 rstacknum2 = c2->rstacknum;
+    u32 ewmhflag1 = c1->ewmhflags;
+    u32 floating1 = c1->desktop->layout == Floating;
+    u16 flags1 = c1->flags;
+    u16 rstacknum1 = c1->rstacknum;
+    u32 ewmhflag2 = c2->ewmhflags;
+    u32 floating2 = c2->desktop->layout == Floating;
+    u16 flags2 = c2->flags;
+    u16 rstacknum2 = c2->rstacknum;
 
-    const u32 ewmhflags = ewmhflag1 ^ ewmhflag2;
-    const u32 flags = flags1 ^ flags2;
+    __normalize_stackpriority(&ewmhflag1, &flags1, &ewmhflag2, &flags2);
+
+    u32 ewmhflags = ewmhflag1 ^ ewmhflag2;
+    u32 flags = flags1 ^ flags2;
 
     enum 
     SpecialPriorityEnumIndex
     {
         ConstantFlag, NonContstantState, SpecialPriorityEnumIndexLAST
     };
-
 
     /* PRIORITY WHEN CHECKED: (IN ORDER)
      * HIGHEST [0]
@@ -499,7 +555,12 @@ stackpriority(Client *c1, Client *c2)
      */
     static const u32 BELOW_PRIORTY[] = 
     {
+        /* dekstop things are supposed to be at the bottom right next to root for some reason... */
+        WTypeFlagDesktop,
+
         WStateFlagBelow,
+
+        /* this is mostly because sometimes our code messes up a clients state,, and we need a way to look semi passable */
         WStateFlagHidden,
     };
 
@@ -510,14 +571,10 @@ stackpriority(Client *c1, Client *c2)
      */
     static const u32 ABOVE_PRIORITY[] = 
     {
-        /* Due to the lack of virtual desktop handling this is no used by default. */
-        /* WTypeFlagDesktop, */
-
+        WTypeFlagNotification,
+        WStateFlagAbove,
         WTypeFlagDock,
         WTypeFlagSplash,
-        WTypeFlagNotification,
-        /* WStateFlagModal, */
-        WStateFlagAbove,
         WTypeFlagDialog,
     };
     /* PRIORITY WHEN CHECKED: (IN ORDER)
@@ -533,6 +590,7 @@ stackpriority(Client *c1, Client *c2)
     };
 
     int i;
+
     for(i = 0; i < LENGTH(BELOW_PRIORTY); ++i)
     {
         if(ewmhflags & BELOW_PRIORTY[i])

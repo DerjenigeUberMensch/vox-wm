@@ -10,7 +10,7 @@ PREFIX ?= /usr/local/
 # grep -r xcb
 
 # fallback
-XCBLIST = xcb xcb-util xcb-aux xcb-xinerama xcb-event xcb-keysyms xcb-xinput xcb-image xcb-errors
+XCBLIST = xcb xcb-util xcb-aux xcb-xinerama xcb-event xcb-keysyms xcb-xinput xcb-image xcb-errors xcb-cursor
 INCLUDE_LIST = tools include ${XCBLIST}
 INCS = $(foreach dir, ${INCLUDE_LIST}, -I${dir})
 #${INCLUDE_INCS} ${TOOLS} 

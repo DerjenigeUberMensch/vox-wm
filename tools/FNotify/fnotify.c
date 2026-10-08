@@ -274,6 +274,18 @@ FNotifyPollForEvent(
 }
 
 int
+FNotifyGetFileDescriptor(
+        FNotify *notify
+        )
+{
+    if(!notify)
+    {   return -1;
+    }
+
+    return notify->inotify_fd;
+}
+
+int
 FNotifyWaitForEvent(
         FNotify *notify,
         FNotifyEvent *event_fill,

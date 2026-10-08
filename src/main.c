@@ -1,3 +1,10 @@
+/* glibc */
+#ifndef _DEFAULT_SOURCE
+#define _DEFAULT_SOURCE
+#endif
+
+#include <stdlib.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,19 +32,25 @@
 #include <X11/keysym.h>
 
 #include "VXExtDebug/vxextdebug.h"
+#include "XCB-TRL/xcb_trl.h"
+#include "cursor.h"
+#include "keybind/keybinds.h"
 #include "args.h"
+#include "manifest.h"
 #include "util.h"
 #include "args.h"
 #include "main.h"
 #include "hashing.h"
 #include "getprop.h"
 #include "bar.h"
-#include "keybinds.h"
+#include "usersettings.h"
+#include "settings.h"
 #include "safebool.h"
 #include "threading.h"
 #include "watchers.h"
 #include "config.h"
 #include "startupapps.h"
+#include "wmpoll.h"
 /* #include "watchdog.h" */
 
 /* for HELP/DebugGING see under main() or the bottom */
@@ -83,13 +96,13 @@ u32 IS_WM_WINDOW(XCBWindow win)
                             
                             return ret;
                         }
-int WM_ADD_WORK(int (*func)(XCBGenericEvent *event, Arg arg), Arg arg)
+int WM_ADD_WORK(int (*func)(XCBGenericEvent *event, Arg arg), Arg arg, bool free_on_end)
                         {
                             extern WM _wm;
 
                             int ret;
 
-                            WMWork work = { .function = func, .arg = arg };
+                            WMWork work = { .function = func, .arg = arg, .allocated = free_on_end };
 
                             LOCK_WM();
                             ret = GArrayPushBack(&_wm.work, &work);
@@ -106,15 +119,9 @@ u32 CLEANMASK(u32 mask) {
                                         XCB_MOD_MASK_1|XCB_MOD_MASK_2|XCB_MOD_MASK_3|XCB_MOD_MASK_4|XCB_MOD_MASK_5
                                    );
                         }
-u8 CLEANBUTTONMASK(u8 mask)
+u8 __DEPRECATED__ CLEANBUTTONMASK(u8 mask)
                         {
-                            u8 ret = MIN(MAX(mask, 1), XCBButton5);
-
-                            if(ret != mask)
-                            {   Debug("Clamped value mask: [%d] -> [%d]", mask, ret);
-                            }
-
-                            return ret;
+                            return mask;
                         }
 
 
@@ -128,7 +135,6 @@ XCBAtom wmatom[WMLast];
 XCBAtom gtkatom[GTKLAST];
 XCBAtom motifatom;
 XCBAtom xembedatom[XEMBEDLAST];
-XCBCursor cursors[CurLast];
 
 void
 checkotherwm(void)
@@ -180,13 +186,16 @@ cleanup(void)
     {   WatcherDestroy();
     }
 
+    WMKeybindDestroy();
     PropDestroy();
     /* Threads are alawys first to go due to concurrency problems with future cleanup functions */
     ThreadingDestroy();
+    WMPollDestroy();
 
     /* cleanup cfg */
     USWipe(&_cfg);
     WMConfigDestroy();
+    DestroyManifest();
 
     cookie = XCBDestroyWindow(_wm.dpy, _wm.wmcheckwin);
     XCBDiscardReply(_wm.dpy, cookie);
@@ -223,6 +232,12 @@ cleanup(void)
     }
 }
 
+void
+cleanupcursors(void)
+{
+    CursorsDestroy();
+}
+
 void __HOT__
 eventhandler(XCBGenericEvent *ev)
 {
@@ -242,12 +257,15 @@ eventhandler(XCBGenericEvent *ev)
         WMWork *work = GArrayAt(&_wm.work, i);
 
         if(work->function)
-        {   
-            ret = work->function(ev, work->arg);
+        {   ret = work->function(ev, work->arg);
         }
 
         if(!ret)
         {   
+            if(work->allocated)
+            {   free(work->arg.v);
+            }
+
             ret = GArrayDelete(&_wm.work, i);
 
             if(ret)
@@ -259,10 +277,70 @@ eventhandler(XCBGenericEvent *ev)
     UNLOCK_WM();
 }
 
+void __HOT__
+eventhandlercallback(int fd, int events, Generic arg)
+{
+    if(!ASSERT(events & POLLIN))
+    {   
+        DebugError("Invalid events.");
+        return;
+    }
+
+    (void)fd;
+    (void)arg;
+
+    while(_wm.running && !XCBCheckDisplayError(_wm.dpy))
+    {
+        XCBEvent *ev = XCBPollForEvent(_wm.dpy);
+
+        if(!ev)
+        {   break;
+        }
+
+        eventhandler(ev);
+        free(ev);
+    }
+
+    /* XCB sets errno because it just does */
+    errno = 0;
+
+    if(!_wm.running || XCBCheckDisplayError(_wm.dpy))
+    {   WMPollCallExit();
+    }
+}
+
 void
 exithandler(void)
-{   
-    Debug("%s", "Process Terminated Successfully.");
+{
+    fprintf(stderr, "Process Terminated Successfully.\n");
+}
+
+void
+glibc_exithandler(int status, void *arg)
+{
+    char *STATUS_COLOR;
+    char *RESET = "\033[0m";
+
+    if(status == 0)
+    {
+        STATUS_COLOR = "\033[1;32m";
+    }
+    else
+    { 
+        STATUS_COLOR = "\033[1;91m";
+    }
+
+    if(!isatty(STDERR_FILENO))
+    {   
+        STATUS_COLOR = "";
+        RESET = "";
+    }
+
+    fprintf(stderr, "Process Terminated Successfully (%s%d%s).\n", 
+        STATUS_COLOR,
+        status,
+        RESET
+    );
 }
 
 i8
@@ -289,7 +367,6 @@ quit(void)
 {
     _wm.running = 0;
     _wm.manual_exit = 1;
-    wakeupconnection(_wm.dpy, _wm.screen);
 }
 
 static u8
@@ -606,7 +683,8 @@ restoremonsession(char *buff, u16 len)
             if(pullm->mw == w && pullm->mh == h)
             {
                 if(pullm->mx == x && pullm->my == y)
-                {   target = pullm;
+                {   
+                    target = pullm;
                     break;
                 }
                 else if(possibleInterator < errorleeway)
@@ -616,7 +694,7 @@ restoremonsession(char *buff, u16 len)
         }
         for(pullm = _wm.mons; pullm; pullm = nextmonitor(pullm))
         {
-            if(BETWEEN(w, pullm->mw + errorleeway, pullm->mh - errorleeway) && BETWEEN(h, pullm->mh + errorleeway, pullm->mh - errorleeway))
+            if(IN_RANGE(w, pullm->mw, errorleeway) && IN_RANGE(h, pullm->mh, errorleeway))
             {
                 if(possibleInterator < errorleeway)
                 {   possible[possibleInterator++] = pullm;
@@ -727,14 +805,12 @@ restarthard(void)
 void 
 run(void)
 {
-    XCBGenericEvent *ev = NULL;
+    int status = EXIT_SUCCESS;
+
     XCBSync(_wm.dpy);
-    
-    while(_wm.running && !XCBNextEvent(_wm.dpy, &ev))
-    {
-        eventhandler(ev);
-        free(ev);
-        ev = NULL;
+
+    while(_wm.running && status == EXIT_SUCCESS)
+    {   status = WMPollRun();
     }
 
     _wm.has_error = XCBCheckDisplayError(_wm.dpy);
@@ -748,7 +824,7 @@ savesession(void)
     {
         /* This should be enough that any broken clients are ignored for event processing */
         const u16 MAX_EVENT_PROCESS = 1000;
-        u8 i = 0;
+        i32 i = 0;
         XCBGenericEvent *ev = NULL;
         while((ev = XCBPollForEvent(_wm.dpy)) && ++i < MAX_EVENT_PROCESS)
         {
@@ -1005,6 +1081,7 @@ sendmon(Client *c, Monitor *m)
 void
 setup(void)
 {
+    enum { WM_FD_N, WM_WATCHER_FD, WM_FD_LAST };
     /* setup wm basic data */
     startupwm();
     checkotherwm();
@@ -1013,6 +1090,9 @@ setup(void)
     /* clean up any zombies immediately */
     sighandler();
 
+    WMKeybindInit();
+    WMPollInit(WM_FD_LAST);
+
     /* setup threading before any major systems use it */
     if(_wm.use_threads)
     {   _wm.use_threads = InitThreading() == EXIT_SUCCESS;
@@ -1020,9 +1100,9 @@ setup(void)
 
     setupatoms();
     setupcursors();
+    setupwm();
     setupcfg();
     setupwatchers();
-    setupwm();
 
     /* finds any monitor's */
     updategeom();
@@ -1034,7 +1114,7 @@ setup(void)
     XCBWindowAttributes wa;
     /* xcb_event_mask_t */
     /* ~0 causes event errors because some event masks override others, for some reason... */
-    wa.cursor = cursors[CurNormal];
+    wa.cursor = TryGetCursor(WM_cursor_default);
     wa.event_mask =  XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT
                     |XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY
                     |XCB_EVENT_MASK_BUTTON_PRESS
@@ -1090,7 +1170,16 @@ setupcfg(void)
     }
 
     USInit(&_cfg, UserSettingsDefault);
+
+    InitManifest();
 }
+
+void
+setupcursors(void)
+{
+    InitCursors();
+}
+
 void
 setupsys(void)
 {
@@ -1127,7 +1216,7 @@ setupwatchers(void)
     char *path;
     const char *const invaliddir = ".";
 
-    path = (char *)WMConfigGetPath(WMFileFolder);
+    path = (char *)WMConfigGetFolder(WMFolderConfig);
 
     if(path)
     {   
@@ -1228,6 +1317,8 @@ setupwm(void)
 
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientList], XCB_ATOM_WINDOW, 32, XCBPropModeReplace, &unused, 0);
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], XCB_ATOM_WINDOW, 32, XCBPropModeReplace, &unused, 0);
+
+    WMPollAddFD(XCBDisplayNumber(_wm.dpy), POLLIN, eventhandlercallback, (Generic){0});
 }
 
 void
@@ -1291,12 +1382,16 @@ void
 sighup(int signo) /* signal */
 {
     restarthard();
+    WMPollCallExit();
+    WMPollWakeup();
 }
 
 void
 sigterm(int signo)
 {
     quit();
+    WMPollCallExit();
+    WMPollWakeup();
 }
 
 void
@@ -1412,7 +1507,11 @@ void
 startup(void)
 {
     setupsys();
+#ifdef __GLIBC__
+    on_exit(glibc_exithandler, NULL);
+#else
     atexit(exithandler);
+#endif
 }
 
 void
@@ -1434,6 +1533,15 @@ startupwm(void)
     }
 
     char *display = NULL;
+    char *displaycopy = NULL;
+
+    const ArgOpt *opt = WMCheckArg(WMArgXDisplay);
+
+    if(opt && opt->found && opt->argument_return)
+    {   
+        displaycopy = strdup(opt->argument_return);
+        display = displaycopy;
+    }
 
     _wm.dpy = XCBOpenDisplay(display, &_wm.screen);
 
@@ -1446,12 +1554,17 @@ startupwm(void)
         if(_wm.use_threads)
         {   pthread_mutex_destroy(&_wm.mutex);
         }
+
         DIECAT("FATAL: Cannot Connect to X Server. [%s]", display);
     }
 
     /* This allows for execvp and exec to only spawn process on the specified display rather than the default varaibles */
     if(display)
     {   setenv("DISPLAY", display, 1);
+    }
+
+    if(displaycopy)
+    {   free(displaycopy);
     }
 }
 

@@ -225,7 +225,7 @@ vxextdebug(enum VXMExtDebugType type, const char *file, const int line, const ch
                 "%.*s%s\n",
                 (int)n,
                 msg + pos,
-                RESET_ALL);
+                isatty(STDERR_FILENO) ? RESET_ALL : "");
 
         pos += n;
     }
@@ -234,7 +234,7 @@ vxextdebug(enum VXMExtDebugType type, const char *file, const int line, const ch
      * Make sure an empty message still produces a line.
      */
     if (msg_len == 0)
-    {   fprintf(stderr, "%s\n", RESET_ALL);
+    {   fprintf(stderr, "%s\n", isatty(STDERR_FILENO) ? RESET_ALL : "");
     }
 
     vxextdebug_unlock();

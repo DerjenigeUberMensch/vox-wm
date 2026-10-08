@@ -159,7 +159,7 @@ FFGetSysConfigPath(
  */
 int
 FFDirExists(
-        char *const DIR_NAME
+        const char *DIR_NAME
         );
 
 
@@ -173,7 +173,7 @@ FFDirExists(
  */
 int
 FFCreateDir(
-        char *const DIR_NAME
+        char *DIR_NAME
         );
 
 /* Creates a file and specified subdirectories if necessary.
@@ -189,7 +189,7 @@ FFCreateDir(
  */
 int
 FFCreatePath(
-        char *const FULL_PATH
+        char *FULL_PATH
         );
 
 /* Path checking simply checks if the specified path exists, this does not care if its a directory or regular file.
@@ -199,7 +199,7 @@ FFCreatePath(
  */
 int
 FFPathExists(
-        char *const FULL_PATH
+        const char *FULL_PATH
         );
 
 /* File checking checks if it exists via the specified path.
@@ -209,7 +209,7 @@ FFPathExists(
  */
 int
 FFFileExists(
-        char *const FILE_NAME
+        const char *FILE_NAME
         );
 
 /* Creates a file and specified subdirectories if necessary.
@@ -224,7 +224,7 @@ FFFileExists(
  */
 int
 FFCreateFile(
-        char *const FILE_NAME
+        char *FILE_NAME
         );
 
 /* Checks if a file is empty.
@@ -236,7 +236,7 @@ FFCreateFile(
  */
 int
 FFIsFileEmpty(
-        char *const FILE_NAME
+        const char *FILE_NAME
         );
 
 /* Gets a new line from a file (usually to read).

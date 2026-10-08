@@ -98,6 +98,10 @@ USInit(
         SCSetting *items
         )
 {
+    if(!ASSERT(settings_init) || !items)
+    {   return;
+    }
+
     int status;
 
     memset(settings_init, 0, sizeof(UserSettings));
@@ -119,7 +123,6 @@ USInit(
         USLoad(settings_init);
     }
 }
-
 
 void
 USLoad(
@@ -313,10 +316,17 @@ USGetSetting(
 
     US_LOCK_MUTEX(settings);
 
+    if(!ASSERT(setting < UserSettingsLAST))
+    {
+        DebugWarn("Invalid setting index: %u", setting);
+        memset(&ret, 0, sizeof(Generic));
+        goto UNLOCK;
+    }
+
     const SCSetting *usdata = settings->holder;
 
     ret = usdata[setting].data;
-
+UNLOCK:
     US_UNLOCK_MUTEX(settings);
 
     return ret;

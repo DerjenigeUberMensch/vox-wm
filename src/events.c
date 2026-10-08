@@ -1,9 +1,12 @@
+#include <complex.h>
 #include <stdint.h>
 #include <string.h>
 
+#include "keybind/keybind_definitions.h"
+#include "keybind/keybinds.h"
+
 #include "events.h"
 #include "util.h"
-#include "keybinds.h"
 #include "main.h"
 #include "monitor.h"
 #include "client.h"
@@ -11,6 +14,8 @@
 #include "getprop.h"
 #include "settings.h"
 #include "floating.h"
+#include "actions.h"
+#include "interactive.h"
 
 extern WM _wm;
 extern UserSettings _cfg;
@@ -139,32 +144,17 @@ keypress(XCBGenericEvent *event)
     {   return;
     }
 
-    const i32 cleanstate = CLEANMASK(state);
-    /* ONLY use lowercase cause we dont know how to handle anything else */
-    const XCBKeysym sym = XCBKeySymbolsGetKeySym(_wm.syms, keydetail, 0);
-    /* Only use upercase cause we dont know how to handle anything else
-     * sym = XCBKeySymbolsGetKeySym(_wm.syms,  keydetail, 0);
-     */
-    /* This Could work MAYBE allowing for upercase and lowercase Keybinds However that would complicate things due to our ability to mask Shift
-     * sym = XCBKeySymbolsGetKeySym(_wm.syms, keydetail, cleanstate); 
-     */
-    Debug("%d", sym);
-    int i;
+    const u32 cleanstate = CLEANMASK(state);
     u8 sync = 0;
-    for(i = 0; i < LENGTH(keys); ++i)
-    {
-        if(keys[i].type == XCB_KEY_PRESS)
-        {
-            if (sym == keys[i].keysym
-                    && CLEANMASK(keys[i].mod) == cleanstate
-                    && keys[i].func) 
-            {   
-                keys[i].func(&(keys[i].arg));
-                sync = 1;
-                break;
-            }
-        }
-    }
+
+    bool ret = WMKeybindHandler(cleanstate, keydetail, WM_INPUT_PRESS, false);
+
+    sync = ret;
+
+    /*
+    Debug("%s", ret ? "true" : "false");
+    */
+
     if(sync)
     {   XCBFlush(_wm.dpy);
     }
@@ -202,31 +192,17 @@ keyrelease(XCBGenericEvent *event)
     {   return;
     }
 
-    const i32 cleanstate = CLEANMASK(state);
-    /* ONLY use lowercase cause we dont know how to handle anything else */
-    const XCBKeysym sym = XCBKeySymbolsGetKeySym(_wm.syms, keydetail, 0);
-    /* Only use upercase cause we dont know how to handle anything else
-     * sym = XCBKeySymbolsGetKeySym(_wm.syms,  keydetail, 0);
-     */
-    /* This Could work MAYBE allowing for upercase and lowercase Keybinds However that would complicate things due to our ability to mask Shift
-     * sym = XCBKeySymbolsGetKeySym(_wm.syms, keydetail, cleanstate); 
-     */
-    int i;
+    const u32 cleanstate = CLEANMASK(state);
     u8 sync = 0;
-    for(i = 0; i < LENGTH(keys); ++i)
-    {
-        if(keys[i].type == XCB_KEY_RELEASE)
-        {
-            if (sym == keys[i].keysym
-                    && CLEANMASK(keys[i].mod) == cleanstate
-                    && keys[i].func) 
-            {   
-                keys[i].func(&(keys[i].arg));
-                sync = 1;
-                break;
-            }
-        }
-    }
+
+    bool ret = WMKeybindHandler(cleanstate, keydetail, WM_INPUT_RELEASE, false);
+
+    sync = ret;
+
+    /*
+    Debug("%s", ret ? "true" : "false");
+    */
+
     if(sync)
     {   XCBFlush(_wm.dpy);
     }
@@ -257,11 +233,8 @@ buttonpress(XCBGenericEvent *event)
     (void)samescreen;
     (void)tim;
 
-    XCBWindow target = PROPOGATE_FRAME_WINDOW_EVENT(event, eventwin, eventchild, XCBButtonPressMask);
-
-    if(target == XCBNone)
-    {   return;
-    }
+    XCBWindow target = eventwin;
+    /* PROPOGATE_FRAME_WINDOW_EVENT(event, eventwin, eventchild, XCBButtonPressMask); */
 
     const i32 cleanstate = CLEANMASK(state);
 
@@ -281,37 +254,34 @@ buttonpress(XCBGenericEvent *event)
         XCBAllowEvents(_wm.dpy, XCB_ALLOW_REPLAY_POINTER, XCB_CURRENT_TIME);
         sync = 1;
     }
-    else
-    {   
-        /* set focus to root, but still maintain the selected client.
-         * This makes it "seem" like we unfocused the window while still maintaing correct stack order.
-         */
-        if(_wm.selmon->desksel->sel)
-        {   unfocus(_wm.selmon->desksel->sel, 1);
+    /* ignore requests on the root window */
+    else if(target == _wm.root)
+    {
+        /* someone clicked root */  /* Spec says this shouldnt happen but some windows spoof root and sometimes do wierd things */
+        if(eventchild == XCBNone || unlikely(eventchild == _wm.root))
+        {
+            /* set focus to root, but still maintain the selected client.
+             * This makes it "seem" like we unfocused the window while still maintaing correct stack order.
+             */
+            if(_wm.selmon->desksel->sel)
+            {   unfocus(_wm.selmon->desksel->sel, 1);
+            }
         }
 
+        sync = 1;
+    }
+    /* some windows dont manage because they dont work or are override redirects */
+    else if(!IS_WM_WINDOW(target))
+    {   
         /* if no selected window, this should just set input focus to root, failsafe for above basically */
         XCBSetInputFocus(_wm.dpy, target, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
         XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow], XCB_ATOM_WINDOW, 32, XCBPropModeReplace, (unsigned char *)&(target), 1);
         /* shouldnt need to sync, but too lazy to test */
         sync = 1;
     }
-    int i;
-    for(i = 0; i < LENGTH(buttons); ++i)
-    {   
-        if(buttons[i].type == XCB_BUTTON_PRESS
-            && buttons[i].func
-            && buttons[i].button == keydetail
-            && CLEANMASK(buttons[i].mask) == cleanstate)
-        {
-            Arg arg;
-            arg.v = ev;
-            buttons[i].func(&arg);
-            sync = 1;
-            Debug("%d", buttons[i].button);
-            break;
-        }
-    }
+
+    sync += !!WMKeybindHandler(cleanstate, keydetail, WM_INPUT_PRESS, true);
+
     if(sync)
     {   XCBFlush(_wm.dpy);
     }
@@ -355,22 +325,7 @@ buttonrelease(XCBGenericEvent *event)
     const i32 cleanstate = CLEANMASK(state);
     u8 sync = 0;
 
-    i16 i;
-    for(i = 0; i < LENGTH(buttons); ++i)
-    {   
-        if(buttons[i].type == XCB_BUTTON_RELEASE
-            && buttons[i].func
-            && buttons[i].button == keydetail
-            && CLEANMASK(buttons[i].mask) == cleanstate)
-        {
-            Arg arg;
-            arg.v = ev;
-            buttons[i].func(&arg);
-            sync = 1;
-            Debug("%d", buttons[i].button);
-            break;
-        }
-    }
+    sync += !!WMKeybindHandler(cleanstate, keydetail, WM_INPUT_RELEASE, true);
     
     if(sync)
     {   XCBFlush(_wm.dpy);
@@ -873,8 +828,21 @@ configurerequest(XCBGenericEvent *event)
               * the bottom right corner of its frame will not move but instead the top left corner will be adjusted by the difference in size. 
               * https://specifications.freedesktop.org/wm/latest-single/#id-1.10.8
               */
-            if(mask & (XCB_CONFIG_WINDOW_X|XCB_CONFIG_WINDOW_Y))
-            {   applygravity(c->gravity, &rx, &ry, rw, rh, c->bw);
+
+            i32 oldgx = 0;
+            i32 oldgy = 0;
+            i32 newgx = 0;
+            i32 newgy = 0;
+
+            applygravity(c->gravity, &oldgx, &oldgy, c->w, c->h, c->bw);
+            applygravity(c->gravity, &newgx, &newgy, rw, rh, c->bw);
+
+            if(!(mask & XCB_CONFIG_WINDOW_X))
+            {   rx += oldgx - newgx;
+            }
+
+            if(!(mask & XCB_CONFIG_WINDOW_Y))
+            {   ry += oldgy - newgy;
             }
 
             /* sometimes clients resend data for no reason using resizerequest() because they think we dont a good enough job
@@ -1432,6 +1400,120 @@ clientmessage(XCBGenericEvent *event)
             }
         }
     }
+    else if(atom == netatom[NetMoveResize])
+    {
+        const int netwmstate = l2;
+        /* some apps decided that they wanna be funny and fuck things up so this check prevents that */
+        const u32 button = CLEANBUTTONMASK(l3);
+
+        /* TODO */
+        switch(netwmstate)
+        {
+            case _NET_WM_MOVERESIZE_SIZE_TOPLEFT:
+            case _NET_WM_MOVERESIZE_SIZE_TOP:
+            case _NET_WM_MOVERESIZE_SIZE_TOPRIGHT:
+            case _NET_WM_MOVERESIZE_SIZE_RIGHT:
+            case _NET_WM_MOVERESIZE_SIZE_BOTTOMRIGHT:
+            case _NET_WM_MOVERESIZE_SIZE_BOTTOM:
+            case _NET_WM_MOVERESIZE_SIZE_BOTTOMLEFT:
+            case _NET_WM_MOVERESIZE_SIZE_LEFT:
+                ResizeWindow(win, button, false);
+                break;
+            case _NET_WM_MOVERESIZE_MOVE:
+                DragWindow(win, button);
+                break;
+            case _NET_WM_MOVERESIZE_SIZE_KEYBOARD: 
+                /* TODO */
+                break;
+            case _NET_WM_MOVERESIZE_MOVE_KEYBOARD: 
+                /* TODO */
+                break;
+            /* Not sure where the race condition occurs?? */
+            case _NET_WM_MOVERESIZE_CANCEL: 
+                /* unused */
+                break;
+        }
+        sync = 1;
+    }
+    else if(atom == netatom[NetMoveResizeWindow])
+    {
+        Debug0("NetMoveResizeWindow 'ed");
+        /* specified as low 8 bits: 
+            * https://specifications.freedesktop.org/wm-spec/latest/ar01s04.html
+            */
+        const u8 GRAVITY_MASK = (1 << 8) - 1;
+        const i32 x = l1;
+        const i32 y = l2;
+        const i32 w = l3;
+        const i32 h = l4;
+        const u16 __NET_WM_MOVE_WINDOW_X = 1 << 8;
+        const u16 __NET_WM_MOVE_WINDOW_Y = 1 << 9;
+        const u16 __NET_WM_MOVE_WINDOW_WIDTH = 1 << 10;
+        const u16 __NET_WM_MOVE_WINDOW_HEIGHT = 1 << 11;
+
+        /* idk make simpler or smt */
+        const u16 __NET_WM_MOVE_WINDOW_SOURCE_MASK = (1 << 12) | 
+                                                        (1 << 13) | 
+                                                        (1 << 14) | 
+                                                        (1 << 15);
+        enum XCBBitGravity gravity = l0 & GRAVITY_MASK;
+
+        const u32 __SHIFT_SOURCE_TO_UINT8_MAX_BITS = 12;
+
+        const u32 FLAG_BITS = __NET_WM_MOVE_WINDOW_X     | 
+                                __NET_WM_MOVE_WINDOW_Y     | 
+                                __NET_WM_MOVE_WINDOW_WIDTH | 
+                                __NET_WM_MOVE_WINDOW_HEIGHT;
+        const u32 flags = l0 & FLAG_BITS;
+        const u8 source = (l0 & __NET_WM_MOVE_WINDOW_SOURCE_MASK) >> __SHIFT_SOURCE_TO_UINT8_MAX_BITS;
+
+        /* Ignore the source, as the spec doesn't specify what to do with it */
+        (void)source;
+
+        u32 tmpgravity = c->gravity;
+
+        if(gravity == XCBNone)
+        {   gravity = c->gravity;
+        }
+
+        if(c->gravity != gravity)
+        {   c->gravity = gravity;
+        }
+
+        u32 mask = 0;
+
+        if(flags & __NET_WM_MOVE_WINDOW_X)
+        {   mask |= XCB_CONFIG_WINDOW_X;
+        }
+
+        if(flags & __NET_WM_MOVE_WINDOW_Y)
+        {   mask |= XCB_CONFIG_WINDOW_Y;
+        }
+
+        if(flags & __NET_WM_MOVE_WINDOW_WIDTH)
+        {   mask |= XCB_CONFIG_WINDOW_WIDTH;
+        }
+
+        if(flags & __NET_WM_MOVE_WINDOW_HEIGHT)
+        {   mask |= XCB_CONFIG_WINDOW_HEIGHT;
+        }
+
+        XCBGenericEvent _ev;
+        memset(&_ev, 0, sizeof(_ev));
+
+        XCBConfigureRequestEvent *gev = (XCBConfigureRequestEvent *)&_ev;
+        gev->x = x;
+        gev->y = y;
+        gev->width = w;
+        gev->height = h;
+        gev->window = c->win;
+        gev->value_mask = mask;
+        gev->response_type = XCB_CONFIGURE_REQUEST;
+        /* Should automatically flush. */ 
+        configurerequest(&_ev);
+        /* revert back to old gravity. */
+        c->gravity = tmpgravity;
+    }
     /* if the atom we got is a client message for a window we manage, get the client */
     else
     {   c = wintoclient(win);
@@ -1594,152 +1676,6 @@ clientmessage(XCBGenericEvent *event)
 
             killclient(c, Graceful);
             sync = 1;
-        }
-        else if(atom == netatom[NetMoveResize])
-        {
-            const int netwmstate = l2;
-            /* some apps decided that they wanna be funny and fuck things up so this check prevents that */
-            const i32 button = CLEANBUTTONMASK(l3);
-
-            XCBGenericEvent tmp_bev;
-
-            XCBButtonPressEvent bev = 
-            {
-                .state = SUPER,
-                .root = _wm.root,
-                .time = XCB_CURRENT_TIME,
-                .child = 0,
-                .event = win,
-                .detail = button,
-                .root_x = l0,
-                .root_y = l1,
-                .event_x = 0,
-                .event_y = 0,
-                .sequence = 0,
-                .same_screen = 1,
-                .response_type = XCB_BUTTON_PRESS,
-            };
-
-            memset(&tmp_bev, 0, sizeof(tmp_bev));
-            memcpy(&tmp_bev, &bev, sizeof(bev));
-
-            extern int DragWindowHandler(XCBGenericEvent *ev, Arg arg);
-            extern int ResizeWindowHandler(XCBGenericEvent *ev, Arg arg);
-            
-            Arg arg;
-            Arg status;
-            arg.v = &tmp_bev;
-
-            /* TODO */
-            switch(netwmstate)
-            {
-                case _NET_WM_MOVERESIZE_SIZE_TOPLEFT:
-                case _NET_WM_MOVERESIZE_SIZE_TOP:
-                case _NET_WM_MOVERESIZE_SIZE_TOPRIGHT:
-                case _NET_WM_MOVERESIZE_SIZE_RIGHT:
-                case _NET_WM_MOVERESIZE_SIZE_BOTTOMRIGHT:
-                case _NET_WM_MOVERESIZE_SIZE_BOTTOM:
-                case _NET_WM_MOVERESIZE_SIZE_BOTTOMLEFT:
-                case _NET_WM_MOVERESIZE_SIZE_LEFT:
-                    status = ResizeWindow(&arg);
-                    if(status.i == EXIT_SUCCESS)
-                    {   ResizeWindowHandler(&tmp_bev, arg);
-                    }
-                    break;
-                case _NET_WM_MOVERESIZE_MOVE:
-                    status = DragWindow(&arg);
-                    if(status.i == EXIT_SUCCESS)
-                    {   DragWindowHandler(&tmp_bev, arg);
-                    }
-                    break;
-                case _NET_WM_MOVERESIZE_SIZE_KEYBOARD: 
-                    break;
-                case _NET_WM_MOVERESIZE_MOVE_KEYBOARD: 
-                    break;
-                /* Not sure where the race condition occurs?? */
-                case _NET_WM_MOVERESIZE_CANCEL: 
-                    break;
-            }
-            sync = 1;
-        }
-        else if(atom == netatom[NetMoveResizeWindow])
-        {
-            Debug0("NetMoveResizeWindow 'ed");
-            /* specified as low 8 bits: 
-             * https://specifications.freedesktop.org/wm-spec/latest/ar01s04.html
-             */
-            const u8 GRAVITY_MASK = (1 << 8) - 1;
-            const i32 x = l1;
-            const i32 y = l2;
-            const i32 w = l3;
-            const i32 h = l4;
-            const u16 __NET_WM_MOVE_WINDOW_X = 1 << 8;
-            const u16 __NET_WM_MOVE_WINDOW_Y = 1 << 9;
-            const u16 __NET_WM_MOVE_WINDOW_WIDTH = 1 << 10;
-            const u16 __NET_WM_MOVE_WINDOW_HEIGHT = 1 << 11;
-
-            /* idk make simpler or smt */
-            const u16 __NET_WM_MOVE_WINDOW_SOURCE_MASK = (1 << 12) | 
-                                                         (1 << 13) | 
-                                                         (1 << 14) | 
-                                                         (1 << 15);
-            enum XCBBitGravity gravity = l0 & GRAVITY_MASK;
-
-            const u32 __SHIFT_SOURCE_TO_UINT8_MAX_BITS = 12;
-
-            const u32 FLAG_BITS = __NET_WM_MOVE_WINDOW_X     | 
-                                  __NET_WM_MOVE_WINDOW_Y     | 
-                                  __NET_WM_MOVE_WINDOW_WIDTH | 
-                                  __NET_WM_MOVE_WINDOW_HEIGHT;
-            const u32 flags = l0 & FLAG_BITS;
-            const u8 source = (l0 & __NET_WM_MOVE_WINDOW_SOURCE_MASK) >> __SHIFT_SOURCE_TO_UINT8_MAX_BITS;
-
-            /* Ignore the source, as the spec doesn't specify what to do with it */
-            (void)source;
-
-            u32 tmpgravity = c->gravity;
-
-            if(gravity == XCBNone)
-            {   gravity = c->gravity;
-            }
-
-            if(c->gravity != gravity)
-            {   c->gravity = gravity;
-            }
-
-            u32 mask = 0;
-
-            if(flags & __NET_WM_MOVE_WINDOW_X)
-            {   mask |= XCB_CONFIG_WINDOW_X;
-            }
-
-            if(flags & __NET_WM_MOVE_WINDOW_Y)
-            {   mask |= XCB_CONFIG_WINDOW_Y;
-            }
-
-            if(flags & __NET_WM_MOVE_WINDOW_WIDTH)
-            {   mask |= XCB_CONFIG_WINDOW_WIDTH;
-            }
-
-            if(flags & __NET_WM_MOVE_WINDOW_HEIGHT)
-            {   mask |= XCB_CONFIG_WINDOW_HEIGHT;
-            }
-
-            XCBGenericEvent _ev;
-            memset(&_ev, 0, sizeof(_ev));
-
-            XCBConfigureRequestEvent *gev = (XCBConfigureRequestEvent *)&_ev;
-            gev->x = x;
-            gev->y = y;
-            gev->width = w;
-            gev->height = h;
-            gev->window = c->win;
-            gev->value_mask = mask;
-            gev->response_type = XCB_CONFIGURE_REQUEST;
-            /* Should automatically flush. */ 
-            configurerequest(&_ev);
-            /* revert back to old gravity. */
-            c->gravity = tmpgravity;
         }
         else if(atom == netatom[NetRestackWindow])
         {   

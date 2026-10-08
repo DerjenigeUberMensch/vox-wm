@@ -8,6 +8,8 @@ Release/
 *.release_time
 *.debug_time
 
+nohup.out
+
 
 # Clang leftovers
 .cache/

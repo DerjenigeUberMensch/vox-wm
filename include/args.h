@@ -20,8 +20,11 @@ WMArg
     WMArgDieCat,
     WMArgLicense,
     WMArgSupport,
-    WMArgThreads,
     WMArgSkipStartupFile,
+
+    /* these args just set their = thing so like --arg=10, so help displays them last */
+    WMArgThreads,
+    WMArgXDisplay,
 
     WMArgCount
 };

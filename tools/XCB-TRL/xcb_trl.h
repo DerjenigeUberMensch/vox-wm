@@ -367,6 +367,8 @@ extern "C" {
 #include <xcb/xinerama.h>
 #include <xcb/xcb_xrm.h>
 
+#include <sys/poll.h>
+
 
 #include "icccm.h"
 #include "xcb_trl_types.h"
@@ -1275,7 +1277,8 @@ XCBCreateGlyphCursor(
 XCBCookie
 XCBDefineCursor(
         XCBDisplay *display, 
-        XCBWindow window, XCBCursor id);
+        XCBWindow window, XCBCursor id
+        );
 /*
  * NOTE: foreground/background flags must be set, "pixel" property is always ignored.
  */
@@ -1287,6 +1290,56 @@ XCBRecolorCursor(
         XCBColor *background
         );
 
+/* Creates a cursor context for using in XCBCursorLoadCursor()
+ *
+ * NOTE: The context must be freed using XCBCursorContextFree() after use.
+ *
+ * RETURN: 0 on Success.
+ * RETURN: NonZero on Failure.
+ */
+int
+XCBCursorContextNew(
+        XCBDisplay *display,
+        int screen,
+        XCBCursorContext **context_return
+        );
+/* Free Cursor context data.
+ */
+void
+XCBCursorContextFree(
+        XCBCursorContext *context
+        );
+
+/* Loads a cursor from the given context by name.
+ *
+ * NOTE: Context must be freed using XCBCursorContextFree() after use.
+ * NOTE: The returned cursor must be freed using XCBFreeCursor() after use.
+ * NOTE: Resulting cursors returned are valid even when context has been freed.
+ *
+ * RETURN: XCBCursor
+ */
+XCBCursor
+XCBCursorLoadCursor(
+        XCBDisplay *display,
+        XCBCursorContext *context,
+        const char *name
+        );
+
+/* Loads a cursor from the given context by name.
+ *
+ * NOTE: This function is analagous to XCBCursorLoadCursor(), and is here for compatibility reasons.
+ * NOTE: Context must be freed using XCBCursorContextFree() after use.
+ * NOTE: The returned cursor must be freed using XCBFreeCursor() after use.
+ * NOTE: Resulting cursors returned are valid even when context has been freed.
+ *
+ * RETURN: XCBCursor
+ */
+XCBCursor
+XCBCursorLibraryLoadCursor(
+        XCBDisplay *display,
+        XCBCursorContext *context,
+        const char *name
+        );
 /*
  */
 XCBCookie
@@ -1721,6 +1774,43 @@ int
 XCBNextEvent(
         XCBDisplay *display, 
         XCBGenericEvent **event_return);
+
+/* Gets the next Event from the XServer, with a timeout in milliseconds, and returns it in event_return.
+ *
+ * display                     XCBDisplay *             The display to get the event from.
+ * timeout_ms                  int64_t                  The timeout in milliseconds to wait for an event, if -1, it will block indefinitely (until a event is received).
+ * event_return                XCBGenericEvent **       The event returned from the XServer, this pointer may not be NULL
+ *
+ * RETURN: 0 On Failure.
+ * RETURN: 1 On Success.
+ */
+int
+XCBNextEventTimed(
+        XCBDisplay *display, 
+        XCBGenericEvent **event_return,
+        int64_t timeout_ms
+        );
+
+/* Gets the next Event from the XServer, with a timeout in milliseconds, and returns it in event_return.
+ *
+ * displays                    XCBDisplay **            The displays to get the event from.
+ * event_returns               XCBGenericEvent ***      The events returned from the XServer, this pointer may not be NULL, this pointer must be the same length as displays.
+ * pollfds_mem                 struct pollfd *          The pollfd memory to use for polling the displays, this pointer must be the same length as displays.
+ * timeout_ms                  int64_t                  The timeout in milliseconds to wait for an event, if -1, it will block indefinitely (until a event is received).
+ *
+ * RETURN: -1 on Error.
+ * RETURN: 0 on Timeout.
+ * RETURN: 1 or more on Success (number of events received).
+ */
+int
+XCBNextEventTimedAnyDpy(
+        XCBDisplay *displays[],
+        size_t display_count,
+        XCBGenericEvent **event_return[],
+        struct pollfd *pollfds_mem,
+        int64_t timeout_ms
+        );
+
 /* 
  * Gets and returns the next Event from the XServer.
  * This returns a structure called xcb_generic_event_t.
@@ -1755,6 +1845,19 @@ XCBWaitForEvent(
 XCBGenericEvent *
 XCBPollForEvent(
         XCBDisplay *display);
+
+/* Checks if there are events in the queue, without consuming them.
+ * 
+ * NOTE: This function is NOT 1-1 to Xlib's XPending() function, as it does not check for more than 1 event.
+ *
+ * RETURN: 1 If there are events in the queue.
+ * RETURN: 0 If there are no events in the queue.
+ */
+int
+XCBPending(
+        XCBDisplay *display
+        );
+
 /** <Straight from the documentation.>
  * @brief Returns the next event without reading from the connection.
  * @param c The connection to the X server.

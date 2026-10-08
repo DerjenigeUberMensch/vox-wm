@@ -53,7 +53,7 @@ extern void VXEXTDEBUG_INTERNAL vxextdebug(enum VXMExtDebugType type, const char
     #define DebugWarnOnce(...)                                                      \
                                 do                                                  \
                                 {                                                   \
-                                    static char vxextdebug_internal_once_flag = 0;  \
+                                    static volatile char vxextdebug_internal_once_flag = 0;  \
                                                                                     \
                                     if(!vxextdebug_internal_once_flag)              \
                                     {                                               \
@@ -71,7 +71,7 @@ extern void VXEXTDEBUG_INTERNAL vxextdebug(enum VXMExtDebugType type, const char
     #define DebugCritOnce(...)                                                      \
                                 do                                                  \
                                 {                                                   \
-                                    static char vxextdebug_internal_once_flag = 0;  \
+                                    static volatile char vxextdebug_internal_once_flag = 0;  \
                                                                                     \
                                     if(!vxextdebug_internal_once_flag)              \
                                     {                                               \
@@ -89,7 +89,7 @@ extern void VXEXTDEBUG_INTERNAL vxextdebug(enum VXMExtDebugType type, const char
     #define DebugErrorOnce(...)                                                      \
                                 do                                                  \
                                 {                                                   \
-                                    static char vxextdebug_internal_once_flag = 0;  \
+                                    static volatile char vxextdebug_internal_once_flag = 0;  \
                                                                                     \
                                     if(!vxextdebug_internal_once_flag)              \
                                     {                                               \
@@ -108,7 +108,7 @@ extern void VXEXTDEBUG_INTERNAL vxextdebug(enum VXMExtDebugType type, const char
         #define DebugOnce(...)                                                     \
                                     do                                                  \
                                     {                                                   \
-                                        static char vxextdebug_internal_once_flag = 0;  \
+                                        static volatile char vxextdebug_internal_once_flag = 0;  \
                                                                                         \
                                         if(!vxextdebug_internal_once_flag)              \
                                         {                                               \
@@ -126,7 +126,7 @@ extern void VXEXTDEBUG_INTERNAL vxextdebug(enum VXMExtDebugType type, const char
         #define DebugLogOnce(...)                                                     \
                                     do                                                  \
                                     {                                                   \
-                                        static char vxextdebug_internal_once_flag = 0;  \
+                                        static volatile char vxextdebug_internal_once_flag = 0;  \
                                                                                         \
                                         if(!vxextdebug_internal_once_flag)              \
                                         {                                               \

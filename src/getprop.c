@@ -151,7 +151,7 @@ QueueProperty(XCBDisplay *display, GetPropCookie *cookie)
         }
         else
         {
-            DebugWarn("Using single threads: OUT_OF_QUEUE_MEMORY");
+            DebugWarnOnce("Using single threads: OUT_OF_QUEUE_MEMORY");
 
             PropUpdatePropertyGetReply(display, cookie);
             return;

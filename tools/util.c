@@ -23,6 +23,7 @@
  */
 
 #include "util.h"
+#include <stdlib.h>
 
 bool 
 memempty(void *mem, size_t size)
@@ -230,7 +231,104 @@ strjoin(const char *fmt, ...)
 
 #endif
 
+
+Cardinal OPPOSITE_CARDINAL(Cardinal c)
+{
+    switch(c)
+    {
+        case North: return South;
+        case NorthEast: return SouthWest;
+        case NorthWest: return SouthEast;
+        case South: return North;
+        case SouthEast: return NorthWest;
+        case SouthWest: return NorthEast;
+        case East: return West;
+        case West: return East;
+        default: return c;
+    }
+}
+
+char *CARDINAL_TO_STRING(Cardinal c)
+{
+    switch(c)
+    {
+        case North: return "North";
+        case South: return "South";
+        case East: return "East";
+        case West: return "West";
+        case NorthEast: return "NorthEast";
+        case NorthWest: return "NorthWest";
+        case SouthEast: return "SouthEast";
+        case SouthWest: return "SouthWest";
+        case CardinalCount: return NULL;
+    }
+
+    return NULL;
+}
+
+
+
 void _Breakpoint(void) { volatile int *e = 0; if(e != (volatile int *)1) { e = (volatile int *)3; } (void)e; }
+
+
+
+#ifdef __USE_POSIX
+
+#include <errno.h>
+#include <poll.h>
+
+int 
+upoll_poll(int fd, int events, i64 timeout_ms)
+{
+    char buff[UPOLL_UNIT_SIZE];
+
+    return upoll_poll_mult(&fd, &events, (int *)buff, buff, 1, timeout_ms);
+}
+
+int 
+upoll_poll_mult(int *fds, int *events, int *revents, void *poll_buffer, size_t fds_count, i64 timeout_ms)
+{
+    struct pollfd *pollfds = (struct pollfd *)poll_buffer;
+    size_t i;
+
+    for(i = 0; i < fds_count; ++i)
+    {
+        pollfds[i].fd = fds[i];
+        pollfds[i].events = events[i];
+        pollfds[i].revents = 0;
+
+        revents[i] = 0;
+    }
+
+    int ret;
+
+    ret = poll(pollfds, fds_count, timeout_ms);
+
+    if(ret > 0)
+    {
+        for(i = 0; i < fds_count; ++i)
+        {   revents[i] = pollfds[i].revents;
+        }
+
+        return ret;
+    }
+    else if(ret == 0)
+    {   return 0;
+    }
+
+    if(errno == EINTR)
+    {   return 0;
+    }
+    else
+    {   return -1;
+    }
+}
+
+#endif
+
+
+
+
 
 
 #ifdef __linux__ 

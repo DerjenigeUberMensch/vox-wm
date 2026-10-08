@@ -2,14 +2,12 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <fcntl.h>
-#include <errno.h>
 #include <string.h>
 
 
 #include "args.h"
 #include "config.h"
-#include "settings.h"
-#include "toggle.h"
+#include "actions.h"
 #include "util.h"
 #include "file_util.h"
 
@@ -88,7 +86,6 @@ ReadStartupApps(
 
     char buff[MAX_LENGTH];
     wordexp_t word;
-    Arg arg = { .v = NULL };
     char *olddir = NULL;
 
     memset(buff, 0, sizeof(buff));
@@ -98,7 +95,7 @@ ReadStartupApps(
     /* some apps run from their root dir which would be in .config/vox-wm/startup.cfg or whaever. */
     if(olddir)
     {   
-        const char *wmfolder = WMConfigGetPath(WMFileFolder);
+        const char *wmfolder = WMConfigGetFolder(WMFolderConfig);
 
         status = chdir(wmfolder);
 
@@ -140,10 +137,9 @@ ReadStartupApps(
             continue;
         }
 
-        arg.v = word.we_wordv;
-
-    
-        SpawnWindow(&arg);
+        if(word.we_wordc > 0)
+        {   ActionSpawnWindow(word.we_wordv[0], (const char **)word.we_wordv);
+        }
 
         wordfree(&word);
     }

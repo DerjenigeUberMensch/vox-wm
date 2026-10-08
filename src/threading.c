@@ -13,9 +13,9 @@
 #include "util.h"
 #include "args.h"
 
-
 threadpool __thread__pool = NULL;
 pthread_mutex_t __thread_mutex = PTHREAD_MUTEX_INITIALIZER;
+int allocated_threads = 0;
 
 int
 InitThreading(void)
@@ -56,7 +56,7 @@ InitThreading(void)
 
         if(*end == '\0')
         {   
-            aloc_threads = MAX(val, 1);
+            aloc_threads = MAX(val, 0);
 
             if(MAX_THREADS_REAL > LONG_MAX)
             {   MAX_THREADS_REAL = LONG_MAX;
@@ -68,15 +68,18 @@ InitThreading(void)
 
             aloc_threads = MIN(aloc_threads, MAX_THREADS_REAL);
 
-            DebugLog("Threads manually set to -> %ld", aloc_threads);
+            DebugLog("Threads manually set to -> %d", aloc_threads);
         }
         else
         {   DebugLog("Failed to parse %s", opt->argument_return);
         }
-
     }
 
-    __thread__pool = thpool_init(aloc_threads);
+    allocated_threads = aloc_threads;
+
+    if(aloc_threads)
+    {   __thread__pool = thpool_init(aloc_threads);
+    }
 
     if(__thread__pool)
     {   
@@ -132,7 +135,7 @@ ThreadingAddWork(void (*function)(Generic *arg), Generic *arg, TPromise *optiona
 
     pthread_mutex_lock(&__thread_mutex);
 
-    if(__thread__pool)
+    if(__thread__pool && allocated_threads > 0)
     {   status = thpool_add_work(__thread__pool, ThreadingWorker, (void *)arg_real);
     }
 
@@ -168,6 +171,8 @@ ThreadingDestroy(void)
         thpool_destroy(__thread__pool);
         __thread__pool = NULL;
     }
+
+    allocated_threads = 0;
 
     pthread_mutex_unlock(&__thread_mutex);
 }
@@ -219,7 +224,7 @@ ThreadingUsesThreads(void)
 
     pthread_mutex_lock(&__thread_mutex);
 
-    use_threads = __thread__pool != NULL;
+    use_threads = __thread__pool != NULL && allocated_threads != 0;
 
     pthread_mutex_unlock(&__thread_mutex);
 
