@@ -2,6 +2,7 @@
 #include "keybind/keybind_defaults.h"
 #include "VXExtDebug/vxextdebug.h"
 
+#include "XCB-TRL/xcb_trl_types.h"
 #include "actions.h"
 #include "interactive.h"
 #include "main.h"
@@ -318,44 +319,79 @@ void
 KeybindResizeWindow(const WMKeyBind *keybind, const Generic *arg)
 {
     i32 alt_mode = arg->data32i[0];
+    XCBWindow win = XCBNone;
+    XCBButton xbutton = XCBButtonAny;
+    int use_ev = 0;
+
+    if(keybind->ev)
+    {
+        int cleanev = XCB_EVENT_RESPONSE_TYPE(keybind->ev);
+
+        if(cleanev == XCBButtonPress)
+        {
+            XCBButtonPressEvent *bev = (XCBButtonPressEvent *)keybind->ev;
+
+            if(unlikely(bev->event == XCBNone))
+            {   
+                DebugWarn("Malformed request");
+                return;
+            }
+
+            if(IS_WM_WINDOW(bev->event))
+            {
+                if(bev->child == XCBNone || unlikely(IS_WM_WINDOW(bev->child)))
+                {   return;
+                }
+
+                win = bev->child;
+            }
+            else
+            {   win = bev->event;
+            }
+
+            xbutton = CLEANBUTTONMASK(bev->detail);
+
+            use_ev = 1;
+        }
+    }
 
     LOCK_WM();
 
-    Monitor *m = _wm.selmon;
-
-    if(unlikely(!m))
-    {
-        DebugError("No selected monitor");
-        goto UNLOCK;
-    }
-
-    Desktop *desk = m->desksel;
-
-    if(unlikely(!desk))
-    {
-        DebugError("No selected desktop");
-        goto UNLOCK;
-    }
-
-    Client *c = desk->sel;
-
     (void)ASSERT(GArrayEnd((void *)&keybind->buttons) - GArrayStart((void *)&keybind->buttons) == 1);
 
-    if(c)
+    WMButton *button = GArrayAt((void *)&keybind->buttons, 0);
+
+    if(!use_ev)
     {   
-        WMButton *button = GArrayAt((void *)&keybind->buttons, 0);
-        XCBButton xbutton = XCBButtonAny;
+        Monitor *m = _wm.selmon;
 
-        if(button)
-        {   xbutton = button->button;
-        }
-        else
-        {   DebugError("Button is NULL");
+        if(unlikely(!m))
+        {
+            DebugError("No selected monitor");
+            goto UNLOCK;
         }
 
-        ResizeWindow(c->win, xbutton, alt_mode);
+        Desktop *desk = m->desksel;
+
+        if(unlikely(!desk))
+        {
+            DebugError("No selected desktop");
+            goto UNLOCK;
+        }
+
+        Client *c = desk->sel;
+
+        if(!c)
+        {
+            DebugWarn("No selected client");
+            goto UNLOCK;
+        }
+
+        xbutton = button->button;
+        win = c->win;
     }
 
+    ResizeWindow(win, xbutton, alt_mode);
 UNLOCK:
     UNLOCK_WM();
 }
@@ -366,42 +402,80 @@ KeybindDragWindow(const WMKeyBind *keybind, const Generic *arg)
     (void)keybind;
     (void)arg;
 
+    XCBWindow win = XCBNone;
+    XCBButton xbutton = XCBButtonAny;
+    int use_ev = 0;
+
+    if(keybind->ev)
+    {
+        int cleanev = XCB_EVENT_RESPONSE_TYPE(keybind->ev);
+
+        if(cleanev == XCBButtonPress)
+        {
+            XCBButtonPressEvent *bev = (XCBButtonPressEvent *)keybind->ev;
+
+            if(unlikely(bev->event == XCBNone))
+            {   
+                DebugWarn("Malformed request");
+                return;
+            }
+
+            if(IS_WM_WINDOW(bev->event))
+            {
+                if(bev->child == XCBNone || unlikely(IS_WM_WINDOW(bev->child)))
+                {   return;
+                }
+
+                win = bev->child;
+            }
+            else
+            {   win = bev->event;
+            }
+
+            xbutton = CLEANBUTTONMASK(bev->detail);
+
+            use_ev = 1;
+        }
+    }
+
+
     LOCK_WM();
-
-    Monitor *m = _wm.selmon;
-
-    if(unlikely(!m))
-    {
-        DebugError("No selected monitor");
-        goto UNLOCK;
-    }
-
-    Desktop *desk = m->desksel;
-
-    if(unlikely(!desk))
-    {
-        DebugError("No selected desktop");
-        goto UNLOCK;
-    }
-
-    Client *c = desk->sel;
 
     (void)ASSERT(GArrayEnd((void *)&keybind->buttons) - GArrayStart((void *)&keybind->buttons) == 1);
 
-    if(c)
+    WMButton *button = GArrayAt((void *)&keybind->buttons, 0);
+
+    if(!use_ev)
     {   
-        WMButton *button = GArrayAt((void *)&keybind->buttons, 0);
-        XCBButton xbutton = XCBNone;
+        Monitor *m = _wm.selmon;
 
-        if(button)
-        {   xbutton = button->button;
-        }
-        else
-        {   DebugError("Button is NULL");
+        if(unlikely(!m))
+        {
+            DebugError("No selected monitor");
+            goto UNLOCK;
         }
 
-        DragWindow(c->win, xbutton);
+        Desktop *desk = m->desksel;
+
+        if(unlikely(!desk))
+        {
+            DebugError("No selected desktop");
+            goto UNLOCK;
+        }
+
+        Client *c = desk->sel;
+
+        if(!c)
+        {
+            DebugWarn("No selected client");
+            goto UNLOCK;
+        }
+
+        xbutton = button->button;
+        win = c->win;
     }
+
+    DragWindow(win, xbutton);
 
 UNLOCK:
     UNLOCK_WM();

@@ -40,6 +40,8 @@ WMKeyBind
     uint8_t type;              /* Press or Release                 */
     uint8_t pad0[5];
 
+    const XCBGenericEvent *ev; /* Optional XCB event              */
+
     GArray keysyms;             /* sizeof(WMKey)                   */
     GArray buttons;             /* sizeof(WMButton)                */
     Generic arg;                /* Argument                        */
@@ -59,6 +61,7 @@ int WMKeybindInit(void);
  * Create a new keybind
  *
  * NOTE: Adding or removing a keybind only updates the internal state, please run WMKeybindGrabKeys() after adding or removing keybinds to update the X11 state.
+ * NOTE: When reading the const WMKeybind * no data should be considered 'usable' after the callback loses scope.
  *
  * RETURN: 0 on Success
  * RETURN: 1 on Failure

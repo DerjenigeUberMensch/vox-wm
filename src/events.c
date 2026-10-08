@@ -147,7 +147,7 @@ keypress(XCBGenericEvent *event)
     const u32 cleanstate = CLEANMASK(state);
     u8 sync = 0;
 
-    bool ret = WMKeybindHandler(cleanstate, keydetail, WM_INPUT_PRESS, false);
+    bool ret = WMKeybindHandler(cleanstate, keydetail, WM_INPUT_PRESS, false, event);
 
     sync = ret;
 
@@ -195,7 +195,7 @@ keyrelease(XCBGenericEvent *event)
     const u32 cleanstate = CLEANMASK(state);
     u8 sync = 0;
 
-    bool ret = WMKeybindHandler(cleanstate, keydetail, WM_INPUT_RELEASE, false);
+    bool ret = WMKeybindHandler(cleanstate, keydetail, WM_INPUT_RELEASE, false, event);
 
     sync = ret;
 
@@ -233,8 +233,7 @@ buttonpress(XCBGenericEvent *event)
     (void)samescreen;
     (void)tim;
 
-    XCBWindow target = eventwin;
-    /* PROPOGATE_FRAME_WINDOW_EVENT(event, eventwin, eventchild, XCBButtonPressMask); */
+    XCBWindow target = PROPOGATE_FRAME_WINDOW_EVENT(event, eventwin, eventchild, XCBButtonPressMask);
 
     const i32 cleanstate = CLEANMASK(state);
 
@@ -280,7 +279,7 @@ buttonpress(XCBGenericEvent *event)
         sync = 1;
     }
 
-    sync += !!WMKeybindHandler(cleanstate, keydetail, WM_INPUT_PRESS, true);
+    sync += !!WMKeybindHandler(cleanstate, keydetail, WM_INPUT_PRESS, true, event);
 
     if(sync)
     {   XCBFlush(_wm.dpy);
@@ -325,7 +324,7 @@ buttonrelease(XCBGenericEvent *event)
     const i32 cleanstate = CLEANMASK(state);
     u8 sync = 0;
 
-    sync += !!WMKeybindHandler(cleanstate, keydetail, WM_INPUT_RELEASE, true);
+    sync += !!WMKeybindHandler(cleanstate, keydetail, WM_INPUT_RELEASE, true, event);
     
     if(sync)
     {   XCBFlush(_wm.dpy);

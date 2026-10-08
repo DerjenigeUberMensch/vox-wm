@@ -7,6 +7,7 @@
 #include <xcb/xcb.h>
 
 #include "GArray/garray.h"
+#include "XCB-TRL/xcb_trl_types.h"
 #include "keybind/keybind_definitions.h"
 #include "keybind/keybinds.h"
 
@@ -81,7 +82,7 @@ WMKeybindKeysymFromString(const char *keysym_str)
 
 /*( TODO: I dont even know how this works even though I wrote it )*/
 bool
-WMKeybindHandler(u16 mod, XCBKeyCode code, enum WMKeyType type, bool is_button)
+WMKeybindHandler(u16 mod, XCBKeyCode code, enum WMKeyType type, bool is_button, const XCBGenericEvent *optional_event)
 {
     if(!ASSERT(type == WM_INPUT_PRESS || type == WM_INPUT_RELEASE))
     {   
@@ -215,7 +216,9 @@ WMKeybindHandler(u16 mod, XCBKeyCode code, enum WMKeyType type, bool is_button)
             }
             else
             {   
+                keybind->ev = optional_event;
                 keybind->func(keybind, &keybind->arg);
+                keybind->ev = NULL;
                 ret = true;
             }
         }

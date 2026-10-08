@@ -14,8 +14,6 @@ extern WM _wm;
 extern UserSettings _cfg;
 extern XCBAtom netatom[NetLast];
 extern XCBAtom wmatom[WMLast];
-extern XCBCursor x11_cursors[XC_num_glyphs];
-extern XCBCursor x11_modern_cursors[XC_num_glyphs];
 
 STATIC_ASSERT(XCBNone == 0, XCB_NONE_MUST_BE_ZERO);
 
