@@ -823,6 +823,8 @@ ResizeWindow(XCBWindow window, XCBButton button, bool alt_mode)
     {   goto DESTROY;
     }
 
+    free(GrabPointer);
+
     if(c)
     {
         /* prevent DOCKED from computing non floating */

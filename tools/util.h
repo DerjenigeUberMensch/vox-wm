@@ -100,8 +100,10 @@ Generic
 #define SIZEOF_VAR(VAR)     ((char*)(&VAR + 1) - (char*)(&VAR))
 #endif
 
+
 #ifndef SIZEOF_TYPE
-#define SIZEOF_TYPE(TYPE)   ((char*)((TYPE*)0 + 1) - (char*)((TYPE*)0))
+#define SIZEOF_TYPE(TYPE)   sizeof(TYPE)
+/* ((char*)((TYPE*)0 + 1) - (char*)((TYPE*)0)) */
 #endif
 
 #ifndef FIELD_SIZEOF
@@ -126,7 +128,7 @@ Generic
 #endif
 
 #ifndef IN_RANGE
-#define IN_RANGE(X, BASE, RANGE)    ((X) >= (BASE) && (X) <= ((BASE) + (RANGE)))
+#define IN_RANGE(X, BASE, RANGE)    ((X) >= ((BASE) - (RANGE)) && (X) <= ((BASE) + (RANGE)))
 #endif
 
 #ifndef MOD
@@ -146,14 +148,18 @@ Generic
 #endif
 
 #ifndef CLEARFLAG
-#define CLEARFLAG(FLAGS, FLAG)            (((FLAGS) &= (~FLAG)))
+#define CLEARFLAG(FLAGS, FLAG)            (((FLAGS) &= ~(FLAG)))
 #endif
 
 #ifndef SETFLAG
 #define SETFLAG(FLAGS, FLAG, STATE)       do                                        \
                                           {                                         \
-                                              ((FLAGS) &= (~FLAG));                 \
-                                              ((FLAGS) |= ((FLAG * !!(STATE))));    \
+                                            if(STATE)                               \
+                                            {   (FLAGS) |= (FLAG);                  \
+                                            }                                       \
+                                            else                                    \
+                                            {   (FLAGS) &= (~FLAG);                 \
+                                            }                                       \
                                           } while(0)
 #endif
 
@@ -457,7 +463,7 @@ STATIC_ASSERT(0, cannot_run_debug_with_ndebug)
 #define MERGE_SORT_LINKED_LIST(TYPE, CMP_FUNC, HEAD, TAIL, NEXT, PREV, IS_DOUBLE, IS_CIRCULAR)\
                         do                                                              \
                         {                                                               \
-                            TYPE *__p, *__q, *__e, *__tail, *__oldhead;                 \
+                            TYPE *__p, *__q, *__e, *__tail, *__oldhead = NULL;          \
                             TYPE *__list;                                               \
                             uint32_t __insize, __nmerges, __psize, __qsize, __i;        \
                             __insize = 1;                                               \
@@ -585,51 +591,6 @@ STATIC_ASSERT(0, cannot_run_debug_with_ndebug)
                                 __insize *= 2;                                          \
                             }                                                           \
                         } while(0)
-#endif
-
-/* NOTE SLOWER THAN MERGE SORT, BY ALOT */
-
-/* ONLY NON-CIRCULAR, DOUBLE LINKED */
-#ifndef INSERTION_SORT_LINKED_LIST
-#define INSERTION_SORT_LINKED_LIST(TYPE, CMP_FUNC, HEAD, TAIL, NEXT, PREV) \
-    if(!HEAD)                   \
-    {   TAIL = HEAD;            \
-    }                           \
-    TYPE *__s__ = NULL;         \
-    TYPE *__c__ = HEAD;         \
-    TYPE *__n__ = NULL;         \
-    TYPE *__cs__ = NULL;        \
-    while(__c__)                \
-    {                           \
-        __n__ = __c__->NEXT;    \
-        if(!__s__ || CMP_FUNC(__s__, __c__))    \
-        {                                       \
-            __c__->NEXT = __s__;                \
-            if(__s__)                           \
-            {   __s__->PREV = __c__;            \
-            }                                   \
-            __s__ = __c__;                      \
-            __s__->PREV = ((void *)0);          \
-        }                                       \
-        else                                    \
-        {                                       \
-            __cs__ = __s__;                     \
-            while(__cs__->NEXT && CMP_FUNC(__c__, __cs__)) \
-            {   __cs__ = __cs__->NEXT;          \
-            }                                   \
-            __c__->NEXT = __cs__->NEXT;         \
-            if(__cs__->NEXT)                    \
-            {   __cs__->NEXT->PREV = __c__;     \
-            }                                   \
-            __cs__->NEXT = __c__;               \
-            __c__->PREV = __cs__;               \
-        }                                       \
-        if(!__n__)                              \
-        {   TAIL = __c__;                       \
-        }                                       \
-        __c__ = __n__;                          \
-    }                                           \
-    HEAD = __s__;
 #endif
 
 typedef enum Cardinal Cardinal;

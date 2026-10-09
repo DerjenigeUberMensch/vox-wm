@@ -211,6 +211,7 @@ detachcompletely(Client *c)
     {   
         /* no assert since this is a bug but its a no-op */
         DebugWarn("FIXME: Client has no desktop.");
+        return;
     }
 
     detach(c);

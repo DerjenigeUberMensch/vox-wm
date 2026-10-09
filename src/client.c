@@ -115,14 +115,16 @@ u32 HASSTRUT(Client *c)          {
                                     const uint16_t *strutstart = c->strutstart;
                                     const uint16_t *strutend = c->strutend;
 
-                                    uint16_t result = 0;
+                                    u32 result = 0;
 
                                     /* idk man */
                                     for(i = 0; i < WMStrutDirectionLAST; i++)
                                     {
-                                        result |= strutdepth[i];
-                                        result |= strutstart[i];
-                                        result |= strutend[i];
+                                        if(strutdepth[i] && (strutstart[i] - strutend[i] > 0))
+                                        {   
+                                            result = 1;
+                                            break;
+                                        }
                                     }
 
                                     return result;

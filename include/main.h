@@ -29,6 +29,11 @@
 /* CONSTANTS */
 #define INTERSECT(x,y,w,h,m)    (MAX(0, MIN((x)+(w),(m)->wx+(m)->ww) - MAX((x),(m)->wx)) \
                                 * MAX(0, MIN((y)+(h),(m)->wy+(m)->wh) - MAX((y),(m)->wy)))
+#define INTERSECTMON(x,y,w,h,m) ((i64)MAX(0, MIN((x)+(w), (m)->mx+(m)->mw) \
+                                - MAX((x), (m)->mx)) \
+                                * MAX(0, MIN((y)+(h), (m)->my+(m)->mh) \
+                                - MAX((y), (m)->my)))
+
 #define SESSION_FILE            "/tmp/vox-session"
 #define BORKED                  "NOT_SET"
 

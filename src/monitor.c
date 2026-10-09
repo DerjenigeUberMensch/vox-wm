@@ -429,7 +429,7 @@ dirtomon(Monitor *base, Cardinal dir)
         {   continue;
         }
 
-        i64 score = side * side * 4 + forward * forward;
+        i64 score = (i64)side * side * 4 + (i64)forward * forward;
 
         if(score < best)
         {
@@ -458,7 +458,7 @@ rectmoncount(i32 x, i32 y, i32 w, i32 h)
 
     for(m = _wm.mons; m; m = nextmonitor(m))
     {   
-        if(INTERSECT(x, y, w, h, m) > 0)
+        if(INTERSECTMON(x, y, w, h, m) > 0)
         {   ++count;
         }
     }
@@ -469,11 +469,11 @@ rectmoncount(i32 x, i32 y, i32 w, i32 h)
 Monitor *
 recttomon(i16 x, i16 y, u16 w, u16 h)
 {
-	Monitor *m, *r = _wm.selmon;
+	Monitor *m, *r = NULL;
 	i32 a, area = 0;
 
 	for (m = _wm.mons; m; m = m->next)
-		if ((a = INTERSECT(x, y, w, h, m)) > area) {
+		if ((a = INTERSECTMON(x, y, w, h, m)) > area) {
 			area = a;
 			r = m;
 		}
