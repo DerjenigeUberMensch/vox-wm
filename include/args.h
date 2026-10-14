@@ -21,6 +21,7 @@ WMArg
     WMArgLicense,
     WMArgSupport,
     WMArgSkipStartupFile,
+    WMArgSkipWMSnCheck,
 
     /* these args just set their = thing so like --arg=10, so help displays them last */
     WMArgThreads,

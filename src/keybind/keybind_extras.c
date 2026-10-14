@@ -216,9 +216,11 @@ WMKeybindHandler(u16 mod, XCBKeyCode code, enum WMKeyType type, bool is_button, 
             }
             else
             {   
-                keybind->ev = optional_event;
-                keybind->func(keybind, &keybind->arg);
-                keybind->ev = NULL;
+                /* callback may corrupt keybind */
+                WMKeyBind kb = *keybind;
+
+                kb.ev = optional_event;
+                kb.func(&kb, &kb.arg);
                 ret = true;
             }
         }

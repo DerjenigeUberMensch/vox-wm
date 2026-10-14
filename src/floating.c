@@ -4,6 +4,7 @@
 /* POSIX strcasecmp()
  */
 #include <strings.h>
+#include <xcb/xproto.h>
 
 #include "main.h"
 #include "floating.h"
@@ -122,8 +123,8 @@ __COULD__BE__FLOATING__POSITION__FITS(const Client *c, double width_ratio, doubl
     const i32 cdx = labs(cx - x);
     const i32 cdy = labs(cy - y);
 
-    const u8 isratiox = (cdx / (float)(cx + !cx)) >= width_ratio;
-    const u8 isratioy = (cdy / (float)(cy + !cy)) >= height_ratio;
+    const u8 isratiox = (cdx / (m->mw > 0 ? m->mw / 2.0 : 1.0)) >= width_ratio;
+    const u8 isratioy = (cdy / (m->mh > 0 ? m->mh / 2.0 : 1.0)) >= height_ratio;
 
     /*
     Debug0("----------------------------");
@@ -343,6 +344,10 @@ SHOULDBEFLOATING(Client *c)
 bool
 SHOULDCENTER(Client *c)
                         {
+                            if(ISDESKTOP(c) || ISDOCK(c))
+                            {   return false;
+                            }
+
                             Monitor *m = c->desktop->mon;
                             /* If the client is floatnig and in a corner center it because ??? */
                             /* Most desktop enviroments do this, and sinec its jarring for windows to spawn wher they said they will
@@ -380,10 +385,10 @@ SHOULDCENTER(Client *c)
                             }
 
                             bool offScreenBeforeX = c->x + WIDTH(c) < m->wx;
-                            bool offScreenAfterX = c->x - (WIDTH(c) - c->w) > m->ww;
+                            bool offScreenAfterX = c->x - (WIDTH(c) - c->w) >= m->wx + m->ww;
 
                             bool offScreenBeforeY = c->y + HEIGHT(c) < m->wy;
-                            bool offScreenAfterY = c->y - (HEIGHT(c) - c->h) > m->wh;
+                            bool offScreenAfterY = c->y - (HEIGHT(c) - c->h) >= m->wy + m->wh;
 
                             if(offScreenBeforeX || offScreenAfterX || offScreenBeforeY || offScreenAfterY)
                             {   return true;
@@ -541,6 +546,10 @@ u32 CANMANAGE(XCBWindow win, bool allow_unmapped_window, XCBGetWindowAttributes 
                         status = XCBGetWindowPropertyValueSize(wastate, &size);
                     }
 
+                    if(!waattributes || waattributes->_class == XCB_WINDOW_CLASS_INPUT_ONLY)
+                    {   goto NO_MANAGE;
+                    }
+
                     if(waattributes)
                     {
                         if(waattributes->override_redirect)
@@ -556,7 +565,7 @@ u32 CANMANAGE(XCBWindow win, bool allow_unmapped_window, XCBGetWindowAttributes 
 
                     if(wastate)
                     {
-                        if(status != NO_FORMAT && data)
+                        if(status != NO_FORMAT && data && size >= sizeof(*data))
                         {   
                             if(*data != XCB_WINDOW_NORMAL_STATE && *data != XCB_WINDOW_ICONIC_STATE && !allow_unmapped_window)
                             {   goto NO_MANAGE;

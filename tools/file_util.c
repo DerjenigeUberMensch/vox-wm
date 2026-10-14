@@ -21,12 +21,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-#include <X11/X.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <limits.h>
 
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -95,8 +95,14 @@ FFGetSysDataPath(
 
     if(data && *data)
     {
+        int len = snprintf(buff, buff_len, "%s", data);
+
+        if(len < 0 || (size_t)len >= buff_len)
+        {   return EXIT_FAILURE;
+        }
+
         if(len_return)
-        {   *len_return = strlen(data);
+        {   *len_return = (size_t)len;
         }
 
         return EXIT_SUCCESS;
@@ -172,8 +178,14 @@ FFGetSysCachePath(
 
     if(cache && *cache)
     {
+        int len = snprintf(buff, buff_len, "%s", cache);
+
+        if(len < 0 || (size_t)len >= buff_len)
+        {   return EXIT_FAILURE;
+        }
+
         if(len_return)
-        {   *len_return = strlen(cache);
+        {   *len_return = (size_t)len;
         }
 
         return EXIT_SUCCESS;
@@ -251,8 +263,14 @@ FFGetSysConfigPath(
 
     if(home && *home)
     {
+        int len = snprintf(buff, buff_len, "%s", home);
+
+        if(len < 0 || (size_t)len >= buff_len)
+        {   return EXIT_FAILURE;
+        }
+
         if(len_return)
-        {   *len_return = strlen(home);
+        {   *len_return = (size_t)len;
         }
 
         return EXIT_SUCCESS;
@@ -308,44 +326,34 @@ FFCreateDir(
         char *DIR_NAME
         )
 {
-    if(!DIR_NAME)
+    if(!DIR_NAME || !*DIR_NAME)
     {   return EXIT_FAILURE;
     }
 
-    unsigned long long int i = 0;
-    unsigned long long int base = 0;
+    char *end;
 
-    enum { DIR_CHAR = '/' };
+    for(end = DIR_NAME + 1;; ++end)
+    {
+        if(*end && *end != '/')
+        {   continue;
+        }
 
-    char replaced_char;
+        char saved = *end;
+        *end = '\0';
 
-    while(DIR_NAME[i])
-    {   
-        replaced_char = DIR_NAME[i];
-        if(DIR_NAME[i] == DIR_CHAR)
-        {   DIR_NAME[i] = '\0';
+        int status = mkdir(DIR_NAME, 0777);
+        int ok = !status || (errno == EEXIST && FFDirExists(DIR_NAME));
+
+        *end = saved;
+
+        if(!ok)
+        {   return EXIT_FAILURE;
         }
-        if(*DIR_NAME && *DIR_NAME != ' ' && !FFDirExists(DIR_NAME + base))   
-        {
-            errno = 0;
-            int mkdirstatus = mkdir(DIR_NAME, 0777);
-            if(mkdirstatus && errno != EEXIST)
-            {   
-                /* make sure data is not mutated */
-                DIR_NAME[i] = replaced_char;
-                return EXIT_FAILURE;
-            }
+
+        if(!saved)
+        {   return EXIT_SUCCESS;
         }
-        DIR_NAME[i] = replaced_char;
-        ++i;
-        if(!DIR_NAME[i])
-        {   break;
-        }
-        while(DIR_NAME[i] && DIR_NAME[i++] != DIR_CHAR);
-        --i;
     }
-
-    return EXIT_SUCCESS;
 }
 
 int
@@ -353,52 +361,36 @@ FFCreatePath(
         char *FULL_PATH
         )
 {
-    if(!FULL_PATH)
+    if(!FULL_PATH || !*FULL_PATH)
     {   return EXIT_FAILURE;
     }
-    unsigned long long int len = strlen(FULL_PATH);
-    unsigned long long int file_index = 0;
-    int ret = 0;
 
-    enum { DIR_CHAR = '/' };
+    char *slash = strrchr(FULL_PATH, '/');
 
-    while(len)
+    if(slash && slash != FULL_PATH)
     {
-        if(FULL_PATH[len] == DIR_CHAR)
-        {   
-            file_index = len;
-            break;
-        }
-        --len;
-    }
+        int status;
 
-    char old_char;
+        *slash = '\0';
+        status = FFCreateDir(FULL_PATH);
+        *slash = '/';
 
-    if(len)
-    {   
-        old_char = FULL_PATH[file_index];
-        FULL_PATH[file_index] = '\0';
-    }
-
-    FFCreateDir(FULL_PATH);
-
-    if(len)
-    {   FULL_PATH[file_index] = old_char;
-    }
-
-    if(!FFFileExists(FULL_PATH))
-    {
-        FILE *f = fopen(FULL_PATH, "ab+");
-
-        if(!f)
-        {   ret = EXIT_FAILURE;
-        }
-        else
-        {   fclose(f);
+        if(status != EXIT_SUCCESS)
+        {   return EXIT_FAILURE;
         }
     }
 
-    return ret;
+    if(FFFileExists(FULL_PATH))
+    {   return EXIT_SUCCESS;
+    }
+
+    FILE *fp = fopen(FULL_PATH, "ab");
+
+    if(!fp)
+    {   return EXIT_FAILURE;
+    }
+
+    return fclose(fp) == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 int
@@ -410,7 +402,7 @@ FFPathExists(
     {   return 0;
     }
 
-    return access(FULL_PATH, F_OK);
+    return access(FULL_PATH, F_OK) == 0;
 }
 
 int
@@ -474,30 +466,35 @@ FFGetNewLine(
         size_t buff_len
         )
 {
-    char *nl;
+    /* buff needs to be atleast 2 to support 1 char and 1 null terminator */
+    if(!f || !buff || buff_len < 2 || buff_len > INT_MAX)
+    {   return -2;
+    }
 
-    if(fgets(buff, buff_len, f))
-    {
-        nl = strchr(buff, '\n');
+    if(!fgets(buff, (int)buff_len, f))
+    {   return ferror(f) ? -2 : 1;
+    }
 
-        if(!nl)
-        {
-            if(!feof(f))
-            {   return -1;
-            }
-        } /* remove new line char */
-        else
-        {   *nl = '\0';
-        }
+    char *nl = strchr(buff, '\n');
+
+    if(nl)
+    {   
+        *nl = '\0';
         return 0;
     }
-    else
-    {
-        if(ferror(f))
-        {   return -2;
-        }
-        return 1;
+
+    int ch = fgetc(f);
+
+    if(ch == '\n' || (ch == EOF && !ferror(f)))
+    {   return 0;
     }
+
+    /* discard the rest */
+    while(ch != '\n' && ch != EOF)
+    {   ch = fgetc(f);
+    }
+
+    return ferror(f) ? -2 : 1;
 }
 
 int
@@ -516,10 +513,10 @@ FFLockFileRead(
 
 
     if(allow_blocking)
-    {   lock_mode = F_SETLK;
+    {   lock_mode = F_SETLKW;
     }
     else
-    {   lock_mode = F_SETLKW;
+    {   lock_mode = F_SETLK;
     }
 
     return fcntl(file_descriptor, lock_mode, &lock);
@@ -532,7 +529,7 @@ FFUnlockFileRead(
 {
     struct flock lock = {0};
 
-    lock.l_type = F_RDLCK;
+    lock.l_type = F_UNLCK;
     lock.l_whence = SEEK_SET;
     lock.l_start = 0;
     lock.l_len = 0;
@@ -555,10 +552,10 @@ FFLockFileWrite(
     lock.l_len = 0;
 
     if(allow_blocking)
-    {   lock_mode = F_SETLK;
+    {   lock_mode = F_SETLKW;
     }
     else
-    {   lock_mode = F_SETLKW;
+    {   lock_mode = F_SETLK;
     }
 
     return fcntl(file_descriptor, lock_mode, &lock);
@@ -572,7 +569,7 @@ FFUnlockFileWrite(
 {
     struct flock lock = {0};
 
-    lock.l_type = F_WRLCK;
+    lock.l_type = F_UNLCK;
     lock.l_whence = SEEK_SET;
     lock.l_start = 0;
     lock.l_len = 0;

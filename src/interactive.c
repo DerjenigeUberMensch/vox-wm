@@ -1,3 +1,4 @@
+#include <X11/Xproto.h>
 #include <X11/cursorfont.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,6 +8,7 @@
 #include "XCB-TRL/xcb_trl_types.h"
 #include "client.h"
 #include "cursor.h"
+#include "keybind/keybinds.h"
 #include "main.h"
 #include "floating.h"
 
@@ -74,6 +76,14 @@ DragWindow(XCBWindow window, XCBButton button)
     {   
         DebugWarn("Invalid window passed to DragWindow");
         return EXIT_FAILURE;
+    }
+
+    Client *c;
+
+    c = wintoclient(window);
+
+    if(c && ISDESKTOP(c))
+    {   return EXIT_FAILURE;
     }
 
     Debug("Called.");
@@ -162,8 +172,6 @@ DragWindow(XCBWindow window, XCBButton button)
     drag->y = pointer->root_y;
 
     free(pointer);
-
-    Client *c = wintoclient(window);
 
     if(c)
     {
@@ -522,8 +530,8 @@ ResizeWindowHandler(
             }
 
             /* prevent glitching */
-            rsz->nw = MAX(rsz->nw, 0);
-            rsz->nh = MAX(rsz->nh, 0);
+            rsz->nw = MIN(MAX(rsz->nw, 1), UINT16_MAX);
+            rsz->nh = MIN(MAX(rsz->nh, 1), UINT16_MAX);
 
             rsz->nx = rsz->oldx + !~rsz->horz * (rsz->oldw - rsz->nw);
             rsz->ny = rsz->oldy + !~rsz->vert * (rsz->oldh - rsz->nh);
@@ -648,6 +656,12 @@ ResizeWindow(XCBWindow window, XCBButton button, bool alt_mode)
         return EXIT_FAILURE;
     }
 
+    Client *c = wintoclient(window);
+
+    if(c && ISDESKTOP(c))
+    {   return EXIT_FAILURE;
+    }
+
     Debug("Called.");
 
     int status;
@@ -719,7 +733,7 @@ ResizeWindow(XCBWindow window, XCBButton button, bool alt_mode)
 
     free(pointer);
 
-    Client *c = wintoclient(window);
+    c = wintoclient(window);
 
     if(c)
     {
@@ -820,7 +834,11 @@ ResizeWindow(XCBWindow window, XCBButton button, bool alt_mode)
 
 
     if(!GrabPointer || GrabPointer->status != XCB_GRAB_STATUS_SUCCESS)
-    {   goto DESTROY;
+    {   
+        if(GrabPointer)
+        {   free(GrabPointer);
+        }
+        goto DESTROY;
     }
 
     free(GrabPointer);

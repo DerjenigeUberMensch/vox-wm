@@ -1,6 +1,13 @@
+#include <string.h>
+
+#include "XCB-TRL/xcb_trl_types.h"
 #include "XCB-TRL/xcb_winutil.h"
+#include "client.h"
+#include "desktop.h"
 #include "main.h"
 #include "prop.h"
+#include "bar.h"
+#include "floating.h"
 
 extern WM _wm;
 
@@ -259,7 +266,32 @@ PropUpdateWindowType(
         LOCK_WM();
         c = wintoclient(cookie->win);
         if(c)
-        {   clientinitwtype(c, prop);
+        {   
+            u32 wasdesktop = ISDESKTOP(c);
+            clientinitwtype(c, prop);
+
+            if(ISDESKTOP(c))
+            {
+                setborderwidth(c, 0);
+                updateborder(c);
+                setdisableborder(c, 1);
+                setsticky(c, 1);
+                setskiptaskbar(c, 1);
+                setskippager(c, 1);
+            }
+            else if(wasdesktop)
+            {
+                setdisableborder(c, 0);
+                setborderwidth(c, c->oldbw);
+                updateborder(c);
+                setsticky(c, 0);
+                setskiptaskbar(c, 0);
+                setskippager(c, 0);
+            }
+
+            if(ISDESKTOP(c) != wasdesktop)
+            {   arrange(c->desktop);
+            }
         }
         UNLOCK_WM();
     }
@@ -295,19 +327,24 @@ PropUpdateWMHints(
     XCBWMHints *prop = XCBGetWMHintsReply(_wm.dpy, cookie->cookie);
     Client *c;
     u8 wasvisible = 0;
+
     if(prop)
     {   
         LOCK_WM();
+
         c = wintoclient(cookie->win);
-        wasvisible = ISVISIBLE(c);
+
+
         if(c)
-        {   updatewmhints(c, prop);
-        }
-        /* arrange if needed, else hide if needed */
-        if((wasvisible && !ISVISIBLE(c)) || (!wasvisible && ISVISIBLE(c)))
         {   
-            showhide(c);
-            arrange(c->desktop);
+            wasvisible = ISVISIBLE(c);
+            updatewmhints(c, prop);
+
+            if(wasvisible != !!ISVISIBLE(c))
+            {   
+                showhide(c);
+                arrange(c->desktop);
+            }
         }
         UNLOCK_WM();
     }
@@ -362,8 +399,37 @@ PropUpdateStrut(
         GetPropCookie *cookie
         )
 {
-    /* TODO */
-    XCBDiscardReply(display, cookie->cookie);
+    XCBWindowProperty *prop = XCBGetWindowPropertyReply(_wm.dpy, cookie->cookie);
+    Client *c;
+
+    if(!prop)
+    {   return;
+    }
+
+    LOCK_WM();
+
+    c = wintoclient(cookie->win);
+
+    if(c)
+    {
+        memset(c->strutdepth, 0, sizeof(c->strutdepth));
+        memset(c->strutstart, 0, sizeof(c->strutstart));
+        memset(c->strutend, 0, sizeof(c->strutend));
+
+        updatestrut(c, prop);
+
+        if(ISBAR(c))
+        {   setupbar(c->desktop->mon, c);
+        }
+
+        arrange(c->desktop);
+        updatedesktopworkarea();
+        XCBFlush(_wm.dpy);
+    }
+
+    UNLOCK_WM();
+
+    free(prop);
 }
 
 void
@@ -372,8 +438,36 @@ PropUpdateStrutP(
         GetPropCookie *cookie
         )
 {
-    /* TODO */
-    XCBDiscardReply(display, cookie->cookie);
+    XCBWindowProperty *prop = XCBGetWindowPropertyReply(_wm.dpy, cookie->cookie);
+    Client *c;
+
+    if(!prop)
+    {   return;
+    }
+
+    LOCK_WM();
+
+    c = wintoclient(cookie->win);
+
+    if(c)
+    {
+        memset(c->strutdepth, 0, sizeof(c->strutdepth));
+        memset(c->strutstart, 0, sizeof(c->strutstart));
+        memset(c->strutend, 0, sizeof(c->strutend));
+
+        updatestrutp(c, prop);
+
+        if(ISBAR(c))
+        {   setupbar(c->desktop->mon, c);
+        }
+
+        arrange(c->desktop);
+        updatedesktopworkarea();
+        XCBFlush(_wm.dpy);
+    }
+
+    UNLOCK_WM();
+    free(prop);
 }
 
 void
@@ -390,13 +484,20 @@ PropUpdateNetWMName(
         if(netname)
         {
             LOCK_WM();
+
             c = wintoclient(cookie->win);
+
             if(c)
-            {   updatetitle(c, netname, c->wmname);
+            {   
+                updatetitle(c, netname, c->wmname);
+                netname = NULL;
             }
+
             UNLOCK_WM();
         }
     }
+    
+    free(netname);
     free(prop);
 }
 
@@ -458,15 +559,20 @@ PropUpdateIcon(
         if(icon)
         {
             LOCK_WM();
+
             c = wintoclient(cookie->win);
+
             if(c)
             {   
                 free(c->icon);
                 c->icon = icon;
+                icon = NULL;
             }
             UNLOCK_WM();
         }
     }
+
+    free(icon);
     free(prop);
 }
 
@@ -518,14 +624,20 @@ PropUpdateManage(
 
         if(ISVISIBLE(c))
         {
-            cf = focusrealize(c);
+            /* if focusrealize is changed this must also change */
+            if(!ISDESKTOP(c) && !ISDOCK(c) && !NEVERHOLDFOCUS(c))
+            {   cf = focusrealize(c);
+            }
             arrange(c->desktop);
         }
 
     }
 
     XCBMapWindow(_wm.dpy, win);
-    focus(cf);
+
+    if(cf)
+    {   focus(cf);
+    }
 
     XCBFlush(_wm.dpy);
     UNLOCK_WM();

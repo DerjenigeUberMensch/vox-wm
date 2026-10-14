@@ -21,6 +21,7 @@ static ArgOpt ARGS_LONG[] =
     [WMArgLicense] = ARGCV_STATIC_INITIALIZER("license", sizeof("license") - 1, false),
     [WMArgSupport] = ARGCV_STATIC_INITIALIZER("support", sizeof("support") - 1, false),
     [WMArgSkipStartupFile] = ARGCV_STATIC_INITIALIZER("skip-startup-file", sizeof("skip-startup-file") - 1, false),
+    [WMArgSkipWMSnCheck] = ARGCV_STATIC_INITIALIZER("skip-wm-sn-check", sizeof("skip-wm-sn-check") - 1, false),
 
     [WMArgThreads] = ARGCV_STATIC_INITIALIZER("threads N", sizeof("threads") - 1, true),
     [WMArgXDisplay] = ARGCV_STATIC_INITIALIZER("display STRING", sizeof("display") - 1, true),
@@ -34,6 +35,7 @@ static char *ARG_DESCRIPTIONS[] =
     [WMArgLicense] = "Get License Information",
     [WMArgSupport] = "Support Information",
     [WMArgSkipStartupFile] = "Skip the startup file",
+    [WMArgSkipWMSnCheck] = "Skip checking for WM_Sn when starting up",
 
     [WMArgThreads] = "Request a specific number of threads to use for the thread pool",
     [WMArgXDisplay] = "Request a display to use",
@@ -153,7 +155,7 @@ WMHandleVersion(const ArgOpt *opt)
             date, __TIME__,
             timestamp,
             compiler, majorversion, minorversion, patchversion,
-            __STDC__, __STDC_HOSTED__, __STDC_VERSION__,
+            __STDC__, __STDC_HOSTED__, (unsigned long)__STDC_VERSION__,
             byteorder,
             pointersize,
             VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, VERSION_REVISION,

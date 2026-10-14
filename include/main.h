@@ -134,6 +134,10 @@ MotifWmHints
 /* Inital startup check if there is another window manager running.
 */
 void checkotherwm(void);
+/* Check if another window manager is running on the same screen. */
+void checkotherwmsn(void);
+/* Take over the window management. */
+void checkotherwmtakeover(void);
 /* Cleanups and frees any data previously allocated.
 */
 void cleanup(void);
@@ -226,8 +230,6 @@ void startupwm(void);
 void NonNull wakeupconnection(XCBDisplay *display, int screen);
 /* Wakeup handler used for watchdog */
 void watchdogwakeuphandler(void);
-/* Error handler */
-void NonNullArg(1) xerror(XCBDisplay *display, XCBGenericError *error);
 
 /* Gets the mutex availability and whether or not using LOCK_WM will do anythign.
  * This is mostly to check if we are running in SINGLE thread or MULTI-THREAD.

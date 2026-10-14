@@ -60,7 +60,9 @@ addclienthash(Client *c, XCBWindow key)
 
 void
 cleanupclienthash(void)
-{   kh_destroy(__CLIENTS__, hashedclients);
+{   
+    kh_destroy(__CLIENTS__, hashedclients);
+    hashedclients = NULL;
 }
 
 Client *
@@ -94,5 +96,6 @@ delclienthash(XCBWindow key)
 
 void
 setupclienthash(void)
-{   hashedclients = kh_init(__CLIENTS__);
+{   
+    hashedclients = kh_init(__CLIENTS__);
 }

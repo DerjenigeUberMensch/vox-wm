@@ -31,7 +31,11 @@ arrange(Desktop *desk)
 
 void
 arrangedesktop(Desktop *desk)
-{   
+{
+    if(unlikely(desk->layout >= LENGTH(layouts)))
+    {   return;
+    }
+
     if(layouts[desk->layout].arrange)
     {   layouts[desk->layout].arrange(desk);
     }
@@ -169,6 +173,10 @@ attachfocus(Client *c)
 void
 attachfocusafter(Client *start, Client *after)
 {
+    if(unlikely(start == after || start->desktop != after->desktop))
+    {   return;
+    }
+
     if(ISOVERRIDEREDIRECT(after))
     {   return;
     }
@@ -180,9 +188,14 @@ attachfocusafter(Client *start, Client *after)
 void
 attachfocusbefore(Client *start, Client *after)
 {
+    if(unlikely(start == after || start->desktop != after->desktop))
+    {   return;
+    }
+
     if(ISOVERRIDEREDIRECT(after))
     {   return;
     }
+
     Desktop *desk = start->desktop;
     detachfocus(after);
     __attach_before(start, after, fnext, fprev, desk->focus, desk->flast, attachfocus);
@@ -242,10 +255,8 @@ detachfocus(Client *c)
     /* this just updates desktop->sel */
     if (c == desk->sel)
     {
-        for (c = startfocus(desk); c && !ISVISIBLE(c); c = nextfocus(c));
-        if(c)
-        {   c->desktop->sel = c;
-        }
+        for(c = startfocus(desk); c && (!ISVISIBLE(c) || NEVERHOLDFOCUS(c) || ISDESKTOP(c)); c = nextfocus(c));
+        desk->sel = c;
     }
 }
 
@@ -445,6 +456,22 @@ restackc(Desktop *desk, uint8_t force)
     desk->rstack = desk->stack;;
     desk->rlast = desk->slast;
 
+    /* Dekstops can spawn more than one monitor, and break shit */
+    Monitor *m;
+
+    for(m = _wm.mons; m; m = nextmonitor(m))
+    {
+        for(desk = m->desktops; desk; desk = nextdesktop(desk))
+        {
+            for(c = startstack(desk); c; c = nextstack(c))
+            {
+                if(ISDESKTOP(c))
+                {   XCBLowerWindow(_wm.dpy, c->win);
+                }
+            }
+        }
+    }
+
     /* update _NET_WM_CLIENT_LIST_STACKING */
     updateclientstackinglist();
 }
@@ -480,13 +507,17 @@ __stack_priority_helper_below(const u32 x1, const u32 x2)
 void
 setdesktoplayout(Desktop *desk, uint8_t layout)
 {
+    if(layout >= LENGTH(layouts))
+    {   return;
+    }
+
     desk->olayout = desk->layout;
     desk->layout = layout;
 }
 
 
 static void
-__normalize_stackpriority(u32 *ewmhflags1, u16 *flags1, u32 *ewmhflags2, u16 *flags2)
+__normalize_stackpriority(u32 *ewmhflags, u16 *flags)
 {
     struct 
     StackPriorityRules
@@ -513,15 +544,15 @@ __normalize_stackpriority(u32 *ewmhflags1, u16 *flags1, u32 *ewmhflags2, u16 *fl
 
     for(i = 0; i < LENGTH(RULES); ++i)
     {
-        if((*ewmhflags1 & RULES[i].required) == RULES[i].required)
-        {   CLEARFLAG(*ewmhflags1, RULES[i].remove);
+        if((*ewmhflags & RULES[i].required) == RULES[i].required)
+        {   CLEARFLAG(*ewmhflags, RULES[i].remove);
         }
     }
 
     for(i = 0; i < LENGTH(RULES_CUSTOM); ++i)
     {
-        if((*ewmhflags2 & RULES_CUSTOM[i].required) == RULES_CUSTOM[i].required)
-        {   CLEARFLAG(*ewmhflags2, RULES_CUSTOM[i].remove);
+        if((*flags & RULES_CUSTOM[i].required) == RULES_CUSTOM[i].required)
+        {   CLEARFLAG(*flags, RULES_CUSTOM[i].remove);
         }
     }
 }
@@ -538,7 +569,8 @@ stackpriority(Client *c1, Client *c2)
     u16 flags2 = c2->flags;
     u16 rstacknum2 = c2->rstacknum;
 
-    __normalize_stackpriority(&ewmhflag1, &flags1, &ewmhflag2, &flags2);
+    __normalize_stackpriority(&ewmhflag1, &flags1);
+    __normalize_stackpriority(&ewmhflag2, &flags2);
 
     u32 ewmhflags = ewmhflag1 ^ ewmhflag2;
     u32 flags = flags1 ^ flags2;
@@ -748,25 +780,33 @@ updatedesktopnum(void)
 void
 updatedesktopviewport(void)
 {
+    if(!_wm.selmon)
+    {   return;
+    }
+
     enum { x, y, data_spec = 2 };
     enum { NO_SUPPORT_LARGE_DESKTOPS = 0 };
 
-    i32 data[data_spec];
+    u32 count = (u32)_wm.selmon->deskcount * data_spec;
+    u32 *data = malloc(count * sizeof(u32));
 
-    /* As of 3.2.0 vox-wm does not support large desktops */
+    if(!data)
+    {   
+        DebugWarn("Failed to allocate memory for desktop viewport");
+        return;
+    }
 
-    data[x] = NO_SUPPORT_LARGE_DESKTOPS;
-    data[y] = NO_SUPPORT_LARGE_DESKTOPS;
-    
+    /* specs says that dekstop that dont support large dekstops need to be set as '0' */
+    memset(data, NO_SUPPORT_LARGE_DESKTOPS, count * sizeof(u32));
 
-    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetDesktopViewport], XCB_ATOM_CARDINAL, 32, XCBPropModeReplace, (unsigned char *)data, data_spec);
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetDesktopViewport], XCB_ATOM_CARDINAL, 32, XCBPropModeReplace, (unsigned char *)data, count);
+    free(data);
 }
 
 void
 updatedesktopworkarea(void)
 {
     enum { x, y, w, h, data_spec = 4 };
-
 
     i32 data[data_spec];
 

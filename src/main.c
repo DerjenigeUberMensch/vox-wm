@@ -1,6 +1,9 @@
 /* glibc */
 #ifndef _DEFAULT_SOURCE
 #define _DEFAULT_SOURCE
+#include "GArray/garray.h"
+#include "desktop.h"
+#include "file_util.h"
 #endif
 
 #include <stdlib.h>
@@ -51,6 +54,7 @@
 #include "config.h"
 #include "startupapps.h"
 #include "wmpoll.h"
+#include "xerror.h"
 /* #include "watchdog.h" */
 
 /* for HELP/DebugGING see under main() or the bottom */
@@ -134,30 +138,80 @@ XCBAtom netatom[NetLast];
 XCBAtom wmatom[WMLast];
 XCBAtom gtkatom[GTKLAST];
 XCBAtom motifatom;
+XCBAtom wmsnatom;
 XCBAtom xembedatom[XEMBEDLAST];
 
 void
 checkotherwm(void)
 {
+    checkotherwmsn();
+    checkotherwmtakeover();
+}
+
+void
+checkotherwmsn(void)
+{
+    const ArgOpt *arg = WMCheckArg(WMArgSkipWMSnCheck);
+
+    enum { BUFF_SIZE = 32 };
+
+    int screencheck = _wm.screen;
+    char screenatomname[BUFF_SIZE];
+    int status;
+
+    memset(screenatomname, 0, sizeof(screenatomname));
+
+    status = snprintf(screenatomname, BUFF_SIZE - 1, "WM_S%d", screencheck);
+
+    if(status < 0)
+    {   DIECAT("%s", "FATAL: FAILED TO CREATE SCREEN ATOM. (snprintf)");
+    }
+
+    XCBCookie screenatomcookie = XCBInternAtomCookie(_wm.dpy, screenatomname, 0);
+
+    XCBAtom atom = XCBInternAtomReply(_wm.dpy, screenatomcookie);
+
+    if(atom == XCBNone)
+    {   DIECAT("%s", "FATAL: FAILED TO CREATE SCREEN ATOM. (OutOfMemory)");
+    }
+
+    wmsnatom = atom;
+
+    if(arg && arg->found)
+    {   return;
+    }
+
+    XCBCookie selectioncookie = XCBGetSelectionOwnerCookie(_wm.dpy, atom);
+
+    XCBWindow win = XCBGetSelectionOwnerReply(_wm.dpy, selectioncookie);
+
+    if(win != XCBNone)
+    {   DIECAT("%s", "FATAL: ANOTHER WINDOW MANAGER IS RUNNING. (SelectionOwner)");
+    }
+}
+
+void
+checkotherwmtakeover(void)
+{
     XCBGenericEvent *ev = NULL;
-    i32 response;
-    /* display could sometimes could have events if too slow 
-     * (Issue when using nested enviroments like Xephyr.)
-     */
+    int response;
+
     XCBSyncf(_wm.dpy);
     XCBSelectInput(_wm.dpy, XCBRootWindow(_wm.dpy, _wm.screen), XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT);
     XCBSync(_wm.dpy);  /* XCBFlush has different behaviour suprisingly, its undesired though */
     /* XCBPollForEvent calls the XServer itself for the event, So if we get a reply then a type of Window manager must be running */
-    if((ev = XCBPollForEvent(_wm.dpy)))
+    if(unlikely(ev = XCBPollForEvent(_wm.dpy)))
     {   
         response = ev->response_type;
         free(ev);
         XCBCloseDisplay(_wm.dpy);
-        if(response == 0) 
-        {   DIECAT("%s", "FATAL: ANOTHER WINDOW MANAGER IS RUNNING.");
+
+        if(likely(response == 0) )
+        {   DIECAT("%s", "FATAL: ANOTHER WINDOW MANAGER IS RUNNING. (SubstructureRedirect)");
         }
-        /* UNREACHABLE */
-        DIECAT("%s", "FATAL: UNKNOWN REPONSE_TYPE");
+
+        /* UNREACHABLE ? This can be reached very rarely not sure why */
+        DIECAT("%s", "FATAL: UNKNOWN REPONSE_TYPE (InvalidResponse)");
     }
     /* assuming this isnt a bug we received nothing because we pinged the server for a response and got nothing */
     /* The other edge case is if the display just doesnt work, however this is covered at startup() if(!_wm.dpy) { DIE(msg); } */
@@ -186,6 +240,7 @@ cleanup(void)
     {   WatcherDestroy();
     }
 
+    DESTROY_XERROR();
     WMKeybindDestroy();
     PropDestroy();
     /* Threads are alawys first to go due to concurrency problems with future cleanup functions */
@@ -251,7 +306,7 @@ eventhandler(XCBGenericEvent *ev)
     }
 
 
-    for(i = GArrayStart(&_wm.work); i < GArrayEnd(&_wm.work); ++i)
+    for(i = GArrayStart(&_wm.work); i < GArrayEnd(&_wm.work);)
     {
         int ret = 0;
         WMWork *work = GArrayAt(&_wm.work, i);
@@ -260,18 +315,31 @@ eventhandler(XCBGenericEvent *ev)
         {   ret = work->function(ev, work->arg);
         }
 
-        if(!ret)
+        if(ret)
         {   
-            if(work->allocated)
-            {   free(work->arg.v);
+            ++i;
+            continue;
+        }
+
+        WMWork old = *work;
+
+        if(GArrayDelete(&_wm.work, i) == EXIT_SUCCESS)
+        {   
+            if(old.allocated)
+            {   free(old.arg.v);
             }
 
-            ret = GArrayDelete(&_wm.work, i);
+            continue;
+        }
 
-            if(ret)
-            {   GArrayReplace(&_wm.work, NULL, i);
+        if(GArrayReplace(&_wm.work, NULL, i) == EXIT_SUCCESS)
+        {   
+            if(old.allocated)
+            {   free(old.arg.v);
             }
         }
+
+        ++i;
     }
 
     UNLOCK_WM();
@@ -372,35 +440,14 @@ quit(void)
 static u8
 _restore_parser(FILE *file, char *buffer, u16 bufflen)
 {
-    char *newline = NULL;
-    const u8 success = 0;
-    const u8 bufftoosmall = 1;
-    const u8 error = 2;
-    const u8 eof = 3;
-    if(fgets(buffer, bufflen, file))
+    switch(FFGetNewLine(file, buffer, bufflen))
     {
-        newline = strchr(buffer, '\n');
-        if(!newline)
-        {
-            if(!feof(file))
-            {   
-                Debug0("Buffer too small for current line.");
-                /* BUFF TOO SMALL */
-                return bufftoosmall;
-            }
-        } /* remove new line char */
-        else
-        {   *newline = '\0';
-        }
-        /* Success. */
-        return success;
+        case 0: return 0;
+        case -1: return 1;
+        case -2: return 2;
+        case 1:
+        default: return 3;
     }
-    if(ferror(file))
-    {   /* ERROR */
-        return error;
-    }
-    /* EOF */
-    return eof;
 }
 
 void
@@ -439,7 +486,7 @@ restoresession(void)
         EndOfFile = 3
     };
 
-    while(output != EndOfFile)
+    while(output != EndOfFile && output != err)
     {
         memset(str, 0, MAX_LENGTH);
         output = _restore_parser(fr, str, MAX_LENGTH);
@@ -617,6 +664,10 @@ restoredesktopsession(Monitor *m, char *buff, u16 len)
 
     if(check == SCANF_CHECK_SUM)
     {
+        if(DesktopNum >= UINT16_MAX)
+        {   return NULL;
+        }
+
         if(DesktopNum > m->deskcount)
         {   setdesktopcount(m, DesktopNum + 1);
         }
@@ -720,6 +771,10 @@ restoremonsession(char *buff, u16 len)
         if(pullm)
         {
             /* TODO */
+            if(!DeskCount || DeskCount > UINT16_MAX)
+            {   return NULL;
+            }
+
             setdesktopcount(pullm, DeskCount);
             if(DeskSelNum != pullm->desksel->num)
             {
@@ -808,6 +863,9 @@ run(void)
     int status = EXIT_SUCCESS;
 
     XCBSync(_wm.dpy);
+    
+    /* check connection before awating new events */
+    eventhandlercallback(-1, POLLIN, (Generic){0});
 
     while(_wm.running && status == EXIT_SUCCESS)
     {   status = WMPollRun();
@@ -826,7 +884,7 @@ savesession(void)
         const u16 MAX_EVENT_PROCESS = 1000;
         i32 i = 0;
         XCBGenericEvent *ev = NULL;
-        while((ev = XCBPollForEvent(_wm.dpy)) && ++i < MAX_EVENT_PROCESS)
+        while(++i < MAX_EVENT_PROCESS && (ev = XCBPollForEvent(_wm.dpy)))
         {
             eventhandler(ev);
             free(ev);
@@ -1085,7 +1143,7 @@ setup(void)
     /* setup wm basic data */
     startupwm();
     checkotherwm();
-    XCBSetErrorHandler(xerror);
+    INIT_XERROR();
 
     /* clean up any zombies immediately */
     sighandler();
@@ -1110,6 +1168,7 @@ setup(void)
     updatedesktop();
     updatedesktopnames();
     updatedesktopviewport();
+    updatedesktopworkarea();
 
     XCBWindowAttributes wa;
     /* xcb_event_mask_t */
@@ -1244,7 +1303,7 @@ setupwm(void)
     enum { DESK_GEOM_LENGTH = 2 };
     const u32 BYPASS_COMPOSITOR = 1;
                                     /* width, height */
-    i32 deskgeom[DESK_GEOM_LENGTH] = { _wm.sw, _wm.sh };
+    i32 deskgeom[DESK_GEOM_LENGTH];
     u32 unused = 0;
     int status;
 
@@ -1301,6 +1360,9 @@ setupwm(void)
     /* supporting window for NetWMCheck */
     _wm.wmcheckwin = XCBCreateSimpleWindow(_wm.dpy, _wm.root, 0, 0, 1, 1, 0, 0, 0);
 
+    deskgeom[0] = _wm.sw;
+    deskgeom[1] = _wm.sh;
+
     XCBSelectInput(_wm.dpy, _wm.wmcheckwin, XCB_NONE);
 
     XCBChangeProperty(_wm.dpy, _wm.wmcheckwin, netatom[NetSupportingWMCheck], XCB_ATOM_WINDOW, 32, XCBPropModeReplace, &_wm.wmcheckwin, 1);
@@ -1313,10 +1375,12 @@ setupwm(void)
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCBPropModeAppend, &gtkatom, GTKLAST);
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetSupported], XCB_ATOM_ATOM, 32, XCBPropModeAppend, &motifatom, 1);
 
-    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetDesktopGeometry], XCB_ATOM_ATOM, 32, XCBPropModeReplace, deskgeom, DESK_GEOM_LENGTH);
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetDesktopGeometry], XCB_ATOM_CARDINAL, 32, XCBPropModeReplace, deskgeom, DESK_GEOM_LENGTH);
 
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientList], XCB_ATOM_WINDOW, 32, XCBPropModeReplace, &unused, 0);
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], XCB_ATOM_WINDOW, 32, XCBPropModeReplace, &unused, 0);
+
+    XCBSetSelectionOwner(_wm.dpy, wmsnatom, _wm.wmcheckwin, XCB_CURRENT_TIME);
 
     WMPollAddFD(XCBDisplayNumber(_wm.dpy), POLLIN, eventhandlercallback, (Generic){0});
 }
@@ -1587,40 +1651,6 @@ wakeupconnection(XCBDisplay *display, int screen)
     XCBFlush(display);
 }
 
-void
-xerror(XCBDisplay *display, XCBGenericError *err)
-{
-    if(likely(err))
-    {
-        char *major_code = XCBGetErrorMajorCodeText(err->major_code);
-        char *minor_code = XCBGetErrorMinorCodeText(err->minor_code);
-        char *error_code = XCBGetFullErrorText(err->error_code);
-        DebugError(
-                "%s "
-                "%s "
-                "%s, "
-                "(%d|%d)\n", 
-                major_code ? major_code : "NULL", 
-                minor_code ? minor_code : "NULL",
-                error_code ? error_code : "NULL", 
-                err->major_code, err->error_code
-                );
-#if NDEBUG
-        DebugError("error_code: [%d], major_code: [%d], minor_code: [%d]\n"
-              "sequence: [%d], response_type: [%d], resource_id: [%d]\n"
-              "full_sequence: [%d]\n"
-              ,
-           err->error_code, err->major_code, err->minor_code, 
-           err->sequence, err->response_type, err->resource_id, 
-           err->full_sequence);
-        XCBCookie id;
-        id.sequence = err->sequence;
-        (void)id;
-#else
-        //XCBDefaultHandlerMsg(display, err);
-#endif
-    }
-}
 
 int
 main(int argc, char **argv)

@@ -562,7 +562,11 @@ setdesktopcount(Monitor *m, uint16_t desktops)
      * 2. Only updates changes when we are on a different mon
      */
     if(_wm.selmon && _wm.selmon == m)
-    {   updatedesktopnames();
+    {   
+        updatedesktopnames();
+        updatedesktopnum();
+        updatedesktopviewport();
+        updatedesktopworkarea();
     }
 }
 
@@ -921,6 +925,20 @@ updateclientstackinglist(void)
     {   return;
     }
 
+    /* Desktops are lowered like this in restackc make sure that DEsktop clients are below every other client */
+    for(m = _wm.mons; m; m = nextmonitor(m))
+    {
+        for(desk = m->desktops; desk; desk = nextdesktop(desk))
+        {
+            for(c = startstack(desk); c; c = nextstack(c))
+            {
+                if(ISDESKTOP(c))
+                {   GArrayInsert(&_wm.clientstacking, &c->win, GArrayStart(&_wm.clientstacking));
+                }
+            }
+        }
+    }
+
     for(m = _wm.mons; m; m = m->next)
     {
         for(desk = m->desklast; desk; desk = prevdesktop(desk))
@@ -931,6 +949,10 @@ updateclientstackinglist(void)
 
             for(c = laststack(desk); c; c = prevstack(c))
             {
+                if(ISDESKTOP(c))
+                {   continue;
+                }
+
                 status = GArrayPushBack(&_wm.clientstacking, &c->win);
 
                 /* stacking isnt that important to care about failign to pushback some clients */
@@ -944,6 +966,10 @@ updateclientstackinglist(void)
 
         for(c = laststack(desk); c; c = prevstack(c))
         {
+            if(ISDESKTOP(c))
+            {   continue;
+            }
+
             status = GArrayPushBack(&_wm.clientstacking, &c->win);
 
             /* stacking isnt that important to care about failign to pushback some clients */

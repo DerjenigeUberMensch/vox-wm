@@ -1,6 +1,7 @@
 #include <complex.h>
 #include <stdint.h>
 #include <string.h>
+#include <xcb/xproto.h>
 
 #include "keybind/keybind_definitions.h"
 #include "keybind/keybinds.h"
@@ -683,6 +684,35 @@ configurerequest(XCBGenericEvent *event)
         i32 ry = c->y;
         i32 rw = c->w;
         i32 rh = c->h;
+
+        if(ISDESKTOP(c))
+        {
+            if(mask & XCB_CONFIG_WINDOW_X)
+            {   rx = x;
+            }
+            if(mask & XCB_CONFIG_WINDOW_Y)
+            {   ry = y;
+            }
+            if(mask & XCB_CONFIG_WINDOW_WIDTH)
+            {   rw = MAX(w, 1);
+            }
+            if(mask & XCB_CONFIG_WINDOW_HEIGHT)
+            {   rh = MAX(h, 1);
+            }
+
+            Monitor *m = recttomon(rx, ry, rw, rh);
+
+            if(m && m != c->desktop->mon)
+            {   setclientdesktop(c, m->desksel);
+            }
+
+            resizeclient(c, rx, ry, rw, rh);
+            configure(c);
+            arrangeq(c->desktop);
+            sync = 1;
+            goto SYNC;
+        }
+
         if(mask & XCB_CONFIG_WINDOW_BORDER_WIDTH)
         {                           /* Border width should NEVER be bigger than the screen */
             setborderwidth(c, bw);
@@ -919,6 +949,7 @@ configurerequest(XCBGenericEvent *event)
         XCBConfigureWindow(_wm.dpy, target, mask, &wc);
         sync = 1;
     }
+SYNC:
     if(sync)
     {   XCBFlush(_wm.dpy);
     }
@@ -938,7 +969,15 @@ maprequest(XCBGenericEvent *event)
     Client *c = wintoclient(win);
 
     if(c)
-    {   setmapstate(c, WMMapStateMapped);
+    {   
+        setmapstate(c, WMMapStateMapped);
+        setwtypemapnormal(c, 1);
+        sethidden(c, 0);
+        setclientstate(c, XCB_WINDOW_NORMAL_STATE);
+        showhide(c);
+        XCBMapWindow(_wm.dpy, c->win);
+        arrange(c->desktop);
+        sync = 1;
     }
     else
     {   PropListen(_wm.dpy, win, PropManage);
@@ -1022,6 +1061,11 @@ configurenotify(XCBGenericEvent *event)
         Debug("(w: %d, h: %d)", w, h);
         if(updategeom() || dirty)
         {
+            const u32 geom[] = { _wm.sw, _wm.sh };
+            const u32 len = LENGTH(geom);
+
+            XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetDesktopGeometry], XCB_ATOM_CARDINAL, 32, XCBPropModeReplace, geom, len);
+            updatedesktopworkarea();
             arrangemons();
             sync = 1;
         }
@@ -1157,7 +1201,6 @@ unmapnotify(XCBGenericEvent *event)
     (void)eventwin;
     (void)isconfigure;
 
-
     u8 sync = 0;
 
     Client *c = wintoclient(win);
@@ -1176,7 +1219,7 @@ unmapnotify(XCBGenericEvent *event)
 
         setmapstate(c, WMMapStateUnmapped);
 
-        unmanage(c, 1);
+        unmanage(c, 0);
 
         /* if desktop was selected re arrange (no need to waste resources if not visbile) */
         if(desk->mon->desksel == desk || sticky)
@@ -1436,6 +1479,12 @@ clientmessage(XCBGenericEvent *event)
     }
     else if(atom == netatom[NetMoveResizeWindow])
     {
+        c = wintoclient(win);
+
+        if(!c)
+        {   return;
+        }
+
         Debug0("NetMoveResizeWindow 'ed");
         /* specified as low 8 bits: 
             * https://specifications.freedesktop.org/wm-spec/latest/ar01s04.html
@@ -1569,10 +1618,10 @@ clientmessage(XCBGenericEvent *event)
         {
             enum { WM_STATE_REMOVE = 0, WM_STATE_ADD = 1, WM_STATE_TOGGLE = 2, WM_STATE_LAST };
 
-            const u8 action = l0;
+            const u32 action = l0;
             const XCBAtom prop1 = l1;
             const XCBAtom prop2 = l2;
-            u8 source = l3;
+            const u32 source = l3;
 
             /* spec says nothing about the source, so we just ignore it */
             (void)source;

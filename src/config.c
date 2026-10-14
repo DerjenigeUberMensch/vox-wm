@@ -132,12 +132,12 @@ const char *
 WMConfigGetPath(
         enum WMFile file
         )
-{   return (const char *)WM_FILES[file];
+{   return file >= 0 && file < WMFileLAST ? (const char *)WM_FILES[file] : NULL;
 }
 
 const char *
 WMConfigGetFolder(
         enum WMFolder folder
         )
-{   return (const char *)WM_FOLDERS[folder];
+{   return folder >= 0 && folder < WMFolderLAST ? (const char *)WM_FOLDERS[folder] : NULL;
 }

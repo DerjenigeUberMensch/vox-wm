@@ -1998,6 +1998,7 @@ XCBGetErrorDisplayText(
         [XCB_CONN_CLOSED_PARSE_ERR] = "InvalidDisplay",
         [XCB_CONN_CLOSED_INVALID_SCREEN] = "InvalidScreen"
     };
+
     /* bounds check */              /* & over && for better inlining */
     display_error *= (display_error > 0) & (display_error < 7);
     return (char *const)errs[display_error];
@@ -2039,8 +2040,6 @@ XCBGetFullErrorText(
 }
 
 /* events */
-
-
 
 XCBCookie
 XCBAllowEvents(
@@ -3635,4 +3634,58 @@ XCBWipeGetWMClass(
     }
     xcb_icccm_get_wm_class_reply_wipe(class);
     class->_reply = NULL;
+}
+
+XCBCookie
+XCBSetSelectionOwner(
+        XCBDisplay *display,
+        XCBAtom selection,
+        XCBWindow owner,
+        XCBTime time
+        )
+{
+    XCBCookie cookie = xcb_set_selection_owner(display, owner, selection, time);
+
+    _xcb_push_func(cookie);
+
+    return cookie;
+}
+
+XCBCookie
+XCBGetSelectionOwnerCookie(
+        XCBDisplay *display,
+        XCBAtom atom
+        )
+{
+    xcb_get_selection_owner_cookie_t cookie = xcb_get_selection_owner(display, atom);
+
+    XCBCookie ret = { .sequence = cookie.sequence };
+
+    _xcb_push_func(ret);
+
+    return ret;
+}
+
+XCBWindow 
+XCBGetSelectionOwnerReply(
+        XCBDisplay *display,
+        XCBCookie cookie
+        )
+{
+    XCBGenericError *err = NULL;
+
+    xcb_get_selection_owner_cookie_t cookie1 = { .sequence = cookie.sequence };
+    xcb_get_selection_owner_reply_t *reply = xcb_get_selection_owner_reply(display, cookie1, &err);
+
+    XCBWindow win = XCBNone;
+
+    if(reply)
+    {
+        win = reply->owner;
+        free(reply);
+    }
+
+    __XValidateReply(display, NULL, err);
+
+    return win;
 }

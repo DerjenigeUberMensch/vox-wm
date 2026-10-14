@@ -2884,6 +2884,46 @@ XCBWipeGetWMClass(
         );
 
 
+/* Sets the selection owner for a given selection.
+ *
+ */
+XCBCookie
+XCBSetSelectionOwner(
+        XCBDisplay *display,
+        XCBAtom selection,
+        XCBWindow owner,
+        XCBTime time
+        );
+
+/*
+ *
+ * atom            XCBAtom              The selection atom that is derived specifically from the selection name.
+ *                                      In other words WM_Sn where n the number of screen. So for example
+ *                                      WM_S0 would be the first screen 'screen 0' ie display ':X.0'
+ *                                      WM_S1 would be the second screen 'screen 1' ioe display ':X.1'
+ *                                      So for example for display ':0' the first screne would be WM_S0.
+ *                                      Which would be WM_S0, even though the display doesnt specify it.
+ *                                      See XCBInternAtomCookie to make an atom
+ *
+ */
+XCBCookie
+XCBGetSelectionOwnerCookie(
+        XCBDisplay *display,
+        XCBAtom atom
+        );
+
+/*
+ *
+ *
+ */
+XCBWindow 
+XCBGetSelectionOwnerReply(
+        XCBDisplay *display,
+        XCBCookie cookie
+        );
+
+
+
 extern void XCBDefaultHandlerMsg(XCBDisplay *display, XCBGenericError *error);
 
 

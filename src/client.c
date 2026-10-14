@@ -5,6 +5,7 @@
 #include "XCB-TRL/xcb_trl.h"
 
 #include "XCB-TRL/xcb_trl_types.h"
+#include "desktop.h"
 #include"keybind/keybinds.h"
 #include "main.h"
 #include "hashing.h"
@@ -15,6 +16,7 @@
 #include "settings.h"
 #include "util.h"
 #include "floating.h"
+#include "xerror.h"
 
 
 extern WM _wm;
@@ -62,7 +64,7 @@ u32 NEVERFOCUS(Client *c)       { return c->ewmhflags & WStateFlagNeverFocus; }
  * OKAY SO apaprntly polybar grabs its own buttons for jackshit all, and is why it breaks, doing  ISDOCK() for now....
  *
  */
-u32 NEVERHOLDFOCUS(Client *c)   { return (NEVERFOCUS(c) && !HASWMTAKEFOCUS(c)) || ISDOCK(c); }
+u32 NEVERHOLDFOCUS(Client *c)   { return (NEVERFOCUS(c) && !HASWMTAKEFOCUS(c)) || ISBAR(c); }
 
 u32 ISMAPPED(Client *c)         { return c->flags & ClientFlagMapped; }
 u32 SHOWDECOR(Client *c)        { return c->flags & ClientFlagShowDecor; }
@@ -120,7 +122,7 @@ u32 HASSTRUT(Client *c)          {
                                     /* idk man */
                                     for(i = 0; i < WMStrutDirectionLAST; i++)
                                     {
-                                        if(strutdepth[i] && (strutstart[i] - strutend[i] > 0))
+                                        if(strutdepth[i] && strutstart[i] < strutend[i])
                                         {   
                                             result = 1;
                                             break;
@@ -193,6 +195,15 @@ applysizehints(Client *c, i32 *x, i32 *y, i32 *width, i32 *height, uint8_t inter
     u8 baseismin;
     const Monitor *m = c->desktop->mon;
 
+    *width = CLAMP(*width, 1, UINT16_MAX);
+    *height = CLAMP(*height, 1, UINT16_MAX);
+
+    /* Desktops own their geomerty, including spans acxross mo-nitors
+     */
+    if(ISDESKTOP(c))
+    {   return *x != c->x || *y != c->y || *width != c->w || *height != c->h;
+    }
+
     if (interact)
     {
         if (*x > _wm.sw) 
@@ -235,10 +246,11 @@ applysizehints(Client *c, i32 *x, i32 *y, i32 *width, i32 *height, uint8_t inter
     /* adjust for aspect limits */
     if (c->mina > 0 && c->maxa > 0)
     {
-        if (c->maxa < (float)*width / *height) 
+        if(*height > 0 && c->maxa < (float)*width / *height)
         {   *width = *height * c->maxa + 0.5;
         }
-        else if (c->mina < (float)*height / *width) 
+
+        else if (*width > 0 && c->mina < (float)*height / *width) 
         {   *height = *width * c->mina + 0.5;
         }
     }
@@ -264,6 +276,10 @@ applysizehints(Client *c, i32 *x, i32 *y, i32 *width, i32 *height, uint8_t inter
     if (c->maxh) 
     {   *height = MIN(*height, c->maxh);
     }
+
+    *width = CLAMP(*width, 1, UINT16_MAX);
+    *height = CLAMP(*height, 1, UINT16_MAX);
+
     return *x != c->x || *y != c->y || *width != c->w || *height != c->h;
 }
 
@@ -448,7 +464,7 @@ clientinitsizehints(Client *c, XCBSizeHints *size)
 void 
 clientinitwtype(Client *c, XCBWindowProperty *windowtypereply)
 {
-    if(windowtypereply)
+    if(windowtypereply && windowtypereply->type == XCB_ATOM_ATOM && windowtypereply->format == 32)
     {
         XCBAtom *data = XCBGetPropertyValue(windowtypereply);
         uint32_t ATOM_LENGTH = 0;
@@ -460,7 +476,7 @@ clientinitwtype(Client *c, XCBWindowProperty *windowtypereply)
 void 
 clientinitwstate(Client *c, XCBWindowProperty *windowstatereply)
 {
-    if(windowstatereply)
+    if(windowstatereply && windowstatereply->type == XCB_ATOM_ATOM && windowstatereply->format == 32)
     {
         XCBAtom *data = XCBGetPropertyValue(windowstatereply);
         uint32_t ATOM_LENGTH = 0;
@@ -581,7 +597,9 @@ focusrealize(Client *c)
     Desktop *desk  = selmon->desksel;
 
     if(!c || !ISVISIBLE(c) || NEVERHOLDFOCUS(c))
-    {   for(c = startfocus(desk); c && !ISVISIBLE(c) && !KEEPFOCUS(c); c = nextfocus(c));
+    {   
+        /* NOTE IF THIS FUNCTION IS CHANGE detachfocus(), PropUpdateManage() must also be changed */
+        for(c = startfocus(desk); c && (!ISVISIBLE(c) || NEVERHOLDFOCUS(c) || ISDESKTOP(c)); c = nextfocus(c));
     }
 
     if(c)
@@ -878,8 +896,6 @@ manage(XCBWindow win, bool allow_unmapped_window, void *replies[ManageClientLAST
     XCBWindowProperty *motifreply = replies[ManageClientMotif];
     XCBWindow *trans = replies[ManageClientTransient];
 
-    u32 *strutp = strutp = strutpreply ? XCBGetWindowPropertyValue(strutpreply) : NULL;
-    u32 *strut = strut = strutreply ? XCBGetWindowPropertyValue(strutreply) : NULL;
     u32 sizehints = 0;
 
     if(!CANMANAGE(win, allow_unmapped_window, waattributes, wastatereply))
@@ -892,10 +908,10 @@ manage(XCBWindow win, bool allow_unmapped_window, void *replies[ManageClientLAST
 
     c->win = win;
 
-    if(strutp)
+    if(strutpreply)
     {   updatestrutp(c, strutpreply);
     }
-    else if(strut)
+    else if(strutreply)
     {   updatestrut(c, strutreply);
     }
 
@@ -904,6 +920,18 @@ manage(XCBWindow win, bool allow_unmapped_window, void *replies[ManageClientLAST
     clientinittrans(c, trans ? *trans : 0); 
     clientinitgeom(c, wg);
     clientinitwtype(c, wtypeunused);
+
+    if(ISDESKTOP(c))
+    {   
+        Monitor *desktopmon = recttomon(c->x, c->y, c->w, c->h);
+
+        if(desktopmon)
+        {   c->desktop = desktopmon->desksel;
+        }
+
+        setsticky(c, 1);
+    }
+
     clientinitwstate(c, stateunused);
     updatewindowprotocol(c, wmprotocols);
     setfloating(c, !!trans);
@@ -980,6 +1008,20 @@ manage(XCBWindow win, bool allow_unmapped_window, void *replies[ManageClientLAST
     {   setupbar(m, c);
     }
 
+    if(ISDESKTOP(c))
+    {   
+        setborderwidth(c, 0);
+        setdisableborder(c, 1);
+        updateborderwidth(c);
+        setskiptaskbar(c, 1);
+        setskippager(c, 1);
+        updateclientdesktop(c);
+    }
+
+    if(HASSTRUT(c))
+    {   updatedesktopworkarea();
+    }
+
     goto CLEANUP;
 FAILURE:
     if(c)
@@ -1047,7 +1089,7 @@ nextfocus(Client *c)
 Client *
 nexttiled(Client *c)
 {   
-    for(; c && (ISFLOATING(c) || !ISVISIBLE(c)); c = nextstack(c));
+    for(; c && (ISFLOATING(c) || !ISVISIBLE(c) || ISDOCK(c) || ISDESKTOP(c)); c = nextstack(c));
     return c;
 }
 
@@ -1103,6 +1145,9 @@ void
 resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
 {
     u32 mask = 0;
+
+    width = MAX(width, 1);
+    height = MAX(height, 1);
 
     if(c->x != x)
     {   
@@ -1162,8 +1207,11 @@ resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
         }
     }
 
-    setclientnetstate(c, netatom[NetWMStateMaximizedVert], !!ISMAXVERT(c));
-    setclientnetstate(c, netatom[NetWMStateMaximizedHorz], !!ISMAXHORZ(c));
+    if(!ISDESKTOP(c))
+    {
+        setclientnetstate(c, netatom[NetWMStateMaximizedVert], !!ISMAXVERT(c));
+        setclientnetstate(c, netatom[NetWMStateMaximizedHorz], !!ISMAXHORZ(c));
+    }
 
     configure(c);
 }
@@ -1213,8 +1261,8 @@ setalwaysonbottom(Client *c, uint8_t state)
 void
 setborderalpha(Client *c, uint8_t alpha)
 {
-    c->bcol &= ~(UINT8_MAX << 24);
-    c->bcol |= alpha << 24;
+    c->bcol &= ~((u32)UINT8_MAX << 24);
+    c->bcol |= (u32)alpha << 24;
 }
 
 void
@@ -1227,8 +1275,8 @@ setbordercolor(Client *c, uint8_t red, uint8_t green, uint8_t blue)
 void
 setbordercolor32(Client *c, uint32_t col)
 {   
-    const u32 mask = (UINT32_MAX ^ (((uint32_t)UINT8_MAX)<< 24));
-    c->bcol &= mask;
+    const u32 mask = (UINT32_MAX ^ (((uint32_t)UINT8_MAX) << 24));
+    c->bcol &= ~mask;
     c->bcol |= col & mask;
 }
 
@@ -1568,7 +1616,15 @@ setoverrideredirect(Client *c, uint8_t state)
 void
 setsticky(Client *c, u8 state)
 {
+    if(ISDESKTOP(c))
+    {   state = 1;
+    }
+
     SETFLAG(c->ewmhflags, WStateFlagSticky, !!state);
+
+    if(c->win && c->desktop)
+    {   updateclientdesktop(c);
+    }
 }
 
 void
@@ -1690,7 +1746,7 @@ showhide(Client *c)
 
     if(!ISVISIBLE(c))
     {   
-        Cardinal side;
+        Cardinal side = North;
 
         if(!ISBAR(c))
         {
@@ -1725,13 +1781,26 @@ showhide(Client *c)
                 case BarSideBottom: side = South; break;
                 case BarSideLeft:   side = West;  break;
                 case BarSideRight:  side = East;  break;
+                default:            side = North; break;
             }
+        }
+
+        if(side < 0 || side >= CardinalCount)
+        {
+            Debug("Invalid side: %d", side);
+            side = North;
         }
 
         hidecoords(c, side, &x, &y);
     }
 
-    XCBMoveWindow(_wm.dpy, c->win, x, y);
+    /* Hidden clients may have changed their size off screen */
+    if(ISVISIBLE(c))
+    {   XCBMoveResizeWindow(_wm.dpy, c->win, x, y, c->w, c->h);
+    }
+    else
+    {   XCBMoveWindow(_wm.dpy, c->win, x, y);
+    }
 }
 
 Client *
@@ -1828,22 +1897,17 @@ updateborderwidth(Client *c)
 void
 updateclientdesktop(Client *c)
 {
-    int wrapToMax = -1;
     u32 deskindex;
 
-    if(c->desktop)
+    if(ISSTICKY(c) || ISDESKTOP(c))
+    {   deskindex = UINT32_MAX;
+    }
+    else if(c->desktop)
     {   deskindex = c->desktop->num;
     }
     else
     {
-        if(ISSTICKY(c))
-        {   deskindex = wrapToMax;
-        }
-        else
-        {   
-            Debug("Attempted to call updateclientdesktop of unattached client, on: [%d]", c->win);
-            return;
-        }
+        Debug("Attempted to call updateclientdesktop of unattached client, on: [%d]", c->win);
     }
 
     XCBChangeProperty(_wm.dpy, c->win, netatom[NetWMDesktop], XCB_ATOM_CARDINAL, 32, XCBPropModeReplace, &deskindex, 1);
@@ -1853,16 +1917,32 @@ void
 unmanage(Client *c, uint8_t destroyed)
 {
     const XCBWindow win = c->win;
+    const u32 hadstrut = HASSTRUT(c);
 
     /* prevent dangling pointer here woops */
     if(!destroyed)
     {   
-        grabbuttons(c, ISFOCUSED(c));
+        XERROR_ADD_SKIP_ID(c->win);
+
+        XCBUngrabButton(_wm.dpy, XCBButtonAny, XCBModMaskAny, c->win);
+
+        if(c->decor && c->decor->win != XCBNone)
+        {   XCBUngrabButton(_wm.dpy, XCBButtonAny, XCBModMaskAny, c->decor->win);
+        }
+
         decorationrelease(c->decor, c);
+        setclientstate(c, XCB_WINDOW_WITHDRAWN_STATE);
+        XCBDeleteProperty(_wm.dpy, c->win, netatom[NetWMDesktop]);
+        XCBRemoveFromSaveSet(_wm.dpy, c->win);
         /* TODO causes alot of errors for some reason even if its not "destroyed" */
     }
 
     REMOVECLIENTREFERENCES(c);
+
+    if(hadstrut)
+    {   updatedesktopworkarea();
+    }
+
     /* Destroy colormap */
     updatecolormap(c, 0);
     updateclientlist(win, ClientListRemove);
@@ -2268,7 +2348,7 @@ updatestrut(Client *c, XCBWindowProperty *strutprop)
     {   return;
     }
 
-    if(strutprop->format != 32)
+    if(strutprop->type != XCB_ATOM_CARDINAL || strutprop->format != 32)
     {   
         DebugWarn("WindowProperty Value has wrong format");
         return;
@@ -2309,20 +2389,24 @@ updatestrut(Client *c, XCBWindowProperty *strutprop)
     {   c->strutstart[i] = 0;
     }
 
-    c->strutend[WMStrutDirectionLeft] = _wm.sw;
-    c->strutend[WMStrutDirectionRight] = _wm.sw;
-    c->strutend[WMStrutDirectionTop] = _wm.sh;
-    c->strutend[WMStrutDirectionBottom] = _wm.sh;
+    c->strutend[WMStrutDirectionLeft] = MAX(_wm.sw - 1, 0);
+    c->strutend[WMStrutDirectionRight] = MAX(_wm.sw - 1, 0);
+    c->strutend[WMStrutDirectionTop] = MAX(_wm.sh - 1, 0);
+    c->strutend[WMStrutDirectionBottom] = MAX(_wm.sh - 1, 0);
 
-    c->strutdepth[WMStrutDirectionLeft] = left;
-    c->strutdepth[WMStrutDirectionRight] = right;
-    c->strutdepth[WMStrutDirectionTop] = top;
-    c->strutdepth[WMStrutDirectionBottom] = bottom;
+    c->strutdepth[WMStrutDirectionLeft] = MIN(left, UINT16_MAX);
+    c->strutdepth[WMStrutDirectionRight] = MIN(right, UINT16_MAX);
+    c->strutdepth[WMStrutDirectionTop] = MIN(top, UINT16_MAX);
+    c->strutdepth[WMStrutDirectionBottom] = MIN(bottom, UINT16_MAX);
 }
 
 void
 updatestrutp(Client *c, XCBWindowProperty *strutpprop)
 {
+    if(!strutpprop)
+    {   return;
+    }
+
     /* strut normal */
     const size_t UNIT_SIZE = sizeof(uint32_t);
     const size_t LEN_SIZE = 12;
@@ -2335,7 +2419,7 @@ updatestrutp(Client *c, XCBWindowProperty *strutpprop)
     {   return;
     }
 
-    if(strutpprop->format != 32)
+    if(strutpprop->type != XCB_ATOM_CARDINAL || strutpprop->format != 32)
     {   
         DebugWarn("WindowProperty Value has wrong format");
         return;
@@ -2387,23 +2471,23 @@ updatestrutp(Client *c, XCBWindowProperty *strutpprop)
     uint32_t bottom_end_x = dataclean[11];
 
 
-    c->strutdepth[WMStrutDirectionLeft] = left;
-    c->strutdepth[WMStrutDirectionRight] = right;
+    c->strutdepth[WMStrutDirectionLeft] = MIN(left, UINT16_MAX);
+    c->strutdepth[WMStrutDirectionRight] = MIN(right, UINT16_MAX);
 
-    c->strutdepth[WMStrutDirectionTop] = top;
-    c->strutdepth[WMStrutDirectionBottom] = bottom;
+    c->strutdepth[WMStrutDirectionTop] = MIN(top, UINT16_MAX);
+    c->strutdepth[WMStrutDirectionBottom] = MIN(bottom, UINT16_MAX);
 
-    c->strutstart[WMStrutDirectionLeft] = left_start_y;
-    c->strutend[WMStrutDirectionLeft] = left_end_y;
+    c->strutstart[WMStrutDirectionLeft] = MIN(left_start_y, UINT16_MAX);
+    c->strutend[WMStrutDirectionLeft] = MIN(left_end_y, UINT16_MAX);
 
-    c->strutstart[WMStrutDirectionRight] = right_start_y;
-    c->strutend[WMStrutDirectionRight] = right_end_y;
+    c->strutstart[WMStrutDirectionRight] = MIN(right_start_y, UINT16_MAX);
+    c->strutend[WMStrutDirectionRight] = MIN(right_end_y, UINT16_MAX);
 
-    c->strutstart[WMStrutDirectionTop] = top_start_x;
-    c->strutend[WMStrutDirectionTop] = top_end_x;
+    c->strutstart[WMStrutDirectionTop] = MIN(top_start_x, UINT16_MAX);
+    c->strutend[WMStrutDirectionTop] = MIN(top_end_x, UINT16_MAX);
 
-    c->strutstart[WMStrutDirectionBottom] = bottom_start_x;
-    c->strutend[WMStrutDirectionBottom] = bottom_end_x;
+    c->strutstart[WMStrutDirectionBottom] = MIN(bottom_start_x, UINT16_MAX);
+    c->strutend[WMStrutDirectionBottom] = MIN(bottom_end_x, UINT16_MAX);
 }
 
 void
@@ -2428,6 +2512,10 @@ updatetitle(Client *c, char *netwmname, char *wmname)
 void
 updatewindowprotocol(Client *c, XCBWMProtocols *protocols)
 {
+    setwmtakefocus(c, 0);
+    setwmdeletewindow(c, 0);
+    setwmsaveyourself(c, 0);
+
     if(protocols && protocols->atoms_len)
     {
         uint32_t i;
@@ -2900,3 +2988,4 @@ wintoclient(XCBWindow win)
   
     return c;
 }
+

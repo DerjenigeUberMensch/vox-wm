@@ -55,7 +55,7 @@ memfilled(void *mem, size_t size)
     for(i = 0; i < size; ++i)
     {   
         char *num = (char *)mem + i;
-        if(*num != ~0)
+        if((unsigned char)*num != (unsigned char)(~0))
         {   return false;
         }
     }
@@ -72,11 +72,11 @@ PACK_ARGB(uint8_t a, uint8_t r, uint8_t g, uint8_t b)
     switch(byteorder)
     {
         /* Big Endian */
-        case 1234: return b | (g << 8) | (r << 16) | (a << 24);
+        case 1234: return b | (g << 8) | (r << 16) | ((uint32_t)a << 24);
         /* Little Endian */
-        case 4321: return (a << 24) | (r << 16) | (g << 8) | b;
+        case 4321: return ((uint32_t)a << 24) | (r << 16) | (g << 8) | b;
         /* PDP Endian */
-        case 3412: return (r << 16) | (a << 24) | (b) | (g << 8);
+        case 3412: return (r << 16) | ((uint32_t)a << 24) | (b) | (g << 8);
     }
 
     return 0;
@@ -270,19 +270,19 @@ char *CARDINAL_TO_STRING(Cardinal c)
 
 void _Breakpoint(void) { volatile int *e = 0; if(e != (volatile int *)1) { e = (volatile int *)3; } (void)e; }
 
-
-
 #ifdef __USE_POSIX
 
 #include <errno.h>
 #include <poll.h>
+#include <limits.h>
 
 int 
 upoll_poll(int fd, int events, i64 timeout_ms)
 {
     char buff[UPOLL_UNIT_SIZE];
+    int revents;
 
-    return upoll_poll_mult(&fd, &events, (int *)buff, buff, 1, timeout_ms);
+    return upoll_poll_mult(&fd, &events, &revents, buff, 1, timeout_ms);
 }
 
 int 
@@ -302,7 +302,7 @@ upoll_poll_mult(int *fds, int *events, int *revents, void *poll_buffer, size_t f
 
     int ret;
 
-    ret = poll(pollfds, fds_count, timeout_ms);
+    ret = poll(pollfds, fds_count, timeout_ms < 0 ? -1 : (timeout_ms > INT_MAX ? INT_MAX : (int)timeout_ms));
 
     if(ret > 0)
     {

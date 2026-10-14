@@ -429,7 +429,6 @@ STATIC_ASSERT(0, cannot_run_debug_with_ndebug)
 
 #endif
 
-
 /* Original implementation: Simon Tatham 
  * https://www.chiark.greenend.org.uk/~sgtatham/algorithms/listsort.html 
  */
@@ -679,6 +678,7 @@ Cardinal OPPOSITE_CARDINAL(Cardinal c);
  */
 char *CARDINAL_TO_STRING(Cardinal c);
 
+
 #ifdef __USE_POSIX
 
 #include <stdint.h>
@@ -709,7 +709,6 @@ int upoll_poll(int fd, int events, i64 timeout_ms);
 int upoll_poll_mult(int *fds, int *events, int *revents, void *poll_buffer, size_t fds_count, i64 timeout_ms);
 
 #endif
-
 
 void _Breakpoint(void);
 

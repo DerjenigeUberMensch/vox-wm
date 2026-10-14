@@ -220,6 +220,7 @@ WMKeybindRemove(uint16_t modifier_mask_x11, XCBKeysym keysyms[], size_t num_keys
         if(status != EXIT_SUCCESS)
         {   
             GArrayWipe(&k.keysyms);
+            GArrayWipe(&k.buttons);
             return EXIT_FAILURE;
         }
     }
@@ -237,6 +238,7 @@ WMKeybindRemove(uint16_t modifier_mask_x11, XCBKeysym keysyms[], size_t num_keys
         if(status != EXIT_SUCCESS)
         {   
             GArrayWipe(&k.keysyms);
+            GArrayWipe(&k.buttons);
             return EXIT_FAILURE;
         }
     }
@@ -252,6 +254,18 @@ WMKeybindRemove(uint16_t modifier_mask_x11, XCBKeysym keysyms[], size_t num_keys
     /* key already exists? */
     if(status == EXIT_SUCCESS)
     {
+        WMKeyBind *remove = GArrayAt(&keybind_keybinds, index);
+
+        if(!ASSERT(remove))
+        {   
+            DebugError("Keybind to remove is NULL");
+        }
+        else
+        {
+            GArrayWipe(&remove->keysyms);
+            GArrayWipe(&remove->buttons);
+        }
+
         GArrayDelete(&keybind_keybinds, index);
     }
     else
@@ -406,7 +420,7 @@ __ungrabbuttons(XCBWindow win, bool neverholdfocus, bool focused)
                     continue;
                 }
 
-                XCBUngrabButton(_wm.dpy, button->button, modifiers[i], win);
+                XCBUngrabButton(_wm.dpy, button->button, key->mod == XCBModMaskAny ? XCBModMaskAny : key->mod | modifiers[i], win);
             }
         }
     }
@@ -469,7 +483,7 @@ __grabbuttons(XCBWindow win, bool neverholdfocus, bool focused)
             for(k = 0; k < LENGTH(modifiers); ++k)
             {
                 XCBGrabButton(_wm.dpy, button->button, 
-                            key->mod | modifiers[k], 
+                            key->mod == XCBModMaskAny ? XCBModMaskAny : key->mod | modifiers[k], 
                             win, False, 
                             BUTTONMASK, 
                             XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_SYNC, 

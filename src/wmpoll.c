@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include "wmpoll.h"
 
@@ -16,12 +17,12 @@ GArray wm_poll_callbacks;
 GArray wm_poll_args;
 GArray wm_poll_buff;
 
-sig_atomic_t wm_poll_exit = 0;
+volatile sig_atomic_t wm_poll_exit = 0;
 
 enum { PIPE_READ = 0, PIPE_WRITE = 1, PIPE_LAST };
 
 /* pipe... */
-static int wake_pipe[PIPE_LAST];
+static int wake_pipe[PIPE_LAST] = { -1, -1 };
 static int has_pipe = 0;
 
 static void
@@ -46,6 +47,27 @@ WMPollInit(int NUM_OF_POLL_FDS)
     int status;
 
     status = pipe(wake_pipe);
+
+    if(status == 0)
+    {
+        int i;
+        for(i = 0; i < PIPE_LAST; ++i)
+        {
+            int flags = fcntl(wake_pipe[i], F_GETFL);
+
+            if(flags < 0 || fcntl(wake_pipe[i], F_SETFL, flags | O_NONBLOCK) < 0 || fcntl(wake_pipe[i], F_SETFD, FD_CLOEXEC) < 0)
+            {   status = -1;
+            }
+        }
+
+        if(status != 0)
+        {   
+            close(wake_pipe[PIPE_READ]);
+            close(wake_pipe[PIPE_WRITE]);
+            wake_pipe[PIPE_READ] = -1;
+            wake_pipe[PIPE_WRITE] = -1;
+        }
+    }
 
     if(status != 0)
     {   has_pipe = 0;
@@ -358,17 +380,29 @@ WMPollWakeup(void)
     {   return;
     }
 
-    char c = 1;
+    int err = errno;
 
-    if(write(wake_pipe[PIPE_WRITE], &c, 1) == -1)
+    const char c = 1;
+    ssize_t status;
+
+    do
+    {
+        status = write(wake_pipe[PIPE_WRITE], &c, 1);
+        
+        /* If write is interrupted by a signal, try again */
+    } while(status < 0 && errno == EINTR);
+
+    if(status < 0)
     {
         if(errno == EAGAIN || errno == EWOULDBLOCK)
         {   return;
         }
 
         /* shit */
-        DebugError("Failed to write to wake pipe, were fucked");
+        DebugError("Failed to write to wake pipe, ruh roh");
     }
+
+    errno = err;
 }
 
 void

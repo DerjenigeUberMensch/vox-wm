@@ -1,3 +1,4 @@
+#include <complex.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
@@ -15,6 +16,8 @@
 
 #include "XCB-TRL/xcb_image.h"
 
+#include "client.h"
+#include "desktop.h"
 #include "util.h"
 #include "main.h"
 #include "floating.h"
@@ -188,7 +191,7 @@ ActionUserStats(void)
             if(win)
             {   XCBDestroyWindow(_wm.dpy, win);
             }
-            win = XCBCreateSimpleWindow(_wm.dpy, _wm.root, 0, 0, icon[1] + 5, icon[0] + 5, 0, 0, 0);
+            win = XCBCreateSimpleWindow(_wm.dpy, _wm.root, 0, 0, icon[0] + 5, icon[1] + 5, 0, 0, 0);
             XCBMapWindow(_wm.dpy, win);
             XCBGC gc = XCBCreateGC(_wm.dpy, win, 0, NULL);
 
@@ -196,9 +199,9 @@ ActionUserStats(void)
             {
                 for(j = 0; j < icon[1]; ++j)
                 {
-                    if(icon[icon[1] * j + i])
+                    if(icon[2 + icon[0] * j + i])
                     {
-                        XCBSetForeground(_wm.dpy, gc, icon[icon[1] * j + i] & ~((uint32_t)UINT8_MAX << 24));
+                        XCBSetForeground(_wm.dpy, gc, icon[2 + icon[0] * j + i] & ~((uint32_t)UINT8_MAX << 24));
                         XCBDrawPoint(_wm.dpy, XCB_COORD_MODE_ORIGIN, win, gc, i, j);
                     }
                 }
@@ -453,7 +456,7 @@ ActionSpawnWindow(char *file_to_run, const char *argv[])
 
     if(count > 0)
     {
-        Debug("child's execvp()", strerror(exec_err));
+        Debug("child's execvp() %s", strerror(exec_err));
 
         return;
     }
@@ -499,7 +502,7 @@ ActionMaximizeWindow(Client *c)
     {   c = _wm.selmon->desksel->sel;
     }
 
-    if(!c)
+    if(!c || ISDESKTOP(c))
     {   return;
     }
 
@@ -530,7 +533,7 @@ ActionMaximizeWindowVertical(Client *c)
     {   c = _wm.selmon->desksel->sel;
     }
 
-    if(!c)
+    if(!c || ISDESKTOP(c))
     {   return;
     }
 
@@ -547,7 +550,7 @@ ActionMaximizeWindowVertical(Client *c)
 void
 ActionMaximizeWindowHorizontal(Client *c) 
 {
-    if(!c)
+    if(!c || ISDESKTOP(c))
     {   c = _wm.selmon->desksel->sel;
     }
 
@@ -619,7 +622,8 @@ ActionToggleStatusBar(Monitor *m)
 
     if(hadbars)
     {
-        arrange(_wm.selmon->desksel);
+        arrange(desk);
+        updatedesktopworkarea();
         XCBFlush(_wm.dpy);
     }
 }
@@ -631,7 +635,7 @@ ActionToggleFullscreen(Client *c)
     {   c = _wm.selmon->desksel->sel;
     }
 
-    if(!c)
+    if(!c || ISDESKTOP(c))
     {   return;
     }
     

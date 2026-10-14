@@ -104,9 +104,10 @@ CQueuePop(CQueue *queue, void *fill)
 uint8_t 
 CQueueAdd(CQueue *queue, void *data)
 {
-    if(!queue)
+    if(!queue || !data)
     {   return 0;
     }
+
     uint32_t empty;
     int64_t index;
     CQueueLockW(queue);
@@ -140,7 +141,7 @@ CQueueGetFirst(CQueue *queue)
     CQueueLockR(queue);
 
     if(queue->front != -1)
-    {   ret = (uint8_t *)queue->data + queue->rear * queue->datasize;
+    {   ret = (uint8_t *)queue->data + queue->front * queue->datasize;
     }
 
     CQueueUnlockR(queue);
@@ -165,26 +166,46 @@ CQueueGetLast(CQueue *queue)
 uint8_t
 CQueueCreate(uint32_t datalen, size_t sizeof_one_item, CQueue *_Q_RETURN)
 {
-    pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-    pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+    if(!_Q_RETURN || !datalen || !sizeof_one_item || sizeof_one_item > SIZE_MAX / datalen)
+    {   return 1;
+    }
+
+    memset(_Q_RETURN, 0, sizeof(*_Q_RETURN));
 
     _Q_RETURN->data = malloc(sizeof_one_item * datalen);
-    _Q_RETURN->datasize = sizeof_one_item;
-    _Q_RETURN->datalen = datalen;
-    _Q_RETURN->rear = -1;
-    _Q_RETURN->front = -1;
-    _Q_RETURN->condmutex = mutex;
-    _Q_RETURN->cond = cond;
 
     if(!_Q_RETURN->data)
     {   return 1;
     }
 
+    _Q_RETURN->datasize = sizeof_one_item;
+    _Q_RETURN->datalen = datalen;
+    _Q_RETURN->rear = -1;
+    _Q_RETURN->front = -1;
+
     if(pthread_rwlock_init(&_Q_RETURN->mutex, NULL))
-    {   return 1;
+    {   goto FREE_DATA;
+    }
+
+    if(pthread_mutex_init(&_Q_RETURN->condmutex, NULL))
+    {   goto FREE_RWLOCK;
+    }
+
+    if(pthread_cond_init(&_Q_RETURN->cond, NULL))
+    {   goto FREE_MUTEX;
     }
 
     return 0;
+FREE_MUTEX:
+    pthread_mutex_destroy(&_Q_RETURN->condmutex);
+FREE_RWLOCK:
+    pthread_rwlock_destroy(&_Q_RETURN->mutex);
+FREE_DATA:
+    free(_Q_RETURN->data);
+
+    _Q_RETURN->data = NULL;
+
+    return 1;
 }
 
 void 
