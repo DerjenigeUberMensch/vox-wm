@@ -2686,6 +2686,19 @@ XCBDestroyWindow(
     return ret;
 }
 
+XCBCookie
+XCBSetCloseDownMode(
+        XCBDisplay *display,
+        uint8_t mode
+    )
+{
+    XCBCookie ret = xcb_set_close_down_mode(display, mode);
+
+    _xcb_push_func(ret);
+
+    return ret;
+}
+
 XCBWindow
 XCBCreateWindow(
         XCBDisplay *display,
