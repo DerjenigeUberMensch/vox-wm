@@ -20,6 +20,7 @@ WMArg
     WMArgDieCat,
     WMArgLicense,
     WMArgSupport,
+    WMArgDebug,
     WMArgSkipStartupFile,
     WMArgSkipWMSnCheck,
 
@@ -30,7 +31,11 @@ WMArg
     WMArgCount
 };
 
+/* Handle command-line arguments */
 void WMHandleArgs(int argc, char **argv);
+/* Check if an argument was provided and return its ArgOpt pointer if found */
 const ArgOpt *WMCheckArg(enum WMArg arg);
+/* used to modify args directly DONOT USE UNLESS YOU REALLY KNOW WHAT YOU'RE DOING */
+ArgOpt *WMGetArg(enum WMArg arg);
 
 #endif

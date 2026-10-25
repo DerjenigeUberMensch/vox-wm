@@ -7,19 +7,20 @@
 
 typedef struct WMOptions WMOptions;
 
-static ArgOpt ARGS_SHORT[] = 
+static ArgOpt ARGS_SHORT[] =
 {
     [WMArgHelp] = ARGCV_STATIC_INITIALIZER("h", 1, false),
     [WMArgVersion] = ARGCV_STATIC_INITIALIZER("v", 1, false),
 };
 
-static ArgOpt ARGS_LONG[] = 
+static ArgOpt ARGS_LONG[] =
 {
     [WMArgHelp] = ARGCV_STATIC_INITIALIZER("help", sizeof("help") - 1, false),
     [WMArgVersion] = ARGCV_STATIC_INITIALIZER("version", sizeof("version") - 1, false),
     [WMArgDieCat] = ARGCV_STATIC_INITIALIZER("die-cat", sizeof("die-cat") - 1, false),
     [WMArgLicense] = ARGCV_STATIC_INITIALIZER("license", sizeof("license") - 1, false),
     [WMArgSupport] = ARGCV_STATIC_INITIALIZER("support", sizeof("support") - 1, false),
+    [WMArgDebug] = ARGCV_STATIC_INITIALIZER("debug", sizeof("debug") - 1, false),
     [WMArgSkipStartupFile] = ARGCV_STATIC_INITIALIZER("skip-startup-file", sizeof("skip-startup-file") - 1, false),
     [WMArgSkipWMSnCheck] = ARGCV_STATIC_INITIALIZER("skip-wm-sn-check", sizeof("skip-wm-sn-check") - 1, false),
 
@@ -27,13 +28,14 @@ static ArgOpt ARGS_LONG[] =
     [WMArgXDisplay] = ARGCV_STATIC_INITIALIZER("display STRING", sizeof("display") - 1, true),
 };
 
-static char *ARG_DESCRIPTIONS[] = 
+static char *ARG_DESCRIPTIONS[] =
 {
     [WMArgHelp] = "Help Information",
     [WMArgVersion] = "Version Information",
     [WMArgDieCat] = "Calls 'CATDIE immediately and exits",
     [WMArgLicense] = "Get License Information",
     [WMArgSupport] = "Support Information",
+    [WMArgDebug] = "Enable debug mode",
     [WMArgSkipStartupFile] = "Skip the startup file",
     [WMArgSkipWMSnCheck] = "Skip checking for WM_Sn when starting up",
 
@@ -41,13 +43,35 @@ static char *ARG_DESCRIPTIONS[] =
     [WMArgXDisplay] = "Request a display to use",
 };
 
-void 
-WMHandleHelp(const ArgOpt *opt) 
+void WMHandleHelp(const ArgOpt *opt);
+void WMHandleVersion(const ArgOpt *opt);
+void WMHandleDieCat(const ArgOpt *opt);
+void WMHandleLicense(const ArgOpt *opt);
+void WMHandleSupport(const ArgOpt *opt);
+void WMHandleDebug(const ArgOpt *opt);
+
+static void (*WMArgHandler[WMArgCount])(const ArgOpt *)=
+{
+    [WMArgHelp] = WMHandleHelp,
+    [WMArgVersion] = WMHandleVersion,
+    [WMArgDieCat] = WMHandleDieCat,
+    [WMArgLicense] = WMHandleLicense,
+    [WMArgSupport] = WMHandleSupport,
+    [WMArgDebug] = WMHandleDebug,
+    [WMArgSkipStartupFile] = NULL,
+    [WMArgSkipWMSnCheck] = NULL,
+
+    [WMArgThreads] = NULL,
+    [WMArgXDisplay] = NULL,
+};
+
+void
+WMHandleHelp(const ArgOpt *opt)
 {
     const char *const usage_format = "Usage: " MARK " [OPTION] ...";
 
     puts(usage_format);
- 
+
     char *format_single = "  -%-20s           %s.\n";
     char *format_double = "  --%-20s          %s.\n";
 
@@ -66,8 +90,8 @@ WMHandleHelp(const ArgOpt *opt)
     exit(EXIT_SUCCESS);
 }
 
-void 
-WMHandleVersion(const ArgOpt *opt) 
+void
+WMHandleVersion(const ArgOpt *opt)
 {
     char *compiler = "UNKNOWN";
     char *timestamp = "TimeStamp Not Available";
@@ -110,11 +134,11 @@ WMHandleVersion(const ArgOpt *opt)
     compiler = "INTEL";
     majorversion = __INTEL_COMPILER;
     minorversion = 0;
-    patchversion = 
-    #ifdef __INTEL_COMPILER_UPDATE 
-        __INTEL_COMPILER_UPDATE 
-    #else 
-        0 
+    patchversion =
+    #ifdef __INTEL_COMPILER_UPDATE
+        __INTEL_COMPILER_UPDATE
+    #else
+        0
     #endif
     ;
 #endif
@@ -131,7 +155,7 @@ WMHandleVersion(const ArgOpt *opt)
     char date[] = __DATE__ "";
 
     /* This fixes the Jan  1 20XX
-     * where theres just a hanging space there 
+     * where theres just a hanging space there
      * Why are we doing all this work, well basically so printf is the only point of failure here, cause why not.
      * TODO FIXME.
      */
@@ -142,7 +166,7 @@ WMHandleVersion(const ArgOpt *opt)
     printf("Compiler Information.\n"
             "  Compiled:        %s %s\n"
             "  Timestamp:       %s\n"
-            "  Compiler:        [%s v%d.%d.%d]\n" 
+            "  Compiler:        [%s v%d.%d.%d]\n"
             "  STDC:            [%d] [%d] [%lu]\n"
             "  BYTE_ORDER:      [%d]\n"
             "  POINTER_SIZE:    [%d]\n"
@@ -151,7 +175,7 @@ WMHandleVersion(const ArgOpt *opt)
             "  COMMIT HASH:     [%s]\n"
             "  MARK:            [%s]\n"
             ,
-            /* TODO __DATE__ has an extra space for some reason? */ 
+            /* TODO __DATE__ has an extra space for some reason? */
             date, __TIME__,
             timestamp,
             compiler, majorversion, minorversion, patchversion,
@@ -166,14 +190,14 @@ WMHandleVersion(const ArgOpt *opt)
     exit(EXIT_SUCCESS);
 }
 
-void 
-WMHandleDieCat(const ArgOpt *opt) 
+void
+WMHandleDieCat(const ArgOpt *opt)
 {
     DIECAT("%s", "MANUALLY TRIGGERED.");
 }
 
-void 
-WMHandleLicense(const ArgOpt *opt) 
+void
+WMHandleLicense(const ArgOpt *opt)
 {
     /* TODO REMOVE LINKS AND JUST PUT THE LICENSE HERE */
     /* TODO THIS LOOKS UGLY */
@@ -196,8 +220,8 @@ WMHandleLicense(const ArgOpt *opt)
     exit(EXIT_SUCCESS);
 }
 
-void 
-WMHandleSupport(const ArgOpt *opt) 
+void
+WMHandleSupport(const ArgOpt *opt)
 {
     printf(
         "                      [" MARK "]"                                              "\n"
@@ -215,16 +239,19 @@ WMHandleSupport(const ArgOpt *opt)
     exit(EXIT_SUCCESS);
 }
 
-static void (*WMArgHandler[WMArgCount])(const ArgOpt *)= 
+void
+WMHandleDebug(const ArgOpt *opt)
 {
-    [WMArgHelp] = WMHandleHelp,
-    [WMArgVersion] = WMHandleVersion,
-    [WMArgDieCat] = WMHandleDieCat,
-    [WMArgLicense] = WMHandleLicense,
-    [WMArgSupport] = WMHandleSupport,
-    [WMArgThreads] = NULL,
-    [WMArgSkipStartupFile] = NULL,
-};
+    ArgOpt *skipstartup = WMGetArg(WMArgSkipStartupFile);
+
+    /* make sure code changes in the future prevent compiles */
+    STATIC_ASSERT(LENGTH(ARGS_SHORT) <= WMArgSkipStartupFile, ARGS_SHORT_IS_MORE_THAN_WMARGSKIPSTARTUPFILE);
+
+    if(ASSERT(skipstartup))
+    {   skipstartup->found = true;
+    }
+}
+
 
 static void ARGS_CHECK(void)
 {
@@ -236,7 +263,7 @@ static void ARGS_CHECK(void)
         opt = WMCheckArg((enum WMArg)i);
 
         if(opt && opt->found)
-        {   
+        {
             if(WMArgHandler[i])
             {   WMArgHandler[i](opt);
             }
@@ -245,7 +272,7 @@ static void ARGS_CHECK(void)
 }
 
 
-void 
+void
 WMHandleArgs(int argc, char **argv)
 {
     int status;
@@ -276,7 +303,44 @@ WMCheckArg(enum WMArg arg)
     for(i = 0; i < LENGTH(ARGS_SHORT); ++i)
     {
         if(arg == (enum WMArg)i)
-        {   
+        {
+            cpy1 = &ARGS_SHORT[i];
+            break;
+        }
+    }
+
+    for(i = 0; i < LENGTH(ARGS_LONG); ++i)
+    {
+        if(arg == (enum WMArg)i)
+        {
+            cpy2 = &ARGS_LONG[i];
+            break;
+        }
+    }
+
+    if(cpy1 && cpy1->found)
+    {   return cpy1;
+    }
+
+    if(cpy2 && cpy2->found)
+    {   return cpy2;
+    }
+
+    return cpy1 ? cpy1 : cpy2;
+}
+
+ArgOpt *
+WMGetArg(enum WMArg arg)
+{
+    size_t i;
+
+    ArgOpt *cpy1 = NULL;
+    ArgOpt *cpy2 = NULL;
+
+    for(i = 0; i < LENGTH(ARGS_SHORT); ++i)
+    {
+        if(arg == (enum WMArg)i)
+        {
             cpy1 = &ARGS_SHORT[i];
             break;
         }
