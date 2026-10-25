@@ -14,7 +14,7 @@ extern XCBAtom netatom[NetLast];
 extern XCBAtom wmatom[WMLast];
 extern UserSettings _cfg;
 
-u32 ISBAR(Client *c) 
+u32 ISBAR(Client *c)  
                                 {
                                     return (ISDOCK(c) && HASSTRUT(c)) || (ISABOVE(c) && ISDOCK(c) && ISSTICKY(c));
                                 }
@@ -347,14 +347,6 @@ updateworkarea(Desktop *desk)
     m->wx = m->mx + left;
     m->wy = m->my + top;
 
-    m->ww = m->mw - left - right;
-    m->wh = m->mh - top - bottom;
-
-    if(unlikely(m->ww < 0))
-    {   m->ww = 0;
-    }
-
-    if(unlikely(m->wh < 0))
-    {   m->wh = 0;
-    }
+    m->ww = MAX(m->mw - left - right, 0);
+    m->wh = MAX(m->mh - top - bottom, 0);
 }
