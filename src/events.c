@@ -127,7 +127,7 @@ PROPOGATE_FRAME_WINDOW_EVENT(XCBEvent *ev, XCBWindow eventwin, XCBWindow eventch
 void
 keypress(XCBEvent *event)
 {
-    XCBKeyPressEvent *ev = &event->xkey;
+    XCBKeyPressEvent *ev        = &event->xkey;
     const i16 rootx             = ev->root_x;
     const i16 rooty             = ev->root_y;
     const i16 eventx            = ev->event_x;
@@ -175,7 +175,7 @@ keypress(XCBEvent *event)
 void
 keyrelease(XCBEvent *event)
 {
-    XCBKeyReleaseEvent *ev = &event->xkey;
+    XCBKeyReleaseEvent *ev      = &event->xkey;
     const i16 rootx             = ev->root_x;
     const i16 rooty             = ev->root_y;
     const i16 eventx            = ev->event_x;
@@ -223,7 +223,7 @@ keyrelease(XCBEvent *event)
 void
 buttonpress(XCBEvent *event)
 {
-    XCBButtonPressEvent *ev = &event->xbutton;
+    XCBButtonPressEvent *ev     = &event->xbutton;
     const i16 rootx             = ev->root_x;
     const i16 rooty             = ev->root_y;
     const i16 eventx            = ev->event_x;
@@ -303,7 +303,7 @@ buttonpress(XCBEvent *event)
 void
 buttonrelease(XCBEvent *event)
 {
-    XCBButtonReleaseEvent *ev = &event->xbutton;
+    XCBButtonReleaseEvent *ev   = &event->xbutton;
     const i16 rootx             = ev->root_x;
     const i16 rooty             = ev->root_y;
     const i16 eventx            = ev->event_x;
@@ -346,7 +346,7 @@ buttonrelease(XCBEvent *event)
 void
 motionnotify(XCBEvent *event)
 {
-    XCBMotionNotifyEvent *ev = &event->xmotion;
+    XCBMotionNotifyEvent *ev    = &event->xmotion;
     const i16 rootx             = ev->root_x;
     const i16 rooty             = ev->root_y;
     const i16 eventx            = ev->event_x;
@@ -399,19 +399,19 @@ motionnotify(XCBEvent *event)
 void
 enternotify(XCBEvent *event)
 {
-    XCBEnterNotifyEvent *ev = &event->xcrossing;
-    const uint8_t detail    = ev->detail;
-    const XCBTimestamp tim  = ev->time;
-    const XCBWindow eventroot = ev->root;
-    const XCBWindow eventwin = ev->event;
-    const XCBWindow eventchild = ev->child;
-    const int16_t rootx = ev->root_x;
-    const int16_t rooty = ev->root_y;
-    const int16_t eventx = ev->event_x;
-    const int16_t eventy = ev->event_y;
-    const uint16_t state = ev->state;
-    const uint8_t mode   = ev->mode;
-    const uint8_t samescreenfocus = ev->same_screen_focus;
+    XCBEnterNotifyEvent *ev         = &event->xcrossing;
+    const uint8_t detail            = ev->detail;
+    const XCBTimestamp tim          = ev->time;
+    const XCBWindow eventroot       = ev->root;
+    const XCBWindow eventwin        = ev->event;
+    const XCBWindow eventchild      = ev->child;
+    const int16_t rootx             = ev->root_x;
+    const int16_t rooty             = ev->root_y;
+    const int16_t eventx            = ev->event_x;
+    const int16_t eventy            = ev->event_y;
+    const uint16_t state            = ev->state;
+    const uint8_t mode              = ev->mode;
+    const uint8_t samescreenfocus   = ev->same_screen_focus;
 
 
     (void)detail;
@@ -465,19 +465,19 @@ enternotify(XCBEvent *event)
 void
 leavenotify(XCBEvent *event)
 {
-    XCBLeaveNotifyEvent *ev = &event->xcrossing;
-    const uint8_t detail    = ev->detail;
-    const XCBTimestamp tim  = ev->time;
-    const XCBWindow eventroot = ev->root;
-    const XCBWindow eventwin = ev->event;
-    const XCBWindow eventchild = ev->child;
-    const int16_t rootx = ev->root_x;
-    const int16_t rooty = ev->root_y;
-    const int16_t eventx = ev->event_x;
-    const int16_t eventy = ev->event_y;
-    const uint16_t state = ev->state;
-    const uint8_t mode   = ev->mode;
-    const uint8_t samescreenfocus = ev->same_screen_focus;
+    XCBLeaveNotifyEvent *ev         = &event->xcrossing;
+    const uint8_t detail            = ev->detail;
+    const XCBTimestamp tim          = ev->time;
+    const XCBWindow eventroot       = ev->root;
+    const XCBWindow eventwin        = ev->event;
+    const XCBWindow eventchild      = ev->child;
+    const int16_t rootx             = ev->root_x;
+    const int16_t rooty             = ev->root_y;
+    const int16_t eventx            = ev->event_x;
+    const int16_t eventy            = ev->event_y;
+    const uint16_t state            = ev->state;
+    const uint8_t mode              = ev->mode;
+    const uint8_t samescreenfocus   = ev->same_screen_focus;
 
     (void)detail;
     (void)tim;
@@ -504,10 +504,10 @@ leavenotify(XCBEvent *event)
 void
 focusin(XCBEvent *event)
 {
-    XCBFocusInEvent *ev = &event->xfocus;
-    const u8 detail = ev->detail;
-    const XCBWindow eventwin = ev->event;
-    const u8 mode = ev->mode;
+    XCBFocusInEvent *ev         = &event->xfocus;
+    const u8 detail             = ev->detail;
+    const XCBWindow eventwin    = ev->event;
+    const u8 mode               = ev->mode;
 
     (void)detail;
     (void)mode;
@@ -547,10 +547,10 @@ focusin(XCBEvent *event)
 void
 focusout(XCBEvent *event)
 {
-    XCBFocusOutEvent *ev = &event->xfocus;
-    const u8 detail = ev->detail;
-    const XCBWindow eventwin = ev->event;
-    const u8 mode = ev->mode;
+    XCBFocusOutEvent *ev         = &event->xfocus;
+    const u8 detail              = ev->detail;
+    const XCBWindow eventwin     = ev->event;
+    const u8 mode                = ev->mode;
 
     (void)detail;
     (void)eventwin;
@@ -560,8 +560,8 @@ focusout(XCBEvent *event)
 void
 keymapnotify(XCBEvent *event)
 {
-    XCBKeymapNotifyEvent *ev = &event->xkeymap;
-    u8 *eventkeys   = ev->keys;        /* DONOT FREE */
+    XCBKeymapNotifyEvent *ev    = &event->xkeymap;
+    u8 *eventkeys               = ev->keys;        /* DONOT FREE */
 
     (void)eventkeys;
 }
@@ -569,7 +569,7 @@ keymapnotify(XCBEvent *event)
 void
 expose(XCBEvent *event)
 {
-    XCBExposeEvent *ev = &event->xexpose;
+    XCBExposeEvent *ev      = &event->xexpose;
     const XCBWindow win     = ev->window;
     const i16 x             = ev->x;
     const i16 y             = ev->y;
@@ -590,7 +590,7 @@ expose(XCBEvent *event)
 void
 graphicsexpose(XCBEvent *event)
 {
-    XCBGraphicsExposureEvent *ev = &event->xgraphicsexpose;
+    XCBGraphicsExposureEvent *ev= &event->xgraphicsexpose;
     const i16 x                 = ev->x;
     const i16 y                 = ev->y;
     const u16 w                 = ev->width;
@@ -614,27 +614,16 @@ graphicsexpose(XCBEvent *event)
 void
 noexpose(XCBEvent *event)
 {
-    XCBExposeEvent *ev = &event->xexpose;
-    const i16 x                 = ev->x;
-    const i16 y                 = ev->y;
-    const u16 w                 = ev->width;
-    const u16 h                 = ev->height;
-    const u16 count             = ev->count;
-    const XCBWindow win         = ev->window;
+    XCBNoExposureEvent *ev  = &event->xnoexpose;
+    XCBDrawable drawable    = ev->drawable;
 
-
-    (void)x;
-    (void)y;
-    (void)w;
-    (void)h;
-    (void)count;
-    (void)win;
+    (void)drawable;
 }
 
 void
 circulaterequest(XCBEvent *event)
 {
-    XCBCirculateRequestEvent *ev = &event->xcirculaterequest;
+    XCBCirculateRequestEvent *ev= &event->xcirculaterequest;
     const XCBWindow win         = ev->window;
     const XCBWindow eventwin    = ev->event;
     const u8 place              = ev->place;
@@ -671,17 +660,17 @@ circulaterequest(XCBEvent *event)
 void
 configurerequest(XCBEvent *event)
 {
-    XCBConfigureRequestEvent *ev = &event->xconfigurerequest;
-    const i16 x     = ev->x;
-    const i16 y     = ev->y;
-    const u16 w     = ev->width;
-    const u16 h     = ev->height;
-    const u16 bw    = ev->border_width;
-    const u16 mask  = ev->value_mask;
-    const u8  stack = ev->stack_mode;
-    const XCBWindow win     = ev->window;
-    const XCBWindow parent  = ev->parent;
-    const XCBWindow sibling = ev->sibling;
+    XCBConfigureRequestEvent *ev= &event->xconfigurerequest;
+    const i16 x                 = ev->x;
+    const i16 y                 = ev->y;
+    const u16 w                 = ev->width;
+    const u16 h                 = ev->height;
+    const u16 bw                = ev->border_width;
+    const u16 mask              = ev->value_mask;
+    const u8  stack             = ev->stack_mode;
+    const XCBWindow win         = ev->window;
+    const XCBWindow parent      = ev->parent;
+    const XCBWindow sibling     = ev->sibling;
 
     (void)parent;
 
@@ -1017,10 +1006,10 @@ maprequest(XCBEvent *event)
 void
 resizerequest(XCBEvent *event)
 {
-    XCBResizeRequestEvent *ev = &event->xresizerequest;
-    const XCBWindow win = ev->window;
-    const u16 w         = ev->width;
-    const u16 h         = ev->height;
+    XCBResizeRequestEvent *ev   = &event->xresizerequest;
+    const XCBWindow win         = ev->window;
+    const u16 w                 = ev->width;
+    const u16 h                 = ev->height;
 
     XCBEvent gev;
 
@@ -1042,9 +1031,9 @@ void
 circulatenotify(XCBEvent *event)
 {
     XCBCirculateNotifyEvent *ev = &event->xcirculate;
-    const u8 place                    = ev->place;
-    const XCBWindow win               = ev->window;
-    const XCBWindow eventwin          = ev->event;
+    const u8 place              = ev->place;
+    const XCBWindow win         = ev->window;
+    const XCBWindow eventwin    = ev->event;
 
     (void)place;
     (void)win;
@@ -1060,15 +1049,15 @@ void
 configurenotify(XCBEvent *event)
 {
     XCBConfigureNotifyEvent *ev = &event->xconfigure;
-    const XCBWindow eventwin = ev->event;
-    const XCBWindow win = ev->window;
-    const XCBWindow abovesibling = ev->above_sibling;
-    const i16 x = ev->x;
-    const i16 y = ev->y;
-    const u16 w = ev->width;
-    const u16 h = ev->height;
-    const u16 borderwidth = ev->border_width;
-    const u8 overrideredirect = ev->override_redirect;
+    const XCBWindow eventwin    = ev->event;
+    const XCBWindow win         = ev->window;
+    const XCBWindow abovesibling= ev->above_sibling;
+    const i16 x                 = ev->x;
+    const i16 y                 = ev->y;
+    const u16 w                 = ev->width;
+    const u16 h                 = ev->height;
+    const u16 borderwidth       = ev->border_width;
+    const u8 overrideredirect   = ev->override_redirect;
 
     (void)eventwin;
     (void)abovesibling;
@@ -1113,7 +1102,7 @@ configurenotify(XCBEvent *event)
 void
 createnotify(XCBEvent *event)
 {
-    XCBCreateNotifyEvent *ev = &event->xcreatewindow;
+    XCBCreateNotifyEvent *ev    = &event->xcreatewindow;
     const u8 overrideredirect   = ev->override_redirect;
     const XCBWindow win         = ev->window;
     const XCBWindow parentwin   = ev->parent;
@@ -1137,7 +1126,7 @@ createnotify(XCBEvent *event)
 void
 destroynotify(XCBEvent *event)
 {
-    XCBDestroyNotifyEvent *ev = &event->xdestroywindow;
+    XCBDestroyNotifyEvent *ev   = &event->xdestroywindow;
     const XCBWindow win         = ev->window;
     const XCBWindow eventwin    = ev->event;        /* The Event win is the window that sent the message */
 
@@ -1173,11 +1162,11 @@ destroynotify(XCBEvent *event)
 void
 gravitynotify(XCBEvent *event)
 {
-    XCBGravityNotifyEvent *ev = &event->xgravity;
-    const XCBWindow eventwin          = ev->event;
-    const XCBWindow win               = ev->window;
-    const i16 x                       = ev->x;
-    const i16 y                       = ev->y;
+    XCBGravityNotifyEvent *ev   = &event->xgravity;
+    const XCBWindow eventwin    = ev->event;
+    const XCBWindow win         = ev->window;
+    const i16 x                 = ev->x;
+    const i16 y                 = ev->y;
 
     (void)eventwin;
     (void)win;
@@ -1189,7 +1178,7 @@ gravitynotify(XCBEvent *event)
 void
 mapnotify(XCBEvent *event)
 {
-    XCBMapNotifyEvent *ev = &event->xmap;
+    XCBMapNotifyEvent *ev           = &event->xmap;
     const XCBWindow win             = ev->window;
     const XCBWindow eventwin        = ev->event;
     const uint8_t override_redirect = ev->override_redirect;
@@ -1202,10 +1191,10 @@ mapnotify(XCBEvent *event)
 void
 mappingnotify(XCBEvent *event)
 {
-    XCBMappingNotifyEvent *ev = &event->xmapping;
-    const XCBKeyCode first_keycode = ev->first_keycode;
-    const uint8_t count            = ev->count;
-    const uint8_t request          = ev->request;
+    XCBMappingNotifyEvent *ev       = &event->xmapping;
+    const XCBKeyCode first_keycode  = ev->first_keycode;
+    const uint8_t count             = ev->count;
+    const uint8_t request           = ev->request;
 
     (void)count;
     (void)first_keycode;
@@ -1225,7 +1214,7 @@ mappingnotify(XCBEvent *event)
 void
 unmapnotify(XCBEvent *event)
 {
-    XCBUnmapNotifyEvent *ev = &event->xunmap;
+    XCBUnmapNotifyEvent *ev     = &event->xunmap;
     const XCBWindow eventwin    = ev->event;
     const XCBWindow win         = ev->window;
     const uint8_t isconfigure   = ev->from_configure;
@@ -1272,7 +1261,7 @@ unmapnotify(XCBEvent *event)
 void
 visibilitynotify(XCBEvent *event)
 {
-    XCBVisibilityNotifyEvent *ev = &event->xvisibility;
+    XCBVisibilityNotifyEvent *ev= &event->xvisibility;
     const XCBWindow win         = ev->window;
     const u8 state              = ev->state;
 
@@ -1298,7 +1287,7 @@ visibilitynotify(XCBEvent *event)
 void
 reparentnotify(XCBEvent *event)
 {
-    XCBReparentNotifyEvent *ev = &event->xreparent;
+    XCBReparentNotifyEvent *ev  = &event->xreparent;
     const XCBWindow parent      = ev->parent;
     const XCBWindow win         = ev->window;
     const XCBWindow eventwin    = ev->event;
@@ -1319,7 +1308,7 @@ reparentnotify(XCBEvent *event)
 void
 colormapnotify(XCBEvent *event)
 {
-    XCBColormapNotifyEvent *ev = &event->xcolormap;
+    XCBColormapNotifyEvent *ev  = &event->xcolormap;
     const XCBWindow win         = ev->window;
     const u8 state              = ev->state;
     const XCBColormap colormap  = ev->colormap;
@@ -1335,7 +1324,7 @@ colormapnotify(XCBEvent *event)
 void
 clientmessage(XCBEvent *event)
 {
-    XCBClientMessageEvent *ev = &event->xclient;
+    XCBClientMessageEvent *ev       = &event->xclient;
     const XCBWindow win             = ev->window;
     const XCBAtom atom              = ev->type;
     const u8 format                 = ev->format;
@@ -1855,7 +1844,7 @@ clientmessage(XCBEvent *event)
 void
 propertynotify(XCBEvent *event)
 {
-    XCBPropertyNotifyEvent *ev = &event->xproperty;
+    XCBPropertyNotifyEvent *ev  = &event->xproperty;
     const XCBAtom atom          = ev->atom;
     const XCBWindow win         = ev->window;
     const XCBTimestamp timestamp= ev->time;
@@ -1942,7 +1931,7 @@ propertynotify(XCBEvent *event)
 void
 selectionclear(XCBEvent *event)
 {
-    XCBSelectionClearEvent *ev = &event->xselectionclear;
+    XCBSelectionClearEvent *ev  = &event->xselectionclear;
     const XCBWindow owner       = ev->owner;
     const XCBAtom selection     = ev->selection;
     const XCBTimestamp tim      = ev->time;
@@ -2055,7 +2044,7 @@ convertwmsntarget(XCBWindow requestor, XCBAtom target, XCBAtom property)
 void
 selectionrequest(XCBEvent *event)
 {
-    XCBSelectionRequestEvent *ev = &event->xselectionrequest;
+    XCBSelectionRequestEvent *ev= &event->xselectionrequest;
     const XCBWindow owner       = ev->owner;
     const XCBWindow requestor   = ev->requestor;
     const XCBAtom property      = ev->property;
