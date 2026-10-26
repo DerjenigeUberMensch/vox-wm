@@ -12,7 +12,7 @@ extern WM _wm;
 extern UserSettings _cfg;
 extern XCBAtom netatom[];
 
-void 
+void
 arrangeq(Desktop *desk)
 {
     reorder(desk);
@@ -221,7 +221,7 @@ detachcompletely(Client *c)
         }
     }
     else
-    {   
+    {
         /* no assert since this is a bug but its a no-op */
         DebugWarn("FIXME: Client has no desktop.");
         return;
@@ -255,7 +255,7 @@ detachfocus(Client *c)
     /* this just updates desktop->sel */
     if (c == desk->sel)
     {
-        for(c = startfocus(desk); c && (!ISVISIBLE(c) || NEVERHOLDFOCUS(c) || ISDESKTOP(c)); c = nextfocus(c));
+        for(c = startfocus(desk); c && !CANFOCUS(c); c = nextfocus(c));
         desk->sel = c;
     }
 }
@@ -322,13 +322,13 @@ grid(Desktop *desk)
 
 	/* grid dimensions */
 	for(cols = 0; cols <= n/2; cols++)
-    {   
+    {
         if(cols*cols >= n)
         {    break;
         }
     }
     /* set layout against the general calculation: not 1:2:2, but 2:3 */
-	if(n == 5) 
+	if(n == 5)
     {   cols = 2;
     }
 	rows = n / cols;
@@ -338,8 +338,8 @@ grid(Desktop *desk)
     /* current column number */
 	cn = 0;
     /* current row number */
-	rn = 0; 
-	for(i = 0, c = nexttiled(startstack(desk)); c; i++, c = nexttiled(nextstack(c))) 
+	rn = 0;
+	for(i = 0, c = nexttiled(startstack(desk)); c; i++, c = nexttiled(nextstack(c)))
     {
 		if((i / rows) + 1 > cols - (n % cols))
         {   rows = n/cols + 1;
@@ -360,7 +360,7 @@ grid(Desktop *desk)
 
 		resize(c, nx, ny, nw, nh, 0);
         ++rn;
-		if(rn >= rows) 
+		if(rn >= rows)
         {
 			rn = 0;
             ++cn;
@@ -416,7 +416,7 @@ restackc(Desktop *desk, uint8_t force)
     u8 config = 0;
     u8 instack = 0;
     XCBWindow win;
-    
+
     c = startstack(desk);
 
     for(; c; c = nextstack(c))
@@ -439,7 +439,7 @@ restackc(Desktop *desk, uint8_t force)
         }
 
         if(config)
-        {   
+        {
             XCBConfigureWindow(_wm.dpy, win, XCB_CONFIG_WINDOW_SIBLING|XCB_CONFIG_WINDOW_STACK_MODE, &wc);
             Debug("Configured window: %s", c->netwmname);
         }
@@ -519,14 +519,14 @@ setdesktoplayout(Desktop *desk, uint8_t layout)
 static void
 __normalize_stackpriority(u32 *ewmhflags, u16 *flags)
 {
-    struct 
+    struct
     StackPriorityRules
     {
         u32 required;
         u32 remove;
     };
 
-    static const struct StackPriorityRules RULES[] = 
+    static const struct StackPriorityRules RULES[] =
     {
         /* docks sometimes have priority over above windows because they also set above
          * But docks shoudlnt be above windows that are above
@@ -536,7 +536,7 @@ __normalize_stackpriority(u32 *ewmhflags, u16 *flags)
     };
 
     /* flags1 / flags 2 */
-    static const struct StackPriorityRules RULES_CUSTOM[] = 
+    static const struct StackPriorityRules RULES_CUSTOM[] =
     {
     };
 
@@ -575,7 +575,7 @@ stackpriority(Client *c1, Client *c2)
     u32 ewmhflags = ewmhflag1 ^ ewmhflag2;
     u32 flags = flags1 ^ flags2;
 
-    enum 
+    enum
     SpecialPriorityEnumIndex
     {
         ConstantFlag, NonContstantState, SpecialPriorityEnumIndexLAST
@@ -586,7 +586,7 @@ stackpriority(Client *c1, Client *c2)
      * MEDIUM  [1]
      * LOWEST  [2]
      */
-    static const u32 BELOW_PRIORTY[] = 
+    static const u32 BELOW_PRIORTY[] =
     {
         /* dekstop things are supposed to be at the bottom right next to root for some reason... */
         WTypeFlagDesktop,
@@ -602,7 +602,7 @@ stackpriority(Client *c1, Client *c2)
      * MEDIUM  [1]
      * LOWEST  [2]
      */
-    static const u32 ABOVE_PRIORITY[] = 
+    static const u32 ABOVE_PRIORITY[] =
     {
         WTypeFlagNotification,
         WStateFlagAbove,
@@ -614,10 +614,10 @@ stackpriority(Client *c1, Client *c2)
      * HIGHEST [0]
      * MEDIUM  [1]
      * LOWEST  [2]
-     * 
+     *
      * { CONSTANT_FLAG, NON_CONSTANT_CLIENT_CONDITION }
      */
-    const u32 SPECIAL_PRIORITY[][SpecialPriorityEnumIndexLAST] = 
+    const u32 SPECIAL_PRIORITY[][SpecialPriorityEnumIndexLAST] =
     {
         { ClientFlagFloating, !floating1 && !floating2 },
     };
@@ -667,10 +667,10 @@ tile(Desktop *desk)
     n = 0;
     for(c = nexttiled(startstack(desk)); c; c = nexttiled(nextstack(c)), ++n);
 
-    if(!n) 
+    if(!n)
     {   return;
     }
-    
+
     if(n > nmaster)
     {   mw = nmaster ? m->ww * mfact: 0;
     }
@@ -728,7 +728,7 @@ updatedesktop(void)
     i32 num = offset - base;
 
     if(unlikely(num < 0))
-    {   
+    {
         num = 0;
         Debug0("Desktop num is negative, FIXME");
     }
@@ -754,7 +754,7 @@ updatedesktopnames(void)
     {
         memset(buff, '\0', sizeof(buff));
 
-        length = snprintf(buff, MAX_DIGITS - 1, "%d", desk->num); 
+        length = snprintf(buff, MAX_DIGITS - 1, "%d", desk->num);
 
         // replace with X if it fails for wahtever reason....
         if(length < 0)
@@ -791,7 +791,7 @@ updatedesktopviewport(void)
     u32 *data = malloc(count * sizeof(u32));
 
     if(!data)
-    {   
+    {
         DebugWarn("Failed to allocate memory for desktop viewport");
         return;
     }
@@ -810,10 +810,10 @@ updatedesktopworkarea(void)
 
     i32 data[data_spec];
 
-    /* The Window Manager SHOULD calculate this space by taking the current page minus space occupied by dock and panel windows, 
+    /* The Window Manager SHOULD calculate this space by taking the current page minus space occupied by dock and panel windows,
      * as indicated by the _NET_WM_STRUT or _NET_WM_STRUT_PARTIAL properties set on client windows.
      *
-     * Should? So basically no. 
+     * Should? So basically no.
      * Reason: Apps should read this hint when designing their application *should*, doesnt mean they do though.
      *         Furthermore this simplifies things and apps trying to mess with our system a bit.
      */
@@ -831,9 +831,9 @@ updatedesktopworkarea(void)
     for(i = 0; i < desktops; ++i)
     {
         if(first)
-        { 
+        {
             mode = XCBPropModeReplace;
-            first = false;    
+            first = false;
         }
         else
         {   mode = XCBPropModeAppend;
