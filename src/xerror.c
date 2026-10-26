@@ -12,6 +12,7 @@ enum { MAX_SKIP_IDS = 256 };
 
 GArray skip_ids;
 bool initialized = false;
+pthread_mutex_t xerror_mutex;
 
 typedef struct SkipIDStruct SkipIDStruct;
 
@@ -20,6 +21,27 @@ struct SkipIDStruct
     XCBWindow id;
     u64 expires_at_ms;
 };
+
+static int
+LOCK_XERROR(void)
+{
+    if(initialized)
+    {   return pthread_mutex_lock(&xerror_mutex);
+    }
+
+    return 0;
+}
+
+static int
+UNLOCK_XERROR(void)
+{
+    if(initialized)
+    {
+        return pthread_mutex_unlock(&xerror_mutex);
+    }
+
+    return 0;
+}
 
 static bool
 GET_TIME_MS(u64 *now)
@@ -105,6 +127,15 @@ INIT_XERROR(void)
         return;
     }
 
+    status = pthread_mutex_init(&xerror_mutex, NULL);
+
+    if(status)
+    {
+        DebugWarn("Failed to initialize XERROR mutex");
+        GArrayWipe(&skip_ids);
+        return;
+    }
+
     initialized = true;
 }
 
@@ -116,6 +147,7 @@ DESTROY_XERROR(void)
     }
 
     GArrayWipe(&skip_ids);
+    pthread_mutex_destroy(&xerror_mutex);
 
     initialized = false;
 }
@@ -127,6 +159,8 @@ XERROR_ADD_SKIP_ID(XCBWindow id)
     {   return;
     }
 
+    LOCK_XERROR();
+
     PURGE_EXPIRED_SKIP_IDS();
 
     u64 now;
@@ -134,7 +168,7 @@ XERROR_ADD_SKIP_ID(XCBWindow id)
     if(!GET_TIME_MS(&now))
     {   
         DebugWarn("Failed to get MONOTONIC time for skip ID's ignoring...");
-        return;
+        goto UNLOCK;
     }
 
     u64 expiration = now + TTL_MILLISECONDS;
@@ -152,7 +186,7 @@ XERROR_ADD_SKIP_ID(XCBWindow id)
             if(skipd->id == id)
             {
                 skipd->expires_at_ms = expiration;
-                return;
+                goto UNLOCK;
             }
 
             if(skipd->id == XCBNone && !free_slot)
@@ -166,16 +200,18 @@ XERROR_ADD_SKIP_ID(XCBWindow id)
     if(free_slot)
     {
         *free_slot = newskipd;
-        return;
+        goto UNLOCK;
     }
 
     if(GArrayEnd(&skip_ids) - GArrayStart(&skip_ids) >= MAX_SKIP_IDS)
     {
         DebugWarn("Skip ID array is full");
-        return;
+        goto UNLOCK;
     }
 
     GArrayPushBack(&skip_ids, &newskipd);
+UNLOCK:
+    UNLOCK_XERROR();
 }
 
 void
@@ -183,8 +219,16 @@ xerror(XCBDisplay *display, XCBGenericError *err)
 {
     if(likely(err))
     {
-        if(IN_SKIP_IDS(err->resource_id))
-        {   
+        bool skip = false;
+
+        LOCK_XERROR();
+
+        skip = IN_SKIP_IDS(err->resource_id);
+
+        UNLOCK_XERROR();
+
+        if(skip)
+        {
             DebugLog("Skipped XError for resource ID: %d", err->resource_id);
             return;
         }
