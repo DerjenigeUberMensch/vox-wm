@@ -1,10 +1,15 @@
 /* glibc */
 #ifndef _DEFAULT_SOURCE
 #define _DEFAULT_SOURCE
+#endif
+
+#include "XCB-TRL/xcb_trl_types.h"
+#include "XCB-TRL/xcb_winutil.h"
+#include <xcb/xcb_event.h>
+
 #include "GArray/garray.h"
 #include "desktop.h"
 #include "file_util.h"
-#endif
 
 #include <stdlib.h>
 
@@ -55,17 +60,18 @@
 #include "startupapps.h"
 #include "wmpoll.h"
 #include "xerror.h"
+#include "selection.h"
 /* #include "watchdog.h" */
 
 /* for HELP/DebugGING see under main() or the bottom */
 
 
-u32 CAN_LOCK_WM(void)   {   
-                            extern WM _wm; 
+u32 CAN_LOCK_WM(void)   {
+                            extern WM _wm;
                             return _wm.use_threads;
                         }
 
-int LOCK_WM(void)       {   
+int LOCK_WM(void)       {
                             extern WM _wm;
                             int ret = EXIT_SUCCESS;
                             if(CAN_LOCK_WM())
@@ -89,18 +95,23 @@ int UNLOCK_WM(void)     {
                             }
                             return ret;
                         }
-u32 IS_WM_WINDOW(XCBWindow win) 
+u32 IS_WM_WINDOW(XCBWindow win)
                         {
                             extern WM _wm;
                             u32 ret = 0;
-                            
+
                             LOCK_WM();
                             ret = _wm.root == win || _wm.wmcheckwin == win;
                             UNLOCK_WM();
-                            
+
                             return ret;
                         }
-int WM_ADD_WORK(int (*func)(XCBGenericEvent *event, Arg arg), Arg arg, bool free_on_end)
+XCBWindow GET_WM_SN_WINDOW(void)
+                        {
+                            extern WM _wm;
+                            return _wm.wmcheckwin;
+                        }
+int WM_ADD_WORK(int (*func)(XCBEvent *event, Arg arg), Arg arg, bool free_on_end)
                         {
                             extern WM _wm;
 
@@ -115,11 +126,11 @@ int WM_ADD_WORK(int (*func)(XCBGenericEvent *event, Arg arg), Arg arg, bool free
                             return ret;
                         }
 
-u32 CLEANMASK(u32 mask) {   
+u32 CLEANMASK(u32 mask) {
                             extern WM _wm;
                             return mask & ~(_wm.numlockmask | XCB_MOD_MASK_LOCK) &
                                    (
-                                        XCB_MOD_MASK_SHIFT | XCB_MOD_MASK_CONTROL | 
+                                        XCB_MOD_MASK_SHIFT | XCB_MOD_MASK_CONTROL |
                                         XCB_MOD_MASK_1|XCB_MOD_MASK_2|XCB_MOD_MASK_3|XCB_MOD_MASK_4|XCB_MOD_MASK_5
                                    );
                         }
@@ -129,7 +140,7 @@ u8 __DEPRECATED__ CLEANBUTTONMASK(u8 mask)
                         }
 
 
-extern void (*handler[XCBLASTEvent]) (XCBGenericEvent *);
+extern void (*handler[XCBLASTEvent]) (XCBEvent *);
 
 WM _wm;
 UserSettings _cfg;
@@ -137,9 +148,8 @@ UserSettings _cfg;
 XCBAtom netatom[NetLast];
 XCBAtom wmatom[WMLast];
 XCBAtom gtkatom[GTKLAST];
-XCBAtom motifatom;
-XCBAtom wmsnatom;
 XCBAtom xembedatom[XEMBEDLAST];
+XCBAtom motifatom;
 
 void
 checkotherwm(void)
@@ -148,47 +158,6 @@ checkotherwm(void)
     checkotherwmtakeover();
 }
 
-void
-checkotherwmsn(void)
-{
-    const ArgOpt *arg = WMCheckArg(WMArgSkipWMSnCheck);
-
-    enum { BUFF_SIZE = 32 };
-
-    int screencheck = _wm.screen;
-    char screenatomname[BUFF_SIZE];
-    int status;
-
-    memset(screenatomname, 0, sizeof(screenatomname));
-
-    status = snprintf(screenatomname, BUFF_SIZE - 1, "WM_S%d", screencheck);
-
-    if(status < 0)
-    {   DIECAT("%s", "FATAL: FAILED TO CREATE SCREEN ATOM. (snprintf)");
-    }
-
-    XCBCookie screenatomcookie = XCBInternAtomCookie(_wm.dpy, screenatomname, 0);
-
-    XCBAtom atom = XCBInternAtomReply(_wm.dpy, screenatomcookie);
-
-    if(atom == XCBNone)
-    {   DIECAT("%s", "FATAL: FAILED TO CREATE SCREEN ATOM. (OutOfMemory)");
-    }
-
-    wmsnatom = atom;
-
-    if(arg && arg->found)
-    {   return;
-    }
-
-    XCBCookie selectioncookie = XCBGetSelectionOwnerCookie(_wm.dpy, atom);
-
-    XCBWindow win = XCBGetSelectionOwnerReply(_wm.dpy, selectioncookie);
-
-    if(win != XCBNone)
-    {   DIECAT("%s", "FATAL: ANOTHER WINDOW MANAGER IS RUNNING. (SelectionOwner)");
-    }
-}
 
 void
 checkotherwmtakeover(void)
@@ -201,7 +170,7 @@ checkotherwmtakeover(void)
     XCBSync(_wm.dpy);  /* XCBFlush has different behaviour suprisingly, its undesired though */
     /* XCBPollForEvent calls the XServer itself for the event, So if we get a reply then a type of Window manager must be running */
     if(unlikely(ev = XCBPollForEvent(_wm.dpy)))
-    {   
+    {
         response = ev->response_type;
         free(ev);
         XCBCloseDisplay(_wm.dpy);
@@ -220,8 +189,6 @@ checkotherwmtakeover(void)
 void
 cleanup(void)
 {
-    XCBCookie cookie;
-
     /* save setting data. */
     USSave(&_cfg);
     savesession();
@@ -229,7 +196,7 @@ cleanup(void)
     if(!_wm.dpy)
     {
         /* sometimes due to our own lack of competence we can call quit twice and segfault here */
-        
+
         if(_wm.selmon)
         {   Debug0("Some data has not been freed exiting due to possible segfault.");
         }
@@ -240,28 +207,23 @@ cleanup(void)
     {   WatcherDestroy();
     }
 
-    DESTROY_XERROR();
     WMKeybindDestroy();
     PropDestroy();
     /* Threads are alawys first to go due to concurrency problems with future cleanup functions */
     ThreadingDestroy();
     WMPollDestroy();
-
+    DESTROY_XERROR();
     /* cleanup cfg */
     USWipe(&_cfg);
     WMConfigDestroy();
     DestroyManifest();
 
-    cookie = XCBDestroyWindow(_wm.dpy, _wm.wmcheckwin);
-    XCBDiscardReply(_wm.dpy, cookie);
-
     cleanupcursors();
     XCBSetInputFocus(_wm.dpy, _wm.root, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
     XCBDeleteProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow]);
-    _wm.wmcheckwin = 0;
 
     if(_wm.syms)
-    {   
+    {
         XCBKeySymbolsFree(_wm.syms);
         _wm.syms = NULL;
     }
@@ -279,12 +241,16 @@ cleanup(void)
 
     if(_wm.dpy)
     {
+        XCBSelectInput(_wm.dpy, _wm.root, XCBNone);
+        XCBDestroyWindow(_wm.dpy, _wm.wmcheckwin);
         XCBCloseDisplay(_wm.dpy);
         if(_wm.use_threads)
         {   pthread_mutex_destroy(&_wm.mutex);
         }
         _wm.dpy = NULL;
     }
+
+    _wm.wmcheckwin = 0;
 }
 
 void
@@ -294,7 +260,7 @@ cleanupcursors(void)
 }
 
 void __HOT__
-eventhandler(XCBGenericEvent *ev)
+eventhandler(XCBEvent *ev)
 {
     int cleanev = XCB_EVENT_RESPONSE_TYPE(ev);
     garray_i i;
@@ -304,7 +270,6 @@ eventhandler(XCBGenericEvent *ev)
     if(cleanev < LENGTH(handler) && cleanev >= 0 && handler[cleanev])
     {   handler[cleanev](ev);
     }
-
 
     for(i = GArrayStart(&_wm.work); i < GArrayEnd(&_wm.work);)
     {
@@ -316,7 +281,7 @@ eventhandler(XCBGenericEvent *ev)
         }
 
         if(ret)
-        {   
+        {
             ++i;
             continue;
         }
@@ -324,7 +289,7 @@ eventhandler(XCBGenericEvent *ev)
         WMWork old = *work;
 
         if(GArrayDelete(&_wm.work, i) == EXIT_SUCCESS)
-        {   
+        {
             if(old.allocated)
             {   free(old.arg.v);
             }
@@ -333,7 +298,7 @@ eventhandler(XCBGenericEvent *ev)
         }
 
         if(GArrayReplace(&_wm.work, NULL, i) == EXIT_SUCCESS)
-        {   
+        {
             if(old.allocated)
             {   free(old.arg.v);
             }
@@ -349,7 +314,7 @@ void __HOT__
 eventhandlercallback(int fd, int events, Generic arg)
 {
     if(!ASSERT(events & POLLIN))
-    {   
+    {
         DebugError("Invalid events.");
         return;
     }
@@ -359,13 +324,13 @@ eventhandlercallback(int fd, int events, Generic arg)
 
     while(_wm.running && !XCBCheckDisplayError(_wm.dpy))
     {
-        XCBEvent *ev = XCBPollForEvent(_wm.dpy);
+        XCBGenericEvent *ev = XCBPollForEvent(_wm.dpy);
 
         if(!ev)
         {   break;
         }
 
-        eventhandler(ev);
+        eventhandler(&(XCBEvent){ .xany = *ev });
         free(ev);
     }
 
@@ -394,17 +359,17 @@ glibc_exithandler(int status, void *arg)
         STATUS_COLOR = "\033[1;32m";
     }
     else
-    { 
+    {
         STATUS_COLOR = "\033[1;91m";
     }
 
     if(!isatty(STDERR_FILENO))
-    {   
+    {
         STATUS_COLOR = "";
         RESET = "";
     }
 
-    fprintf(stderr, "Process Terminated Successfully (%s%d%s).\n", 
+    fprintf(stderr, "Process Terminated Successfully (%s%d%s).\n",
         STATUS_COLOR,
         status,
         RESET
@@ -473,7 +438,7 @@ restoresession(void)
     u8 isclients = 0;
 
     if(!fr)
-    {   
+    {
         ReadStartupApps();
         goto END;
     }
@@ -495,12 +460,12 @@ restoresession(void)
             case NoError: break;
             case BuffTooSmall:
             case err:
-            case EndOfFile: 
+            case EndOfFile:
             default: continue;
         }
 
         if(isclient)
-        {   
+        {
             if(!desk)
             {   continue;
             }
@@ -516,7 +481,7 @@ restoresession(void)
             isclients = restorestacksession(desk, str, MAX_LENGTH);
         }
         if(isdesk)
-        {   
+        {
             if(!m)
             {   continue;
             }
@@ -525,7 +490,7 @@ restoresession(void)
         }
 
         if(ismon)
-        {   
+        {
             m = restoremonsession(str, MAX_LENGTH);
             ismon = 0;
         }
@@ -534,7 +499,7 @@ restoresession(void)
         isdesk += !strcmp(str, "Desktop.");
         isclient += !strcmp(str, "Client.");
         isclients += !strcmp(str, "Clients.");
-        
+
     }
     fclose(fr);
     arrangemons();
@@ -545,7 +510,7 @@ restoresession(void)
         for(desk = m->desktops; desk; desk = nextdesktop(desk))
         {
             for(c = desk->clients; c; c = nextclient(c))
-            {   
+            {
                 showhide(c);
                 XCBMapWindow(_wm.dpy, c->win);
             }
@@ -578,7 +543,7 @@ restoreclientsession(Desktop *desk, char *buff, u16 len)
     x = y = ox = oy = w = h = ow = oh = WindowId = WindowIdFocus = WindowIdStack = BorderWidth = BorderColor = 0;
     _Flags = __EWMHFlag = 0;
 
-    check = sscanf(buff, 
+    check = sscanf(buff,
                     "(x: %d, y: %d) (w: %u h: %u)" " "
                     "(ox: %d, oy: %d) (ow: %u oh: %u)" " "
                     "WindowId: %u" " "
@@ -650,7 +615,7 @@ restoredesktopsession(Monitor *m, char *buff, u16 len)
     XCBWindow DesktopSel;
     DesktopLayout = DesktopOLayout = DesktopNum = DesktopSel = 0;
 
-    check = sscanf(buff, 
+    check = sscanf(buff,
                     "DesktopLayout: %u" " "
                     "DesktopOLayout: %u" " "
                     "DesktopNum: %u" " "
@@ -668,7 +633,7 @@ restoredesktopsession(Monitor *m, char *buff, u16 len)
         {   return NULL;
         }
 
-        if(DesktopNum > m->deskcount)
+        if(DesktopNum >= m->deskcount)
         {   setdesktopcount(m, DesktopNum + 1);
         }
         u16 i;
@@ -734,7 +699,7 @@ restoremonsession(char *buff, u16 len)
             if(pullm->mw == w && pullm->mh == h)
             {
                 if(pullm->mx == x && pullm->my == y)
-                {   
+                {
                     target = pullm;
                     break;
                 }
@@ -745,7 +710,7 @@ restoremonsession(char *buff, u16 len)
         }
         for(pullm = _wm.mons; pullm; pullm = nextmonitor(pullm))
         {
-            if(IN_RANGE(w, pullm->mw, errorleeway) && IN_RANGE(h, pullm->mh, errorleeway))
+            if(IN_RANGE_I(w, pullm->mw, errorleeway) && IN_RANGE_I(h, pullm->mh, errorleeway))
             {
                 if(possibleInterator < errorleeway)
                 {   possible[possibleInterator++] = pullm;
@@ -753,7 +718,7 @@ restoremonsession(char *buff, u16 len)
             }
         }
         pullm = target;
-        if(!pullm) 
+        if(!pullm)
         {
             for(i = 0; i < errorleeway; ++i)
             {
@@ -794,7 +759,7 @@ restoremonsession(char *buff, u16 len)
     return NULL;
 }
 
-int 
+int
 restorestacksession(Desktop *desk, char *buff, uint16_t len)
 {
     const u8 SSCANF_CHECK_SUM = 3;
@@ -804,7 +769,7 @@ restorestacksession(Desktop *desk, char *buff, uint16_t len)
         XCBWindow client = 0;
         XCBWindow focus = 0;
         XCBWindow stack = 0;
-        status = sscanf(buff, 
+        status = sscanf(buff,
                             "Client: %u" " "
                             "Focus: %u" " "
                             "Stack: %u" " "
@@ -815,10 +780,10 @@ restorestacksession(Desktop *desk, char *buff, uint16_t len)
                         );
 
         if(status == SSCANF_CHECK_SUM)
-        {   
+        {
             Client *c;
             if((c = wintoclient(client)))
-            {   
+            {
                 setclientdesktop(c, desk);
                 Debug("Moving [%u] (Client) to right desktop...", c->win);
             }
@@ -826,12 +791,12 @@ restorestacksession(Desktop *desk, char *buff, uint16_t len)
             {   Debug0("Could not find client in stack...");
             }
             if((c = wintoclient(focus)))
-            {   
+            {
                 detachfocus(c);
                 attachfocus(c);
             }
             if((c = wintoclient(stack)))
-            {   
+            {
                 detachstack(c);
                 attachstack(c);
             }
@@ -857,13 +822,13 @@ restarthard(void)
     _wm.restart = HardRestart;
 }
 
-void 
+void
 run(void)
 {
     int status = EXIT_SUCCESS;
 
     XCBSync(_wm.dpy);
-    
+
     /* check connection before awating new events */
     eventhandlercallback(-1, POLLIN, (Generic){0});
 
@@ -886,7 +851,7 @@ savesession(void)
         XCBGenericEvent *ev = NULL;
         while(++i < MAX_EVENT_PROCESS && (ev = XCBPollForEvent(_wm.dpy)))
         {
-            eventhandler(ev);
+            eventhandler(&(XCBEvent){ .xany = *ev });
             free(ev);
             ev = NULL;
         }
@@ -921,7 +886,7 @@ saveclientsession(FILE *fw, Client *c)
     const char *IDENTIFIER = "Client.";
 
     fprintf(fw,
-            "%s" 
+            "%s"
             "\n"
             "(x: %d, y: %d) (w: %u h: %u)" " "
             "(ox: %d, oy: %d) (ow: %u oh: %u)" " "
@@ -973,7 +938,7 @@ savedesktopsession(FILE *fw, Desktop *desk)
     fprintf(fw, "%s\n", IDENTIFIERCLIENTS);
     while(c)
     {
-        fprintf(fw, 
+        fprintf(fw,
                 "Client: %u" " "
                 "Focus: %u" " "
                 "Stack: %u" " "
@@ -989,12 +954,12 @@ savedesktopsession(FILE *fw, Desktop *desk)
     }
     fprintf(fw, "%s\n", IDENTIFIERCLIENTSEND);
     for(c = desk->clast; c; c = prevclient(c))
-    {   saveclientsession(fw, c); 
+    {   saveclientsession(fw, c);
     }
 }
 
 void
-savemonsession(FILE *fw, Monitor *m) 
+savemonsession(FILE *fw, Monitor *m)
 {
     const char *IDENTIFIER = "Monitor.";
     Desktop *desk;
@@ -1042,7 +1007,7 @@ scan(void)
 
 
             if(!tfh || !managecookies || !managereplys || !trans)
-            {   
+            {
                 free(tfh);
                 free(managecookies);
                 free(managereplys);
@@ -1062,7 +1027,7 @@ scan(void)
 
             /* flush request buffer */
             XCBFlush(_wm.dpy);
-            
+
             uint8_t hastrans = 0;
             /* get them replies back */
             for(i = 0; i < num; ++i)
@@ -1079,7 +1044,7 @@ scan(void)
             /* Manage the Windows */
             for(i = 0; i < num; ++i)
             {
-                if(trans[i]) 
+                if(trans[i])
                 {   continue;
                 }
 
@@ -1090,7 +1055,7 @@ scan(void)
 
             /* now the transients */
             for(i = 0; i < num; ++i)
-            {   
+            {
                 /* skip window manager related window. */
                 if(trans[i])
                 {
@@ -1122,12 +1087,12 @@ void
 sendmon(Client *c, Monitor *m)
 {
     if(!c->desktop)
-    {   
+    {
         c->desktop = m->desksel;
         DebugWarn("Client [%u] has no desktop, assigning monitor, sel desktop [%d]", c->win, m->desksel->num);
     }
     if(c->desktop->mon == m)
-    {   
+    {
         Debug0("Cant send client to itself.");
         return;
     }
@@ -1158,6 +1123,7 @@ setup(void)
 
     setupatoms();
     setupcursors();
+    setupselection();
     setupwm();
     setupcfg();
     setupwatchers();
@@ -1198,14 +1164,14 @@ void
 setupatoms(void)
 {
     XCBCookie motifcookie;
+
     XCBCookie wmcookie[WMLast];
     XCBCookie netcookie[NetLast];
     XCBCookie gtkcookie[GTKLAST];
     XCBCookie xembedcookie[XEMBEDLAST];
 
-    enum { BUF_MAX_SIZE = 256 };
-
     motifcookie = XCBInternAtomCookie(_wm.dpy, "_MOTIF_WM_HINTS", False);
+
     XCBInitWMAtomsCookie(_wm.dpy, (XCBCookie *)wmcookie);
     XCBInitNetWMAtomsCookie(_wm.dpy, (XCBCookie *)netcookie);
     XCBInitGTKAtomsCookie(_wm.dpy, (XCBCookie *)gtkcookie);
@@ -1244,7 +1210,7 @@ setupsys(void)
 {
 #ifdef __OpenBSD__
     if (pledge("stdio rpath proc exec", NULL) == -1)
-    {   
+    {
         DIECAT("pledge");
     }
 #endif /* __OpenBSD__ */
@@ -1278,13 +1244,13 @@ setupwatchers(void)
     path = (char *)WMConfigGetFolder(WMFolderConfig);
 
     if(path)
-    {   
+    {
         status = EXIT_FAILURE;
 
         /* make sure it has a higher dir above it or in it */
         if(strcmp(path, invaliddir))
-        {   
-            status = WatcherAdd(path, IMPL_WM_CONFIG_WATCHER, NULL, 
+        {
+            status = WatcherAdd(path, IMPL_WM_CONFIG_WATCHER, NULL,
                     FNotifyClosedWrite|FNotifyFileMovedTo|FNotifyFileCreate|FNotifyFileDeleted
                     |FNotifyFileDeletedSelf|FNotifyFileMovedSelf
                     );
@@ -1306,6 +1272,7 @@ setupwm(void)
     i32 deskgeom[DESK_GEOM_LENGTH];
     u32 unused = 0;
     int status;
+    u32 wmsnflags = 0;
 
     status = GArrayCreateFilled(&_wm.clients, sizeof(XCBWindow), X11_DEFAULT_MAX_WINDOW_LIMIT);
 
@@ -1338,11 +1305,11 @@ setupwm(void)
     _wm.syms = XCBKeySymbolsAlloc(_wm.dpy);
 
     if(!ASSERT(_wm.syms))
-    {   
+    {
         cleanup();
         DIECAT("%s", "Could not establish connection with keyboard (OutOfMemory)");
     }
-    
+
     /* startup wm */
     _wm.running = 1;
     _wm.sw = XCBDisplayWidth(_wm.dpy, _wm.screen);
@@ -1363,7 +1330,13 @@ setupwm(void)
     deskgeom[0] = _wm.sw;
     deskgeom[1] = _wm.sh;
 
-    XCBSelectInput(_wm.dpy, _wm.wmcheckwin, XCB_NONE);
+    wmsnflags = XCB_EVENT_MASK_PROPERTY_CHANGE;
+
+    XCBSelectInput(_wm.dpy, _wm.wmcheckwin, wmsnflags);
+
+    if(WM_ADD_WORK(setupwmsn, (Arg){0}, false) != EXIT_SUCCESS)
+    {   DIECAT("%s", "FATAL: Failed TO QUEUE WM_Sn INITIALIZATION.");
+    }
 
     XCBChangeProperty(_wm.dpy, _wm.wmcheckwin, netatom[NetSupportingWMCheck], XCB_ATOM_WINDOW, 32, XCBPropModeReplace, &_wm.wmcheckwin, 1);
     XCBChangeProperty(_wm.dpy, _wm.wmcheckwin, netatom[NetWMName], netatom[NetUtf8String], 8, XCBPropModeReplace, _wm.wmname, strlen(_wm.wmname) + 1);
@@ -1380,7 +1353,6 @@ setupwm(void)
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientList], XCB_ATOM_WINDOW, 32, XCBPropModeReplace, &unused, 0);
     XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], XCB_ATOM_WINDOW, 32, XCBPropModeReplace, &unused, 0);
 
-    XCBSetSelectionOwner(_wm.dpy, wmsnatom, _wm.wmcheckwin, XCB_CURRENT_TIME);
 
     WMPollAddFD(XCBDisplayNumber(_wm.dpy), POLLIN, eventhandlercallback, (Generic){0});
 }
@@ -1412,7 +1384,7 @@ sighandler(void)
     sa.sa_handler = sigchld;
     sa.sa_flags = 0;
 
-    /* sig info: https://faculty.cs.niu.edu/~hutchins/csci480/signals.htm 
+    /* sig info: https://faculty.cs.niu.edu/~hutchins/csci480/signals.htm
      * */
     if(sigaction(SIGCHLD, &sa, NULL) == -1)
     {
@@ -1423,15 +1395,15 @@ sighandler(void)
 
     sa.sa_handler = sigterm;
 
-    if(sigaction(SIGTERM, &sa, NULL) == -1) 
-    {   
+    if(sigaction(SIGTERM, &sa, NULL) == -1)
+    {
         DIECAT("%s", "FATAL: CANNOT_INSTALL_SIGTERM_HANDLER");
         signal(SIGTERM, SIG_DFL); /* default signal */
     }
 
     sa.sa_handler = sighup;
 
-    if(sigaction(SIGHUP, &sa, NULL) == -1) 
+    if(sigaction(SIGHUP, &sa, NULL) == -1)
     {   DebugWarn("CANNOT_INSTALL_SIGHUP_HANDLER");
     }
 
@@ -1465,7 +1437,7 @@ specialconds(int argc, char *argv[])
     char *err = strerror_l(errno, uselocale((locale_t)0));
 
     if(err)
-    {   
+    {
         /* if we manually quit the display will sometimes send a error if we quit too quickly.
          * This is due to the SIGINT (CTRL+C) interrupting some xlib/xcb syscalls.
          */
@@ -1473,7 +1445,7 @@ specialconds(int argc, char *argv[])
         {   err = NULL;
         }
         else
-        {   
+        {
             if(errno != 0)
             {   DebugError(strerror_l(errno, uselocale((locale_t)0)));
             }
@@ -1602,7 +1574,7 @@ startupwm(void)
     const ArgOpt *opt = WMCheckArg(WMArgXDisplay);
 
     if(opt && opt->found && opt->argument_return)
-    {   
+    {
         displaycopy = strdup(opt->argument_return);
         display = displaycopy;
     }
@@ -1614,7 +1586,7 @@ startupwm(void)
     Debug("DISPLAY -> %s", display);
 
     if(!_wm.dpy)
-    {   
+    {
         if(_wm.use_threads)
         {   pthread_mutex_destroy(&_wm.mutex);
         }
@@ -1635,8 +1607,8 @@ startupwm(void)
 void
 wakeupconnection(XCBDisplay *display, int screen)
 {
-    XCBGenericEvent ev;
-    XCBClientMessageEvent *cev = (XCBClientMessageEvent *)&ev;
+    XCBEvent ev;
+    XCBClientMessageEvent *cev = &ev.xclient;
 
     memset(&ev, 0, sizeof(ev));
 
@@ -1646,7 +1618,7 @@ wakeupconnection(XCBDisplay *display, int screen)
     cev->format = 32;
     cev->data.data32[0] = wmatom[WMDeleteWindow];
     cev->data.data32[1] = XCB_CURRENT_TIME;
-                                    
+
     XCBSendEvent(display, XCBRootWindow(display, screen), False, XCB_EVENT_MASK_STRUCTURE_NOTIFY, (const char *)&ev);
     XCBFlush(display);
 }
@@ -1700,7 +1672,7 @@ main(int argc, char **argv)
  * you get menu
  * run this command: lay spl
  * you get layout and stuff
- * 
+ *
  * now basic gdb stuff
  * break or b somefunction # this sets a break point for whatever function AKA stop the code from running till we say so
  * next or n # this moves to the next line of logic code (logic code is current code line)
@@ -1710,5 +1682,5 @@ main(int argc, char **argv)
  *
  * after your done
  * run this command: exit
- * 
+ *
  */
