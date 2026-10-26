@@ -29,6 +29,11 @@
 /* CONSTANTS */
 #define INTERSECT(x,y,w,h,m)    (MAX(0, MIN((x)+(w),(m)->wx+(m)->ww) - MAX((x),(m)->wx)) \
                                 * MAX(0, MIN((y)+(h),(m)->wy+(m)->wh) - MAX((y),(m)->wy)))
+#define INTERSECTMON(x,y,w,h,m) ((i64)MAX(0, MIN((x)+(w), (m)->mx+(m)->mw) \
+                                - MAX((x), (m)->mx)) \
+                                * MAX(0, MIN((y)+(h), (m)->my+(m)->mh) \
+                                - MAX((y), (m)->my)))
+
 #define SESSION_FILE            "/tmp/vox-session"
 #define BORKED                  "NOT_SET"
 
@@ -42,9 +47,9 @@ enum { MOUSEMASK = (BUTTONMASK | XCB_EVENT_MASK_POINTER_MOTION) };
  * which is still nothing compared to previous implementaitons,
  * Yes xcb_change_property is slow, very slow.
  */
-enum 
-X11DefaultsWM 
-{ 
+enum
+X11DefaultsWM
+{
     X11_DEFAULT_MAX_WINDOW_LIMIT = 256,
 };
 
@@ -61,7 +66,7 @@ typedef struct WM WM;
 typedef struct MotifWmHints MotifWmHints;
 typedef struct WMWork WMWork;
 
-union 
+union
 Arg
 {
     int32_t i;              /* i  -> int            */
@@ -76,12 +81,12 @@ Arg
 struct
 WMWork
 {
-    int (*function)(XCBGenericEvent *event, Arg arg);
+    int (*function)(XCBEvent *event, Arg arg);
     Arg arg;
     bool allocated;
 };
 
-struct 
+struct
 WM
 {
     volatile sig_atomic_t running;  /* Running flag         */
@@ -115,7 +120,7 @@ WM
     GArray work;                    /* WM work handle       */
 };
 
-struct 
+struct
 MotifWmHints
 {
     /* These correspond to XmRInt resources. (VendorSE.c) */
@@ -129,13 +134,15 @@ MotifWmHints
 /* Inital startup check if there is another window manager running.
 */
 void checkotherwm(void);
+/* Take over the window management. */
+void checkotherwmtakeover(void);
 /* Cleanups and frees any data previously allocated.
 */
 void cleanup(void);
 /* Cleans up the cursors. */
 void cleanupcursors(void);
 /* Jumps to the specified function handler for the provided event. */
-void NonNull eventhandler(XCBGenericEvent *ev);
+void NonNull eventhandler(XCBEvent *ev);
 /* Poll callback for eventhandler */
 void eventhandlercallback(int fd, int events, Generic arg);
 
@@ -160,7 +167,7 @@ Client *restoreclientsession(Desktop *desk, char *buff, uint16_t len);
 Desktop *restoredesktopsession(Monitor *m, char *buff, uint16_t len);
 /* Attempts to restore session from buff for given monitor */
 Monitor *restoremonsession(char *buff, uint16_t len);
-/* Attemps to restore sesion stack/focus/client variables 
+/* Attemps to restore sesion stack/focus/client variables
  * RETURN: 1 on Success.
  * RETURN: 0 on Failure.
  */
@@ -178,12 +185,12 @@ void restarthard(void);
 void run(void);
 /* Attemps to save session in for every monitor */
 void savesession(void);
-/* Attemps to save session for specified client. 
+/* Attemps to save session for specified client.
  */
 void saveclientsession(FILE *fw, Client *c);
 /* Attemps to save session for specified desktop */
 void savedesktopsession(FILE *fw, Desktop *desktop);
-/* Attemps to save session from file for specified Monitor 
+/* Attemps to save session from file for specified Monitor
  */
 void savemonsession(FILE *fw, Monitor *m);
 /* Scans for new clients on startup */
@@ -209,7 +216,7 @@ void sighandler(void);
 void sighup(int signo);
 /* Calls quit */
 void sigterm(int signo);
-/* Error checks, and checks for certain conditions to be meet for different behaviour 
+/* Error checks, and checks for certain conditions to be meet for different behaviour
  * NOTE: This is only checked when the program is about to exit.
  */
 void specialconds(int argc, char *argcv[]);
@@ -221,8 +228,6 @@ void startupwm(void);
 void NonNull wakeupconnection(XCBDisplay *display, int screen);
 /* Wakeup handler used for watchdog */
 void watchdogwakeuphandler(void);
-/* Error handler */
-void NonNullArg(1) xerror(XCBDisplay *display, XCBGenericError *error);
 
 /* Gets the mutex availability and whether or not using LOCK_WM will do anythign.
  * This is mostly to check if we are running in SINGLE thread or MULTI-THREAD.
@@ -239,14 +244,15 @@ int TRY_LOCK_WM(void);
 int UNLOCK_WM(void);
 /* Determines whether or not a specified window, is related to the window manager in a important way. */
 uint32_t IS_WM_WINDOW(XCBWindow win);
+XCBWindow GET_WM_SN_WINDOW(void);
 /* Add work that runs after events, work should not block or hang or infinite loop.
  *
  * RETURN: EXIT_SUCCESS on Success.
  * RETURN: EXIT_FAILURE on Failure.
  */
-int WM_ADD_WORK(int (*func)(XCBGenericEvent *event, Arg arg), Arg arg, bool free_on_end);
+int WM_ADD_WORK(int (*func)(XCBEvent *event, Arg arg), Arg arg, bool free_on_end);
 
 uint32_t CLEANMASK(uint32_t mask);
 uint8_t __DEPRECATED__ CLEANBUTTONMASK(uint8_t MASK);
 
-#endif 
+#endif

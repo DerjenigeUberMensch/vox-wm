@@ -46,6 +46,7 @@ enum NETWMPROTOCOLS
     /* action requests */
     NetWMActionMove,
     NetWMActionResize, NetWMActionMaximizeVert, NetWMActionMaximizeHorz,
+    NetWMActionShade, NetWMActionStick, 
     NetWMActionFullscreen, NetWMActionChangeDesktop, NetWMActionClose,
     NetWMActionAbove, NetWMActionMinimize, NetWMActionBelow,
     /* actions msg */

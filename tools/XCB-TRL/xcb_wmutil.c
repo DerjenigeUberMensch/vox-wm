@@ -1,4 +1,5 @@
 #include "xcb_wmutil.h"
+#include "XCB-TRL/xcb_trl_types.h"
 #include <stdint.h>
 #include <stdio.h>
 
@@ -21,7 +22,7 @@ __apply_net_gravity(uint32_t gravity, int32_t *x, int32_t *y, int32_t w, int32_t
         *y -= bw;
     }
     else if(gravity & XCB_GRAVITY_NORTH)
-    {   
+    {
         *x += w >> 1;
         *y -= bw;
     }
@@ -65,7 +66,7 @@ __apply_net_gravity(uint32_t gravity, int32_t *x, int32_t *y, int32_t w, int32_t
 /* return 0 on Success.
  * return -1 on failure.
  */
-static int 
+static int
 __boundcheck_dimentions(int32_t *x, int32_t *y, int32_t *w, int32_t *h)
 {
     if(x)
@@ -184,7 +185,7 @@ XCBWMHandlerButtonPress(
 
     /* unfocus any other windows */
     if(eventroot)
-    {   
+    {
         XCBSetInputFocus(display, eventroot, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
         if(netactive)
         {   XCBDeleteProperty(display, eventroot, netactive);
@@ -192,7 +193,7 @@ XCBWMHandlerButtonPress(
     }
     /* focus window */
     if(eventwin)
-    {   
+    {
         XCBSetInputFocus(display, eventwin, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
         if(netactive && eventroot)
         {   XCBChangeProperty(display, eventroot, netactive, XCB_ATOM_WINDOW, 32, XCB_PROP_MODE_REPLACE, (unsigned char *)&(eventwin), 1);
@@ -414,7 +415,7 @@ XCBWMHandlerGraphicsExpose(
     XCBGenericEvent *event
     )
 {
-    XCBGraphicsExposeEvent *ev = (XCBGraphicsExposeEvent *)event;
+    XCBGraphicsExposureEvent *ev = (XCBGraphicsExposureEvent*)event;
     const int16_t x                 = ev->x;
     const int16_t y                 = ev->y;
     const uint16_t w                = ev->width;
@@ -494,7 +495,7 @@ XCBWMHandlerConfigureRequest(
     wc.stack_mode = stack;
 
     if(win)
-    {   
+    {
         XCBConfigureWindow(display, win, mask, &wc);
         XCBFlush(display);
     }
@@ -517,7 +518,7 @@ XCBWMHandlerCirculateRequest(
     }
 
     switch(place)
-    {   
+    {
         case XCB_CIRCULATE_RAISE_LOWEST:
             XCBCirculateSubwindows(display, win, XCB_CIRCULATE_RAISE_LOWEST);
             break;
@@ -547,7 +548,7 @@ XCBWMHandlerMapRequest(
     }
 
     if(win)
-    {   
+    {
         XCBMapWindow(display, win);
         XCBFlush(display);
     }
@@ -588,7 +589,7 @@ XCBWMHandlerCirculateNotify(
     (void)place;
     (void)win;
     (void)eventwin;
-    
+
     (void)ev;
 }
 void
@@ -825,18 +826,18 @@ XCBWMHandlerClientMessage(
     XCBCookie cookie;
 
     if(!netclosewindow)
-    {   
+    {
         cookie = XCBInternAtomCookie(display, "_NET_CLOSE_WINDOW", 0);
         netclosewindow = XCBInternAtomReply(display, cookie);
     }
     if(!netmoveresizewindow)
-    {   
+    {
         cookie = XCBInternAtomCookie(display, "_NET_MOVERESIZE_WINDOW", 0);
         netmoveresizewindow = XCBInternAtomReply(display, cookie);
     }
 
     if(atom == netclosewindow)
-    {   
+    {
         if(win)
         {   XCBKillClient(display, win);
         }
@@ -854,7 +855,7 @@ XCBWMHandlerClientMessage(
         __boundcheck_dimentions(&x, &y, &w, &h);
         __boundcheck_dimentions(NULL, NULL, &bw, NULL);
         if(win)
-        {   
+        {
             XCBMoveResizeWindow(display, win, x, y, w, h);
             XCBSetWindowBorderWidth(display, win, bw);
         }
@@ -961,15 +962,15 @@ XCBWMHandlerErrorHandler(
 {
     (void)display;
     if(event)
-    {   
+    {
         XCBGenericError *err = (XCBGenericError *)event;
         fprintf(stderr, "%s %s\n", XCBGetErrorMajorCodeText(err->major_code), XCBGetFullErrorText(err->error_code));
         fprintf(stderr, "error_code: [%d], major_code: [%d], minor_code: [%d]\n"
               "sequence: [%d], response_type: [%d], resource_id: [%d]\n"
               "full_sequence: [%d]\n"
               ,
-           err->error_code, err->major_code, err->minor_code, 
-           err->sequence, err->response_type, err->resource_id, 
+           err->error_code, err->major_code, err->minor_code,
+           err->sequence, err->response_type, err->resource_id,
            err->full_sequence);
     }
 }

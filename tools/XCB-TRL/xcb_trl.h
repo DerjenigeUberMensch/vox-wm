@@ -36,7 +36,7 @@
  * HOWEVER some "vital" or imporant ones arent which is the main problem with Xlib.
  * Secondly Xlib uses quite a bit more resources than xcb which is also why xcb use often times "better" for the most part though Xlib is fine,
  * What really should happen is we build a toolkit around xcb and NOT use Xlib in the first place. AND not do what Xlib did and be syncrounous.
- * Which is what we did... 
+ * Which is what we did...
  * However its a shame that Xlib is seen as "deprecated" by people how dont use the X11 windoing system. Really it be more accurate to be seen as a bandage fix
  * XCB if documented would have already take over Xlib and xlib would without question already been banished to the shadow realm.
  * However XCB still has a way to go without its documentation, though it has improved greatly over the years.
@@ -86,10 +86,10 @@
  * However because of that it is quite the inconvenient to use, there is a mask however provided by XCB that fixes this, a bit long for no reason too.
  *
  *
- * This is an example on how to use events 
+ * This is an example on how to use events
  * <<< Events >>>
  *
- * 
+ *
  * #define DEBUG(fmt, ...) fprintf(stderr, "[%s:%d] by %s: " fmt "\n", __FILE__,__LINE__,__func__,__VA_ARGS__)
  * int screen;
  * XCBDisplay *dpy;
@@ -103,7 +103,7 @@
  * }
  *
  *
- * 
+ *
  *
  * int running = 1;
  * uint8_t cleanev;
@@ -160,7 +160,7 @@
  * # <<< No Event Generated >>> #
  *
  * This may not "always" work due to how xcb works so, we must to call XCBDiscardReply() after our generated cookie.
- * 
+ *
  * XCBCookie cookie;
  * cookie = XCBMapWindow(dpy, cool_window);
  * // Sync the Display
@@ -206,8 +206,8 @@
  *
  * // Check if there was no reply, (Did we pass in the wrong data? Is the window already destroyed?)
  * if(!wa)
- * {    
- *      // In this case we simply remove our XServer connection and exit, 
+ * {
+ *      // In this case we simply remove our XServer connection and exit,
  *      // but often times you assume the window doesnt have attributes, or a bug in your code.
  *      XCBCloseDisplay(display);
  *      exit(EXIT_FAILURE);
@@ -222,21 +222,21 @@
  *
  * // free resulting data.
  * free(wa);
- * 
+ *
  * // Example 2.
  *
  * // Here we will get the WM_NAME of a window if set.
  *
  * #define NO_BYTE_OFFSET               (0L)
  * #define REQUEST_MAX_NEEDED_ITEMS     (UINT32_MAX)
- * 
+ *
  * // See Xlib documentation for what these fields indicate.
  * XCBCookie  wmcookie = XCBGetWindowPropertyCookie(display, target, XCB_ATOM_WM_NAME, NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_STRING);
- * 
+ *
  * // Here we wait again for the reply to come back from the XServer.
  * XCBWindowProperty *prop = XCBGetWindowPropertyReply(display, wmcokie);
- * 
- * // First we check if the prop exists, in this case probably no because the target is the root window, 
+ *
+ * // First we check if the prop exists, in this case probably no because the target is the root window,
  * // but if we used a actual window then we would get something back.
  *
  * if(!prop)
@@ -255,7 +255,7 @@
  *
  * // Check if has value, or if the offset says 0, because that indicates how long our memory is for the value.
  * if(!str || !offset)
- * {    
+ * {
  *      // In this case the target window did not have a WM_NAME net.
  *      XCBCloseDisplay(display);
  *      exit(EXIT_FAILURE);
@@ -283,13 +283,13 @@
  * // And the data we got, XCBGetPropertyValue(prop), or "str" in this case.
  *
  * // Here is how it would look like. (Not To Scale).
- * // As you can see the whole thing really is just 1 big 'o block of memory, 
+ * // As you can see the whole thing really is just 1 big 'o block of memory,
  * // which is why we only need to free(prop), because of being the start of the chunk of memory.
  * // Now dont be silly and free the data, because that is quite hard to debug, I would know (it isnt).
  * // What it does do is leave a dangling pointer, which is equally bad.
  *
  * XCBWindowProperty *prop;            | void *data = XCBGetPropertyValue(prop);
- * 01010100 00110010 00000000 01000110   00011100 11001111 00110010 01010100 
+ * 01010100 00110010 00000000 01000110   00011100 11001111 00110010 01010100
  *
  * free(prop);
  *
@@ -307,7 +307,7 @@
  * This can be done manually using _XReply(), _XRead(), _XWrite() however xcb abstracts that away.
  * Because of that we can use xcb_cool_function_ and then _reply() so xcb_cool_function_reply(XCBDisplay *display, XCBCookie cookie);
  * Some xcb functions dont have a _reply() version and those are simply handled in the event queue;
- * 
+ *
  * Errors;
  *
  * Depending on the type of error a few things can occur.
@@ -402,12 +402,12 @@ void XCBBreakPoint(void);
 
 
 
-/*  
+/*
  * Opens the display returning a XCBDisplay * to the connection
  *
  *
  *
- * display_name:                Pass in as ":X" where X is the number of the display to connect to.              
+ * display_name:                Pass in as ":X" where X is the number of the display to connect to.
  * *screen_number_return:       This returns the display screen number.
  *
  * RETURN: NULL on Failure.
@@ -415,46 +415,46 @@ void XCBBreakPoint(void);
  */
 XCBDisplay *
 XCBOpenDisplay(
-        const char *display_name, 
+        const char *display_name,
         int *screen_number_return);
-/* 
+/*
  * Opens the display and returns a XCBDisplay* on Success.
  * Unchecked, caller must check for connection error using XCBCheckDisplayError(display);
  *
  *
- * display_name:                Pass in as ":X" where X is the number of the display to connect to.              
+ * display_name:                Pass in as ":X" where X is the number of the display to connect to.
  * *screen_number_return:       This returns the display screen number.
  *
  * NOTE: This function will NEVER return NULL.
  * NOTE: To check error use XCBCheckDisplayError() to get error number.
- * 
+ *
  * RETURN: XCB Display * ;
  */
 XCBDisplay *
 XCBOpenConnection(
         const char *display_name,
         int *screen_number_return);
-/* 
+/*
  * Closes the connection Specified and frees the data associated with connection.
  * No side effects if display is NULL.
  */
-void 
+void
 XCBCloseDisplay(
         XCBDisplay *display);
-/* 
+/*
  * display: Specifies the connection to the X server.
  *
  * RETURN: a connection number for the specified display, On a POSIX-conformant system, this is the file descriptor of the connection.
  */
-int 
+int
 XCBDisplayNumber(
         XCBDisplay *display);
-/* 
+/*
  * display: Specifies the connection to the X server.
  *
  * RETURN: a connection number for the specified display, On a POSIX-conformant system, this is the file descriptor of the connection.
  */
-int 
+int
 XCBConnectionNumber(
         XCBDisplay *display);
 /*
@@ -462,26 +462,26 @@ XCBConnectionNumber(
  */
 XCBScreen *
 XCBScreenOfDisplay(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         int screen);
 /*
  * RETURN: a pointer to the default screen.
  */
 XCBScreen *
 XCBDefaultScreenOfDisplay(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         int screen);
 /*
  * display: Specifies the connection to the X server.
  *
  * RETURN: the number of available screens.
  */
-int 
+int
 XCBScreenCount(
         XCBDisplay *display);
 /*
- * RETURN: * a pointer to a string that provides some identification of the owner of the X server implementation. 
- * If the data returned by the server is in the Latin Portable Character Encoding, then the string is in the Host Portable Character Encoding. 
+ * RETURN: * a pointer to a string that provides some identification of the owner of the X server implementation.
+ * If the data returned by the server is in the Latin Portable Character Encoding, then the string is in the Host Portable Character Encoding.
  * Otherwise, the contents of the string are implementation dependent.
  *
  * MUST BE FREED BY CALLING free()
@@ -491,41 +491,41 @@ XCBServerVendor(
         XCBDisplay *display);
 /*  display Specifies the connection to the X server.
  *
- *  RETURN: the major version number (11) of the X protocol associated with the connected display. 
+ *  RETURN: the major version number (11) of the X protocol associated with the connected display.
  */
-int 
+int
 XCBProtocolVersion(
         XCBDisplay *display);
 /* display 	Specifies the connection to the X server.
  *
  * RETURN: the minor protocol revision number of the X server.
  */
-int 
+int
 XCBProtocolRevision(
         XCBDisplay *display);
 /* Returns a number related to a vendor's release of the X server.
  *
  * RETURN: int
  */
-int 
+int
 XCBVendorRelease(
         XCBDisplay *display);
-/* Returns the size of a bitmap's scanline unit in bits. 
+/* Returns the size of a bitmap's scanline unit in bits.
  * The scanline is calculated in multiples of this value.
  *
  * RETURN: int
  */
-int 
+int
 XCBBitmapUnit(
         XCBDisplay *display);
 
 /*
- * Within each bitmap unit, the left-most bit in the bitmap as displayed on the screen is either the least-significant or most-significant bit in the unit. 
- * This macro or function can return LSBFirst or MSBFirst. 
+ * Within each bitmap unit, the left-most bit in the bitmap as displayed on the screen is either the least-significant or most-significant bit in the unit.
+ * This macro or function can return LSBFirst or MSBFirst.
  *
  * RETURN: int
  */
-int 
+int
 XCBBitmapBitOrder(
         XCBDisplay *display);
 
@@ -534,27 +534,27 @@ XCBBitmapBitOrder(
  *
  * RETURN: int
  */
-int 
+int
 XCBBitmapPad(
         XCBDisplay *display);
 
 /*
- * Both specify the required byte order for images for each scanline unit in XY format (bitmap) or for each pixel value in Z format. 
+ * Both specify the required byte order for images for each scanline unit in XY format (bitmap) or for each pixel value in Z format.
  * The macro or function can return either LSBFirst or MSBFirst
- * 
+ *
  * RETURN: int
  */
-int 
+int
 XCBImageByteOrder(
         XCBDisplay *display);
 
 /*
  */
-int 
+int
 XCBRootOfScreen(
         XCBDisplay *display);
 
-/* Gets the screen setup struct AKA screen stuff 
+/* Gets the screen setup struct AKA screen stuff
  *
  * RETURN: const XCBSetup *
  */
@@ -562,8 +562,8 @@ const XCBSetup *
 XCBGetSetup(
         XCBDisplay *display);
 /* Returns a pointer to the screen structure for a display.
- * 
- * The structure contains values for: 
+ *
+ * The structure contains values for:
  * White/Black Pixels.
  * Current Input Masks.
  * Screen width/height in pixels or millimeters.
@@ -584,18 +584,18 @@ XCBGetScreen(
  *
  * RETURN: Root window of current display.
  */
-XCBWindow 
+XCBWindow
 XCBRootWindow(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         int screen
         );
-/* Returns the default root window of the spcified display and screen. 
+/* Returns the default root window of the spcified display and screen.
  *
  * RETURN: The default root window of the current display.
  */
-XCBWindow 
+XCBWindow
 XCBDefaultRootWindow(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         int screen
         );
 /* Returns the default visual of the screen and display.
@@ -609,52 +609,52 @@ XCBDefaultVisual(
 /* Returns the width of the specified screen in pixels.
  * RETURN: Display Width.
  */
-uint16_t 
+uint16_t
 XCBDisplayWidth(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         int screen
         );
 /* Returns the height of the specified screen in pixels.
  * RETURN: Display Height.
  */
-uint16_t 
+uint16_t
 XCBDisplayHeight(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         int screen
         );
 /* Returns the current display depth.
  *
  * RETURN: uint8_t;
 */
-uint8_t 
+uint8_t
 XCBDisplayDepth(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         int screen
         );
 /* Returns the default display depth.
- * 
+ *
  * RETURN uint8_t;
  */
-uint8_t 
+uint8_t
 XCBDefaultDepth(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         int screen
         );
 /* See Xlib's documentation of XSelectInput()
  *
  * NOTE: This function IS buffered and must be Flushed before receiving any thing back. (IE your events you want to listen to.)
- *       XCBFlush(); 
+ *       XCBFlush();
  *       XCBSync(); Has different behaviour, prefer XCBFlush()
  *
  * RETURN: Cookie to request.
 */
 XCBCookie
 XCBSelectInput(
-        XCBDisplay *display, 
-        XCBWindow window, 
+        XCBDisplay *display,
+        XCBWindow window,
         uint32_t mask
         );
-/*  
+/*
  *  revert_to:          XCB_INPUT_FOCUS_NONE                The focus reverts to `XCB_NONE`, so no window will have the input focus.
  *                      XCB_INPUT_FOCUS_POINTER_ROOT        The focus reverts to `XCB_POINTER_ROOT` respectively. When the focus reverts.
  *                                                          FocusIn and FocusOut events are generated, but the last-focus-change time is.
@@ -663,7 +663,7 @@ XCBSelectInput(
  *                                                          revert_to value is `XCB_INPUT_FOCUS_NONE`.
  *                      XCB_INPUT_FOCUS_FOLLOW_KEYBOARD     NOT YET DOCUMENTED. Only relevant for the xinput extension.
  *
- *  
+ *
  *
  *  time:               XCBTimestamp                        The time you want, ONLY use this if you know what your doing.
  *                      XCB_CURRENT_TIME                    A u32 value to the specified XCB_TIME
@@ -673,7 +673,7 @@ XCBSelectInput(
  *  NOTE:   If the specified time is earlier than the current last-focus-change time, the request is ignored .
  *          (to avoid race conditions when running X over the network).
  *  NOTE:   A FocusIn and FocusOut event is generated when focus is changed.
- * 
+ *
  *  RETURN: Cookie to request.
  */
 XCBCookie
@@ -681,34 +681,34 @@ XCBSetInputFocus(
         XCBDisplay *display,
         XCBWindow window,
         uint8_t revert_to,
-        XCBTimestamp time 
+        XCBTimestamp time
         );
 /*
- * Depending on the valuemask, XCBChangeWindowAttributes() uses the window attributes in the XCBWindowAttributes structure to change the specified window attributes. 
- * Changing the background does not cause the window contents to be changed. 
+ * Depending on the valuemask, XCBChangeWindowAttributes() uses the window attributes in the XCBWindowAttributes structure to change the specified window attributes.
+ * Changing the background does not cause the window contents to be changed.
  * To repaint the window and its background, use XCBClearWindow().
- *  
- * Setting the border or changing the background such that the border tile origin changes causes the border to be repainted. 
- * Changing the background of a root window to None or ParentRelative restores the default background pixmap. 
- * Changing the border of a root window to CopyFromParent restores the default border pixmap. 
- * Changing the win-gravity does not affect the current position of the window. 
- * Changing the backing-store of an obscured window to WhenMapped or Always, or changing the backing-planes, backing-pixel, or save-under of a mapped window may have no immediate effect. 
- * Changing the colormap of a window (that is, defining a new map, not changing the contents of the existing map) generates a ColormapNotify event. 
- * Changing the colormap of a visible window may have no immediate effect on the screen because the map may not be installed (see XInstallColormap()). 
- * Changing the cursor of a root window to None restores the default cursor. 
+ *
+ * Setting the border or changing the background such that the border tile origin changes causes the border to be repainted.
+ * Changing the background of a root window to None or ParentRelative restores the default background pixmap.
+ * Changing the border of a root window to CopyFromParent restores the default border pixmap.
+ * Changing the win-gravity does not affect the current position of the window.
+ * Changing the backing-store of an obscured window to WhenMapped or Always, or changing the backing-planes, backing-pixel, or save-under of a mapped window may have no immediate effect.
+ * Changing the colormap of a window (that is, defining a new map, not changing the contents of the existing map) generates a ColormapNotify event.
+ * Changing the colormap of a visible window may have no immediate effect on the screen because the map may not be installed (see XInstallColormap()).
+ * Changing the cursor of a root window to None restores the default cursor.
  * Whenever possible, you are encouraged to share colormaps.
- * Multiple clients can select input on the same window. Their event masks are maintained separately. 
- * When an event is generated, it is reported to all interested clients. 
- * However, only one client at a time can select for SubstructureRedirectMask ResizeRedirectMask and ButtonPressMask If a client attempts to select any of these event masks and some other client has already selected one, a BadAccess error results. 
+ * Multiple clients can select input on the same window. Their event masks are maintained separately.
+ * When an event is generated, it is reported to all interested clients.
+ * However, only one client at a time can select for SubstructureRedirectMask ResizeRedirectMask and ButtonPressMask If a client attempts to select any of these event masks and some other client has already selected one, a BadAccess error results.
  * There is only one do-not-propagate-mask for a window, not one per client.
  *
  * XChangeWindowAttributes() can generate BadAccess, BadColor, BadCursor, BadMatch, BadPixmap, BadValue, and BadWindow errors.
  */
 XCBCookie
 XCBChangeWindowAttributes(
-        XCBDisplay *display, 
-        XCBWindow window, 
-        uint32_t mask, 
+        XCBDisplay *display,
+        XCBWindow window,
+        uint32_t mask,
         XCBWindowAttributes *window_attributes
         );
 
@@ -731,9 +731,9 @@ XCBUninstallColormap(
  *
  * RETURN: uint32_t
  */
-uint32_t 
+uint32_t
 XCBBlackPixel(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         int screen
         );
 
@@ -743,9 +743,9 @@ XCBBlackPixel(
  *
  * RETURN: uint32_t
  */
-uint32_t 
+uint32_t
 XCBWhitePixel(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         int screen
         );
 
@@ -753,7 +753,7 @@ XCBWhitePixel(
  *
  * This is generally a much faster approach than explicitly calling XCBFlush(); due to the lack of need to write to buffer(I/O)
  * However does not substitute in any way XCBFlush(); Use it instead when requiring a output;
- * 
+ *
  * Remember Syncing is cheap, Flushing is expensive.
  *
  * NOTE: Having too many request pending eg. not Syncing causes slow requests to the server, this is due to the buffer being full.
@@ -764,7 +764,7 @@ XCBWhitePixel(
  * NOTE: It is recommended to call XSync() after every ~1000 or so requests, if quickly sending alot of events.
  *       However if not sending alot of events in x < 1 (seconds) then syncing may not be nessesary.
  */
-void 
+void
 XCBSync(
         XCBDisplay *display
         );
@@ -778,7 +778,7 @@ XCBSyncf(
         XCBDisplay *display
         );
 
-/* Reparents the window with win being the source Window and parent being the new Parent window 
+/* Reparents the window with win being the source Window and parent being the new Parent window
  *
  * RETURN: Cookie to request.
  */
@@ -792,14 +792,14 @@ XCBReparentWindow(
         );
 
 /* Moves the specified window using the provided x and y coordinates.
- * 
+ *
  * RETURN: Cookie to request.
  */
 XCBCookie
 XCBMoveWindow(
-        XCBDisplay *display, 
-        XCBWindow window, 
-        int32_t x, 
+        XCBDisplay *display,
+        XCBWindow window,
+        int32_t x,
         int32_t y);
 
 /* Moves the specified window using the provided x and y coordinates, and resizes the specified window using the provided width and height.
@@ -810,11 +810,11 @@ XCBMoveWindow(
  */
 XCBCookie
 XCBMoveResizeWindow(
-        XCBDisplay *display, 
-        XCBWindow window, 
-        int32_t x, 
-        int32_t y, 
-        uint32_t width, 
+        XCBDisplay *display,
+        XCBWindow window,
+        int32_t x,
+        int32_t y,
+        uint32_t width,
         uint32_t height);
 
 /* Resizes the specified window using the provided width and height dimentions.
@@ -823,9 +823,9 @@ XCBMoveResizeWindow(
  */
 XCBCookie
 XCBResizeWindow(
-        XCBDisplay *display, 
-        XCBWindow window, 
-        uint32_t width, 
+        XCBDisplay *display,
+        XCBWindow window,
+        uint32_t width,
         uint32_t height);
 
 /* Raises the specified window "above" all other windows.
@@ -834,7 +834,7 @@ XCBResizeWindow(
  */
 XCBCookie
 XCBRaiseWindow(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBWindow window);
 
 /* Maps the specified window, and raises it "above" all other windows.
@@ -843,7 +843,7 @@ XCBRaiseWindow(
  */
 XCBCookie
 XCBMapRaised(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBWindow window);
 
 /* Lowers the specified window "below" all other windows.
@@ -852,7 +852,7 @@ XCBMapRaised(
  */
 XCBCookie
 XCBLowerWindow(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBWindow window);
 
 /*
@@ -861,7 +861,7 @@ XCBLowerWindow(
  */
 XCBCookie
 XCBRaiseWindowIf(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBWindow window);
 
 /*
@@ -870,10 +870,10 @@ XCBRaiseWindowIf(
  */
 XCBCookie
 XCBLowerWindowIf(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBWindow window);
-/* The XCBSetWindowBorder() function sets the border of the window to the pixel value you specify. 
- * If you attempt to perform this on an InputOnly window, a XCBBadMatch error results. 
+/* The XCBSetWindowBorder() function sets the border of the window to the pixel value you specify.
+ * If you attempt to perform this on an InputOnly window, a XCBBadMatch error results.
  *
  * Depending if a window has a 32bit 24bit 16bit 8bit 4bit 2bit or 1bit (1 color border).
  * You may set the alpha values if the window is 32bit (ARGB).
@@ -896,14 +896,14 @@ XCBSetWindowBorder(
         XCBWindow window,
         uint32_t border_pixel
         );
-/* Sets the specified window's "Border Width" with the provided border_width. 
+/* Sets the specified window's "Border Width" with the provided border_width.
  *
  * RETURN: Cookie to request.
  */
 XCBCookie
 XCBSetWindowBorderWidth(
-        XCBDisplay *display, 
-        XCBWindow window, 
+        XCBDisplay *display,
+        XCBWindow window,
         uint16_t border_width
         );
 
@@ -913,8 +913,8 @@ XCBSetWindowBorderWidth(
  */
 XCBCookie
 XCBSetSibling(
-        XCBDisplay *display, 
-        XCBWindow window, 
+        XCBDisplay *display,
+        XCBWindow window,
         XCBWindow sibling
         );
 
@@ -949,8 +949,8 @@ XCBRemoveFromSaveSet(
  */
 XCBCookie
 XCBInternAtomCookie(
-        XCBDisplay *display, 
-        const char *name, 
+        XCBDisplay *display,
+        const char *name,
         uint8_t only_if_exists
         );
 
@@ -959,20 +959,20 @@ XCBInternAtomCookie(
  * RETURN: XCBAtom on Success.
  * RETURN: 0 on Failure.
  */
-XCBAtom 
+XCBAtom
 XCBInternAtomReply(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBCookie cookie
         );
 
 
-/* Attemps to grab the "TransientFor Hint" from the specified window. 
+/* Attemps to grab the "TransientFor Hint" from the specified window.
  *
  * RETURN: Cookie to request.
  */
 XCBCookie
 XCBGetTransientForHintCookie(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBWindow win
         );
 
@@ -999,7 +999,7 @@ XCBGetTransientForHintReply(
  *
  * _delete          0/false/False           Dont delete the property when you reply back.
  *                  1/true/True             Delete the property when you reply back.
- * 
+ *
  * req_type:        XCB_ATOM_(...)          The atom property to want to be formated refer to the wm-spec, "CARDINAL[][2+n]/32" part of it.
  *                                          this case it would be XCB_ATOM_CARDINAL.                        ^^^^^^^^
  *
@@ -1054,9 +1054,9 @@ XCBGetPropertyValue(
  * RETURN: 0 on Success.
  * RETURN: 1 on No Format.
  */
-uint8_t 
+uint8_t
 XCBGetPropertyValueLength(
-        XCBWindowProperty *reply, 
+        XCBWindowProperty *reply,
         size_t _size,
         uint32_t *ret
         );
@@ -1156,7 +1156,7 @@ XCBGetWindowPropertyValueSize(
  */
 uint8_t
 XCBGetWindowPropertyValueLength(
-        XCBWindowProperty *reply, 
+        XCBWindowProperty *reply,
         size_t _size,
         uint32_t *size_return
         );
@@ -1165,7 +1165,7 @@ XCBGetWindowPropertyValueLength(
  */
 XCBCookie
 XCBGetWindowAttributesCookie(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBWindow window);
 
 /*
@@ -1177,14 +1177,14 @@ XCBGetWindowAttributesCookie(
  */
 XCBGetWindowAttributes *
 XCBGetWindowAttributesReply(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBCookie cookie);
 
 /*
  */
 XCBCookie
 XCBGetWindowGeometryCookie(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBWindow window);
 
 /*
@@ -1196,7 +1196,7 @@ XCBGetWindowGeometryCookie(
  */
 XCBWindowGeometry *
 XCBGetWindowGeometryReply(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBCookie cookie);
 
 /*
@@ -1220,22 +1220,22 @@ XCBGetGeometryReply(
 
 /*
  */
-XCBPixmap 
+XCBPixmap
 XCBCreatePixmap(
-        XCBDisplay *display, 
-        XCBWindow root, 
-        uint16_t width, 
-        uint16_t height, 
+        XCBDisplay *display,
+        XCBWindow root,
+        uint16_t width,
+        uint16_t height,
         uint8_t depth);
 /*
  */
 XCBCookie
 XCBCopyArea(
-    XCBDisplay *display, 
-    XCBDrawable source, 
-    XCBDrawable destination, 
-    XCBGC gc, 
-    int16_t SourceStartCopyX, 
+    XCBDisplay *display,
+    XCBDrawable source,
+    XCBDrawable destination,
+    XCBGC gc,
+    int16_t SourceStartCopyX,
     int16_t SourceStartCopyY,
     uint16_t CopyWidth,
     uint16_t CopyHeight,
@@ -1243,12 +1243,12 @@ XCBCopyArea(
     int16_t DestinationStartPasteY
     );
 
-/* 
+/*
  * RETURN: Cookie to request.
  */
 XCBCookie
 XCBFreePixmap(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBPixmap pixmap
         );
 /* Creates a default white/black cursor "font" cursor resembling Xlib's cursor.
@@ -1256,9 +1256,9 @@ XCBFreePixmap(
  *
  * RETURN: XCBCursor
  */
-XCBCursor 
+XCBCursor
 XCBCreateFontCursor(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBFont shape
         );
 
@@ -1276,17 +1276,17 @@ XCBCreateGlyphCursor(
  */
 XCBCookie
 XCBDefineCursor(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBWindow window, XCBCursor id
         );
 /*
  * NOTE: foreground/background flags must be set, "pixel" property is always ignored.
  */
-XCBCookie 
+XCBCookie
 XCBRecolorCursor(
-        XCBDisplay *display, 
-        XCBCursor cursor, 
-        XCBColor *foreground, 
+        XCBDisplay *display,
+        XCBCursor cursor,
+        XCBColor *foreground,
         XCBColor *background
         );
 
@@ -1344,14 +1344,14 @@ XCBCursorLibraryLoadCursor(
  */
 XCBCookie
 XCBFreeCursor(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBCursor cursor);
 
 /*
  */
 XCBCookie
 XCBOpenFont(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBFont id, const char *name);
 
 /*
@@ -1371,7 +1371,7 @@ XCBQueryTreeCookie(
         );
 
 /*
- * 
+ *
  * NOTE: reply must be freed by caller.
  *
  * RETURN: XCBQueryTree * on Success.
@@ -1400,7 +1400,7 @@ XCBQueryTreeChildren(
  */
 XCBCookie
 XCBQueryPointerCookie(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBWindow window);
 
 /*
@@ -1412,24 +1412,24 @@ XCBQueryPointerCookie(
  */
 XCBQueryPointer *
 XCBQueryPointerReply(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBCookie cookie);
 /* text props */
 XCBCookie
 XCBGetTextPropertyCookie(
-        XCBDisplay *display, 
-        XCBWindow window, 
+        XCBDisplay *display,
+        XCBWindow window,
         XCBAtom property);
-/* 
+/*
  * resulting data ON Success MUST be freed using XCBFreeTextProperty()
- * RETURN: 
+ * RETURN:
  * 1 -> Success.
  * 0 -> Failure.
  */
-int 
+int
 XCBGetTextPropertyReply(
-        XCBDisplay *display, 
-        XCBCookie cookie, 
+        XCBDisplay *display,
+        XCBCookie cookie,
         XCBTextProperty *reply_return);
 
 /*
@@ -1439,33 +1439,33 @@ int
 XCBFreeTextProperty(
         XCBTextProperty *prop);
 
-/* 
+/*
  * Flushes buffered output to XServer.
  * Blocks Until buffer is fully flushed.
  *
  * NOTE: >> This is how you send requests to the server after doing buffering requests          <<.
  *       >> AKA you wont get responses back from non XCBGetCookie/XCBGetReply type functions    <<.
  *       >> Remember to Flush! Or Sync (slower)                                                 <<.
- *       
+ *
  * RETURN: 1 on Success.
  * RETURN: 0 on Failure.
- */ 
-int 
+ */
+int
 XCBFlush(
         XCBDisplay *display);
 
 /*
  * Gets the maximum data that a XCBDisplay* can hold in bytes / 4.
  * Ex: 4 bytes size would return 1
- * 
+ *
  * RANGE:
  *                    (256kiB)
  * NO_EXTENSION -> (0, 65535)
- * 
- * //COMMENT, Im not sure on this one docu is vague 
+ *
+ * //COMMENT, Im not sure on this one docu is vague
  *                    (16GB)
  * BIG_REQUESTS -> (0, 2097152)
- * 
+ *
  * RETURN: Max Request length in (bytes / 4)
  */
 uint32_t
@@ -1475,7 +1475,7 @@ XCBGetMaximumRequestLength(
 
 
 /* Check if the display flag has set a connection error display->has_error;
- * 
+ *
  * RETURN: XCB_CONN_ERROR,                      because of socket errors, pipe errors or other stream errors.
  * RETURN: XCB_CONN_CLOSED_EXT_NOTSUPPORTED,    when extension not supported.
  * RETURN: XCB_CONN_CLOSED_MEM_INSUFFICIENT,    when memory not available.
@@ -1483,11 +1483,11 @@ XCBGetMaximumRequestLength(
  * RETURN: XCB_CONN_CLOSED_PARSE_ERR,           error during parsing display string.
  * RETURN: XCB_CONN_CLOSED_INVALID_SCREEN,      because the server does not have a screen matching the display.
  */
-int 
+int
 XCBCheckDisplayError(
         XCBDisplay *display);
 /* Check if the display flag has set a connection error display->has_error;
- * 
+ *
  * RETURN: XCB_CONN_ERROR,                      because of socket errors, pipe errors or other stream errors.
  * RETURN: XCB_CONN_CLOSED_EXT_NOTSUPPORTED,    when extension not supported.
  * RETURN: XCB_CONN_CLOSED_MEM_INSUFFICIENT,    when memory not available.
@@ -1499,7 +1499,7 @@ int
 XCBCheckConnectionError(
         XCBDisplay *display);
 /* Check if the display flag has set a connection error display->has_error;
- * 
+ *
  * RETURN: XCB_CONN_ERROR,                      because of socket errors, pipe errors or other stream errors.
  * RETURN: XCB_CONN_CLOSED_EXT_NOTSUPPORTED,    when extension not supported.
  * RETURN: XCB_CONN_CLOSED_MEM_INSUFFICIENT,    when memory not available.
@@ -1507,11 +1507,11 @@ XCBCheckConnectionError(
  * RETURN: XCB_CONN_CLOSED_PARSE_ERR,           error during parsing display string.
  * RETURN: XCB_CONN_CLOSED_INVALID_SCREEN,      because the server does not have a screen matching the display.
  */
-int 
+int
 XCBHasConnectionError(
         XCBDisplay *display);
 /* Check if the display flag has set a connection error display->has_error;
- * 
+ *
  * RETURN: XCB_CONN_ERROR,                      because of socket errors, pipe errors or other stream errors.
  * RETURN: XCB_CONN_CLOSED_EXT_NOTSUPPORTED,    when extension not supported.
  * RETURN: XCB_CONN_CLOSED_MEM_INSUFFICIENT,    when memory not available.
@@ -1519,11 +1519,11 @@ XCBHasConnectionError(
  * RETURN: XCB_CONN_CLOSED_PARSE_ERR,           error during parsing display string.
  * RETURN: XCB_CONN_CLOSED_INVALID_SCREEN,      because the server does not have a screen matching the display.
  */
-int 
+int
 XCBHasDisplayError(
         XCBDisplay *display);
 
-/* 
+/*
  * Incase of an unset error handler (default) XCB does nothing.
  * One should note that this function simply sets the function to be called when an error occurs in general X11 fashion.
  * Though this api may provide more specific calls when debug mode is used.
@@ -1534,7 +1534,7 @@ XCBHasDisplayError(
  * RETURN: 1 Error handler set.
  * RETURN: 0 Error handler unset.
  */
-int 
+int
 XCBSetErrorHandler(
         void (*error_handler)(XCBDisplay *, XCBGenericError *)
         );
@@ -1545,9 +1545,9 @@ XCBSetErrorHandler(
  * 2.) Mostly useless, cause at this point your server is dead.
  * 3.) See 1.
  */
-void 
+void
 XCBSetIOErrorHandler(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         void *IOHandler);
 
 
@@ -1595,7 +1595,7 @@ char *
 XCBGetErrorMajorCodeText(
         uint8_t major_code);
 
-/*  
+/*
  * NOTE: This function is currently not supported.
  *
  * Returns (The error) using a number provided by.
@@ -1655,7 +1655,7 @@ XCBGetErrorDisplayText(
 /* events */
 
 /*
- * mode:            XCB_ALLOW_ASYNC_POINTER             
+ * mode:            XCB_ALLOW_ASYNC_POINTER
  *                                                      For AsyncPointer, if the pointer is frozen by the client, pointer event.
  *                                                      processing continues normally. If the pointer is frozen twice by the client on.
  *                                                      behalf of two separate grabs, AsyncPointer thaws for both. AsyncPointer has no.
@@ -1670,7 +1670,7 @@ XCBGetErrorDisplayText(
  *                                                      released, then the pointer does not freeze. SyncPointer has no effect if the.
  *                                                      pointer is not frozen by the client or if the pointer is not grabbed by the client.
  *
- *                  XCB_ALLOW_REPLAY_POINTER            
+ *                  XCB_ALLOW_REPLAY_POINTER
  *                                                      For ReplayPointer, if the pointer is actively grabbed by the client and is.
  *                                                      frozen as the result of an event having been sent to the client (either from
  *                                                      the activation of a GrabButton or from a previous AllowEvents with mode
@@ -1723,8 +1723,8 @@ XCBGetErrorDisplayText(
  */
 XCBCookie
 XCBAllowEvents(
-        XCBDisplay *display, 
-        uint8_t mode, 
+        XCBDisplay *display,
+        uint8_t mode,
         XCBTimestamp timestamp);
 
 /*
@@ -1745,7 +1745,7 @@ XCBSendError(
         XCBDisplay *display,
         XCBGenericError *err
         );
-/* This is used by external libraries. 
+/* This is used by external libraries.
  * NOTE: Field '*err' must be a pointer to a memory allocated block of memory that is inacessible after callig this function.
  */
 void
@@ -1754,7 +1754,7 @@ XCBSendErrorP(
         XCBGenericError *err
         );
 
-/* 
+/*
  * Gets and returns the next Event from the XServer.
  * This returns a structure called xcb_generic_event_t.
  * This Function Blocks until a request is received.
@@ -1772,7 +1772,7 @@ XCBSendErrorP(
  */
 int
 XCBNextEvent(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBGenericEvent **event_return);
 
 /* Gets the next Event from the XServer, with a timeout in milliseconds, and returns it in event_return.
@@ -1786,7 +1786,7 @@ XCBNextEvent(
  */
 int
 XCBNextEventTimed(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBGenericEvent **event_return,
         int64_t timeout_ms
         );
@@ -1811,11 +1811,11 @@ XCBNextEventTimedAnyDpy(
         int64_t timeout_ms
         );
 
-/* 
+/*
  * Gets and returns the next Event from the XServer.
  * This returns a structure called xcb_generic_event_t.
  * This Function Blocks until a request is received.
- * 
+ *
  * NOTE: It is not recommended to use this function as some clients may not be poll() or select() compatible.
  *       Instead it is recommended to either a have a custom XCBPollForEvent() queue or to wakeup the thread,
  *       by sending any event to the caller (root, the window...) and flushing the connection.
@@ -1847,7 +1847,7 @@ XCBPollForEvent(
         XCBDisplay *display);
 
 /* Checks if there are events in the queue, without consuming them.
- * 
+ *
  * NOTE: This function is NOT 1-1 to Xlib's XPending() function, as it does not check for more than 1 event.
  *
  * RETURN: 1 If there are events in the queue.
@@ -1876,14 +1876,14 @@ XCBGenericEvent *
 XCBPollForQueuedEvent(
         XCBDisplay *display);
 /* Check if a specified cookie request has a reply available from the XServer.
- * 
+ *
  * RETURN: 1 On Success.
  * RETURN: 0 On Not Avaible.
  */
-int 
+int
 XCBPollForReply(
-        XCBDisplay *display, 
-        XCBCookie request, 
+        XCBDisplay *display,
+        XCBCookie request,
         void **reply_return);
 /* Check if a specified cookie request has a reply available from the XServer.
  * This is different from XCBPollForReply() as it assumes the request has already be widened.
@@ -1891,19 +1891,19 @@ XCBPollForReply(
  * RETURN: 1 On Success.
  * RETURN: 0 On Not Avaible/Failure.
  */
-int 
+int
 XCBPollForReply64(
-        XCBDisplay *display, 
-        XCBCookie request, 
+        XCBDisplay *display,
+        XCBCookie request,
         void **reply);
 /* Check if a specified cookie request has a reply available from the XServer.
- * 
+ *
  * RETURN: void * On Success.
  * RETURN: NULL On Not Avaible/Failure.
  */
 void *
 XCBCheckReply(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBCookie request);
 /* Check if a specified cookie request has a reply available from the XServer.
  * This is different from XCBCheckReply() as it assumes the request has already be widened.
@@ -1915,11 +1915,11 @@ XCBCheckReply(
  */
 void *
 XCBCheckReply64(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBCookie64 request);
 
 /* Waits for the specifed cookie value to be returned as a void *
- * 
+ *
  * RETURN: void * On Success.
  * RETURN: NULL On IOError/Failure.
  */
@@ -1994,9 +1994,9 @@ XCBGrabKeyboardReply(
         XCBCookie cookie
         );
 
-/* 
+/*
  * Sends a Event to the XServer to ungrab the keyboard.
- * 
+ *
  *
  * RETURN: Cookie to request.
  */
@@ -2010,20 +2010,20 @@ XCBUngrabKeyboard(
  *                  XCBKeyCode                  The keycode of the specified key combination.
  *
  * modifiers:       XCB_MOD_MASK_ANY            Release all key combinations regardless of modifier.
- *                  XCB_MOD_MASK_SHIFT          The Shift Key. 
+ *                  XCB_MOD_MASK_SHIFT          The Shift Key.
  *                  XCB_MOD_MASK_LOCK           The Capslock Key.
  *                  XCB_MOD_MASK_CONTROL        The Ctrl Key.
  *                  XCB_MOD_MASK_1              The Alt Key.
  *                  XCB_MOD_MASK_2              The Numlock Key.
- *                  XCB_MOD_MASK_3              ISO_LEVEL5_SHIFT              
+ *                  XCB_MOD_MASK_3              ISO_LEVEL5_SHIFT
  *                  XCB_MOD_MASK_4              The Super/Windows Key.
- *                  XCB_MOD_MASK_5              ISO_LEVEL3_SHIFT 
+ *                  XCB_MOD_MASK_5              ISO_LEVEL3_SHIFT
  *
  * grab_window:     XCBWindow                   The window on which the grabbed key combination will be grabbed.
  *
  * owner_events:    0/false/False               The Key Events are not reported to the grab_window.
  *                  1/true/True                 The Key Events are reported to the grab_window.
- * 
+ *
  * pointer_mode:    XCB_GRAB_MODE_SYNC          The state of the keyboard appears to freeze: No further keyboard events are.
  *                                              generated by the server until the grabbing client issues a releasing.
  *                                              `AllowEvents` request or until the keyboard grab is released.
@@ -2038,25 +2038,25 @@ XCBUngrabKeyboard(
  */
 XCBCookie
 XCBGrabKey(
-        XCBDisplay *display, 
-        XCBKeyCode key, 
-        uint16_t modifiers, 
-        XCBWindow grab_window, 
-        uint8_t owner_events, 
-        uint8_t pointer_mode, 
+        XCBDisplay *display,
+        XCBKeyCode key,
+        uint16_t modifiers,
+        XCBWindow grab_window,
+        uint8_t owner_events,
+        uint8_t pointer_mode,
         uint8_t keyboard_mode);
-/*  
+/*
  * keycode:         XCB_GRAB_ANY                Release all possible key codes.
  *                  XCBKeyCode                  The keycode of the specified key combination.
  * modifiers:       XCB_MOD_MASK_ANY            Release all key combinations regardless of modifier.
- *                  XCB_MOD_MASK_SHIFT          The Shift Key. 
+ *                  XCB_MOD_MASK_SHIFT          The Shift Key.
  *                  XCB_MOD_MASK_LOCK           The Capslock Key.
  *                  XCB_MOD_MASK_CONTROL        The Ctrl Key.
  *                  XCB_MOD_MASK_1              The Alt Key.
  *                  XCB_MOD_MASK_2              The Numlock Key.
- *                  XCB_MOD_MASK_3              ISO_LEVEL5_SHIFT              
+ *                  XCB_MOD_MASK_3              ISO_LEVEL5_SHIFT
  *                  XCB_MOD_MASK_4              The Super/Windows Key.
- *                  XCB_MOD_MASK_5              ISO_LEVEL3_SHIFT 
+ *                  XCB_MOD_MASK_5              ISO_LEVEL3_SHIFT
  *
  * grab_window:     XCBWindow                   The window on which the grabbed key combination will be released.
  *
@@ -2082,7 +2082,7 @@ XCBUngrabKey(
  *              XCB_BUTTON_MASK_4           Not enough information.
  *              XCB_BUTTON_MASK_5           Not enough information.
  *              XCB_BUTTON_MASK_ANY         This is guaranteed to be a mask.
- *  
+ *
  *  NOTE: ''uint8_t button' IS NOT a mask.
  *  NOTE: 'modifier' is undocumented.
  *
@@ -2090,12 +2090,12 @@ XCBUngrabKey(
  */
 XCBCookie
 XCBUngrabButton(
-        XCBDisplay *display, 
-        uint8_t button, 
-        uint16_t modifier, 
+        XCBDisplay *display,
+        uint8_t button,
+        uint16_t modifier,
         XCBWindow window
         );
-/*  
+/*
  * button:          XCB_BUTTON_INDEX_ANY        Any of the following (or none).
  *                  XCB_BUTTON_INDEX_1          The left mouse button.
  *                  XCB_BUTTON_INDEX_2          The right mouse button.
@@ -2103,14 +2103,14 @@ XCBUngrabButton(
  *                  XCB_BUTTON_INDEX_4          The Scroll Wheel. (direction TODO).
  *                  XCB_BUTTON_INDEX_5          The Scroll Wheel. (direction TODO).
  *
- * modifiers:       XCB_MOD_MASK_SHIFT          The Shift Key. 
+ * modifiers:       XCB_MOD_MASK_SHIFT          The Shift Key.
  *                  XCB_MOD_MASK_LOCK           The Capslock  Key.
  *                  XCB_MOD_MASK_CONTROL        The Ctrl Key.
  *                  XCB_MOD_MASK_1              The Alt Key.
  *                  XCB_MOD_MASK_2              The Numlock Key.
- *                  XCB_MOD_MASK_3              ISO_LEVEL5_SHIFT              
+ *                  XCB_MOD_MASK_3              ISO_LEVEL5_SHIFT
  *                  XCB_MOD_MASK_4              The Super/Windows Key.
- *                  XCB_MOD_MASK_5              ISO_LEVEL3_SHIFT 
+ *                  XCB_MOD_MASK_5              ISO_LEVEL3_SHIFT
  *                  XCB_MOD_MASK_ANY
  *
  * grab_window:     XCBWindow                   Specifies the window on which the pointer should be grabbed.
@@ -2139,16 +2139,16 @@ XCBUngrabButton(
  */
 XCBCookie
 XCBGrabButton(
-        XCBDisplay *display, 
-        uint8_t button, 
-        uint16_t modifiers, 
-        XCBWindow grab_window, 
-        uint8_t owner_events, 
+        XCBDisplay *display,
+        uint8_t button,
+        uint16_t modifiers,
+        XCBWindow grab_window,
+        uint8_t owner_events,
         uint16_t event_mask,
         uint8_t pointer_mode,
         uint8_t keyboard_mode,
         XCBWindow confine_to,
-        XCBCursor cursor 
+        XCBCursor cursor
         );
 /*
  * grab_window:     XCBWindow                   Specifies the window on which the pointer should be grabbed.
@@ -2218,35 +2218,35 @@ XCBUngrabPointer(
         );
 
 /* Returns min-keycodes and max-keycodes supported by the specified display.
- * The minimum number of KeyCodes returned is never less than 8, and the maximum number of KeyCodes returned is never greater than 255. 
+ * The minimum number of KeyCodes returned is never less than 8, and the maximum number of KeyCodes returned is never greater than 255.
  * Not all KeyCodes in this range are required to have corresponding keys.
  *
  * RETURN: 1 always;
  */
-int 
+int
 XCBDisplayKeyCodes(
-        XCBDisplay *display, 
-        int *min_keycode_return, 
+        XCBDisplay *display,
+        int *min_keycode_return,
         int *max_keycode_return);
 /* Returns min-keycodes and max-keycodes supported by the specified display.
- * The minimum number of KeyCodes returned is never less than 8, and the maximum number of KeyCodes returned is never greater than 255. 
+ * The minimum number of KeyCodes returned is never less than 8, and the maximum number of KeyCodes returned is never greater than 255.
  * Not all KeyCodes in this range are required to have corresponding keys.
  *
  * RETURN: 1 always;
  */
-int 
+int
 XCBDisplayKeycodes(
-        XCBDisplay *display, 
-        int *min_keycode_return, 
+        XCBDisplay *display,
+        int *min_keycode_return,
         int *max_keycode_return);
 
 
 /* <<< Straight From Xlib >>>
- * The XCBRefreshKeyboardMapping() function refreshes the stored modifier and keymap information. 
- * You usually call this function when a XCB_MAPPING_NOTIFY event with a request member of 
+ * The XCBRefreshKeyboardMapping() function refreshes the stored modifier and keymap information.
+ * You usually call this function when a XCB_MAPPING_NOTIFY event with a request member of
  *
- * XCB_MAPPIN_KEYBOARD or XCB_MAPPING_MODIFIER occurs. 
- * The result is to update XCB's knowledge of the keyboard. 
+ * XCB_MAPPIN_KEYBOARD or XCB_MAPPING_MODIFIER occurs.
+ * The result is to update XCB's knowledge of the keyboard.
  *
  *
  * RETURN: 1 on Success.
@@ -2254,15 +2254,15 @@ XCBDisplayKeycodes(
  */
 uint8_t
 XCBRefreshKeyboardMapping(
-        XCBKeySymbols *syms, 
+        XCBKeySymbols *syms,
         XCBMappingNotifyEvent *event);
 
 /*
  */
 XCBCookie
 XCBGetKeyboardMappingCookie(
-        XCBDisplay *display, 
-        XCBKeyCode first_keycode, 
+        XCBDisplay *display,
+        XCBKeyCode first_keycode,
         uint8_t count);
 
 /*
@@ -2274,7 +2274,7 @@ XCBGetKeyboardMappingCookie(
  */
 XCBKeyboardMapping *
 XCBGetKeyboardMappingReply(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBCookie cookie);
 
 /* Send a event to the XServer to map the window specified;
@@ -2283,7 +2283,7 @@ XCBGetKeyboardMappingReply(
  */
 XCBCookie
 XCBMapWindow(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBWindow window);
 
 /* Send a event to the XServer to unmap the window specified;
@@ -2304,12 +2304,27 @@ XCBDestroyWindow(
         XCBWindow window
         );
 
-/* 
+
+/*
+ *
+ *  mode:               uint8_t                                 Close down mode for the client.
+ *                      XCB_CLOSE_DOWN_MODE_RETAIN                Retain the client.
+ *                      XCB_CLOSE_DOWN_MODE_DESTROY               Destroy the client.
+ *                      XCB_CLOSE_DOWN_MODE_REVERT                Revert the client.
+ *
+ */
+XCBCookie
+XCBSetCloseDownMode(
+        XCBDisplay *display,
+        uint8_t mode
+    );
+
+/*
  *  depth:              uint8_t                                 Depth you want your window to be.
  *                      XCB_COPY_FROM_PARENT                    Copy depth from parent.
  *
- *  _class:             XCB_WINDOW_CLASS_COPY_FROM_PARENT 
- *                      XCB_WINDOW_CLASS_INPUT_OUTPUT 
+ *  _class:             XCB_WINDOW_CLASS_COPY_FROM_PARENT
+ *                      XCB_WINDOW_CLASS_INPUT_OUTPUT
  *                      XCB_WINDOW_CLASS_INPUT_ONLY
  *
  *  visual:             XCBVisual                               Visual you want your window to be.
@@ -2331,19 +2346,19 @@ XCBDestroyWindow(
  *                      XCB_CW_COLORMAP                         (mask) Window Colormap.
  *                      XCB_CW_CURSOR                           (mask) Window Cursor.
  */
-XCBWindow 
+XCBWindow
 XCBCreateWindow(
-        XCBDisplay *display, 
-        XCBWindow parent, 
-        int32_t x, 
-        int32_t y, 
-        uint32_t width, 
-        uint32_t height, 
-        uint32_t border_width, 
-        uint8_t depth, 
-        uint16_t _class, 
-        XCBVisual visual, 
-        uint32_t valuemask, 
+        XCBDisplay *display,
+        XCBWindow parent,
+        int32_t x,
+        int32_t y,
+        uint32_t width,
+        uint32_t height,
+        uint32_t border_width,
+        uint8_t depth,
+        uint16_t _class,
+        XCBVisual visual,
+        uint32_t valuemask,
         const XCBCreateWindowValueList *value_list
         );
 /*
@@ -2373,14 +2388,14 @@ XCBCreateSimpleWindow(
         uint32_t border_color,
         uint32_t background_color
         );
-/* 
- * RETURN: GC id (identification number) 
+/*
+ * RETURN: GC id (identification number)
  */
-XCBGC 
+XCBGC
 XCBCreateGC(
-        XCBDisplay *display, 
-        XCBDrawable drawable, 
-        uint32_t valuemask, 
+        XCBDisplay *display,
+        XCBDrawable drawable,
+        uint32_t valuemask,
         XCBCreateGCValueList *valuelist
         );
 
@@ -2392,15 +2407,15 @@ XCBFreeGC(
         XCBDisplay *display,
         XCBGC gc
         );
-/* 
+/*
  * linewidth: measured in pixels and can be greater than or equal to one, a wide line, or the special value zero, a thin line.
  * linestyle: XCB_LINE_STYLE_SOLID          The full path of the line is drawn.
  *
- *            XCB_LINE_STYLE_DOUBLE_DASH    The full path of the line is drawn, 
- *                                          but the even dashes are filled differently than the odd dashes (see fill-style), 
+ *            XCB_LINE_STYLE_DOUBLE_DASH    The full path of the line is drawn,
+ *                                          but the even dashes are filled differently than the odd dashes (see fill-style),
  *                                          with Butt cap-style used where even and odd dashes meet.
  *
- *            XCB_LINE_STYLE_ON_OFF_DASH    Only the even dashes are drawn, 
+ *            XCB_LINE_STYLE_ON_OFF_DASH    Only the even dashes are drawn,
  *                                          and cap-style applies to all internal ends of the individual dashes (except NotLast is treated as Butt).
  *
  * capstyle: XCB_CAP_STYLE_NOT_LAST         The result is equivalent to Butt, except that for a line-width of zero the final endpoint is not drawn.
@@ -2417,15 +2432,15 @@ XCBFreeGC(
  *            XCB_JOIN_STYLE_BEVEL          The result is Butt endpoint styles, and then the triangular notch is filled.
  *
  *
- * RETURN: 1, always cause why not 
+ * RETURN: 1, always cause why not
  */
-int 
+int
 XCBSetLineAttributes(
-        XCBDisplay *display, 
-        XCBGC gc, 
-        uint32_t linewidth, 
-        uint32_t linestyle, 
-        uint32_t capstyle, 
+        XCBDisplay *display,
+        XCBGC gc,
+        uint32_t linewidth,
+        uint32_t linestyle,
+        uint32_t capstyle,
         uint32_t joinstyle);
 
 /*
@@ -2448,27 +2463,27 @@ XCBSetLineAttributes(
  *                                              match existing property value. If the property is undefined, it is treated as.
  *                                              defined with the correct type and format with zero-length data.
  * data:                                        The property data.
- * 
+ *
  * nelements:                                   Specifies the number of elements.
  * RETURN: Cookie to request.
 */
 XCBCookie
 XCBChangeProperty(
         XCBDisplay *display,
-        XCBWindow window, 
-        XCBAtom property, 
-        XCBAtom type, 
-        uint8_t format, 
-        uint8_t mode, 
-        const void *data, 
+        XCBWindow window,
+        XCBAtom property,
+        XCBAtom type,
+        uint8_t format,
+        uint8_t mode,
+        const void *data,
         uint32_t nelements); /* data_len */
 /*
  * RETURN: Cookie to request.
 */
 XCBCookie
 XCBDeleteProperty(
-        XCBDisplay *display, 
-        XCBWindow window, 
+        XCBDisplay *display,
+        XCBWindow window,
         XCBAtom property);
 
 /* No Documentation Provided.
@@ -2516,13 +2531,13 @@ XCBCirculateSubwindowsDown(
  *                      XCB_CONFIG_WINDOW_BORDER_WIDTH; Sets the flag to configure the Border Width.
  *                      XCB_CONFIG_WINDOW_SIBLING;      Sets the flag to configure the Window Sibling.
  *                      XCB_CONFIG_WINDOW_STACK_MODE;   Sets the flag to configure the Stack Mode.
- * 
+ *
  * changes:             XCBWindowChanges *              The structure to the changes.
  * RETURN: Cookie to request.
 */
 XCBCookie
 XCBConfigureWindow(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBWindow window,
         uint16_t value_mask,
         XCBWindowChanges *changes);
@@ -2534,7 +2549,7 @@ XCBStoreName(
         const char *window_name
         );
 
-/* 
+/*
  *
  * NOTE: instance_name_length must be strlen(mystring);
  * NOTE: class_name_length must be strlen(mystring);
@@ -2551,7 +2566,7 @@ XCBSetClassHintFast(
         XCBClassHint *hint
         );
 
-/* 
+/*
  *
  * NOTE: This operation makes use of "strlen"
  *
@@ -2560,8 +2575,8 @@ XCBSetClassHintFast(
  */
 int
 XCBSetClassHint(
-        XCBDisplay *display, 
-        XCBWindow window, 
+        XCBDisplay *display,
+        XCBWindow window,
         XCBClassHint *hint
         );
 
@@ -2592,16 +2607,16 @@ XCB_GC_ARC_MODE
 */
 XCBCookie
 XCBChangeGC(
-        XCBDisplay *display, 
-        XCBGC gc, 
-        uint32_t valuemask, 
+        XCBDisplay *display,
+        XCBGC gc,
+        uint32_t valuemask,
         XCBChangeGCValueList *va
         );
 
 XCBCookie
 XCBSetForeground(
-        XCBDisplay *display, 
-        XCBGC gc, 
+        XCBDisplay *display,
+        XCBGC gc,
         uint32_t colour
         );
 
@@ -2609,7 +2624,7 @@ XCBSetForeground(
  */
 int
 XCBDiscardReply(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBCookie cookie);
 
 /* dumb stuff */
@@ -2632,7 +2647,7 @@ XCBDiscardReply(
  * xcb_prefetch_extension_data(c, &xcb_big_requests_id) and the reply
  * must have already arrived.
  */
-void 
+void
 XCBPrefetchMaximumRequestLength(
         XCBDisplay *display
         );
@@ -2670,7 +2685,7 @@ XCBGetAtomNameReply(
  */
 XCBCookie64
 XCBWiden(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBCookie cookie
         );
 /* This functions widens a cookies requets to match the 64 version of functions.
@@ -2682,16 +2697,16 @@ XCBWiden(
  *
  * RETURN: XCBCookie64
  */
-XCBCookie64 
+XCBCookie64
 XCBWidenCookie(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBCookie cookie
         );
 
 
 XCBCookie
 XCBKillClient(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBWindow win
         );
 
@@ -2751,8 +2766,8 @@ XCBSizeHintsFlags
  */
 XCBCookie
 XCBGetWMProtocolsCookie(
-        XCBDisplay *display, 
-        XCBWindow window, 
+        XCBDisplay *display,
+        XCBWindow window,
         XCBAtom WM_PROTOCOLS_ATOM_ID);
 /*
  * Grabs the reply and returns a structure to the XCBGetWMProtocol containing the array length (atoms_len) and the array (*atoms).
@@ -2764,13 +2779,13 @@ XCBGetWMProtocolsCookie(
  */
 int
 XCBGetWMProtocolsReply(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBCookie cookie,
         XCBWMProtocols *protocol_return
         );
 
 /* This frees resulting data from the protocols->_reply section of the provided structure.
- * 
+ *
  * NOTE: No protection against illegal memory frees, using free();
  *
  */
@@ -2788,7 +2803,7 @@ XCBGetWMHintsCookie(
         XCBWindow win
         );
 
-/* 
+/*
  * NOTE: RETURN MUST BE RELEASED BY CALLER USING free().
  *
  * RETURN: XCBWMHints * on Success.
@@ -2813,7 +2828,7 @@ XCBSetWMHintsCookie(
  */
 XCBCookie
 XCBGetWMNameCookie(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBWindow win);
 
 /*
@@ -2822,8 +2837,8 @@ XCBGetWMNameCookie(
  */
 uint8_t
 XCBGetWMNameReply(
-        XCBDisplay *display, 
-        XCBCookie cookie, 
+        XCBDisplay *display,
+        XCBCookie cookie,
         XCBTextProperty *prop_return
         );
 
@@ -2856,7 +2871,7 @@ XCBGetWMNormalHintsReply(
  */
 XCBCookie
 XCBGetWMClassCookie(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBWindow win
         );
 /*
@@ -2874,7 +2889,7 @@ XCBGetWMClassReply(
         );
 
 /* This frees resulting data from the _class->_reply section of the provided structure.
- * 
+ *
  * NOTE: No protection against illegal memory frees, using free();
  *
  */
@@ -2884,6 +2899,46 @@ XCBWipeGetWMClass(
         );
 
 
+/* Sets the selection owner for a given selection.
+ *
+ */
+XCBCookie
+XCBSetSelectionOwner(
+        XCBDisplay *display,
+        XCBAtom selection,
+        XCBWindow owner,
+        XCBTime time
+        );
+
+/*
+ *
+ * atom            XCBAtom              The selection atom that is derived specifically from the selection name.
+ *                                      In other words WM_Sn where n the number of screen. So for example
+ *                                      WM_S0 would be the first screen 'screen 0' ie display ':X.0'
+ *                                      WM_S1 would be the second screen 'screen 1' ioe display ':X.1'
+ *                                      So for example for display ':0' the first screne would be WM_S0.
+ *                                      Which would be WM_S0, even though the display doesnt specify it.
+ *                                      See XCBInternAtomCookie to make an atom
+ *
+ */
+XCBCookie
+XCBGetSelectionOwnerCookie(
+        XCBDisplay *display,
+        XCBAtom atom
+        );
+
+/*
+ *
+ *
+ */
+XCBWindow
+XCBGetSelectionOwnerReply(
+        XCBDisplay *display,
+        XCBCookie cookie
+        );
+
+
+
 extern void XCBDefaultHandlerMsg(XCBDisplay *display, XCBGenericError *error);
 
 
@@ -2891,7 +2946,7 @@ extern void XCBDefaultHandlerMsg(XCBDisplay *display, XCBGenericError *error);
 /* 1356 xproto.h */
 /* MASKS */
 /*
- * modifier 
+ * modifier
  * -----------------
  * XCB_MOD_MASK_SHIFT = 1,
  * XCB_MOD_MASK_LOCK = 2,
@@ -2929,7 +2984,7 @@ extern void XCBDefaultHandlerMsg(XCBDisplay *display, XCBGenericError *error);
  * XCB_BUTTON_MASK_5 = 4096,
  * XCB_BUTTON_MASK_ANY = 32768
  *
- * Visual Class 
+ * Visual Class
  * ---------------------
  * XCB_VISUAL_CLASS_STATIC_GRAY = 0,
  * XCB_VISUAL_CLASS_GRAY_SCALE = 1,
@@ -2938,7 +2993,7 @@ extern void XCBDefaultHandlerMsg(XCBDisplay *display, XCBGenericError *error);
  * XCB_VISUAL_CLASS_TRUE_COLOR = 4,
  * XCB_VISUAL_CLASS_DIRECT_COLOR = 5
  *
- * Event 
+ * Event
  * --------------------
  * XCB_EVENT_MASK_NO_EVENT = 0,
  * XCB_EVENT_MASK_KEY_PRESS = 1,
@@ -2990,7 +3045,7 @@ extern void XCBDefaultHandlerMsg(XCBDisplay *display, XCBGenericError *error);
  * XCB_NOTIFY_MODE_UNGRAB = 2,
  * XCB_NOTIFY_MODE_WHILE_GRABBED = 3
  *
- * Visiblity 
+ * Visiblity
  * ----------------------------
  * XCB_VISIBILITY_UNOBSCURED = 0,
  * XCB_VISIBILITY_PARTIALLY_OBSCURED = 1,
@@ -3085,7 +3140,7 @@ extern void XCBDefaultHandlerMsg(XCBDisplay *display, XCBGenericError *error);
  * ------------------------------
  * XCB_COLORMAP_STATE_UNINSTALLED = 0,
  * XCB_COLORMAP_STATE_INSTALLED = 1
- * 
+ *
  * Colormap
  * ------------------------------
  * XCB_COLORMAP_NONE = 0

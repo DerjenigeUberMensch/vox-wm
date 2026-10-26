@@ -56,61 +56,48 @@ getnamefromreply(XCBWindowProperty *namerep)
 uint32_t *
 geticonprop(XCBWindowProperty *iconreply)
 {
-    const uint8_t WIDTH_INDEX = 0;
-    const uint8_t HEIGHT_INDEX = 1;
-    const uint8_t MIN_WIDTH = 1;
-    const uint8_t MIN_HEIGHT = 1;
-    const uint8_t MIN_ICON_DATA_SIZE = (MIN_WIDTH + MIN_HEIGHT) * 2;     /* times 2 cause the first and second index are the size */
-
-    uint32_t *ret = NULL;
-    if(iconreply && iconreply->type == XCB_ATOM_CARDINAL)
-    {
-        uint32_t *icon = XCBGetPropertyValue(iconreply);
-        uint32_t length = 0;
-        XCBGetPropertyValueLength(iconreply, sizeof(uint32_t), &length);
-        if(length >= MIN_ICON_DATA_SIZE)
-        {   
-            uint64_t i = 0;
-            uint64_t wi = WIDTH_INDEX;
-            uint64_t hi = HEIGHT_INDEX;
-            /* get the biggest size */
-            uint8_t bigger = 0;
-            uint8_t inrange = 0;
-
-            /* some icons dont work really that well with what they are told */
-            while(i + 2 < length)
-            {        
-                /* assume icon broken */
-                if(!icon[wi] || !icon[hi])
-                {   break;
-                }
-                /* jmp to next size(s) */
-                /* bounds check */
-                bigger = icon[i + WIDTH_INDEX] >= icon[wi];
-                inrange = length - i >= icon[i + WIDTH_INDEX];
-
-                if(bigger && inrange)
-                {   wi = i + WIDTH_INDEX;
-                }
-
-                bigger = icon[i + HEIGHT_INDEX] >= icon[hi];
-                inrange = length - i >= icon[i + HEIGHT_INDEX];
-
-                if(bigger && inrange)
-                {   hi = i + HEIGHT_INDEX;
-                }
-
-                i += icon[i + WIDTH_INDEX] * icon[i + HEIGHT_INDEX];
-                /* jmp to next WIDTH_INDEX/HEIGHT_INDEX */
-                i += 2;
-            }
-            size_t sz = sizeof(uint32_t) * icon[wi] * icon[hi] + sizeof(uint32_t) * 2;
-            ret = malloc(sz);
-            if(ret)
-            {   memcpy(ret, &icon[wi], sz);
-            }
-        }
+    /* reject invalid replies */
+    if(!iconreply || iconreply->type != XCB_ATOM_CARDINAL || iconreply->format != 32 || iconreply->length == 0)
+    {   return NULL;
     }
+
+    const u32 *icons = XCBGetPropertyValue(iconreply);
+    u32 length = 0;
+    XCBGetPropertyValueLength(iconreply, sizeof(uint32_t), &length);
+
+    size_t offset = 0;
+    size_t best = 0;
+    u64 bestarea = 0;
+
+    while(length - offset >= 2)
+    {
+        u64 area = (u64)icons[offset] * (u64)icons[offset + 1];
+
+        if(!area || area > length - offset - 2)
+        {   break;
+        }
+
+        if(area > bestarea)
+        {
+            best = offset;
+            bestarea = area;
+        }
+
+        offset += (size_t)area + 2;
+    }
+
+    if(!bestarea || bestarea > SIZE_MAX / sizeof(u32) - 2)
+    {   return NULL;
+    }
+
+    size_t bytes = ((size_t)bestarea + 2) * sizeof(u32);
+
+    u32 *ret = malloc(bytes);
+
+    if(ret)
+    {   memcpy(ret, icons + best, bytes);
+    }
+
     return ret;
 }
 
@@ -118,69 +105,43 @@ geticonprop(XCBWindowProperty *iconreply)
 
 void
 XCBSetAtomState(XCBDisplay *display, XCBWindow win, XCBAtom type, XCBAtom atom, XCBWindowProperty *prop, u8 _delete)
-{ 
-    void *data = NULL;
-    u32 len = 0;
-    u32 propmode = XCBPropModeReplace;
-
-    if(prop)
-    {
-        XCBAtom *atoms = XCBGetPropertyValue(prop);
-        uint32_t ATOM_LENGTH = 0;
-        XCBGetPropertyValueLength(prop, sizeof(XCBAtom), &ATOM_LENGTH);
-
-        u32 i;
-        u32 offset = 0;
-        u8 set = 0;
-        for(i = 0; i < ATOM_LENGTH; ++i)
-        {
-            if(atoms[i] == atom)
-            {   
-                offset = i;
-                set = 1;
-                break;
-            }
-        }
-
-        if(set)
-        {
-            if(_delete)
-            {
-                /* this gets optimized to memmove, cool!
-                 * GCC v14.1.1 -O3
-                 */
-                /* this is a bottleneck on debug builds, 
-                 * But not on release as this is optimized as a memmove.
-                 */
-                for(i = offset; i < ATOM_LENGTH - 1; ++i)
-                {   atoms[i] = atoms[i + 1];
-                }
-                data = atoms;
-                len = ATOM_LENGTH - 1;
-            }
-            else  /* atom already exists do nothing */
-            {   return;
-            }
-        }
-        else
-        {
-            if(_delete)     /* prop not found mark as already deleted */
-            {   return;
-            }
-            else    /* set propmode to append cause we didnt find it */
-            {   
-                propmode = XCBPropModeAppend;
-                len = 1;
-                data = &atom;
-            }
-        }
-    }
-    else
+{
+    XCBAtom *atoms = NULL;
+    u32 count = 0;
+    
+    if(prop && prop->type == XCB_ATOM_ATOM && prop->format == 32)
     {   
-        len = 1;
-        data = &atom;
+        atoms = XCBGetPropertyValue(prop);
+        XCBGetPropertyValueLength(prop, sizeof(XCBAtom), &count);
     }
-    XCBChangeProperty(display, win, type, XCB_ATOM_ATOM, 32, propmode, (const char *)data, len);
+
+    u32 i;
+    u32 kept = 0;
+
+    bool found = false;
+
+    for(i = 0; i < count; ++i)
+    {
+        if(atoms[i] == atom)
+        {
+            found = true;
+        }
+        else if(_delete)
+        {   
+            atoms[kept] = atoms[i];
+            ++kept;
+        }
+    }
+
+    if(_delete)
+    {
+        if(found)
+        {   XCBChangeProperty(display, win, type, XCB_ATOM_ATOM, 32, XCBPropModeReplace, atoms, kept);
+        }
+    }
+    else if(!found)
+    {   XCBChangeProperty(display, win, type, XCB_ATOM_ATOM, 32, count ? XCBPropModeAppend : XCBPropModeReplace, &atom, 1);
+    }
 }
 
 char *

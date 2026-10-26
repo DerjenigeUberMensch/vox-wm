@@ -18,6 +18,7 @@
 #include "main.h"
 #include "threading.h"
 #include "util.h"
+#include "wmpoll.h"
 
 extern WM _wm;
 
@@ -163,6 +164,7 @@ QueueProperty(XCBDisplay *display, GetPropCookie *cookie)
     if(!status)
     {   
         DebugWarn("Failed to add property to queue");
+        PropUpdatePropertyGetReply(display, cookie);
         return;
     }
 POST:
@@ -241,35 +243,43 @@ PropInit(void)
 void
 PropDestroy(void)
 {
+    LOCK_WM();
+
     if(!intialized)
-    {   return;
+    {
+        UNLOCK_WM();
+        return;
     }
+
 
     if(!ASSERT(_wm.use_threads))
     {   
         DebugError("UB encountered");
+        UNLOCK_WM();
         /* leak memory over crashing */
         return;
     }
 
     PropListen(_wm.dpy, 0, PropExitThread);
 
-    int MAX_TIME_WAIT_SECONDS = 2;
+    intialized = 0;
+
+    UNLOCK_WM();
+
+    double MAX_TIME_WAIT_SECONDS = 2.5;
     double MAX_TIME_WAIT_MILLISECONDS = MAX_TIME_WAIT_SECONDS * 1000.0;
 
     AwaitTPromiseTimeout(&_worked_exited, MAX_TIME_WAIT_MILLISECONDS);
 
-    CQueueDestroy(&_queue);
-    sem_destroy(&counter);
-
     if(IsTPromiseDone(&_worked_exited))
-    {   DestroyTPromiseFilled(&_worked_exited);
+    {   
+        CQueueDestroy(&_queue);
+        sem_destroy(&counter);
+        DestroyTPromiseFilled(&_worked_exited);
     }
     else
     {   DebugError("Worker thread failed to exit: MEM_LEAK_WARN");
     }
-
-    intialized = 0;
 }
 
 void 
@@ -294,20 +304,20 @@ PropListenArg(
     int usethreads;
 
     LOCK_WM();
-    usethreads = _wm.use_threads;
+    usethreads = _wm.use_threads && intialized;
     UNLOCK_WM();
 
     GetPropCookie cookie = { .win = win, .type = type, .arg = arg};
 
     if(type == PropExitThread)
     {   
-        if(usethreads && intialized)
+        if(usethreads)
         {   QueueProperty(display, &cookie);
         }
         return;
     }
 
-    if(!usethreads || !intialized)
+    if(!usethreads)
     {   
         DebugWarnOnce("Using single threads: NO_MULTI_THREAD");
         PropUpdateProperty(display, &cookie);

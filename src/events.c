@@ -1,7 +1,9 @@
-#include <complex.h>
 #include <stdint.h>
 #include <string.h>
+#include <xcb/xproto.h>
 
+#include "XCB-TRL/xcb_trl.h"
+#include "XCB-TRL/xcb_trl_types.h"
 #include "keybind/keybind_definitions.h"
 #include "keybind/keybinds.h"
 
@@ -15,6 +17,7 @@
 #include "settings.h"
 #include "floating.h"
 #include "actions.h"
+#include "bar.h"
 #include "interactive.h"
 
 extern WM _wm;
@@ -23,9 +26,18 @@ extern XCBAtom netatom[NetLast];
 extern XCBAtom wmatom[WMLast];
 extern XCBAtom motifatom;
 
+extern XCBAtom wmsnatom;
+extern XCBAtom versionatom;
+extern XCBAtom targetsatom;
+extern XCBAtom timestampatom;
+extern XCBAtom atompairatom;
+extern XCBAtom multipleatom;
+
+extern XCBTimestamp wmsntime;
+
 extern void xerror(XCBDisplay *display, XCBGenericError *error);
 
-void (*handler[XCBLASTEvent]) (XCBGenericEvent *) = 
+void (*handler[XCBLASTEvent]) (XCBEvent *) =
 {
     /* Keyboard */
     [XCB_KEY_PRESS] = keypress,
@@ -75,7 +87,7 @@ void (*handler[XCBLASTEvent]) (XCBGenericEvent *) =
     [XCB_NONE] = errorhandler,
 };
 
-static XCBWindow 
+static XCBWindow
 GET_EVENT_TARGET(XCBWindow eventwin, XCBWindow eventchild)
 {
     return eventwin;
@@ -97,13 +109,13 @@ GET_EVENT_TARGET(XCBWindow eventwin, XCBWindow eventchild)
 }
 
 static XCBWindow
-PROPOGATE_FRAME_WINDOW_EVENT(XCBGenericEvent *ev, XCBWindow eventwin, XCBWindow eventchild, uint32_t eventmask)
+PROPOGATE_FRAME_WINDOW_EVENT(XCBEvent *ev, XCBWindow eventwin, XCBWindow eventchild, uint32_t eventmask)
 {
     XCBWindow target = GET_EVENT_TARGET(eventwin, eventchild);
 
     /*
     if(target != eventwin)
-    {   
+    {
         XCBSendEvent(_wm.dpy, target, false, eventmask, (const char *)ev);
         return XCB_NONE;
     }
@@ -113,9 +125,9 @@ PROPOGATE_FRAME_WINDOW_EVENT(XCBGenericEvent *ev, XCBWindow eventwin, XCBWindow 
 }
 
 void
-keypress(XCBGenericEvent *event)
+keypress(XCBEvent *event)
 {
-    XCBKeyPressEvent *ev = (XCBKeyPressEvent *)event;
+    XCBKeyPressEvent *ev = &event->xkey;
     const i16 rootx             = ev->root_x;
     const i16 rooty             = ev->root_y;
     const i16 eventx            = ev->event_x;
@@ -147,7 +159,7 @@ keypress(XCBGenericEvent *event)
     const u32 cleanstate = CLEANMASK(state);
     u8 sync = 0;
 
-    bool ret = WMKeybindHandler(cleanstate, keydetail, WM_INPUT_PRESS, false);
+    bool ret = WMKeybindHandler(cleanstate, keydetail, WM_INPUT_PRESS, false, event);
 
     sync = ret;
 
@@ -161,9 +173,9 @@ keypress(XCBGenericEvent *event)
 }
 
 void
-keyrelease(XCBGenericEvent *event)
+keyrelease(XCBEvent *event)
 {
-    XCBKeyReleaseEvent *ev = (XCBKeyReleaseEvent *)event;
+    XCBKeyReleaseEvent *ev = &event->xkey;
     const i16 rootx             = ev->root_x;
     const i16 rooty             = ev->root_y;
     const i16 eventx            = ev->event_x;
@@ -195,7 +207,7 @@ keyrelease(XCBGenericEvent *event)
     const u32 cleanstate = CLEANMASK(state);
     u8 sync = 0;
 
-    bool ret = WMKeybindHandler(cleanstate, keydetail, WM_INPUT_RELEASE, false);
+    bool ret = WMKeybindHandler(cleanstate, keydetail, WM_INPUT_RELEASE, false, event);
 
     sync = ret;
 
@@ -209,9 +221,9 @@ keyrelease(XCBGenericEvent *event)
 }
 
 void
-buttonpress(XCBGenericEvent *event)
+buttonpress(XCBEvent *event)
 {
-    XCBButtonPressEvent *ev = (XCBButtonPressEvent *)event;
+    XCBButtonPressEvent *ev = &event->xbutton;
     const i16 rootx             = ev->root_x;
     const i16 rooty             = ev->root_y;
     const i16 eventx            = ev->event_x;
@@ -233,8 +245,7 @@ buttonpress(XCBGenericEvent *event)
     (void)samescreen;
     (void)tim;
 
-    XCBWindow target = eventwin;
-    /* PROPOGATE_FRAME_WINDOW_EVENT(event, eventwin, eventchild, XCBButtonPressMask); */
+    XCBWindow target = PROPOGATE_FRAME_WINDOW_EVENT(event, eventwin, eventchild, XCBButtonPressMask);
 
     const i32 cleanstate = CLEANMASK(state);
 
@@ -272,7 +283,7 @@ buttonpress(XCBGenericEvent *event)
     }
     /* some windows dont manage because they dont work or are override redirects */
     else if(!IS_WM_WINDOW(target))
-    {   
+    {
         /* if no selected window, this should just set input focus to root, failsafe for above basically */
         XCBSetInputFocus(_wm.dpy, target, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
         XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow], XCB_ATOM_WINDOW, 32, XCBPropModeReplace, (unsigned char *)&(target), 1);
@@ -280,7 +291,7 @@ buttonpress(XCBGenericEvent *event)
         sync = 1;
     }
 
-    sync += !!WMKeybindHandler(cleanstate, keydetail, WM_INPUT_PRESS, true);
+    sync += !!WMKeybindHandler(cleanstate, keydetail, WM_INPUT_PRESS, true, event);
 
     if(sync)
     {   XCBFlush(_wm.dpy);
@@ -290,9 +301,9 @@ buttonpress(XCBGenericEvent *event)
 }
 
 void
-buttonrelease(XCBGenericEvent *event)
+buttonrelease(XCBEvent *event)
 {
-    XCBButtonReleaseEvent *ev = (XCBButtonReleaseEvent *)event;
+    XCBButtonReleaseEvent *ev = &event->xbutton;
     const i16 rootx             = ev->root_x;
     const i16 rooty             = ev->root_y;
     const i16 eventx            = ev->event_x;
@@ -325,17 +336,17 @@ buttonrelease(XCBGenericEvent *event)
     const i32 cleanstate = CLEANMASK(state);
     u8 sync = 0;
 
-    sync += !!WMKeybindHandler(cleanstate, keydetail, WM_INPUT_RELEASE, true);
-    
+    sync += !!WMKeybindHandler(cleanstate, keydetail, WM_INPUT_RELEASE, true, event);
+
     if(sync)
     {   XCBFlush(_wm.dpy);
     }
 }
 
 void
-motionnotify(XCBGenericEvent *event)
+motionnotify(XCBEvent *event)
 {
-    XCBMotionNotifyEvent *ev = (XCBMotionNotifyEvent *)event;
+    XCBMotionNotifyEvent *ev = &event->xmotion;
     const i16 rootx             = ev->root_x;
     const i16 rooty             = ev->root_y;
     const i16 eventx            = ev->event_x;
@@ -372,7 +383,9 @@ motionnotify(XCBGenericEvent *event)
     //Debug("(w: %d, h: %d)", XCBDisplayWidth(_wm.dpy, _wm.screen), XCBDisplayHeight(_wm.dpy, _wm.screen));
     if((m = recttomon(rootx, rooty, 1, 1)) != mon && mon)
     {
-        setmonsel(m);
+        if(m)
+        {   setmonsel(m);
+        }
         sync = 1;
     }
 
@@ -384,9 +397,9 @@ motionnotify(XCBGenericEvent *event)
 }
 
 void
-enternotify(XCBGenericEvent *event)
+enternotify(XCBEvent *event)
 {
-    XCBEnterNotifyEvent *ev = (XCBEnterNotifyEvent *)event;
+    XCBEnterNotifyEvent *ev = &event->xcrossing;
     const uint8_t detail    = ev->detail;
     const XCBTimestamp tim  = ev->time;
     const XCBWindow eventroot = ev->root;
@@ -414,7 +427,6 @@ enternotify(XCBGenericEvent *event)
     (void)mode;
     (void)samescreenfocus;
 
-
     XCBWindow target = PROPOGATE_FRAME_WINDOW_EVENT(event, eventwin, eventchild, XCBEnterWindowMask);
 
     if(target == XCBNone)
@@ -432,10 +444,12 @@ enternotify(XCBGenericEvent *event)
     c = wintoclient(target);
     m = c ? c->desktop->mon : wintomon(target);
 
-    setmonsel(m);
+    if(m)
+    {   setmonsel(m);
+    }
 
     if(USGetSetting(&_cfg, HoverFocus).data8[0])
-    {   
+    {
         if(c && c != _wm.selmon->desksel->sel)
         {   focus(c);
         }
@@ -449,9 +463,9 @@ enternotify(XCBGenericEvent *event)
 }
 
 void
-leavenotify(XCBGenericEvent *event)
+leavenotify(XCBEvent *event)
 {
-    XCBLeaveNotifyEvent *ev = (XCBLeaveNotifyEvent *)event;
+    XCBLeaveNotifyEvent *ev = &event->xcrossing;
     const uint8_t detail    = ev->detail;
     const XCBTimestamp tim  = ev->time;
     const XCBWindow eventroot = ev->root;
@@ -488,9 +502,9 @@ leavenotify(XCBGenericEvent *event)
 /* there are some broken focus acquiring clients needing extra handling */
 
 void
-focusin(XCBGenericEvent *event)
+focusin(XCBEvent *event)
 {
-    XCBFocusInEvent *ev = (XCBFocusInEvent *)event;
+    XCBFocusInEvent *ev = &event->xfocus;
     const u8 detail = ev->detail;
     const XCBWindow eventwin = ev->event;
     const u8 mode = ev->mode;
@@ -531,9 +545,9 @@ focusin(XCBGenericEvent *event)
 }
 
 void
-focusout(XCBGenericEvent *event)
+focusout(XCBEvent *event)
 {
-    XCBFocusOutEvent *ev = (XCBFocusOutEvent *)event;
+    XCBFocusOutEvent *ev = &event->xfocus;
     const u8 detail = ev->detail;
     const XCBWindow eventwin = ev->event;
     const u8 mode = ev->mode;
@@ -544,18 +558,18 @@ focusout(XCBGenericEvent *event)
 }
 
 void
-keymapnotify(XCBGenericEvent *event)
+keymapnotify(XCBEvent *event)
 {
-    XCBKeymapNotifyEvent *ev = (XCBKeymapNotifyEvent *)event;
+    XCBKeymapNotifyEvent *ev = &event->xkeymap;
     u8 *eventkeys   = ev->keys;        /* DONOT FREE */
 
     (void)eventkeys;
 }
 
 void
-expose(XCBGenericEvent *event)
+expose(XCBEvent *event)
 {
-    XCBExposeEvent *ev = (XCBExposeEvent *)event;
+    XCBExposeEvent *ev = &event->xexpose;
     const XCBWindow win     = ev->window;
     const i16 x             = ev->x;
     const i16 y             = ev->y;
@@ -574,9 +588,9 @@ expose(XCBGenericEvent *event)
 }
 
 void
-graphicsexpose(XCBGenericEvent *event)
+graphicsexpose(XCBEvent *event)
 {
-    XCBGraphicsExposeEvent *ev = (XCBGraphicsExposeEvent *)event;
+    XCBGraphicsExposureEvent *ev = &event->xgraphicsexpose;
     const i16 x                 = ev->x;
     const i16 y                 = ev->y;
     const u16 w                 = ev->width;
@@ -598,9 +612,9 @@ graphicsexpose(XCBGenericEvent *event)
 }
 
 void
-noexpose(XCBGenericEvent *event)
+noexpose(XCBEvent *event)
 {
-    XCBExposeEvent *ev = (XCBExposeEvent *)event;
+    XCBExposeEvent *ev = &event->xexpose;
     const i16 x                 = ev->x;
     const i16 y                 = ev->y;
     const u16 w                 = ev->width;
@@ -618,9 +632,9 @@ noexpose(XCBGenericEvent *event)
 }
 
 void
-circulaterequest(XCBGenericEvent *event)
+circulaterequest(XCBEvent *event)
 {
-    XCBCirculateRequestEvent *ev = (XCBCirculateRequestEvent *)event;
+    XCBCirculateRequestEvent *ev = &event->xcirculaterequest;
     const XCBWindow win         = ev->window;
     const XCBWindow eventwin    = ev->event;
     const u8 place              = ev->place;
@@ -641,7 +655,7 @@ circulaterequest(XCBGenericEvent *event)
     /* TODO update stack */
     XCBCirculateSubwindows(_wm.dpy, target, !!place);
     switch(place)
-    {   
+    {
         case XCB_CIRCULATE_RAISE_LOWEST:
             Debug("Circulate Up: [%u] ", target);
             break;
@@ -655,9 +669,9 @@ circulaterequest(XCBGenericEvent *event)
 }
 
 void
-configurerequest(XCBGenericEvent *event)
-{   
-    XCBConfigureRequestEvent *ev = (XCBConfigureRequestEvent *)event;
+configurerequest(XCBEvent *event)
+{
+    XCBConfigureRequestEvent *ev = &event->xconfigurerequest;
     const i16 x     = ev->x;
     const i16 y     = ev->y;
     const u16 w     = ev->width;
@@ -680,10 +694,45 @@ configurerequest(XCBGenericEvent *event)
 
     if((c = wintoclient(target)))
     {
+        /* we need to notify the client even if we make no changes */
+        const i16 oldx = c->x;
+        const i16 oldy = c->y;
+        const u16 oldw = c->w;
+        const u16 oldh = c->h;
+
         i32 rx = c->x;
         i32 ry = c->y;
         i32 rw = c->w;
         i32 rh = c->h;
+
+        if(ISDESKTOP(c))
+        {
+            if(mask & XCB_CONFIG_WINDOW_X)
+            {   rx = x;
+            }
+            if(mask & XCB_CONFIG_WINDOW_Y)
+            {   ry = y;
+            }
+            if(mask & XCB_CONFIG_WINDOW_WIDTH)
+            {   rw = MAX(w, 1);
+            }
+            if(mask & XCB_CONFIG_WINDOW_HEIGHT)
+            {   rh = MAX(h, 1);
+            }
+
+            Monitor *m = recttomon(rx, ry, rw, rh);
+
+            if(m && m != c->desktop->mon)
+            {   setclientdesktop(c, m->desksel);
+            }
+
+            resizeclient(c, rx, ry, rw, rh);
+            configure(c);
+            arrangeq(c->desktop);
+            sync = 1;
+            goto SYNC;
+        }
+
         if(mask & XCB_CONFIG_WINDOW_BORDER_WIDTH)
         {                           /* Border width should NEVER be bigger than the screen */
             setborderwidth(c, bw);
@@ -691,7 +740,7 @@ configurerequest(XCBGenericEvent *event)
         }
         /* dwm is a dirty liar
          * rx = m->mx + x
-         * is wrong 
+         * is wrong
          */
         if(mask & XCB_CONFIG_WINDOW_X)
         {   rx = x;
@@ -708,7 +757,7 @@ configurerequest(XCBGenericEvent *event)
         if(mask & XCB_CONFIG_WINDOW_STACK_MODE)
         {
             /* UNUSED, we do our own restacking */
-            /* 
+            /*
             XCBWindowChanges wc;
             const uint32_t modemask = XCB_CONFIG_WINDOW_STACK_MODE | (mask & XCB_CONFIG_WINDOW_SIBLING);
             wc.stack_mode = ev->stack_mode;
@@ -736,18 +785,18 @@ configurerequest(XCBGenericEvent *event)
                         if(c1)
                         {
                             if(stackpriority(c, c1))
-                            {   
+                            {
                                 detachfocus(c);
                                 attachfocus(c);
                             }
                         }
                         Debug("Raised Client: [%u] above stack from [%u]", c->win, ev->sibling);
                         break;
-                    case XCB_STACK_MODE_BOTTOM_IF:  
+                    case XCB_STACK_MODE_BOTTOM_IF:
                         if(c1)
-                        {   
+                        {
                             if(stackpriority(c, c1))
-                            {   
+                            {
                                 if(c->desktop->flast != c)
                                 {   attachfocusafter(c->desktop->flast, c);
                                 }
@@ -755,17 +804,17 @@ configurerequest(XCBGenericEvent *event)
                         }
                         Debug("Lowerd Client: [%u] below stack from [%u]", c->win, ev->sibling);
                         break;
-                    case XCB_STACK_MODE_OPPOSITE:   
+                    case XCB_STACK_MODE_OPPOSITE:
                         if(c1)
-                        {   
+                        {
                             if(stackpriority(c, c1))
-                            {   
+                            {
                                 if(c->desktop->flast != c)
                                 {   attachfocusafter(c->desktop->flast, c);
                                 }
                             }
                             else
-                            {   
+                            {
                                 detachfocus(c);
                                 attachfocus(c);
                             }
@@ -778,16 +827,16 @@ configurerequest(XCBGenericEvent *event)
             {
                 switch(stack)
                 {
-                    case XCB_STACK_MODE_ABOVE:      
+                    case XCB_STACK_MODE_ABOVE:
                         detachfocus(c);
                         attachfocus(c);
-                        Debug("Raised Client: [%u] above stack", c->win); 
+                        Debug("Raised Client: [%u] above stack", c->win);
                         break;
-                    case XCB_STACK_MODE_BELOW:      
+                    case XCB_STACK_MODE_BELOW:
                         if(c->desktop->slast != c)
                         {   attachfocusafter(c->desktop->slast, c);
                         }
-                        Debug("Lowered Client: [%u] below stack", c->win); 
+                        Debug("Lowered Client: [%u] below stack", c->win);
                         break;
                     case XCB_STACK_MODE_TOP_IF:
                         detachfocus(c);
@@ -808,7 +857,7 @@ configurerequest(XCBGenericEvent *event)
                             }
                         }
                         else
-                        {   
+                        {
                             detachfocus(c);
                             attachfocus(c);
                         }
@@ -823,9 +872,9 @@ configurerequest(XCBGenericEvent *event)
 
         if(geom)
         {
-             /* If an Application requests just a new size, its reference point does not move. 
-              * So for example if client window has win_gravity SouthEastGravity and is resized, 
-              * the bottom right corner of its frame will not move but instead the top left corner will be adjusted by the difference in size. 
+             /* If an Application requests just a new size, its reference point does not move.
+              * So for example if client window has win_gravity SouthEastGravity and is resized,
+              * the bottom right corner of its frame will not move but instead the top left corner will be adjusted by the difference in size.
               * https://specifications.freedesktop.org/wm/latest-single/#id-1.10.8
               */
 
@@ -846,7 +895,7 @@ configurerequest(XCBGenericEvent *event)
             }
 
             /* sometimes clients resend data for no reason using resizerequest() because they think we dont a good enough job
-             * at doing our literal only job, which breaks resizing so we skip the ones that are the same fixing 
+             * at doing our literal only job, which breaks resizing so we skip the ones that are the same fixing
              * 1. broken resizes
              * 2. we later detect broken resizse again in the other one
              *
@@ -856,7 +905,7 @@ configurerequest(XCBGenericEvent *event)
              * Well your in luck because thats EXACTLY what its doing, so please ignore.
              */
             if(rx != c->x || ry != c->y || rw != c->w || rh != c->h)
-            {   
+            {
                 Monitor *oldmon = recttomon(c->x, c->y, c->w, c->h);
                 Monitor *newmon = recttomon(rx, ry, rw, rh);
 
@@ -872,7 +921,7 @@ configurerequest(XCBGenericEvent *event)
                 else if(!SHOULDBEFLOATING(c))
                 {
                     if(ISFLOATING(c))
-                    {   
+                    {
                         setfloating(c, 0);
                         restack = 1;
                     }
@@ -883,7 +932,7 @@ configurerequest(XCBGenericEvent *event)
                 {
                     /* these checks are so we maintain wasfloating correctly without messing everything up */
                     if(!ISFLOATING(c) && !DOCKED(c))
-                    {   
+                    {
                         setfloating(c, 1);
                         restack = 1;
                     }
@@ -895,7 +944,7 @@ configurerequest(XCBGenericEvent *event)
         if(restack)
         {
             if(c)
-            {   
+            {
                 /* this fixes windows not maintaing focus order correctly for some applications that use configure requests.
                  * Basically while we did reattach focus we never set focus, so the stack order is correct but the focus order isnt.
                  * AKA altttab.
@@ -905,6 +954,12 @@ configurerequest(XCBGenericEvent *event)
                 arrange(c->desktop);
             }
         }
+
+        /* notify client no changes were made that they requested */
+        if(c->x == oldx && c->y == oldy && c->w == oldw && c->h == oldh)
+        {   configure(c);
+        }
+
         sync = 1;
     }
     else
@@ -920,15 +975,16 @@ configurerequest(XCBGenericEvent *event)
         XCBConfigureWindow(_wm.dpy, target, mask, &wc);
         sync = 1;
     }
+SYNC:
     if(sync)
     {   XCBFlush(_wm.dpy);
     }
 }
 
 void
-maprequest(XCBGenericEvent *event)
+maprequest(XCBEvent *event)
 {
-    XCBMapRequestEvent *ev  = (XCBMapRequestEvent *)event;
+    XCBMapRequestEvent *ev  = &event->xmaprequest;
     const XCBWindow parent  = ev->parent;
     const XCBWindow win     = ev->window;
 
@@ -939,7 +995,15 @@ maprequest(XCBGenericEvent *event)
     Client *c = wintoclient(win);
 
     if(c)
-    {   setmapstate(c, WMMapStateMapped);
+    {
+        setmapstate(c, WMMapStateMapped);
+        setwtypemapnormal(c, 1);
+        sethidden(c, 0);
+        setclientstate(c, XCB_WINDOW_NORMAL_STATE);
+        showhide(c);
+        XCBMapWindow(_wm.dpy, c->win);
+        arrange(c->desktop);
+        sync = 1;
     }
     else
     {   PropListen(_wm.dpy, win, PropManage);
@@ -951,16 +1015,18 @@ maprequest(XCBGenericEvent *event)
 }
 /* popup windows sometimes need this */
 void
-resizerequest(XCBGenericEvent *event)
+resizerequest(XCBEvent *event)
 {
-    XCBResizeRequestEvent *ev = (XCBResizeRequestEvent *)event;
+    XCBResizeRequestEvent *ev = &event->xresizerequest;
     const XCBWindow win = ev->window;
     const u16 w         = ev->width;
     const u16 h         = ev->height;
 
-    XCBGenericEvent gev;
-    memset(&gev, 0, sizeof(XCBGenericEvent));
-    XCBConfigureRequestEvent *config = (XCBConfigureRequestEvent *)&gev;
+    XCBEvent gev;
+
+    memset(&gev, 0, sizeof(gev));
+
+    XCBConfigureRequestEvent *config = &gev.xconfigurerequest;
 
     config->response_type = XCB_CONFIGURE_REQUEST;
     config->sequence = XCBNone;
@@ -969,13 +1035,13 @@ resizerequest(XCBGenericEvent *event)
     config->height = h;
     config->value_mask = XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT;
 
-    configurerequest((XCBGenericEvent *)&gev);
+    configurerequest(&gev);
 }
 
 void
-circulatenotify(XCBGenericEvent *event)
+circulatenotify(XCBEvent *event)
 {
-    XCBCirculateNotifyEvent *ev = (XCBCirculateNotifyEvent *)event;
+    XCBCirculateNotifyEvent *ev = &event->xcirculate;
     const u8 place                    = ev->place;
     const XCBWindow win               = ev->window;
     const XCBWindow eventwin          = ev->event;
@@ -991,9 +1057,9 @@ circulatenotify(XCBGenericEvent *event)
  * cause this only occurs on sucesfull actions
  */
 void
-configurenotify(XCBGenericEvent *event)
+configurenotify(XCBEvent *event)
 {
-    XCBConfigureNotifyEvent *ev = (XCBConfigureNotifyEvent *)event;
+    XCBConfigureNotifyEvent *ev = &event->xconfigure;
     const XCBWindow eventwin = ev->event;
     const XCBWindow win = ev->window;
     const XCBWindow abovesibling = ev->above_sibling;
@@ -1015,7 +1081,7 @@ configurenotify(XCBGenericEvent *event)
     {
         u8 dirty;
         dirty = (_wm.sw != w || _wm.sh != h);
-        
+
         _wm.sw = w;
         _wm.sh = h;
 
@@ -1023,6 +1089,15 @@ configurenotify(XCBGenericEvent *event)
         Debug("(w: %d, h: %d)", w, h);
         if(updategeom() || dirty)
         {
+            const u32 geom[] = { _wm.sw, _wm.sh };
+            const u32 len = LENGTH(geom);
+
+            XCBChangeProperty(_wm.dpy, _wm.root,
+                netatom[NetDesktopGeometry], XCB_ATOM_CARDINAL,
+                32, XCBPropModeReplace,
+                geom, len
+            );
+            updatedesktopworkarea();
             arrangemons();
             sync = 1;
         }
@@ -1036,9 +1111,9 @@ configurenotify(XCBGenericEvent *event)
 }
 
 void
-createnotify(XCBGenericEvent *event)
+createnotify(XCBEvent *event)
 {
-    XCBCreateNotifyEvent *ev = (XCBCreateNotifyEvent *)event;
+    XCBCreateNotifyEvent *ev = &event->xcreatewindow;
     const u8 overrideredirect   = ev->override_redirect;
     const XCBWindow win         = ev->window;
     const XCBWindow parentwin   = ev->parent;
@@ -1060,9 +1135,9 @@ createnotify(XCBGenericEvent *event)
 }
 
 void
-destroynotify(XCBGenericEvent *event)
+destroynotify(XCBEvent *event)
 {
-    XCBDestroyNotifyEvent *ev = (XCBDestroyNotifyEvent *)event;
+    XCBDestroyNotifyEvent *ev = &event->xdestroywindow;
     const XCBWindow win         = ev->window;
     const XCBWindow eventwin    = ev->event;        /* The Event win is the window that sent the message */
 
@@ -1073,7 +1148,7 @@ destroynotify(XCBGenericEvent *event)
     Client *c = wintoclient(win);
 
     if(c)
-    {   
+    {
         u32 sticky = ISSTICKY(c);
         Desktop *desk = c->desktop;
 
@@ -1096,9 +1171,9 @@ destroynotify(XCBGenericEvent *event)
 }
 
 void
-gravitynotify(XCBGenericEvent *event)
+gravitynotify(XCBEvent *event)
 {
-    XCBGravityNotifyEvent *ev = (XCBGravityNotifyEvent *)event;
+    XCBGravityNotifyEvent *ev = &event->xgravity;
     const XCBWindow eventwin          = ev->event;
     const XCBWindow win               = ev->window;
     const i16 x                       = ev->x;
@@ -1112,9 +1187,9 @@ gravitynotify(XCBGenericEvent *event)
 }
 
 void
-mapnotify(XCBGenericEvent *event)
+mapnotify(XCBEvent *event)
 {
-    XCBMapNotifyEvent *ev = (XCBMapNotifyEvent *)event;
+    XCBMapNotifyEvent *ev = &event->xmap;
     const XCBWindow win             = ev->window;
     const XCBWindow eventwin        = ev->event;
     const uint8_t override_redirect = ev->override_redirect;
@@ -1125,9 +1200,9 @@ mapnotify(XCBGenericEvent *event)
 }
 
 void
-mappingnotify(XCBGenericEvent *event)
+mappingnotify(XCBEvent *event)
 {
-    XCBMappingNotifyEvent *ev = (XCBMappingNotifyEvent *)event;
+    XCBMappingNotifyEvent *ev = &event->xmapping;
     const XCBKeyCode first_keycode = ev->first_keycode;
     const uint8_t count            = ev->count;
     const uint8_t request          = ev->request;
@@ -1148,9 +1223,9 @@ mappingnotify(XCBGenericEvent *event)
 }
 
 void
-unmapnotify(XCBGenericEvent *event)
+unmapnotify(XCBEvent *event)
 {
-    XCBUnmapNotifyEvent *ev = (XCBUnmapNotifyEvent *)event;
+    XCBUnmapNotifyEvent *ev = &event->xunmap;
     const XCBWindow eventwin    = ev->event;
     const XCBWindow win         = ev->window;
     const uint8_t isconfigure   = ev->from_configure;
@@ -1158,12 +1233,11 @@ unmapnotify(XCBGenericEvent *event)
     (void)eventwin;
     (void)isconfigure;
 
-
     u8 sync = 0;
 
     Client *c = wintoclient(win);
 
-    /* The from_configure member is set to True if the event was generated as a result of a resizing of the window's parent when the window itself had a win_gravity of UnmapGravity. 
+    /* The from_configure member is set to True if the event was generated as a result of a resizing of the window's parent when the window itself had a win_gravity of UnmapGravity.
      * https://xorg.freedesktop.org/archive/X11R7.6/doc/libX11/specs/libX11/libX11.html
      */
     if(isconfigure)
@@ -1171,13 +1245,13 @@ unmapnotify(XCBGenericEvent *event)
     }
 
     if(c)
-    {  
+    {
         u32 sticky = ISSTICKY(c);
         Desktop *desk = c->desktop;
 
         setmapstate(c, WMMapStateUnmapped);
 
-        unmanage(c, 1);
+        unmanage(c, 0);
 
         /* if desktop was selected re arrange (no need to waste resources if not visbile) */
         if(desk->mon->desksel == desk || sticky)
@@ -1196,9 +1270,9 @@ unmapnotify(XCBGenericEvent *event)
 }
 
 void
-visibilitynotify(XCBGenericEvent *event)
+visibilitynotify(XCBEvent *event)
 {
-    XCBVisibilityNotifyEvent *ev = (XCBVisibilityNotifyEvent *)event;
+    XCBVisibilityNotifyEvent *ev = &event->xvisibility;
     const XCBWindow win         = ev->window;
     const u8 state              = ev->state;
 
@@ -1217,13 +1291,14 @@ visibilitynotify(XCBGenericEvent *event)
             break;
         default:
             Debug0("Invalid visiblity.");
+            break;
     }
 }
 
 void
-reparentnotify(XCBGenericEvent *event)
+reparentnotify(XCBEvent *event)
 {
-    XCBReparentNotifyEvent *ev = (XCBReparentNotifyEvent *)event;
+    XCBReparentNotifyEvent *ev = &event->xreparent;
     const XCBWindow parent      = ev->parent;
     const XCBWindow win         = ev->window;
     const XCBWindow eventwin    = ev->event;
@@ -1242,9 +1317,9 @@ reparentnotify(XCBGenericEvent *event)
 }
 
 void
-colormapnotify(XCBGenericEvent *event)
+colormapnotify(XCBEvent *event)
 {
-    XCBColormapNotifyEvent *ev = (XCBColormapNotifyEvent *)event;
+    XCBColormapNotifyEvent *ev = &event->xcolormap;
     const XCBWindow win         = ev->window;
     const u8 state              = ev->state;
     const XCBColormap colormap  = ev->colormap;
@@ -1258,9 +1333,9 @@ colormapnotify(XCBGenericEvent *event)
 
 /* TODO */
 void
-clientmessage(XCBGenericEvent *event)
+clientmessage(XCBEvent *event)
 {
-    XCBClientMessageEvent *ev = (XCBClientMessageEvent *)event;
+    XCBClientMessageEvent *ev = &event->xclient;
     const XCBWindow win             = ev->window;
     const XCBAtom atom              = ev->type;
     const u8 format                 = ev->format;
@@ -1303,14 +1378,14 @@ clientmessage(XCBGenericEvent *event)
      * _NET_RESTACK_WINDOW
      * _NET_REQUEST_FRAME_EXTENTS
      * _NET_WM_DESKTOP
-     * 
+     *
      *
      * _NET_WM_STATE
      * _NET_WM_WINDOW_TYPE
-     * 
+     *
      *
      * _NET_WM_FULLSCREEN_MONITORS
-     * 
+     *
      * subtypes:
      *
      * WM_PROTOCOLS:
@@ -1327,7 +1402,7 @@ clientmessage(XCBGenericEvent *event)
     const u32 l2 = data.data32[2];
     const u32 l3 = data.data32[3];
     const u32 l4 = data.data32[4];
-        
+
     u8 sync = 0;
     Client *c = NULL;
 
@@ -1342,9 +1417,9 @@ clientmessage(XCBGenericEvent *event)
         XCBChangeProperty(_wm.dpy, win, netatom[NetWMFrameExtents], XCB_ATOM_CARDINAL, 32, XCBPropModeReplace, (unsigned char *)_data, 4);
 
         sync = 1;
-    } 
+    }
     /* https://specifications.freedesktop.org/wm/latest/ar01s06.html */
-    else if (atom == wmatom[WMProtocols]) 
+    else if (atom == wmatom[WMProtocols])
     {
         XCBAtom atom2 = l0;
         XCBTimestamp timestamp = l1;
@@ -1375,7 +1450,7 @@ clientmessage(XCBGenericEvent *event)
          */
     }
     else if (atom == netatom[NetCurrentDesktop])
-    {   
+    {
         u32 desktop = l0;
         XCBTimestamp timestamp = l1;
 
@@ -1394,7 +1469,7 @@ clientmessage(XCBGenericEvent *event)
             }
 
             if(tmpm)
-            {   
+            {
                 desktop = MIN(desktop, UINT16_MAX);
                 setdesktopseli(tmpm, desktop);
             }
@@ -1422,14 +1497,14 @@ clientmessage(XCBGenericEvent *event)
             case _NET_WM_MOVERESIZE_MOVE:
                 DragWindow(win, button);
                 break;
-            case _NET_WM_MOVERESIZE_SIZE_KEYBOARD: 
+            case _NET_WM_MOVERESIZE_SIZE_KEYBOARD:
                 /* TODO */
                 break;
-            case _NET_WM_MOVERESIZE_MOVE_KEYBOARD: 
+            case _NET_WM_MOVERESIZE_MOVE_KEYBOARD:
                 /* TODO */
                 break;
             /* Not sure where the race condition occurs?? */
-            case _NET_WM_MOVERESIZE_CANCEL: 
+            case _NET_WM_MOVERESIZE_CANCEL:
                 /* unused */
                 break;
         }
@@ -1437,8 +1512,14 @@ clientmessage(XCBGenericEvent *event)
     }
     else if(atom == netatom[NetMoveResizeWindow])
     {
+        c = wintoclient(win);
+
+        if(!c)
+        {   return;
+        }
+
         Debug0("NetMoveResizeWindow 'ed");
-        /* specified as low 8 bits: 
+        /* specified as low 8 bits:
             * https://specifications.freedesktop.org/wm-spec/latest/ar01s04.html
             */
         const u8 GRAVITY_MASK = (1 << 8) - 1;
@@ -1452,17 +1533,17 @@ clientmessage(XCBGenericEvent *event)
         const u16 __NET_WM_MOVE_WINDOW_HEIGHT = 1 << 11;
 
         /* idk make simpler or smt */
-        const u16 __NET_WM_MOVE_WINDOW_SOURCE_MASK = (1 << 12) | 
-                                                        (1 << 13) | 
-                                                        (1 << 14) | 
+        const u16 __NET_WM_MOVE_WINDOW_SOURCE_MASK = (1 << 12) |
+                                                        (1 << 13) |
+                                                        (1 << 14) |
                                                         (1 << 15);
         enum XCBBitGravity gravity = l0 & GRAVITY_MASK;
 
         const u32 __SHIFT_SOURCE_TO_UINT8_MAX_BITS = 12;
 
-        const u32 FLAG_BITS = __NET_WM_MOVE_WINDOW_X     | 
-                                __NET_WM_MOVE_WINDOW_Y     | 
-                                __NET_WM_MOVE_WINDOW_WIDTH | 
+        const u32 FLAG_BITS = __NET_WM_MOVE_WINDOW_X     |
+                                __NET_WM_MOVE_WINDOW_Y     |
+                                __NET_WM_MOVE_WINDOW_WIDTH |
                                 __NET_WM_MOVE_WINDOW_HEIGHT;
         const u32 flags = l0 & FLAG_BITS;
         const u8 source = (l0 & __NET_WM_MOVE_WINDOW_SOURCE_MASK) >> __SHIFT_SOURCE_TO_UINT8_MAX_BITS;
@@ -1498,10 +1579,12 @@ clientmessage(XCBGenericEvent *event)
         {   mask |= XCB_CONFIG_WINDOW_HEIGHT;
         }
 
-        XCBGenericEvent _ev;
+        XCBEvent _ev;
+
         memset(&_ev, 0, sizeof(_ev));
 
-        XCBConfigureRequestEvent *gev = (XCBConfigureRequestEvent *)&_ev;
+        XCBConfigureRequestEvent *gev = &_ev.xconfigurerequest;
+
         gev->x = x;
         gev->y = y;
         gev->width = w;
@@ -1509,7 +1592,7 @@ clientmessage(XCBGenericEvent *event)
         gev->window = c->win;
         gev->value_mask = mask;
         gev->response_type = XCB_CONFIGURE_REQUEST;
-        /* Should automatically flush. */ 
+        /* Should automatically flush. */
         configurerequest(&_ev);
         /* revert back to old gravity. */
         c->gravity = tmpgravity;
@@ -1530,7 +1613,7 @@ clientmessage(XCBGenericEvent *event)
             const enum XCBWMWindowState state = l0;
 
             if(likely(state == XCB_WINDOW_ICONIC_STATE))
-            {   
+            {
                 const u32 neverfocus = NEVERFOCUS(c);
                 const u32 isurgent = ISURGENT(c);
                 u32 inputflags = 0;
@@ -1545,7 +1628,7 @@ clientmessage(XCBGenericEvent *event)
 
                 u32 wasvisible = ISVISIBLE(c);
 
-                XCBWMHints wmh = 
+                XCBWMHints wmh =
                 {
                     .flags = 0|XCB_WM_HINT_STATE|inputflags,
                     .input = !neverfocus,
@@ -1556,7 +1639,7 @@ clientmessage(XCBGenericEvent *event)
 
                 /* arrange if needed, else hide if needed */
                 if((wasvisible && !ISVISIBLE(c)) || (!wasvisible && ISVISIBLE(c)))
-                {   
+                {
                     showhide(c);
                     arrange(c->desktop);
                 }
@@ -1570,10 +1653,10 @@ clientmessage(XCBGenericEvent *event)
         {
             enum { WM_STATE_REMOVE = 0, WM_STATE_ADD = 1, WM_STATE_TOGGLE = 2, WM_STATE_LAST };
 
-            const u8 action = l0;
+            const u32 action = l0;
             const XCBAtom prop1 = l1;
             const XCBAtom prop2 = l2;
-            u8 source = l3;
+            const u32 source = l3;
 
             /* spec says nothing about the source, so we just ignore it */
             (void)source;
@@ -1586,7 +1669,10 @@ clientmessage(XCBGenericEvent *event)
 
                 /* only sync if we actually changed something or if something should have changed */
                 if(prop1 || prop2)
-                {   sync = 1;
+                {
+                    showhide(c);
+                    arrange(c->desktop);
+                    sync = 1;
                 }
             }
             else
@@ -1618,7 +1704,7 @@ clientmessage(XCBGenericEvent *event)
 
             /* if its a pager its probably important enough to switch */
             if(source == SOURCE_PAGER || isimportant)
-            {   
+            {
                 /* TODO: some clients may spoof this */
                 swtch = true;
             }
@@ -1644,7 +1730,7 @@ clientmessage(XCBGenericEvent *event)
                 }
             }
             else
-            {   
+            {
                 char *srcstr = "SOURCE_UNSPECIFIED";
 
                 switch(source)
@@ -1663,7 +1749,7 @@ clientmessage(XCBGenericEvent *event)
             sync = 1;
         }
         else if(atom == netatom[NetCloseWindow])
-        {   
+        {
             XCBTimestamp timestamp = l0;
             u8 source = l1;
 
@@ -1678,7 +1764,7 @@ clientmessage(XCBGenericEvent *event)
             sync = 1;
         }
         else if(atom == netatom[NetRestackWindow])
-        {   
+        {
             /* "and therefore the Window Manager should always obey it. "
              * Doesnt seem very safe.
              */
@@ -1691,9 +1777,9 @@ clientmessage(XCBGenericEvent *event)
             {   DebugWarn("Non pager source requested _NET_RESTACK_WINDOW");
             }
 
-            XCBGenericEvent gev;
-            memset(&gev, 0, sizeof(XCBGenericEvent));
-            XCBConfigureRequestEvent *config = (XCBConfigureRequestEvent *)&gev;
+            XCBEvent gev;
+            memset(&gev, 0, sizeof(gev));
+            XCBConfigureRequestEvent *config = &gev.xconfigurerequest;
 
             config->response_type = XCB_CONFIGURE_REQUEST;
             config->sequence = XCBNone;
@@ -1703,7 +1789,7 @@ clientmessage(XCBGenericEvent *event)
             config->value_mask = XCB_CONFIG_WINDOW_SIBLING | XCB_CONFIG_WINDOW_STACK_MODE;
             config->stack_mode = stack_mode;
 
-            configurerequest((XCBGenericEvent *)&gev);
+            configurerequest(&gev);
             sync = 1;
         }
         else if (atom == netatom[NetWMDesktop])
@@ -1715,28 +1801,40 @@ clientmessage(XCBGenericEvent *event)
 
             /* refer: https://specifications.freedesktop.org/wm-spec/latest/ _NET_WM_DESKTOP */
             if(checksticky(l0))
-            {   
+            {
                 setsticky(c, 1);
                 showhide(c);
+                arrange(c->desktop);
                 sync = 1;
             }
-            else
+            else if((!ISDESKTOP(c) && !ISBAR(c)) && l0 <= UINT16_MAX)
             {
                 u32 target = l0;
                 Monitor *m = c->desktop->mon;
+
                 if(m)
                 {
+                    Desktop *old = c->desktop;
                     Desktop *desk = desktopnumindextodesktop(m, target);
 
                     if(desk)
-                    {   
+                    {
+                        setsticky(c, 0);
+
                         /* prevent focus/stack breaking if its already there */
-                        if(c->desktop != desk)
-                        {   
-                            setclientdesktop(c, desk);
-                            showhide(c);
-                            sync = 1;
+                        if(old != desk)
+                        {   setclientdesktop(c, desk);
                         }
+
+                        showhide(c);
+
+                        if(old != desk)
+                        {   arrange(old);
+                        }
+
+                        arrange(desk);
+                        focus(NULL);
+                        sync = 1;
                     }
                     else
                     {   Debug0("Desktop was not in range defaulting to no desktop change.");
@@ -1755,9 +1853,9 @@ clientmessage(XCBGenericEvent *event)
 }
 
 void
-propertynotify(XCBGenericEvent *event)
+propertynotify(XCBEvent *event)
 {
-    XCBPropertyNotifyEvent *ev = (XCBPropertyNotifyEvent *)event;
+    XCBPropertyNotifyEvent *ev = &event->xproperty;
     const XCBAtom atom          = ev->atom;
     const XCBWindow win         = ev->window;
     const XCBTimestamp timestamp= ev->time;
@@ -1765,11 +1863,8 @@ propertynotify(XCBGenericEvent *event)
 
     (void)timestamp;
 
-    if(state == XCB_PROPERTY_DELETE)
-    {   return;
-    }
-
     enum PropertyType type = PropNone;
+
     switch(atom)
     {
         case XCB_ATOM_WM_TRANSIENT_FOR:
@@ -1805,11 +1900,11 @@ propertynotify(XCBGenericEvent *event)
             else if(atom == netatom[NetWMWindowType])
             {   type = PropWindowType;
             }
-            /* A Client wishing to change the state of a window MUST send a _NET_WM_STATE client message to the root window 
-             *(MUST keep this property updated to reflect the current state of the window. 
+            /* A Client wishing to change the state of a window MUST send a _NET_WM_STATE client message to the root window
+             *(MUST keep this property updated to reflect the current state of the window.
              */
             else if(atom == netatom[NetWMState])
-            {   
+            {
                 /* type = PropWindowState; */
                 return;
             }
@@ -1837,7 +1932,7 @@ propertynotify(XCBGenericEvent *event)
     }
     /* encase we fuck up later down the line */
     if(type == PropNone || type >= PropLAST)
-    {   
+    {
         Debug0("Prop is invalid FIXME");
         return;
     }
@@ -1845,9 +1940,9 @@ propertynotify(XCBGenericEvent *event)
 }
 
 void
-selectionclear(XCBGenericEvent *event)
+selectionclear(XCBEvent *event)
 {
-    XCBSelectionClearEvent *ev = (XCBSelectionClearEvent *)event;
+    XCBSelectionClearEvent *ev = &event->xselectionclear;
     const XCBWindow owner       = ev->owner;
     const XCBAtom selection     = ev->selection;
     const XCBTimestamp tim      = ev->time;
@@ -1855,12 +1950,34 @@ selectionclear(XCBGenericEvent *event)
     (void)owner;
     (void)selection;
     (void)tim;
+
+    /* ignore clients using XCBSendEvent() */
+    if(unlikely(XCB_EVENT_SENT(event)))
+    {
+        DebugWarn("A client attempted to send a falsified selection clear event");
+        return;
+    }
+
+    if(selection != wmsnatom)
+    {
+        DebugLog("Selection was cleared for another screen");
+        return;
+    }
+
+    if(owner != GET_WM_SN_WINDOW())
+    {
+        DebugLog("Selection was cleared for another screen");
+        return;
+    }
+
+    _wm.restart = NoRestart;
+    quit();
 }
 
 void
-selectionnotify(XCBGenericEvent *event)
+selectionnotify(XCBEvent *event)
 {
-    XCBSelectionNotifyEvent *ev     = (XCBSelectionNotifyEvent *)event;
+    XCBSelectionNotifyEvent *ev     = &event->xselection;
     const XCBWindow requestor       = ev->requestor;
     const XCBAtom property          = ev->property;
     const XCBAtom target            = ev->target;
@@ -1874,10 +1991,71 @@ selectionnotify(XCBGenericEvent *event)
     (void)tim;
 }
 
-void
-selectionrequest(XCBGenericEvent *event)
+static u8
+convertwmsntarget(XCBWindow requestor, XCBAtom target, XCBAtom property)
 {
-    XCBSelectionRequestEvent *ev = (XCBSelectionRequestEvent *)event;
+    if(property == XCBNone)
+    {   return 0;
+    }
+
+    if(target == versionatom)
+    {
+        enum { ICCCM_VERSION_MAJOR, ICCCM_VERSION_MINOR, VERSION_LAST };
+
+        /* ICCCM hasnt changed since 1994 and is still 2.0 cause idk */
+        const u32 ICCCM_MAJOR_SUPPORTED = 2;
+        const u32 ICCCM_MINOR_SUPPORTED = 0;
+
+        const u32 version[VERSION_LAST] =
+        {
+            [ICCCM_VERSION_MAJOR] = ICCCM_MAJOR_SUPPORTED,
+            [ICCCM_VERSION_MINOR] = ICCCM_MINOR_SUPPORTED
+        };
+
+        XCBChangeProperty(
+            _wm.dpy, requestor,
+            property, XCB_ATOM_INTEGER,
+            32, XCBPropModeReplace,
+            version, VERSION_LAST
+        );
+    }
+    else if(target == targetsatom)
+    {
+        const XCBAtom targets[] =
+        {
+            versionatom,
+            targetsatom,
+            timestampatom,
+            multipleatom
+        };
+
+        XCBChangeProperty(
+            _wm.dpy, requestor,
+            property, XCB_ATOM_ATOM,
+            32, XCBPropModeReplace,
+            targets, LENGTH(targets)
+        );
+    }
+    else if(target == timestampatom)
+    {
+        XCBChangeProperty(
+            _wm.dpy, requestor,
+            property, XCB_ATOM_INTEGER,
+            32, XCBPropModeReplace,
+            &wmsntime, 1
+        );
+    }
+    else
+    {   return 0;
+    }
+
+    return 1;
+}
+
+void
+selectionrequest(XCBEvent *event)
+{
+    XCBSelectionRequestEvent *ev = &event->xselectionrequest;
     const XCBWindow owner       = ev->owner;
     const XCBWindow requestor   = ev->requestor;
     const XCBAtom property      = ev->property;
@@ -1885,22 +2063,111 @@ selectionrequest(XCBGenericEvent *event)
     const XCBAtom selection     = ev->selection;
     const XCBTimestamp tim      = ev->time;
 
-    (void)owner;
-    (void)requestor;
-    (void)property;
-    (void)target;
-    (void)selection;
-    (void)tim;
+    u8 sync = 0;
+
+    if(owner != GET_WM_SN_WINDOW() || selection != wmsnatom)
+    {   return;
+    }
+
+    XCBEvent gev;
+    XCBSelectionNotifyEvent *sngev = &gev.xselection;
+
+    memset(&gev, 0, sizeof(gev));
+
+    sngev->response_type = XCB_SELECTION_NOTIFY;
+    sngev->requestor = requestor;
+    sngev->selection = selection;
+    sngev->target = target;
+    sngev->time = tim;
+    sngev->property = XCBNone;
+
+    if(tim != XCB_CURRENT_TIME && (u32)(tim - wmsntime) > INT32_MAX)
+    {   goto NOTIFY;
+    }
+
+    if(target == multipleatom)
+    {
+        /* ICCCM says MULTIPLE requires properties to be contained in pairs */
+        if(property == XCBNone)
+        {   goto NOTIFY;
+        }
+
+        /* Do not let apps use arbitrarily large amounts of atoms */
+        enum { MAX_ATOMS = 1024 * 4 };
+        enum { PAIR1, PAIR2, PAIR_LAST };
+
+        XCBCookie cookie = XCBGetWindowPropertyCookie(_wm.dpy, requestor, property, 0L, MAX_ATOMS, False, atompairatom);
+
+        XCBWindowProperty *prop = XCBGetWindowPropertyReply(_wm.dpy, cookie);
+
+        if(!prop)
+        {   goto NOTIFY;
+        }
+
+        /* skip malformed requests */
+        if(prop->type != atompairatom || prop->format != 32 ||
+            prop->bytes_after != 0 || (prop->value_len % PAIR_LAST) != 0
+        )
+        {
+            DebugWarn("Skipped malformed MULTIPLE request");
+            free(prop);
+            goto NOTIFY;
+        }
+
+        XCBAtom *pairs = XCBGetPropertyValue(prop);
+        u32 len = 0;
+
+        XCBGetPropertyValueLength(prop, sizeof(XCBAtom), &len);
+
+        i64 i;
+
+        for(i = 0; i < len; i += PAIR_LAST)
+        {
+            XCBAtom trgt = pairs[i + PAIR1];
+            XCBAtom dest = pairs[i + PAIR2];
+
+            if(dest == property || !convertwmsntarget(requestor, trgt, dest))
+            {   pairs[i + PAIR2] = XCBNone;
+            }
+        }
+
+        XCBChangeProperty(
+            _wm.dpy, requestor,
+            property, atompairatom,
+            32, XCBPropModeReplace,
+            pairs, len
+        );
+
+        sngev->property = property;
+        free(prop);
+    }
+    /* handle normal selection requests */
+    else
+    {
+        XCBAtom prop = property != XCBNone ? property : target;
+
+        if(convertwmsntarget(requestor, target, prop))
+        {   sngev->property = prop;
+        }
+    }
+
+NOTIFY:
+    /* technically we should use checked since this is semi important but ehhhh */
+    XCBSendEvent(_wm.dpy, requestor, False, XCBNone, (const char *)&gev);
+
+    sync = 1;
+
+    if(sync)
+    {   XCBFlush(_wm.dpy);
+    }
 }
 
-
-
 void
-genericevent(XCBGenericEvent *event)
+genericevent(XCBEvent *event)
 {
 }
 
 void
-errorhandler(XCBGenericEvent *event)
-{   xerror(_wm.dpy, (XCBGenericError *)event);
+errorhandler(XCBEvent *event)
+{   xerror(_wm.dpy, &event->xerror);
 }

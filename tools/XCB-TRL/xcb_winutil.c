@@ -7,7 +7,7 @@
 #include "xcb_winutil.h"
 #include "__private__xcb__utils__.h"
 
-static const char *const WM_ATOM_NAMES[WMLast]= 
+static const char *const WM_ATOM_NAMES[WMLast]=
 {
     [WMName]              = "WM_NAME",
     [WMIconName]          = "WM_ICON_NAME",
@@ -21,13 +21,13 @@ static const char *const WM_ATOM_NAMES[WMLast]=
     [WMCommand]           = "WM_COMMAND",
     [WMTakeFocus]         = "WM_TAKE_FOCUS",
     [WMSaveYourself]      = "WM_SAVE_YOURSELF", /* (deprecated) */
-    [WMDeleteWindow]      = "WM_DELETE_WINDOW", 
+    [WMDeleteWindow]      = "WM_DELETE_WINDOW",
     [WMProtocols]         = "WM_PROTOCOLS",
     [WMState]             = "WM_STATE",
     [WMChangeState]       = "WM_CHANGE_STATE"
 };
 
-static const unsigned int WM_ATOM_LEN[WMLast] = 
+static const unsigned int WM_ATOM_LEN[WMLast] =
 {
     [WMName]              = sizeof("WM_NAME") - 1,
     [WMIconName]          = sizeof("WM_ICON_NAME") - 1,
@@ -103,6 +103,8 @@ static const char *const NET_WM_ATOM_NAMES[NetLast] =
     [NetWMActionResize]          = "_NET_WM_ACTION_RESIZE",
     [NetWMActionMaximizeVert]    = "_NET_WM_ACTION_MAXIMIZE_VERT",
     [NetWMActionMaximizeHorz]    = "_NET_WM_ACTION_MAXIMIZE_HORZ",
+    [NetWMActionShade]           = "_NET_WM_ACTION_SHADE",
+    [NetWMActionStick]           = "_NET_WM_ACTION_STICK",
     [NetWMActionFullscreen]      = "_NET_WM_ACTION_FULLSCREEN",
     [NetWMActionChangeDesktop]   = "_NET_WM_ACTION_CHANGE_DESKTOP",
     [NetWMActionClose]           = "_NET_WM_ACTION_CLOSE",
@@ -133,7 +135,7 @@ static const char *const NET_WM_ATOM_NAMES[NetLast] =
     [NetUtf8String]              = "UTF8_STRING",
 };
 
-static const unsigned int NET_WM_ATOM_LEN[NetLast] = 
+static const unsigned int NET_WM_ATOM_LEN[NetLast] =
 {
     [NetSupported]               = sizeof("_NET_SUPPORTED") - 1,
     [NetClientList]              = sizeof("_NET_CLIENT_LIST") - 1,
@@ -189,6 +191,8 @@ static const unsigned int NET_WM_ATOM_LEN[NetLast] =
     [NetWMActionResize]          = sizeof("_NET_WM_ACTION_RESIZE") - 1,
     [NetWMActionMaximizeVert]    = sizeof("_NET_WM_ACTION_MAXIMIZE_VERT") - 1,
     [NetWMActionMaximizeHorz]    = sizeof("_NET_WM_ACTION_MAXIMIZE_HORZ") - 1,
+    [NetWMActionShade]           = sizeof("_NET_WM_ACTION_SHADE") - 1,
+    [NetWMActionStick]           = sizeof("_NET_WM_ACTION_STICK") - 1,
     [NetWMActionFullscreen]      = sizeof("_NET_WM_ACTION_FULLSCREEN") - 1,
     [NetWMActionChangeDesktop]   = sizeof("_NET_WM_ACTION_CHANGE_DESKTOP") - 1,
     [NetWMActionClose]           = sizeof("_NET_WM_ACTION_CLOSE") - 1,
@@ -221,7 +225,7 @@ static const unsigned int NET_WM_ATOM_LEN[NetLast] =
 
 void
 XCBInitWMAtomsCookie(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBCookie *net_cookie_return
         )
 {
@@ -242,7 +246,7 @@ XCBInitWMAtomsReply(
     XCBGenericError *err = NULL;
     xcb_intern_atom_reply_t *rep = NULL;
     for(i = 0; i < WMLast; ++i)
-    {   
+    {
         rep = xcb_intern_atom_reply(display, (xcb_intern_atom_cookie_t) { cookies[i].sequence }, &err);
         if(rep)
         {   atom_return[i] = rep->atom;
@@ -251,7 +255,7 @@ XCBInitWMAtomsReply(
         {   atom_return[i] = 0;
         }
         if(err)
-        {   
+        {
             free(err);
             err = NULL;
         }
@@ -259,9 +263,9 @@ XCBInitWMAtomsReply(
     }
 }
 
-void 
+void
 XCBInitNetWMAtomsCookie(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBCookie *net_cookie_return
         )
 {
@@ -271,9 +275,9 @@ XCBInitNetWMAtomsCookie(
     }
 }
 
-void 
+void
 XCBInitNetWMAtomsReply(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBCookie *cookies,
         XCBAtom *atom_return
         )
@@ -282,7 +286,7 @@ XCBInitNetWMAtomsReply(
     XCBGenericError *err = NULL;
     xcb_intern_atom_reply_t *rep = NULL;
     for(i = 0; i < NetLast; ++i)
-    {   
+    {
         rep = xcb_intern_atom_reply(display, (xcb_intern_atom_cookie_t) { cookies[i].sequence }, &err);
         if(rep)
         {   atom_return[i] = rep->atom;
@@ -291,7 +295,7 @@ XCBInitNetWMAtomsReply(
         {   atom_return[i] = 0;
         }
         if(err)
-        {   
+        {
             free(err);
             err = NULL;
         }
@@ -299,12 +303,12 @@ XCBInitNetWMAtomsReply(
     }
 }
 
-int 
+int
 XCBGetTextProp(
-        XCBDisplay *display, 
-        XCBWindow window, 
-        XCBAtom atom, 
-        char *text, 
+        XCBDisplay *display,
+        XCBWindow window,
+        XCBAtom atom,
+        char *text,
         size_t size)
 {
     XCBCookie cookie;
@@ -321,12 +325,12 @@ XCBGetTextProp(
     {   return 0;
     }
                         /* XA_STRING I think */
-    if (name.encoding == XCB_ATOM_STRING) 
+    if (name.encoding == XCB_ATOM_STRING)
     {   strncpy(text, (char *)name.name, size - 1);
     }
     else
     {
-        /* this is questionably hard to replace src/xlibi18n/lcWrap.c 
+        /* this is questionably hard to replace src/xlibi18n/lcWrap.c
          * XSupportsLocale() is also in here so might was well get that too
          */
         /*
@@ -336,13 +340,13 @@ XCBGetTextProp(
            prop.value = (unsigned char *)name->name;
            prop.nitems = name->name_len;
 
-           if (XmbTextPropertyToTextList(Xdpy, &prop, &list, &n) >= Success && n > 0 && *list) 
+           if (XmbTextPropertyToTextList(Xdpy, &prop, &list, &n) >= Success && n > 0 && *list)
            {
            strncpy(text, *list, size - 1);
            XFreeStringList(list);
            }
            */
-    } 
+    }
 	text[size - 1] = '\0';
     XCBFreeTextProperty(&name);
 	return 1;
@@ -351,7 +355,7 @@ XCBGetTextProp(
 
 char *
 XCBGetWindowName(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBWindow win
         )
 {
@@ -396,27 +400,29 @@ XCBGetPidReply(
         XCBDisplay *display,
         XCBCookie cookie
         )
-{    
+{
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret);
 
     XCBWindowProperty *prop = XCBGetWindowPropertyReply(display, cookie);
     int32_t pid = -1;
     if(prop)
-    {   
+    {
         void *data = XCBGetWindowPropertyValue(prop);
         uint32_t len = 0;
         XCBGetPropertyValueLength(prop, sizeof(int32_t), &len);
         if(data)
-        {   
+        {
             if(len >= 1)
             {   pid = *(uint32_t *)data;
             }
         }
         free(prop);
     }
+
     return pid;
 }
+
 
 
 

@@ -1,6 +1,13 @@
+#include <string.h>
+
+#include "XCB-TRL/xcb_trl_types.h"
 #include "XCB-TRL/xcb_winutil.h"
+#include "client.h"
+#include "desktop.h"
 #include "main.h"
 #include "prop.h"
+#include "bar.h"
+#include "floating.h"
 
 extern WM _wm;
 
@@ -23,9 +30,9 @@ __PropHandler__
     void (*const get_reply)(XCBDisplay *display, GetPropCookie *cookie);
 };
 
-const static struct 
-__PropHandler__ __prophandler__[PropLAST] = 
-{                       
+const static struct
+__PropHandler__ __prophandler__[PropLAST] =
+{
     [PropNone] =        { NULL,     NULL,                       NULL                    },
     [PropTransient] =   { NULL,     PropGetTransientCookie,     PropUpdateTrans         },
     [PropWindowState] = { NULL,     PropGetWindowStateCookie,   PropUpdateWindowState   },
@@ -66,10 +73,10 @@ PropValidType(
 
 XCBCookie
 PropGetInvalidCookie(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBWindow win
         )
-{   
+{
     (void)display;
     (void)win;
     return (XCBCookie) { .sequence = 0 };
@@ -82,7 +89,7 @@ PropGetTransientCookie(XCBDisplay *display, XCBWindow win)
 
 XCBCookie
 PropGetWindowStateCookie(XCBDisplay *display, XCBWindow win)
-{   
+{
     const uint8_t NO_BYTE_OFFSET = 0;
     const uint32_t REQUEST_MAX_NEEDED_ITEMS = UINT32_MAX;
     return XCBGetWindowPropertyCookie(display, win, netatom[NetWMState], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_ATOM);
@@ -90,7 +97,7 @@ PropGetWindowStateCookie(XCBDisplay *display, XCBWindow win)
 
 XCBCookie
 PropGetWindowTypeCookie(XCBDisplay *display, XCBWindow win)
-{   
+{
     const uint8_t NO_BYTE_OFFSET = 0;
     const uint32_t REQUEST_MAX_NEEDED_ITEMS = UINT32_MAX;
     return XCBGetWindowPropertyCookie(display, win, netatom[NetWMWindowType], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_ATOM);
@@ -103,7 +110,7 @@ PropGetSizeHintsCookie(XCBDisplay *display, XCBWindow win)
 
 XCBCookie
 PropGetWMStateCookie(XCBDisplay *display, XCBWindow win)
-{   
+{
     const uint8_t NO_BYTE_OFFSET = 0;
     const uint8_t WM_STATE_SIZE = 2;
     const uint8_t WINDOW_STATE_INDEX = 0;
@@ -132,7 +139,7 @@ PropGetWMProtocolCookie(XCBDisplay *display, XCBWindow win)
 
 XCBCookie
 PropGetStrutCookie(XCBDisplay *display, XCBWindow win)
-{   
+{
     const uint8_t NO_BYTE_OFFSET = 0;
     const uint8_t STRUT_LENGTH = 4;
     return XCBGetWindowPropertyCookie(display, win, netatom[NetWMStrut], NO_BYTE_OFFSET, STRUT_LENGTH, False, XCB_ATOM_CARDINAL);
@@ -140,7 +147,7 @@ PropGetStrutCookie(XCBDisplay *display, XCBWindow win)
 
 XCBCookie
 PropGetStrutpCookie(XCBDisplay *display, XCBWindow win)
-{   
+{
     const uint8_t NO_BYTE_OFFSET = 0;
     const uint8_t STRUT_P_LENGTH = 12;
     return XCBGetWindowPropertyCookie(display, win, netatom[NetWMStrutPartial], NO_BYTE_OFFSET, STRUT_P_LENGTH, False, XCB_ATOM_CARDINAL);
@@ -148,7 +155,7 @@ PropGetStrutpCookie(XCBDisplay *display, XCBWindow win)
 
 XCBCookie
 PropGetNetWMNameCookie(XCBDisplay *display, XCBWindow win)
-{   
+{
     const uint8_t NO_BYTE_OFFSET = 0;
     const uint32_t REQUEST_MAX_NEEDED_ITEMS = UINT32_MAX;
     return XCBGetWindowPropertyCookie(display, win, netatom[NetWMName], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, netatom[NetUtf8String]);
@@ -156,7 +163,7 @@ PropGetNetWMNameCookie(XCBDisplay *display, XCBWindow win)
 
 XCBCookie
 PropGetWMNameCookie(XCBDisplay *display, XCBWindow win)
-{   
+{
     const uint8_t NO_BYTE_OFFSET = 0;
     const uint32_t REQUEST_MAX_NEEDED_ITEMS = UINT32_MAX;
     return XCBGetWindowPropertyCookie(display, win, XCB_ATOM_WM_NAME, NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_STRING);
@@ -169,7 +176,7 @@ PropGetPidCookie(XCBDisplay *display, XCBWindow win)
 
 XCBCookie
 PropGetIconCookie(XCBDisplay *display, XCBWindow win)
-{   
+{
     const uint8_t NO_BYTE_OFFSET = 0;
     const uint32_t REQUEST_MAX_NEEDED_ITEMS = UINT32_MAX;
     return XCBGetWindowPropertyCookie(display, win, netatom[NetWMIcon], NO_BYTE_OFFSET, REQUEST_MAX_NEEDED_ITEMS, False, XCB_ATOM_ANY);
@@ -177,7 +184,7 @@ PropGetIconCookie(XCBDisplay *display, XCBWindow win)
 
 XCBCookie
 PropGetMotifHintsCookie(XCBDisplay *display, XCBWindow win)
-{   
+{
     const uint8_t NO_BYTE_OFFSET = 0;
     const uint8_t MOTIF_WM_HINT_LENGTH = 5;
     return XCBGetWindowPropertyCookie(display, win, motifatom, NO_BYTE_OFFSET, MOTIF_WM_HINT_LENGTH, False, motifatom);
@@ -186,10 +193,10 @@ PropGetMotifHintsCookie(XCBDisplay *display, XCBWindow win)
 
 void
 PropUpdateInvalid(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         GetPropCookie *cookie
         )
-{   
+{
     (void)display;
     (void)cookie;
     (void)cookie->cookie;
@@ -197,7 +204,7 @@ PropUpdateInvalid(
 
 void
 PropUpdateTrans(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         GetPropCookie *cookie
         )
 {
@@ -206,11 +213,11 @@ PropUpdateTrans(
     Client *c;
     Client *ctrans;
     if(transstatus)
-    {   
+    {
         LOCK_WM();
         c = wintoclient(cookie->win);
         if(c)
-        {   
+        {
             ctrans = wintoclient(trans);
             /* move to right desktop */
             if(ctrans && ctrans->desktop != c->desktop)
@@ -228,7 +235,7 @@ PropUpdateTrans(
 
 void
 PropUpdateWindowState(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         GetPropCookie *cookie
         )
 {
@@ -248,7 +255,7 @@ PropUpdateWindowState(
 
 void
 PropUpdateWindowType(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         GetPropCookie *cookie
         )
 {
@@ -259,7 +266,32 @@ PropUpdateWindowType(
         LOCK_WM();
         c = wintoclient(cookie->win);
         if(c)
-        {   clientinitwtype(c, prop);
+        {
+            u32 wasdesktop = ISDESKTOP(c);
+            clientinitwtype(c, prop);
+
+            if(ISDESKTOP(c))
+            {
+                setborderwidth(c, 0);
+                updateborder(c);
+                setdisableborder(c, 1);
+                setsticky(c, 1);
+                setskiptaskbar(c, 1);
+                setskippager(c, 1);
+            }
+            else if(wasdesktop)
+            {
+                setdisableborder(c, 0);
+                setborderwidth(c, c->oldbw);
+                updateborder(c);
+                setsticky(c, 0);
+                setskiptaskbar(c, 0);
+                setskippager(c, 0);
+            }
+
+            if(ISDESKTOP(c) != wasdesktop)
+            {   arrange(c->desktop);
+            }
         }
         UNLOCK_WM();
     }
@@ -268,7 +300,7 @@ PropUpdateWindowType(
 
 void
 PropUpdateSizeHints(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         GetPropCookie *cookie
         )
 {
@@ -276,7 +308,7 @@ PropUpdateSizeHints(
     int hintstatus = XCBGetWMNormalHintsReply(_wm.dpy, cookie->cookie, &hints);
     Client *c;
     if(hintstatus)
-    {   
+    {
         LOCK_WM();
         c = wintoclient(cookie->win);
         if(c)
@@ -288,26 +320,31 @@ PropUpdateSizeHints(
 
 void
 PropUpdateWMHints(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         GetPropCookie *cookie
         )
 {
     XCBWMHints *prop = XCBGetWMHintsReply(_wm.dpy, cookie->cookie);
     Client *c;
     u8 wasvisible = 0;
+
     if(prop)
-    {   
+    {
         LOCK_WM();
+
         c = wintoclient(cookie->win);
-        wasvisible = ISVISIBLE(c);
+
+
         if(c)
-        {   updatewmhints(c, prop);
-        }
-        /* arrange if needed, else hide if needed */
-        if((wasvisible && !ISVISIBLE(c)) || (!wasvisible && ISVISIBLE(c)))
-        {   
-            showhide(c);
-            arrange(c->desktop);
+        {
+            wasvisible = ISVISIBLE(c);
+            updatewmhints(c, prop);
+
+            if(wasvisible != !!ISVISIBLE(c))
+            {
+                showhide(c);
+                arrange(c->desktop);
+            }
         }
         UNLOCK_WM();
     }
@@ -316,7 +353,7 @@ PropUpdateWMHints(
 
 void
 PropUpdateWMClass(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         GetPropCookie *cookie
         )
 {
@@ -337,7 +374,7 @@ PropUpdateWMClass(
 
 void
 PropUpdateWMProtocol(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         GetPropCookie *cookie
         )
 {
@@ -345,7 +382,7 @@ PropUpdateWMProtocol(
     int status = XCBGetWMProtocolsReply(_wm.dpy, cookie->cookie, &prop);
     Client *c;
     if(status)
-    {   
+    {
         LOCK_WM();
         c = wintoclient(cookie->win);
         if(c)
@@ -358,27 +395,84 @@ PropUpdateWMProtocol(
 
 void
 PropUpdateStrut(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         GetPropCookie *cookie
         )
 {
-    /* TODO */
-    XCBDiscardReply(display, cookie->cookie);
+    XCBWindowProperty *prop = XCBGetWindowPropertyReply(_wm.dpy, cookie->cookie);
+    Client *c;
+
+    if(!prop)
+    {   return;
+    }
+
+    LOCK_WM();
+
+    c = wintoclient(cookie->win);
+
+    if(c)
+    {
+        memset(c->strutdepth, 0, sizeof(c->strutdepth));
+        memset(c->strutstart, 0, sizeof(c->strutstart));
+        memset(c->strutend, 0, sizeof(c->strutend));
+
+        updatestrut(c, prop);
+
+        if(ISBAR(c))
+        {   setupbar(c->desktop->mon, c);
+        }
+
+        arrange(c->desktop);
+        updatedesktopworkarea();
+        XCBFlush(_wm.dpy);
+    }
+
+    UNLOCK_WM();
+
+    free(prop);
 }
 
 void
 PropUpdateStrutP(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         GetPropCookie *cookie
         )
 {
-    /* TODO */
-    XCBDiscardReply(display, cookie->cookie);
+    XCBWindowProperty *prop = XCBGetWindowPropertyReply(_wm.dpy, cookie->cookie);
+    Client *c;
+
+    if(!prop)
+    {   return;
+    }
+
+    LOCK_WM();
+
+    c = wintoclient(cookie->win);
+
+    if(c)
+    {
+        memset(c->strutdepth, 0, sizeof(c->strutdepth));
+        memset(c->strutstart, 0, sizeof(c->strutstart));
+        memset(c->strutend, 0, sizeof(c->strutend));
+
+        updatestrutp(c, prop);
+
+        if(ISBAR(c))
+        {   setupbar(c->desktop->mon, c);
+        }
+
+        arrange(c->desktop);
+        updatedesktopworkarea();
+        XCBFlush(_wm.dpy);
+    }
+
+    UNLOCK_WM();
+    free(prop);
 }
 
 void
 PropUpdateNetWMName(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         GetPropCookie *cookie
         )
 {
@@ -390,19 +484,26 @@ PropUpdateNetWMName(
         if(netname)
         {
             LOCK_WM();
+
             c = wintoclient(cookie->win);
+
             if(c)
-            {   updatetitle(c, netname, c->wmname);
+            {
+                updatetitle(c, netname, c->wmname);
+                netname = NULL;
             }
+
             UNLOCK_WM();
         }
     }
+
+    free(netname);
     free(prop);
 }
 
 void
 PropUpdateWMName(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         GetPropCookie *cookie
         )
 {
@@ -426,7 +527,7 @@ PropUpdateWMName(
 
 void
 PropUpdatePid(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         GetPropCookie *cookie
         )
 {
@@ -446,7 +547,7 @@ PropUpdatePid(
 
 void
 PropUpdateIcon(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         GetPropCookie *cookie
         )
 {
@@ -458,21 +559,26 @@ PropUpdateIcon(
         if(icon)
         {
             LOCK_WM();
+
             c = wintoclient(cookie->win);
+
             if(c)
-            {   
+            {
                 free(c->icon);
                 c->icon = icon;
+                icon = NULL;
             }
             UNLOCK_WM();
         }
     }
+
+    free(icon);
     free(prop);
 }
 
 void
 PropUpdateMotifHints(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         GetPropCookie *cookie
         )
 {
@@ -492,7 +598,7 @@ PropUpdateMotifHints(
 
 void
 PropUpdateManage(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         GetPropCookie *cookie
         )
 {
@@ -513,19 +619,24 @@ PropUpdateManage(
     {
         /* client will be mapped so treat as so. */
         setmapstate(c, WMMapStateMapped);
-        
+
         /* Dont waste extra resources if not visible */
 
         if(ISVISIBLE(c))
         {
-            cf = focusrealize(c);
+            if(CANFOCUS(c))
+            {   cf = focusrealize(c);
+            }
             arrange(c->desktop);
         }
 
     }
 
     XCBMapWindow(_wm.dpy, win);
-    focus(cf);
+
+    if(cf)
+    {   focus(cf);
+    }
 
     XCBFlush(_wm.dpy);
     UNLOCK_WM();
@@ -534,7 +645,7 @@ PropUpdateManage(
 
 void
 PropUpdateUnmanage(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         GetPropCookie *cookie
         )
 {
@@ -547,13 +658,13 @@ PropUpdateUnmanage(
 
     c = wintoclient(win);
     if(c)
-    {   
+    {
         desk = c->desktop;
         unmanage(c, 0);
         /* make sure no dangling pointers */
         c = NULL;
         if(desk->mon->desksel == desk)
-        {   
+        {
             c = focusrealize(NULL);
             arrange(desk);
         }
@@ -564,9 +675,9 @@ PropUpdateUnmanage(
     UNLOCK_WM();
 }
 
-void 
+void
 PropUpdateSetWType(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         GetPropCookie *cookie
         )
 {
@@ -586,9 +697,9 @@ PropUpdateSetWType(
     free(prop);
 }
 
-void 
+void
 PropUpdateUnsetWType(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         GetPropCookie *cookie
         )
 {
@@ -609,9 +720,9 @@ PropUpdateUnsetWType(
     free(prop);
 }
 
-void 
+void
 PropUpdateSetWState(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         GetPropCookie *cookie
         )
 {
@@ -633,9 +744,9 @@ PropUpdateSetWState(
 
 }
 
-void 
+void
 PropUpdateUnsetWState(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         GetPropCookie *cookie
         )
 {
@@ -714,7 +825,7 @@ PropUpdatePropertyGetReply(
             }
         }
         else
-        {   
+        {
             if(cookie->cookie.sequence != XCBNone)
             {   XCBDiscardReply(display, cookie->cookie);
             }

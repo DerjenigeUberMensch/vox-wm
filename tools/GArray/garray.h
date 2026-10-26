@@ -44,10 +44,9 @@ typedef GArray32 GArray;
  * Even had said that I still use encapsulation, and half the time I only do it for sustainability of the project. 
  * Otherwise why would I?
  */
-typedef uint32_t garray_i32;
-/* typedef uint64_t garray_i64; */
-
-typedef garray_i32 garray_i;
+typedef int32_t garray_i32;
+typedef int64_t garray_i64;
+typedef garray_i64 garray_i;
 
 /* DONOT MODIFY DATA INSIDE.
  *

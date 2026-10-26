@@ -66,7 +66,7 @@ SIZE  	= ${RELEASEFLAGS} -Os
 SIZEONLY= ${RELEASEFLAGS} -Oz -fno-ident -fno-asynchronous-unwind-tables
 
 # Release Stable (-O2)
-RELEASE = ${RELEASEFLAGS} -O2
+RELEASE = ${RELEASEFLAGS} -O2 
 # Release Speed (-O3)
 RELEASES= ${RELEASEFLAGS} -O3 
 # Release Speed (-O3) (debug)

@@ -22,7 +22,7 @@ X11GTKSetUseCSD(
     {   setenv(ENV_VARIABLE, VALUE_ENABLE, REPLACE);
     }
     else
-    {   unsetenv(VALUE_DISABLE);
+    {   setenv(ENV_VARIABLE, VALUE_DISABLE, REPLACE);
     }
 }
 

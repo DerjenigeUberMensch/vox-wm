@@ -1,3 +1,4 @@
+#include <X11/Xproto.h>
 #include <X11/cursorfont.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,6 +8,7 @@
 #include "XCB-TRL/xcb_trl_types.h"
 #include "client.h"
 #include "cursor.h"
+#include "keybind/keybinds.h"
 #include "main.h"
 #include "floating.h"
 
@@ -14,8 +16,6 @@ extern WM _wm;
 extern UserSettings _cfg;
 extern XCBAtom netatom[NetLast];
 extern XCBAtom wmatom[WMLast];
-extern XCBCursor x11_cursors[XC_num_glyphs];
-extern XCBCursor x11_modern_cursors[XC_num_glyphs];
 
 STATIC_ASSERT(XCBNone == 0, XCB_NONE_MUST_BE_ZERO);
 
@@ -66,16 +66,24 @@ InteractiveResize
     XCBCursor cursor;
 };
 
-static int DragWindowHandler(XCBGenericEvent *event, Arg arg);
-static int ResizeWindowHandler(XCBGenericEvent *event, Arg arg);
+static int DragWindowHandler(XCBEvent *event, Arg arg);
+static int ResizeWindowHandler(XCBEvent *event, Arg arg);
 
 int
 DragWindow(XCBWindow window, XCBButton button)
 {
     if(window == XCBNone || IS_WM_WINDOW(window))
-    {   
+    {
         DebugWarn("Invalid window passed to DragWindow");
         return EXIT_FAILURE;
+    }
+
+    Client *c;
+
+    c = wintoclient(window);
+
+    if(c && ISDESKTOP(c))
+    {   return EXIT_FAILURE;
     }
 
     Debug("Called.");
@@ -87,7 +95,7 @@ DragWindow(XCBWindow window, XCBButton button)
     data.v = malloc(sizeof(struct InteractiveDrag));
 
     if(!data.v)
-    {   
+    {
         DebugWarn("Failed to start %s", __func__);
         return EXIT_FAILURE;
     }
@@ -128,7 +136,7 @@ DragWindow(XCBWindow window, XCBButton button)
     /* TryGetCursor(WM_cursor_move); */
     XCBCursor cursor = TryGetCursor(XC_fleur);
 
-    drag->cursor = cursor;   
+    drag->cursor = cursor;
 
     XCBCookie GrabPointerCookie = XCBGrabPointerCookie(_wm.dpy, _wm.root, False, MOUSEMASK, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCBNone, drag->cursor, XCB_CURRENT_TIME);
     XCBCookie QueryPointerCookie = XCBQueryPointerCookie(_wm.dpy, window);
@@ -139,7 +147,7 @@ DragWindow(XCBWindow window, XCBButton button)
 
     /* FIXME this looks horrible */
     if(!GrabPointer || GrabPointer->status != XCB_GRAB_STATUS_SUCCESS)
-    {   
+    {
         free(GrabPointer);
 
         XCBDiscardReply(_wm.dpy, QueryPointerCookie);
@@ -153,7 +161,7 @@ DragWindow(XCBWindow window, XCBButton button)
     XCBQueryPointer *pointer = XCBQueryPointerReply(_wm.dpy, QueryPointerCookie);
 
     if(!pointer)
-    {   
+    {
         XCBDiscardReply(_wm.dpy, GetGeometryCookie);
         XCBUngrabPointer(_wm.dpy, XCB_CURRENT_TIME);
 
@@ -164,8 +172,6 @@ DragWindow(XCBWindow window, XCBButton button)
     drag->y = pointer->root_y;
 
     free(pointer);
-
-    Client *c = wintoclient(window);
 
     if(c)
     {
@@ -179,11 +185,10 @@ DragWindow(XCBWindow window, XCBButton button)
     }
     else
     {
-
         XCBGeometry *geom = XCBGetGeometryReply(_wm.dpy, GetGeometryCookie);
 
-        if(!geom)   
-        {   
+        if(!geom)
+        {
             XCBUngrabPointer(_wm.dpy, XCB_CURRENT_TIME);
             goto DESTROY;
         }
@@ -205,7 +210,7 @@ DragWindow(XCBWindow window, XCBButton button)
     {
         /* prevent DOCKED from computing non floating */
 
-        setfloating(c, 1); 
+        setfloating(c, 1);
         /* make sure auto-docking dosent auto dock it */
         c->x += 1;
 
@@ -236,13 +241,13 @@ DESTROY:
     return EXIT_FAILURE;
 }
 
-static int 
-DragWindowHandler(XCBGenericEvent *event, Arg arg)
+static int
+DragWindowHandler(XCBEvent *event, Arg arg)
 {
     bool running = true;
 
     if(unlikely(!arg.v))
-    {   
+    {
         running = false;
         return running;
     }
@@ -259,7 +264,7 @@ DragWindowHandler(XCBGenericEvent *event, Arg arg)
     u32 moncount = 0;
 
     if(drag->window == XCBNone)
-    {   
+    {
         running = false;
         return running;
     }
@@ -283,7 +288,7 @@ DragWindowHandler(XCBGenericEvent *event, Arg arg)
     switch(XCB_EVENT_RESPONSE_TYPE(event))
     {
         case XCB_MOTION_NOTIFY:
-            mev = (XCBMotionNotifyEvent *)event;
+            mev = &event->xmotion;
             refreshrate = USGetSetting(&_cfg, RefreshRate).data16[0];
             snap = USGetSetting(&_cfg, Snap).data16[0];
 
@@ -305,7 +310,7 @@ DragWindowHandler(XCBGenericEvent *event, Arg arg)
             c = wintoclient(drag->window);
 
             if(c && (unlikely(drag->oldw != c->w || drag->oldh != c->h)))
-            {   
+            {
                 drag->oldw = c->w;
                 drag->oldh = c->h;
 
@@ -352,12 +357,12 @@ DragWindowHandler(XCBGenericEvent *event, Arg arg)
             break;
         case XCB_CLIENT_MESSAGE:
         {
-            XCBClientMessageEvent *ev = (XCBClientMessageEvent *)event;
+            XCBClientMessageEvent *ev = &event->xclient;
             const XCBWindow win = ev->window;
             const XCBAtom atom = ev->type;
             const u8 format = ev->format;
             /* union "same" as xlib data8 -> b[20] data16 -> s[10] data32 = l[5] */
-            const XCBClientMessageData data = ev->data; 
+            const XCBClientMessageData data = ev->data;
 
             if(format != 32 || win != drag->window || atom != netatom[NetMoveResize])
             {   break;
@@ -383,7 +388,7 @@ DragWindowHandler(XCBGenericEvent *event, Arg arg)
             break;
         }
         case XCB_BUTTON_RELEASE:
-            brev = (XCBButtonReleaseEvent *)event;
+            brev = &event->xbutton;
 
             if(CLEANBUTTONMASK(brev->detail) == drag->detail || drag->detail == XCBButtonAny)
             {   running = false;
@@ -392,7 +397,7 @@ DragWindowHandler(XCBGenericEvent *event, Arg arg)
             break;
             /* this accounts for users killing the window (cause they can) */
         case XCB_UNMAP_NOTIFY:
-            umev = (XCBUnmapNotifyEvent *)event;
+            umev = &event->xunmap;
 
             if(umev->window == drag->window)
             {   running = false;
@@ -400,7 +405,7 @@ DragWindowHandler(XCBGenericEvent *event, Arg arg)
 
             break;
         case XCB_DESTROY_NOTIFY:
-            dnev = (XCBDestroyNotifyEvent *)event;
+            dnev = &event->xdestroywindow;
 
             if(dnev->window == drag->window)
             {   running = false;
@@ -422,7 +427,12 @@ DragWindowHandler(XCBGenericEvent *event, Arg arg)
             m = recttomon(c->x, c->y, c->w, c->h);
 
             if(m && m != c->desktop->mon)
-            {   setclientdesktop(c, m->desksel);
+            {
+                Monitor *prevm = c->desktop->mon;
+
+                setclientdesktop(c, m->desksel);
+
+                arrange(prevm->desksel);
             }
 
             if(DOCKED(c))
@@ -441,14 +451,14 @@ DragWindowHandler(XCBGenericEvent *event, Arg arg)
 
 int
 ResizeWindowHandler(
-        XCBGenericEvent *event,
+        XCBEvent *event,
         Arg arg
         )
 {
     bool running = true;
 
     if(unlikely(!arg.v))
-    {   
+    {
         running = false;
         return running;
     }
@@ -456,7 +466,7 @@ ResizeWindowHandler(
     struct InteractiveResize *rsz = arg.v;
 
     if(rsz->window == XCBNone)
-    {   
+    {
         running = false;
         return running;
     }
@@ -485,9 +495,9 @@ ResizeWindowHandler(
     u16 refreshrate = 0;
 
     switch(XCB_EVENT_RESPONSE_TYPE(event))
-    {   
+    {
         case XCB_MOTION_NOTIFY:
-            mev = (XCBMotionNotifyEvent *)event;
+            mev = &event->xmotion;
             refreshrate = USGetSetting(&_cfg, RefreshRate).data16[0];
 
             if(refreshrate)
@@ -497,7 +507,7 @@ ResizeWindowHandler(
                 if((mev->time - rsz->lasttime) <= FRAME_TIME)
                 {   break;
                 }
-                
+
                 rsz->lasttime = mev->time;
             }
 
@@ -519,8 +529,8 @@ ResizeWindowHandler(
             }
 
             /* prevent glitching */
-            rsz->nw = MAX(rsz->nw, 0);
-            rsz->nh = MAX(rsz->nh, 0);
+            rsz->nw = MIN(MAX(rsz->nw, 1), UINT16_MAX);
+            rsz->nh = MIN(MAX(rsz->nh, 1), UINT16_MAX);
 
             rsz->nx = rsz->oldx + !~rsz->horz * (rsz->oldw - rsz->nw);
             rsz->ny = rsz->oldy + !~rsz->vert * (rsz->oldh - rsz->nh);
@@ -528,7 +538,7 @@ ResizeWindowHandler(
             c = wintoclient(rsz->window);
 
             if(c)
-            {   
+            {
                 if(!rsz->altmode)
                 {   resize(c, rsz->nx, rsz->ny, rsz->nw, rsz->nh, 1);
                 }
@@ -544,12 +554,12 @@ ResizeWindowHandler(
             break;
         case XCB_CLIENT_MESSAGE:
         {
-            XCBClientMessageEvent *ev = (XCBClientMessageEvent *)event;
+            XCBClientMessageEvent *ev = &event->xclient;
             const XCBWindow win = ev->window;
             const XCBAtom atom = ev->type;
             const u8 format = ev->format;
             /* union "same" as xlib data8 -> b[20] data16 -> s[10] data32 = l[5] */
-            const XCBClientMessageData data = ev->data; 
+            const XCBClientMessageData data = ev->data;
 
             if(format != 32 || win != rsz->window || atom != netatom[NetMoveResize])
             {   break;
@@ -575,7 +585,7 @@ ResizeWindowHandler(
             break;
         }
         case XCB_BUTTON_RELEASE:
-            brev = (XCBButtonReleaseEvent *)event;
+            brev = &event->xbutton;
 
             if(CLEANBUTTONMASK(brev->detail) == rsz->detail || rsz->detail == XCBButtonAny)
             {   running = false;
@@ -584,7 +594,7 @@ ResizeWindowHandler(
             break;
             /* this accounts for users killing the window (cause they can) */
         case XCB_UNMAP_NOTIFY:
-            umev = (XCBUnmapNotifyEvent *)event;
+            umev = &event->xunmap;
 
             if(umev->window == rsz->window)
             {   running = false;
@@ -592,7 +602,7 @@ ResizeWindowHandler(
 
             break;
         case XCB_DESTROY_NOTIFY:
-            dnev = (XCBDestroyNotifyEvent *)event;
+            dnev = &event->xdestroywindow;
 
             if(dnev->window == rsz->window)
             {   running = false;
@@ -614,7 +624,12 @@ ResizeWindowHandler(
             m = recttomon(c->x, c->y, c->w, c->h);
 
             if(m && m != c->desktop->mon)
-            {   setclientdesktop(c, m->desksel);
+            {
+                Monitor *prevm = c->desktop->mon;
+
+                setclientdesktop(c, m->desksel);
+
+                arrange(prevm->desksel);
             }
 
             if(DOCKED(c))
@@ -635,9 +650,15 @@ int
 ResizeWindow(XCBWindow window, XCBButton button, bool alt_mode)
 {
     if(window == XCBNone || IS_WM_WINDOW(window))
-    {   
+    {
         DebugWarn("Invalid window passed to %s", __func__);
         return EXIT_FAILURE;
+    }
+
+    Client *c = wintoclient(window);
+
+    if(c && ISDESKTOP(c))
+    {   return EXIT_FAILURE;
     }
 
     Debug("Called.");
@@ -649,7 +670,7 @@ ResizeWindow(XCBWindow window, XCBButton button, bool alt_mode)
     data.v = malloc(sizeof(struct InteractiveResize));
 
     if(!data.v)
-    {   
+    {
         DebugWarn("Failed to start %s", __func__);
         return EXIT_FAILURE;
     }
@@ -697,7 +718,7 @@ ResizeWindow(XCBWindow window, XCBButton button, bool alt_mode)
     XCBQueryPointer *pointer = XCBQueryPointerReply(_wm.dpy, QueryPointerCookie);
 
     if(!pointer)
-    {   
+    {
         XCBDiscardReply(_wm.dpy, GetGeometryCookie);
         XCBDiscardReply(_wm.dpy, GetWMNormalHintsCookie);
 
@@ -711,7 +732,7 @@ ResizeWindow(XCBWindow window, XCBButton button, bool alt_mode)
 
     free(pointer);
 
-    Client *c = wintoclient(window);
+    c = wintoclient(window);
 
     if(c)
     {
@@ -732,8 +753,8 @@ ResizeWindow(XCBWindow window, XCBButton button, bool alt_mode)
     {
         XCBGeometry *geom = XCBGetGeometryReply(_wm.dpy, GetGeometryCookie);
 
-        if(!geom)   
-        {   
+        if(!geom)
+        {
             XCBDiscardReply(_wm.dpy, GetWMNormalHintsCookie);
             goto DESTROY;
         }
@@ -810,15 +831,20 @@ ResizeWindow(XCBWindow window, XCBButton button, bool alt_mode)
 
     XCBGrabPointer *GrabPointer = XCBGrabPointerReply(_wm.dpy, GrabPointerCookie);
 
-
     if(!GrabPointer || GrabPointer->status != XCB_GRAB_STATUS_SUCCESS)
-    {   goto DESTROY;
+    {
+        if(GrabPointer)
+        {   free(GrabPointer);
+        }
+        goto DESTROY;
     }
+
+    free(GrabPointer);
 
     if(c)
     {
         /* prevent DOCKED from computing non floating */
-        setfloating(c, 1); 
+        setfloating(c, 1);
         /* make sure auto-docking dosent auto dock it */
         c->x += 1;
 

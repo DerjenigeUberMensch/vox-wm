@@ -1,3 +1,4 @@
+#include <complex.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
@@ -15,6 +16,8 @@
 
 #include "XCB-TRL/xcb_image.h"
 
+#include "client.h"
+#include "desktop.h"
 #include "util.h"
 #include "main.h"
 #include "floating.h"
@@ -26,7 +29,7 @@
  */
 
 /* TODO: Make these functions seperate threads */
-extern void (*handler[XCBLASTEvent]) (XCBGenericEvent *);
+extern void (*handler[XCBLASTEvent]) (XCBEvent *);
 extern WM _wm;
 extern UserSettings _cfg;
 extern XCBCursor cursors[];
@@ -34,7 +37,7 @@ extern XCBCursor cursors[];
 static const char *
 bitgravtostr(enum XCBBitGravity gravity)
 {
-    switch (gravity) 
+    switch (gravity)
     {
         case XCBForgetGravity:     return "XCBForgetGravity";
         case XCBNorthWestGravity:  return "XCBNorthWestGravity";
@@ -58,7 +61,7 @@ ActionUserStats(void)
     Client *c = _wm.selmon->desksel->sel;
     XCBARGB argb;
     if(c)
-    {   
+    {
         argb.argb = c->bcol;
         (void)argb;
 
@@ -188,7 +191,7 @@ ActionUserStats(void)
             if(win)
             {   XCBDestroyWindow(_wm.dpy, win);
             }
-            win = XCBCreateSimpleWindow(_wm.dpy, _wm.root, 0, 0, icon[1] + 5, icon[0] + 5, 0, 0, 0);
+            win = XCBCreateSimpleWindow(_wm.dpy, _wm.root, 0, 0, icon[0] + 5, icon[1] + 5, 0, 0, 0);
             XCBMapWindow(_wm.dpy, win);
             XCBGC gc = XCBCreateGC(_wm.dpy, win, 0, NULL);
 
@@ -196,9 +199,9 @@ ActionUserStats(void)
             {
                 for(j = 0; j < icon[1]; ++j)
                 {
-                    if(icon[icon[1] * j + i])
+                    if(icon[2 + icon[0] * j + i])
                     {
-                        XCBSetForeground(_wm.dpy, gc, icon[icon[1] * j + i] & ~((uint32_t)UINT8_MAX << 24));
+                        XCBSetForeground(_wm.dpy, gc, icon[2 + icon[0] * j + i] & ~((uint32_t)UINT8_MAX << 24));
                         XCBDrawPoint(_wm.dpy, XCB_COORD_MODE_ORIGIN, win, gc, i, j);
                     }
                 }
@@ -206,7 +209,7 @@ ActionUserStats(void)
         }
 
         for(; c; c = nextclient(c))
-        {   
+        {
             Debug("%s", c->netwmname);
             Debug("%s", c->wmname);
             Debug("");
@@ -237,7 +240,7 @@ ActionStickWindow(Client *c)
     }
 
     if(c)
-    {   
+    {
         setsticky(c, !ISSTICKY(c));
         arrange(c->desktop);
 
@@ -253,7 +256,7 @@ ActionKillWindow(Client *c)
     }
 
     if(c)
-    {   
+    {
         killclient(c, Graceful);
 
         XCBFlush(_wm.dpy);
@@ -268,7 +271,7 @@ ActionTerminateWindow(Client *c)
     }
 
     if(c)
-    {   
+    {
         killclient(c, Destroy);
 
         XCBFlush(_wm.dpy);
@@ -282,7 +285,7 @@ ActionSetWindowLayout(Monitor *m, u16 layout)
     {   m = _wm.selmon;
     }
 
-    if(!m) 
+    if(!m)
     {   return;
     }
 
@@ -303,7 +306,7 @@ void
 ActionSpawnWindow(char *file_to_run, const char *argv[])
 {
     if(!file_to_run)
-    {   
+    {
         DebugWarn("No file specified to run.");
         return;
     }
@@ -324,7 +327,7 @@ ActionSpawnWindow(char *file_to_run, const char *argv[])
     pid_t child;
 
     if(pipe(pipefds) == -1)
-    {   
+    {
         DebugWarn("pipe() failed.");
         return;
     }
@@ -362,7 +365,7 @@ ActionSpawnWindow(char *file_to_run, const char *argv[])
         }
 
         if(setsid() == -1)
-        {   
+        {
             int chld_errno = errno;
 
             int unused = write(pipefds[1], &chld_errno, sizeof(chld_errno));
@@ -418,7 +421,7 @@ ActionSpawnWindow(char *file_to_run, const char *argv[])
         (void)sigprocmask(SIG_SETMASK, &empty, NULL);
 
         /* Some windows can cause us to enter a "Starvation/deadlock" if incorrectly handled, this should prevent that, hopefully */
-        /* Refer: https://stackoverflow.com/questions/8319484/regarding-background-processes-using-fork-and-child-processes-in-my-dummy-shel 
+        /* Refer: https://stackoverflow.com/questions/8319484/regarding-background-processes-using-fork-and-child-processes-in-my-dummy-shel
          */
 
         execvp(file_to_run, (char *const *)argv);
@@ -453,7 +456,7 @@ ActionSpawnWindow(char *file_to_run, const char *argv[])
 
     if(count > 0)
     {
-        Debug("child's execvp()", strerror(exec_err));
+        Debug("child's execvp() %s", strerror(exec_err));
 
         return;
     }
@@ -499,19 +502,18 @@ ActionMaximizeWindow(Client *c)
     {   c = _wm.selmon->desksel->sel;
     }
 
-    if(!c)
+    if(!c || ISDESKTOP(c))
     {   return;
     }
 
     if(!DOCKED(c))
-    {   
-        
+    {
         //setfloating(c, 0);
         maximize(c);
     }
     /* else its maximized */
-    else 
-    {   
+    else
+    {
         unmaximize(c);
         setfloating(c, 1);
     }
@@ -524,13 +526,13 @@ ActionMaximizeWindow(Client *c)
 }
 
 void
-ActionMaximizeWindowVertical(Client *c) 
+ActionMaximizeWindowVertical(Client *c)
 {
     if(!c)
     {   c = _wm.selmon->desksel->sel;
     }
 
-    if(!c)
+    if(!c || ISDESKTOP(c))
     {   return;
     }
 
@@ -545,9 +547,9 @@ ActionMaximizeWindowVertical(Client *c)
 }
 
 void
-ActionMaximizeWindowHorizontal(Client *c) 
+ActionMaximizeWindowHorizontal(Client *c)
 {
-    if(!c)
+    if(!c || ISDESKTOP(c))
     {   c = _wm.selmon->desksel->sel;
     }
 
@@ -567,7 +569,7 @@ ActionMaximizeWindowHorizontal(Client *c)
 
 void
 ActionRestart(void)
-{   
+{
     restarthard();
     quit();
 }
@@ -619,7 +621,8 @@ ActionToggleStatusBar(Monitor *m)
 
     if(hadbars)
     {
-        arrange(_wm.selmon->desksel);
+        arrange(desk);
+        updatedesktopworkarea();
         XCBFlush(_wm.dpy);
     }
 }
@@ -631,10 +634,10 @@ ActionToggleFullscreen(Client *c)
     {   c = _wm.selmon->desksel->sel;
     }
 
-    if(!c)
+    if(!c || ISDESKTOP(c))
     {   return;
     }
-    
+
     setfullscreen(c, !ISFULLSCREEN(c));
 
     XCBFlush(_wm.dpy);

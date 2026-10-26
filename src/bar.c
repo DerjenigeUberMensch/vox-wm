@@ -14,141 +14,56 @@ extern XCBAtom netatom[NetLast];
 extern XCBAtom wmatom[WMLast];
 extern UserSettings _cfg;
 
-u32 ISBAR(Client *c) 
+u32 ISBAR(Client *c)  
                                 {
                                     return (ISDOCK(c) && HASSTRUT(c)) || (ISABOVE(c) && ISDOCK(c) && ISSTICKY(c));
                                 }
 
 
 enum BarSides GETBARSIDE(Monitor *m, Client *bar, uint8_t get_prev)
-                                { 
-                                    const float LEEWAY = .15f;
-                                    const float LEEWAY_SIDE = .35f;
+                                {
+                                    /* ask chatpgt ikd */
+                                    f64 x = get_prev ? bar->oldx : bar->x;
+                                    f64 y = get_prev ? bar->oldy : bar->y;
+                                    f64 w = get_prev ? bar->oldw : bar->w;
+                                    f64 h = get_prev ? bar->oldh : bar->h;
 
-                                    /* top parametors */
-                                    const i32 TOP_MIN_X = m->mx;
-                                    const i32 TOP_MIN_Y = m->my;
-
-                                    const i32 TOP_MAX_X = m->mx + m->mw;
-                                    const i32 TOP_MAX_Y = m->my + (m->mh * LEEWAY);
-
-                                    /* bottom parametors */
-                                    const i32 BOTTOM_MIN_X = m->mx;
-                                    const i32 BOTTOM_MIN_Y = m->my + m->mh - (m->mh * LEEWAY);
-
-                                    const i32 BOTTOM_MAX_X = m->mx + m->mw;
-                                    const i32 BOTTOM_MAX_Y = m->my + m->mh;
-
-                                    /* sidebar left parametors */
-                                    const i32 LEFT_MIN_X = m->mx;
-                                    const i32 LEFT_MIN_Y = TOP_MAX_Y;
-
-                                    const i32 LEFT_MAX_X = m->mx + (m->mw * LEEWAY_SIDE);
-                                    const i32 LEFT_MAX_Y = BOTTOM_MIN_Y;
-
-                                    /* sidebar right parametors */
-                                    const i32 RIGHT_MIN_X = m->mx + m->mw - (m->mw * LEEWAY_SIDE);
-                                    const i32 RIGHT_MIN_Y = TOP_MAX_Y;
-
-                                    const i32 RIGHT_MAX_X = m->mx + m->mw;
-                                    const i32 RIGHT_MAX_Y = BOTTOM_MIN_Y;
-
-                                    enum BarSides side;
-                                    i32 bx1;
-                                    i32 by1;
-                                    i32 bx2;
-                                    i32 by2;
-
-                                    if(get_prev)
-                                    {
-                                        bx1 = bar->oldx + (bar->oldw / 2);
-                                        by1 = bar->oldy + (bar->oldh / 2);
-                                        bx2 = bx1 + bar->oldw;
-                                        by2 = by1 + bar->oldh;
-                                    }
-                                    else
-                                    {
-                                        bx1 = bar->x + (bar->w / 2);
-                                        by1 = bar->y + (bar->h / 2);
-                                        bx2 = bx1 + bar->w;
-                                        by2 = by1 + bar->h;
+                                    if(unlikely(m->mw <= 0 || m->mh <= 0))
+                                    {   
+                                        DebugError("Invalid monitor geometry: %dx%d", m->mw, m->mh);
+                                        return BarSideTop;
                                     }
 
-                                    uint32_t toparea = __intersect_area(
-                                            TOP_MIN_X,
-                                            TOP_MIN_Y,
-                                            TOP_MAX_X,
-                                            TOP_MAX_Y,
-                                            bx1,
-                                            by1,
-                                            bx2,
-                                            by2
-                                            );
-                                    uint32_t bottomarea = __intersect_area(
-                                            BOTTOM_MIN_X,
-                                            BOTTOM_MIN_Y,
-                                            BOTTOM_MAX_X,
-                                            BOTTOM_MAX_Y,
-                                            bx1,
-                                            by1,
-                                            bx2,
-                                            by2
-                                            );
-                                    uint32_t leftarea = __intersect_area(
-                                            LEFT_MIN_X,
-                                            LEFT_MIN_Y,
-                                            LEFT_MAX_X,
-                                            LEFT_MAX_Y,
-                                            bx1,
-                                            by1,
-                                            bx2,
-                                            by2
-                                            );
-                                    uint32_t rightarea = __intersect_area(
-                                            RIGHT_MIN_X,
-                                            RIGHT_MIN_Y,
-                                            RIGHT_MAX_X,
-                                            RIGHT_MAX_Y,
-                                            bx1,
-                                            by1,
-                                            bx2,
-                                            by2
-                                            );
-
-                                    uint32_t biggest = toparea;
-
-                                    if(biggest < bottomarea)
-                                    {   biggest = bottomarea;
-                                    }
-
-                                    if(biggest < leftarea)
-                                    {   biggest = leftarea;
-                                    }
-
-                                    if(biggest < rightarea)
-                                    {   biggest = rightarea;
-                                    }
-
-                                    /* prob should handle the rare change that the area would be the same as another,
-                                     * But at that point we should just rework it to use buttonpress last pressed location.
+                                    /* 
+                                     * -1 -> left/top edge
+                                     *  0 -> center
+                                     *  1 -> right/bottom edge
                                      */
-                                    if(biggest == toparea)
-                                    {   side = BarSideTop;
-                                    }
-                                    else if(biggest == bottomarea)
-                                    {   side = BarSideBottom;
-                                    }
-                                    else if(biggest == leftarea)
-                                    {   side = BarSideLeft;
-                                    }
-                                    else if(biggest == rightarea)
-                                    {   side = BarSideRight;
-                                    }
-                                    else    /* this is just for compiler ommiting warning */
-                                    {   side = BarSideTop;
+
+                                    f64 cx = 2.0 * ( (x - m->mx + w * .5) / m->mw) - 1.0;
+                                    f64 cy = 2.0 * ( (y - m->my + h * .5) / m->mh) - 1.0;
+
+                                    if(ISFIXED(bar))
+                                    {
+                                        if(w > h)
+                                        {   return cy <= 0.0 ? BarSideTop : BarSideBottom;
+                                        }
+
+                                        if(h > w)
+                                        {   return cx <= 0.0 ? BarSideLeft : BarSideRight;
+                                        }
+
+                                        DebugOnce("Bar is a square, suprisingly...");
                                     }
 
-                                    return side;
+                                    f64 ax = cx < 0.0 ? -cx : cx;
+                                    f64 ay = cy < 0.0 ? -cy : cy;
+
+                                    if(ax > ay)
+                                    {   return cx < 0.0 ? BarSideLeft : BarSideRight;
+                                    }
+
+                                    return cy < 0.0 ? BarSideTop : BarSideBottom;
                                 }
 
 void
@@ -432,14 +347,6 @@ updateworkarea(Desktop *desk)
     m->wx = m->mx + left;
     m->wy = m->my + top;
 
-    m->ww = m->mw - left - right;
-    m->wh = m->mh - top - bottom;
-
-    if(unlikely(m->ww < 0))
-    {   m->ww = 0;
-    }
-
-    if(unlikely(m->wh < 0))
-    {   m->wh = 0;
-    }
+    m->ww = MAX(m->mw - left - right, 0);
+    m->wh = MAX(m->mh - top - bottom, 0);
 }

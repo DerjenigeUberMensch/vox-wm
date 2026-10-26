@@ -60,9 +60,9 @@ typedef int64_t  i64;
 
 static void
 color_parser_foreground(
-        XCBColor *foreground, 
-        uint16_t *red, 
-        uint16_t *green, 
+        XCBColor *foreground,
+        uint16_t *red,
+        uint16_t *green,
         uint16_t *blue
         )
 {
@@ -82,9 +82,9 @@ color_parser_foreground(
 }
 static void
 color_parser_background(
-        XCBColor *background, 
-        uint16_t *red, 
-        uint16_t *green, 
+        XCBColor *background,
+        uint16_t *red,
+        uint16_t *green,
         uint16_t *blue
         )
 {
@@ -105,7 +105,7 @@ color_parser_background(
 
 XCBDisplay *
 XCBOpenDisplay(
-        const char *displayName, 
+        const char *displayName,
         int *defaultScreenReturn
         )
 {
@@ -119,7 +119,7 @@ XCBOpenDisplay(
     _xcb_push_func(ck);
 
     if(!display || xcb_connection_has_error(display))
-    {   
+    {
 
         /* This frees the connection data that was allocated. */
         xcb_disconnect(display);
@@ -129,7 +129,7 @@ XCBOpenDisplay(
 }
 XCBDisplay *
 XCBOpenConnection(
-        const char *displayName, 
+        const char *displayName,
         int *defaultScreenReturn
         )
 {
@@ -139,7 +139,7 @@ XCBOpenConnection(
 
     return xcb_connect(displayName, defaultScreenReturn);
 }
-void 
+void
 XCBCloseDisplay(
         XCBDisplay *display
         )
@@ -152,7 +152,7 @@ XCBCloseDisplay(
     xcb_disconnect(display);
 }
 
-int 
+int
 XCBDisplayNumber(
         XCBDisplay *display
         )
@@ -180,7 +180,7 @@ XCBConnectionNumber(
 
 XCBScreen *
 XCBScreenOfDisplay(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         int screen
         )
 {
@@ -193,7 +193,7 @@ XCBScreenOfDisplay(
 
 XCBScreen *
 XCBDefaultScreenOfDisplay(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         int screen
         )
 {
@@ -205,7 +205,7 @@ XCBDefaultScreenOfDisplay(
 }
 
 
-int 
+int
 XCBScreenCount(
         XCBDisplay *display
         )
@@ -246,7 +246,7 @@ XCBServerVendor(
  * display->setup basically
  */
 
-int 
+int
 XCBProtocolVersion(
         XCBDisplay *display
         )
@@ -258,11 +258,11 @@ XCBProtocolVersion(
     return xcb_get_setup(display)->protocol_major_version;
 }
 
-int 
+int
 XCBProtocolRevision(
         XCBDisplay *display
         )
-{   
+{
 
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret);
@@ -274,7 +274,7 @@ int
 XCBVendorRelease(
         XCBDisplay *display
         )
-{   
+{
 
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret);
@@ -286,7 +286,7 @@ int
 XCBBitmapUnit(
         XCBDisplay *display
         )
-{   
+{
 
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret);
@@ -298,7 +298,7 @@ int
 XCBBitmapBitOrder(
         XCBDisplay *display
         )
-{   
+{
 
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret);
@@ -310,7 +310,7 @@ int
 XCBBitmapPad(
         XCBDisplay *display
         )
-{   
+{
 
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret);
@@ -322,7 +322,7 @@ int
 XCBImageByteOrder(
         XCBDisplay *display
         )
-{  
+{
 
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret);
@@ -351,13 +351,13 @@ XCBGetScreen(
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret);
 
-    /* could alos use xcb_aux_get_screen()*/   
+    /* could alos use xcb_aux_get_screen()*/
     return xcb_setup_roots_iterator(xcb_get_setup(display)).data;
 }
 
 XCBWindow
 XCBRootWindow(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         int screen
         )
 {
@@ -371,7 +371,7 @@ XCBRootWindow(
 
 XCBWindow
 XCBDefaultRootWindow(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         int screen
         )
 {
@@ -380,7 +380,7 @@ XCBDefaultRootWindow(
     _xcb_push_func(ret);
 
     XCBScreen *scr = screen_of_display(display, screen);
-    if(scr) 
+    if(scr)
     {   return scr->root;
     }
 
@@ -398,16 +398,16 @@ XCBDefaultVisual(
 
     XCBScreen *scr = screen_of_display(display, screen);
 
-    if(scr) 
+    if(scr)
     {   return scr->root_visual;
     }
 
     return XCB_NONE; /* AKA NULL; AKA we didnt find a screen */
 }
 
-u16 
+u16
 XCBDisplayWidth(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         int screen
         )
 {
@@ -420,7 +420,7 @@ XCBDisplayWidth(
 }
 u16
 XCBDisplayHeight(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         int screen
         )
 {
@@ -433,7 +433,7 @@ XCBDisplayHeight(
 }
 u8
 XCBDefaultDepth(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         int screen
         )
 {
@@ -447,8 +447,8 @@ XCBDefaultDepth(
 
 XCBCookie
 XCBSelectInput(
-        XCBDisplay *display, 
-        XCBWindow window, 
+        XCBDisplay *display,
+        XCBWindow window,
         u32 mask
         )
 {
@@ -461,9 +461,9 @@ XCBSelectInput(
 
 XCBCookie
 XCBSetInputFocus(
-        XCBDisplay *display, 
-        XCBWindow window, 
-        u8 revert_to, 
+        XCBDisplay *display,
+        XCBWindow window,
+        u8 revert_to,
         XCBTimestamp tim
         )
 {
@@ -476,9 +476,9 @@ XCBSetInputFocus(
 
 XCBCookie
 XCBChangeWindowAttributes(
-        XCBDisplay *display, 
-        XCBWindow window, 
-        u32 mask, 
+        XCBDisplay *display,
+        XCBWindow window,
+        u32 mask,
         XCBWindowAttributes *window_attributes
         )
 {
@@ -517,7 +517,7 @@ XCBUninstallColormap(
 
 u32
 XCBBlackPixel(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         int screen
         )
 {
@@ -534,7 +534,7 @@ XCBBlackPixel(
 
 u32
 XCBWhitePixel(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         int screen
         )
 {
@@ -553,14 +553,14 @@ void
 XCBSync(
        XCBDisplay *display
        )
-{ 
+{
 
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret);
-    
+
     /* "https://community.kde.org/Xcb"
      * The xcb equivalent of XSync() is xcb_aux_sync(), which is in xcb-utils.
-     * The reason you won't find a sync function in libxcb is that there is no sync request in the X protocol. 
+     * The reason you won't find a sync function in libxcb is that there is no sync request in the X protocol.
      * Calling XSync() or xcb_aux_sync() is equivalent to calling XGetInputFocus() and throwing away the reply.
      */
     xcb_aux_sync(display);
@@ -579,7 +579,7 @@ XCBSyncf(
     XCBSync(display);
     XCBGenericEvent *ev = NULL;
     while(((ev = XCBPollForQueuedEvent(display))))
-    {   
+    {
         if(!ev->response_type)
         {   __XValidateReply(display, NULL, (xcb_generic_error_t *)ev);
         }
@@ -592,10 +592,10 @@ XCBSyncf(
 
 XCBCookie
 XCBReparentWindow(
-        XCBDisplay *display, 
-        XCBWindow source, 
-        XCBWindow parent, 
-        i32 x, 
+        XCBDisplay *display,
+        XCBWindow source,
+        XCBWindow parent,
+        i32 x,
         i32 y
         )
 {
@@ -609,9 +609,9 @@ XCBReparentWindow(
 
 XCBCookie
 XCBMoveWindow(
-        XCBDisplay *display, 
-        XCBWindow window, 
-        i32 x, 
+        XCBDisplay *display,
+        XCBWindow window,
+        i32 x,
         i32 y
         )
 {
@@ -626,11 +626,11 @@ XCBMoveWindow(
 
 XCBCookie
 XCBMoveResizeWindow(
-        XCBDisplay *display, 
-        XCBWindow window, 
-        i32 x, 
-        i32 y, 
-        u32 width, 
+        XCBDisplay *display,
+        XCBWindow window,
+        i32 x,
+        i32 y,
+        u32 width,
         u32 height
         )
 {
@@ -649,9 +649,9 @@ XCBMoveResizeWindow(
 
 XCBCookie
 XCBResizeWindow(
-        XCBDisplay *display, 
-        XCBWindow window, 
-        u32 width, 
+        XCBDisplay *display,
+        XCBWindow window,
+        u32 width,
         u32 height
         )
 {
@@ -667,7 +667,7 @@ XCBResizeWindow(
 
 XCBCookie
 XCBRaiseWindow(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBWindow window
         )
 {
@@ -682,7 +682,7 @@ XCBRaiseWindow(
 
 XCBCookie
 XCBMapRaised(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBWindow window
         )
 {
@@ -696,7 +696,7 @@ XCBMapRaised(
 
 XCBCookie
 XCBLowerWindow(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBWindow window
         )
 {
@@ -711,7 +711,7 @@ XCBLowerWindow(
 
 XCBCookie
 XCBRaiseWindowIf(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBWindow window
         )
 {
@@ -726,7 +726,7 @@ XCBRaiseWindowIf(
 
 XCBCookie
 XCBLowerWindowIf(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBWindow window
         )
 {
@@ -741,7 +741,7 @@ XCBLowerWindowIf(
 
 XCBCookie
 XCBRaiseLowerWindow(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBWindow window
         )
 {
@@ -756,8 +756,8 @@ XCBRaiseLowerWindow(
 
 XCBCookie
 XCBSetWindowBorder(
-        XCBDisplay *display, 
-        XCBWindow window, 
+        XCBDisplay *display,
+        XCBWindow window,
         uint32_t border_pixel
         )
 {
@@ -772,8 +772,8 @@ XCBSetWindowBorder(
 
 XCBCookie
 XCBSetWindowBorderWidth(
-        XCBDisplay *display, 
-        XCBWindow window, 
+        XCBDisplay *display,
+        XCBWindow window,
         u16 border_width
         )
 {
@@ -789,8 +789,8 @@ XCBSetWindowBorderWidth(
 
 XCBCookie
 XCBSetSibling(
-        XCBDisplay *display, 
-        XCBWindow window, 
+        XCBDisplay *display,
+        XCBWindow window,
         XCBWindow sibling
         )
 {
@@ -846,7 +846,7 @@ XCBRemoveFromSaveSet(
 
 XCBCookie
 XCBGetWindowAttributesCookie(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBWindow window
         )
 {
@@ -860,7 +860,7 @@ XCBGetWindowAttributesCookie(
 
 XCBGetWindowAttributes *
 XCBGetWindowAttributesReply(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBCookie cookie
         )
 {
@@ -895,7 +895,7 @@ XCBGetWindowGeometryCookie(
 
 XCBGeometry *
 XCBGetWindowGeometryReply(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBCookie cookie
         )
 {
@@ -988,7 +988,7 @@ XCBInternAtomReply(XCBDisplay *display, XCBCookie cookie)
 
 XCBCookie
 XCBGetTransientForHintCookie(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBWindow win)
 {
     xcb_get_property_cookie_t cookie = xcb_get_property(display, 0, win, XCB_ATOM_WM_TRANSIENT_FOR, XCB_ATOM_WINDOW, 0, 1);
@@ -1023,9 +1023,9 @@ XCBGetTransientForHintReply(
         {   *win = *((xcb_window_t *) xcb_get_property_value(reply));
         }
         else
-        {   
+        {
             status = 0;
-            
+
             #ifdef XCB_TRL_ENABLE_DEBUG
                 _XCB_MANUAL_DEBUG0("No adress specified in the 'win' field.");
                 XCBBreakPoint();
@@ -1056,7 +1056,7 @@ XCBGetPropertyCookie(
     return ret;
 }
 
-XCBCookie 
+XCBCookie
 XCBGetWindowPropertyCookie(
         XCBDisplay *display,
         XCBWindow window,
@@ -1111,7 +1111,7 @@ XCBGetWindowPropertyValueSize(
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret);
 
-    enum 
+    enum
     {
         __XCB__FORMAT__8 = 8,
         __XCB__FORMAT__16 = 16,
@@ -1134,7 +1134,7 @@ XCBGetWindowPropertyValueSize(
 u8
 XCBGetWindowPropertyValueLength
 (
-        XCBWindowProperty *reply, 
+        XCBWindowProperty *reply,
         size_t size,
         uint32_t *_ret
         )
@@ -1144,13 +1144,13 @@ XCBGetWindowPropertyValueLength
     _xcb_push_func(ret);
 
     const size_t safesize = size + !size;
-    enum 
+    enum
     {
         __XCB__FORMAT__8 = 8,
         __XCB__FORMAT__16 = 16,
         __XCB__FORMAT__32 = 32,
     };
-    /* XCB malforms some requests for some reason :/ so go back to failsafe of reply->value_len. 
+    /* XCB malforms some requests for some reason :/ so go back to failsafe of reply->value_len.
      * Which?: Some icons are malformed as to say size "0" when they do have a actual size.
      */
     switch(reply->format)
@@ -1161,7 +1161,8 @@ XCBGetWindowPropertyValueLength
             *_ret = xcb_get_property_value_length(reply) / safesize;
             return 0;
         default:
-            *_ret = reply->value_len / safesize;
+            /* The length of the reply, in words (a word is 4 bytes). */
+            *_ret = ((size_t)reply->length * sizeof(char) * 4) / safesize;
             return 1;
             break;
     }
@@ -1195,7 +1196,7 @@ XCBGetPropertyValue(
     return xcb_get_property_value(reply);
 }
 
-uint8_t 
+uint8_t
 XCBGetPropertyValueSize(
         XCBWindowProperty *reply,
         u32 *_ret
@@ -1208,7 +1209,7 @@ XCBGetPropertyValueSize(
     return XCBGetWindowPropertyValueSize(reply, _ret);
 }
 
-uint8_t 
+uint8_t
 XCBGetPropertyValueLength(
         XCBWindowProperty *reply,
         size_t size,
@@ -1225,10 +1226,10 @@ XCBGetPropertyValueLength(
 
 XCBPixmap
 XCBCreatePixmap(
-        XCBDisplay *display, 
-        XCBWindow root, 
-        u16 width, 
-        u16 height, 
+        XCBDisplay *display,
+        XCBWindow root,
+        u16 width,
+        u16 height,
         u8 depth
         )
 {
@@ -1245,11 +1246,11 @@ XCBCreatePixmap(
 
 XCBCookie
 XCBCopyArea(
-    XCBDisplay *display, 
-    XCBDrawable source, 
-    XCBDrawable destination, 
-    XCBGC gc, 
-    int16_t SourceStartCopyX, 
+    XCBDisplay *display,
+    XCBDrawable source,
+    XCBDrawable destination,
+    XCBGC gc,
+    int16_t SourceStartCopyX,
     int16_t SourceStartCopyY,
     uint16_t CopyWidth,
     uint16_t CopyHeight,
@@ -1258,11 +1259,11 @@ XCBCopyArea(
     )
 {
     XCBCookie ret = xcb_copy_area(
-        display, 
-        source, 
-        destination, 
-        gc, 
-        SourceStartCopyX, 
+        display,
+        source,
+        destination,
+        gc,
+        SourceStartCopyX,
         SourceStartCopyY,
         DestinationStartPasteX,
         DestinationStartPasteY,
@@ -1277,7 +1278,7 @@ XCBCopyArea(
 
 XCBCookie
 XCBFreePixmap(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBPixmap pixmap
         )
 {
@@ -1291,7 +1292,7 @@ XCBFreePixmap(
 
 XCBCursor
 XCBCreateFontCursor(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBFont shape
         )
 {
@@ -1368,7 +1369,7 @@ XCBCreateGlyphCursor(
 
 XCBCookie
 XCBFreeCursor(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBCursor cursor
         )
 {
@@ -1381,11 +1382,11 @@ XCBFreeCursor(
 
 XCBCookie
 XCBDefineCursor(
-        XCBDisplay *display, 
-        XCBWindow window, 
+        XCBDisplay *display,
+        XCBWindow window,
         XCBCursor id
         )
-{   
+{
     const u32 mask = XCB_CW_CURSOR;
     XCBCookie ret = xcb_change_window_attributes(display, window, mask, &id);
 
@@ -1394,11 +1395,11 @@ XCBDefineCursor(
     return ret;
 }
 
-XCBCookie 
+XCBCookie
 XCBRecolorCursor(
-        XCBDisplay *display, 
-        XCBCursor cursor, 
-        XCBColor *foreground, 
+        XCBDisplay *display,
+        XCBCursor cursor,
+        XCBColor *foreground,
         XCBColor *background
         )
 {
@@ -1431,7 +1432,7 @@ XCBCursorContextNew(
     int status;
 
     XCBScreen *scrn = xcb_aux_get_screen(display, screen);
-    
+
     status = xcb_cursor_context_new(display, scrn, context_return);
 
     XCBCookie ret = { .sequence = 0 };
@@ -1481,7 +1482,7 @@ XCBCursorLibraryLoadCursor(
         XCBCursorContext *context,
         const char *name
         )
-{   
+{
     XCBCursor cur;
 
     (void)display;
@@ -1498,8 +1499,8 @@ XCBCursorLibraryLoadCursor(
 
 XCBCookie
 XCBOpenFont(
-        XCBDisplay *display, 
-        XCBFont id, 
+        XCBDisplay *display,
+        XCBFont id,
         const char *name
         )
 {
@@ -1514,7 +1515,7 @@ XCBOpenFont(
 
 XCBCookie
 XCBCloseFont(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBFont id
         )
 {
@@ -1530,8 +1531,8 @@ XCBCloseFont(
 
 XCBCookie
 XCBGetTextPropertyCookie(
-        XCBDisplay *display, 
-        XCBWindow window, 
+        XCBDisplay *display,
+        XCBWindow window,
         XCBAtom property
         )
 {
@@ -1545,10 +1546,10 @@ XCBGetTextPropertyCookie(
     return ret;
 }
 
-int 
+int
 XCBGetTextPropertyReply(
-        XCBDisplay *display, 
-        XCBCookie cookie, 
+        XCBDisplay *display,
+        XCBCookie cookie,
         XCBTextProperty *reply_return
         )
 {
@@ -1558,7 +1559,7 @@ XCBGetTextPropertyReply(
     _xcb_push_func(ret);
 
     XCBWindowProperty *reply = XCBGetPropertyReply(display, cookie);
-    
+
     if(!reply)
     {   status = 0;
     }
@@ -1578,7 +1579,7 @@ int
 XCBFreeTextProperty(
         XCBTextProperty *prop
         )
-{   
+{
 
     if(!prop)
     {
@@ -1600,7 +1601,7 @@ XCBFreeTextProperty(
     return 1;
 }
 
-int 
+int
 XCBFlush(
         XCBDisplay *display
         )
@@ -1645,25 +1646,25 @@ int
 XCBCheckDisplayError(
         XCBDisplay *display
         )
-{   
+{
 
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret);
 
     return xcb_connection_has_error(display);
 }
-int 
+int
 XCBHasConnectionError(
         XCBDisplay *display
         )
-{   
+{
 
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret);
 
     return xcb_connection_has_error(display);
 }
-int 
+int
 XCBCheckConnectionError(
         XCBDisplay *display
         )
@@ -1674,11 +1675,11 @@ XCBCheckConnectionError(
 
     return xcb_connection_has_error(display);
 }
-int 
+int
 XCBHasDisplayError(
         XCBDisplay *display
         )
-{   
+{
 
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret);
@@ -1689,11 +1690,11 @@ XCBHasDisplayError(
 int
 XCBSetErrorHandler(
         void (*error_handler)(
-            XCBDisplay *, 
+            XCBDisplay *,
             XCBGenericError *
             )
         )
-{   
+{
     XCBCookie ret = { .sequence = 0 };
 
     _xcb_push_func(ret);
@@ -1705,10 +1706,10 @@ XCBSetErrorHandler(
 
 void
 XCBSetIOErrorHandler(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         void *IOHandler
         )
-{   
+{
 
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret);
@@ -1745,43 +1746,43 @@ XCBGetEventNameFromEvent(
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret);
 
-    static const char *const evs[36] = 
+    static const char *const evs[36] =
     {
         [XCB_NONE] = NULL,
-        [XCB_KEY_PRESS] = "XCB_KEY_PRESS", 
-        [XCB_KEY_RELEASE] = "XCB_KEY_RELEASE", 
-        [XCB_BUTTON_PRESS] = "XCB_BUTTON_PRESS", 
-        [XCB_BUTTON_RELEASE] = "XCB_BUTTON_RELEASE", 
-        [XCB_MOTION_NOTIFY] = "XCB_MOTION_NOTIFY", 
-        [XCB_ENTER_NOTIFY] = "XCB_ENTER_NOTIFY", 
-        [XCB_LEAVE_NOTIFY] = "XCB_LEAVE_NOTIFY", 
-        [XCB_FOCUS_IN] = "XCB_FOCUS_IN", 
-        [XCB_FOCUS_OUT] = "XCB_FOCUS_OUT", 
-        [XCB_KEYMAP_NOTIFY] = "XCB_KEYMAP_NOTIFY", 
-        [XCB_EXPOSE] = "XCB_EXPOSE", 
-        [XCB_GRAPHICS_EXPOSURE] = "XCB_GRAPHICS_EXPOSURE", 
-        [XCB_NO_EXPOSURE] = "XCB_NO_EXPOSURE", 
-        [XCB_VISIBILITY_NOTIFY] = "XCB_VISIBILITY_NOTIFY", 
-        [XCB_CREATE_NOTIFY] = "XCB_CREATE_NOTIFY", 
-        [XCB_DESTROY_NOTIFY] = "XCB_DESTROY_NOTIFY", 
-        [XCB_UNMAP_NOTIFY] = "XCB_UNMAP_NOTIFY", 
-        [XCB_MAP_NOTIFY] = "XCB_MAP_NOTIFY", 
-        [XCB_MAP_REQUEST] = "XCB_MAP_REQUEST", 
-        [XCB_REPARENT_NOTIFY] = "XCB_REPARENT_NOTIFY", 
-        [XCB_CONFIGURE_NOTIFY] = "XCB_CONFIGURE_NOTIFY", 
-        [XCB_CONFIGURE_REQUEST] = "XCB_CONFIGURE_REQUEST", 
-        [XCB_GRAVITY_NOTIFY] = "XCB_GRAVITY_NOTIFY", 
-        [XCB_RESIZE_REQUEST] = "XCB_RESIZE_REQUEST", 
-        [XCB_CIRCULATE_NOTIFY] = "XCB_CIRCULATE_NOTIFY", 
-        [XCB_CIRCULATE_REQUEST] = "XCB_CIRCULATE_REQUEST", 
-        [XCB_PROPERTY_NOTIFY] = "XCB_PROPERTY_NOTIFY", 
-        [XCB_SELECTION_CLEAR] = "XCB_SELECTION_CLEAR", 
-        [XCB_SELECTION_REQUEST] = "XCB_SELECTION_REQUEST", 
-        [XCB_SELECTION_NOTIFY] = "XCB_SELECTION_NOTIFY", 
-        [XCB_COLORMAP_NOTIFY] = "XCB_COLORMAP_NOTIFY", 
-        [XCB_CLIENT_MESSAGE] = "XCB_CLIENT_MESSAGE", 
-        [XCB_MAPPING_NOTIFY] = "XCB_MAPPING_NOTIFY", 
-        [XCB_GE_GENERIC] = "XCB_GE_GENERIC", 
+        [XCB_KEY_PRESS] = "XCB_KEY_PRESS",
+        [XCB_KEY_RELEASE] = "XCB_KEY_RELEASE",
+        [XCB_BUTTON_PRESS] = "XCB_BUTTON_PRESS",
+        [XCB_BUTTON_RELEASE] = "XCB_BUTTON_RELEASE",
+        [XCB_MOTION_NOTIFY] = "XCB_MOTION_NOTIFY",
+        [XCB_ENTER_NOTIFY] = "XCB_ENTER_NOTIFY",
+        [XCB_LEAVE_NOTIFY] = "XCB_LEAVE_NOTIFY",
+        [XCB_FOCUS_IN] = "XCB_FOCUS_IN",
+        [XCB_FOCUS_OUT] = "XCB_FOCUS_OUT",
+        [XCB_KEYMAP_NOTIFY] = "XCB_KEYMAP_NOTIFY",
+        [XCB_EXPOSE] = "XCB_EXPOSE",
+        [XCB_GRAPHICS_EXPOSURE] = "XCB_GRAPHICS_EXPOSURE",
+        [XCB_NO_EXPOSURE] = "XCB_NO_EXPOSURE",
+        [XCB_VISIBILITY_NOTIFY] = "XCB_VISIBILITY_NOTIFY",
+        [XCB_CREATE_NOTIFY] = "XCB_CREATE_NOTIFY",
+        [XCB_DESTROY_NOTIFY] = "XCB_DESTROY_NOTIFY",
+        [XCB_UNMAP_NOTIFY] = "XCB_UNMAP_NOTIFY",
+        [XCB_MAP_NOTIFY] = "XCB_MAP_NOTIFY",
+        [XCB_MAP_REQUEST] = "XCB_MAP_REQUEST",
+        [XCB_REPARENT_NOTIFY] = "XCB_REPARENT_NOTIFY",
+        [XCB_CONFIGURE_NOTIFY] = "XCB_CONFIGURE_NOTIFY",
+        [XCB_CONFIGURE_REQUEST] = "XCB_CONFIGURE_REQUEST",
+        [XCB_GRAVITY_NOTIFY] = "XCB_GRAVITY_NOTIFY",
+        [XCB_RESIZE_REQUEST] = "XCB_RESIZE_REQUEST",
+        [XCB_CIRCULATE_NOTIFY] = "XCB_CIRCULATE_NOTIFY",
+        [XCB_CIRCULATE_REQUEST] = "XCB_CIRCULATE_REQUEST",
+        [XCB_PROPERTY_NOTIFY] = "XCB_PROPERTY_NOTIFY",
+        [XCB_SELECTION_CLEAR] = "XCB_SELECTION_CLEAR",
+        [XCB_SELECTION_REQUEST] = "XCB_SELECTION_REQUEST",
+        [XCB_SELECTION_NOTIFY] = "XCB_SELECTION_NOTIFY",
+        [XCB_COLORMAP_NOTIFY] = "XCB_COLORMAP_NOTIFY",
+        [XCB_CLIENT_MESSAGE] = "XCB_CLIENT_MESSAGE",
+        [XCB_MAPPING_NOTIFY] = "XCB_MAPPING_NOTIFY",
+        [XCB_GE_GENERIC] = "XCB_GE_GENERIC",
     };
     if(!event)
     {   return NULL;
@@ -1835,7 +1836,7 @@ XCBGetErrorMajorCodeText(
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret);
 
-    static const char *const errs[128] = 
+    static const char *const errs[128] =
     {
         [0] = NULL,
         [X_CreateWindow] = "CreateWindow",
@@ -1968,7 +1969,7 @@ char *
 XCBGetErrorMinorCodeText(
         uint16_t minor_code
         )
-{   
+{
 
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret);
@@ -1988,7 +1989,7 @@ XCBGetErrorDisplayText(
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret);
 
-    static const char *const errs[7] = 
+    static const char *const errs[7] =
     {
         [0] = NULL,
         [XCB_CONN_ERROR] = "DisplayError",
@@ -1998,6 +1999,7 @@ XCBGetErrorDisplayText(
         [XCB_CONN_CLOSED_PARSE_ERR] = "InvalidDisplay",
         [XCB_CONN_CLOSED_INVALID_SCREEN] = "InvalidScreen"
     };
+
     /* bounds check */              /* & over && for better inlining */
     display_error *= (display_error > 0) & (display_error < 7);
     return (char *const)errs[display_error];
@@ -2035,17 +2037,15 @@ XCBGetFullErrorText(
     };
     /* bounds check */          /* & over && for better inlining */
     error_code *= (error_code > 0) & (error_code < 18);
-    return (char *const )errs[error_code];   
+    return (char *const )errs[error_code];
 }
 
 /* events */
 
-
-
 XCBCookie
 XCBAllowEvents(
-        XCBDisplay *display, 
-        u8 mode, 
+        XCBDisplay *display,
+        u8 mode,
         XCBTimestamp tim
         )
 {
@@ -2091,11 +2091,11 @@ XCBSendErrorP(
     __XValidateReply(display, NULL, err);
 }
 
-int 
+int
 XCBNextEvent(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBGenericEvent **event_return
-        ) 
+        )
 {
     /* waits till next event happens before returning */
     return !((*event_return = xcb_wait_for_event(display)));
@@ -2103,7 +2103,7 @@ XCBNextEvent(
 
 int
 XCBNextEventTimed(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBGenericEvent **event_return,
         int64_t timeout_ms
         )
@@ -2118,7 +2118,7 @@ XCBNextEventTimed(
     ready = XCBNextEventTimedAnyDpy(&display, 1, &event_return, &pen, timeout_ms);
 
     if(ready > 0)
-    {   
+    {
         *event_return = xcb_poll_for_event(display);
 
         return 0;
@@ -2167,7 +2167,7 @@ XCBNextEventTimedAnyDpy(
     else if(ret == 0)
     {   return 0;
     }
-    
+
     for(i = 0; i < display_count; ++i)
     {
         if(xcb_connection_has_error(displays[i]))
@@ -2236,7 +2236,7 @@ XCBPollForQueuedEvent(
 
 void *
 XCBCheckReply(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBCookie request)
 {
 
@@ -2252,9 +2252,9 @@ XCBCheckReply(
 
 void *
 XCBCheckReply64(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBCookie64 request)
-{   
+{
 
     XCBCookie ret = { .sequence = 0 };
     _xcb_push_func(ret);
@@ -2353,12 +2353,12 @@ XCBUngrabKeyboard(
 
 XCBCookie
 XCBGrabKey(
-        XCBDisplay *display, 
-        XCBKeyCode keycode, 
-        u16 modifiers, 
-        XCBWindow grab_window, 
-        u8 owner_events, 
-        u8 pointer_mode, 
+        XCBDisplay *display,
+        XCBKeyCode keycode,
+        u16 modifiers,
+        XCBWindow grab_window,
+        u8 owner_events,
+        u8 pointer_mode,
         u8 keyboard_mode
         )
 {
@@ -2370,11 +2370,11 @@ XCBGrabKey(
     return ret;
 }
 
-XCBCookie 
+XCBCookie
 XCBUngrabKey(
-        XCBDisplay *display, 
-        XCBKeyCode key, 
-        u16 modifiers, 
+        XCBDisplay *display,
+        XCBKeyCode key,
+        u16 modifiers,
         XCBWindow grab_window
         )
 {
@@ -2388,9 +2388,9 @@ XCBUngrabKey(
 
 XCBCookie
 XCBUngrabButton(
-        XCBDisplay *display, 
-        uint8_t button, 
-        uint16_t modifier, 
+        XCBDisplay *display,
+        uint8_t button,
+        uint16_t modifier,
         XCBWindow window
         )
 {
@@ -2404,12 +2404,12 @@ XCBUngrabButton(
 
 XCBCookie
 XCBGrabButton(
-        XCBDisplay *display, 
-        u8 button, 
-        u16 modifiers, 
-        XCBWindow grab_window, 
-        u8 owner_events, 
-        u16 event_mask, 
+        XCBDisplay *display,
+        u8 button,
+        u16 modifiers,
+        XCBWindow grab_window,
+        u8 owner_events,
+        u16 event_mask,
         u8 pointer_mode,
         u8 keyboard_mode,
         XCBWindow confine_to,
@@ -2470,7 +2470,7 @@ XCBGrabPointerReply(
 
 XCBCookie
 XCBUngrabPointer(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBTimestamp tim
         )
 {
@@ -2483,8 +2483,8 @@ XCBUngrabPointer(
 
 int
 XCBDisplayKeyCodes(
-        XCBDisplay *display, 
-        int *min_keycode_return, 
+        XCBDisplay *display,
+        int *min_keycode_return,
         int *max_keycode_return
         )
 {
@@ -2499,10 +2499,10 @@ XCBDisplayKeyCodes(
     return !!setup->length;
 }
 
-int 
+int
 XCBDisplayKeycodes(
-        XCBDisplay *display, 
-        int *min_keycode_return, 
+        XCBDisplay *display,
+        int *min_keycode_return,
         int *max_keycode_return
         )
 {
@@ -2520,7 +2520,7 @@ XCBDisplayKeycodes(
 
 uint8_t
 XCBRefreshKeyboardMapping(
-        XCBKeySymbols *syms, 
+        XCBKeySymbols *syms,
         XCBMappingNotifyEvent *event)
 {
     return xcb_refresh_keyboard_mapping(syms, event);
@@ -2528,8 +2528,8 @@ XCBRefreshKeyboardMapping(
 
 XCBCookie
 XCBGetKeyboardMappingCookie(
-        XCBDisplay *display, 
-        XCBKeyCode first_keycode, 
+        XCBDisplay *display,
+        XCBKeyCode first_keycode,
         u8 count
         )
 {
@@ -2543,7 +2543,7 @@ XCBGetKeyboardMappingCookie(
 
 XCBKeyboardMapping *
 XCBGetKeyboardMappingReply(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBCookie cookie
         )
 {
@@ -2578,7 +2578,7 @@ XCBQueryTreeCookie(
 
 XCBQueryTree *
 XCBQueryTreeReply(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBCookie cookie
         )
 {
@@ -2612,7 +2612,7 @@ XCBQueryTreeChildren(
 
 XCBCookie
 XCBQueryPointerCookie(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBWindow window
         )
 {
@@ -2626,7 +2626,7 @@ XCBQueryPointerCookie(
 
 XCBQueryPointer *
 XCBQueryPointerReply(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBCookie cookie
         )
 {
@@ -2647,7 +2647,7 @@ XCBQueryPointerReply(
 
 XCBCookie
 XCBMapWindow(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBWindow window
         )
 {
@@ -2686,28 +2686,41 @@ XCBDestroyWindow(
     return ret;
 }
 
-XCBWindow 
+XCBCookie
+XCBSetCloseDownMode(
+        XCBDisplay *display,
+        uint8_t mode
+    )
+{
+    XCBCookie ret = xcb_set_close_down_mode(display, mode);
+
+    _xcb_push_func(ret);
+
+    return ret;
+}
+
+XCBWindow
 XCBCreateWindow(
-        XCBDisplay *display, 
-        XCBWindow parent, 
-        int32_t x, 
-        int32_t y, 
-        uint32_t width, 
-        uint32_t height, 
-        uint32_t border_width, 
-        uint8_t depth, 
-        uint16_t class, 
-        XCBVisual visual, 
-        u32 valuemask, 
+        XCBDisplay *display,
+        XCBWindow parent,
+        int32_t x,
+        int32_t y,
+        uint32_t width,
+        uint32_t height,
+        uint32_t border_width,
+        uint8_t depth,
+        uint16_t class,
+        XCBVisual visual,
+        u32 valuemask,
         const XCBCreateWindowValueList *value_list
         )
 {
     const XCBWindow id = xcb_generate_id(display);
 
     /* not actually used but just for standards */
-    XCBCookie ret = xcb_create_window_aux(display, depth, id, parent, x, y, width, height, border_width, 
+    XCBCookie ret = xcb_create_window_aux(display, depth, id, parent, x, y, width, height, border_width,
     class, visual, valuemask, value_list);
-    
+
 
     _xcb_push_func(ret);
 
@@ -2748,9 +2761,9 @@ XCBCreateSimpleWindow(
 
 XCBGC
 XCBCreateGC(
-        XCBDisplay *display, 
-        XCBDrawable drawable, 
-        u32 valuemask, 
+        XCBDisplay *display,
+        XCBDrawable drawable,
+        u32 valuemask,
         XCBCreateGCValueList *valuelist
         )
 {
@@ -2781,11 +2794,11 @@ XCBFreeGC(
 }
 int
 XCBSetLineAttributes(
-        XCBDisplay *display, 
-        XCBGC gc, 
-        u32 linewidth, 
-        u32 linestyle, 
-        u32 capstyle, 
+        XCBDisplay *display,
+        XCBGC gc,
+        u32 linewidth,
+        u32 linestyle,
+        u32 capstyle,
         u32 joinstyle
         )
 {
@@ -2802,7 +2815,7 @@ XCBSetLineAttributes(
     mask |= XCB_GC_CAP_STYLE;
     gcvalist[i++] = capstyle;
 
-    mask |= XCB_GC_JOIN_STYLE; 
+    mask |= XCB_GC_JOIN_STYLE;
     gcvalist[i++] = joinstyle;
 
 
@@ -2819,13 +2832,13 @@ XCBSetLineAttributes(
 
 XCBCookie
 XCBChangeProperty(
-        XCBDisplay *display, 
-        XCBWindow window, 
-        XCBAtom property, 
-        XCBAtom type, 
-        u8 format, 
-        u8 mode, 
-        const void *data, 
+        XCBDisplay *display,
+        XCBWindow window,
+        XCBAtom property,
+        XCBAtom type,
+        u8 format,
+        u8 mode,
+        const void *data,
         u32 nelements
         )
 {
@@ -2839,8 +2852,8 @@ XCBChangeProperty(
 
 XCBCookie
 XCBDeleteProperty(
-        XCBDisplay *display, 
-        XCBWindow window, 
+        XCBDisplay *display,
+        XCBWindow window,
         XCBAtom property
         )
 {
@@ -2897,7 +2910,7 @@ XCBCirculateSubwindowsDown(
 
 XCBCookie
 XCBConfigureWindow(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBWindow window,
         u16 value_mask,
         XCBWindowChanges *changes)
@@ -2993,8 +3006,8 @@ XCBSetClassHintFast(
 
 int
 XCBSetClassHint(
-        XCBDisplay *display, 
-        XCBWindow window, 
+        XCBDisplay *display,
+        XCBWindow window,
         XCBClassHint *class_hint
         )
 {
@@ -3006,7 +3019,7 @@ XCBSetClassHint(
     XCBCookie ret = { .sequence = 0 };
 
     if(class_hint->instance_name)
-    {   
+    {
         ilen = strnlen(class_hint->instance_name, length_left);
         length_left -= ilen;
     }
@@ -3019,9 +3032,9 @@ XCBSetClassHint(
     _xcb_push_func(ret);
     (void)ret;
 
-    return 
+    return
         XCBSetClassHintFast(
-            display, 
+            display,
             window,
             ilen,
             clen,
@@ -3032,9 +3045,9 @@ XCBSetClassHint(
 
 XCBCookie
 XCBChangeGC(
-        XCBDisplay *display, 
-        XCBGC gc, 
-        u32 valuemask, 
+        XCBDisplay *display,
+        XCBGC gc,
+        u32 valuemask,
         XCBChangeGCValueList *valuelist
         )
 {
@@ -3047,8 +3060,8 @@ XCBChangeGC(
 
 XCBCookie
 XCBSetForeground(
-        XCBDisplay *display, 
-        XCBGC gc, 
+        XCBDisplay *display,
+        XCBGC gc,
         uint32_t colour
         )
 {
@@ -3065,7 +3078,7 @@ XCBSetForeground(
 
 int
 XCBDiscardReply(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBCookie cookie
         )
 {
@@ -3079,7 +3092,7 @@ XCBDiscardReply(
 
 int
 XCBThrowAwayReply(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBCookie cookie
         )
 {
@@ -3093,7 +3106,7 @@ XCBThrowAwayReply(
 
 /* dumb stuff */
 
-void 
+void
 XCBPrefetchMaximumRequestLength(
         XCBDisplay *display
         )
@@ -3156,7 +3169,7 @@ XCBGetAtomNameReply(
 
 XCBCookie64
 XCBWiden(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBCookie cookie
         )
 {
@@ -3186,7 +3199,7 @@ XCBWiden(
     #if HAVE_SENDMSG
         _xcb_fd in_fd;
     #endif
-    
+
         struct xcb_special_event *special_events;
     };
     enum lazy_reply_tag
@@ -3240,9 +3253,9 @@ XCBWiden(
     return (XCBCookie64){ .sequence = widen };
 }
 
-XCBCookie64 
+XCBCookie64
 XCBWidenCookie(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBCookie cookie
         )
 {
@@ -3251,7 +3264,7 @@ XCBWidenCookie(
 
 XCBCookie
 XCBKillClient(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBWindow win
         )
 {
@@ -3266,8 +3279,8 @@ XCBKillClient(
 
 XCBCookie
 XCBGetWMProtocolsCookie(
-        XCBDisplay *display, 
-        XCBWindow window, 
+        XCBDisplay *display,
+        XCBWindow window,
         XCBAtom WM_PROTOCOLS_ATOM_ID)
 {
     const xcb_get_property_cookie_t cookie = xcb_icccm_get_wm_protocols(display, window, WM_PROTOCOLS_ATOM_ID);
@@ -3280,11 +3293,11 @@ XCBGetWMProtocolsCookie(
 
 int
 XCBGetWMProtocolsReply(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBCookie cookie,
         XCBWMProtocols *protocol_return
         )
-{  
+{
 
     XCBCookie ck = { .sequence = 0 };
     _xcb_push_func(ck);
@@ -3293,7 +3306,7 @@ XCBGetWMProtocolsReply(
     const xcb_get_property_cookie_t cookie1 = { .sequence = cookie.sequence };
     const int ret = xcb_icccm_get_wm_protocols_reply(display, cookie1, protocol_return, &err);
     if(err)
-    {   
+    {
         __XValidateReply(display, NULL, err);
         return 0;
     }
@@ -3307,7 +3320,7 @@ XCBWipeGetWMProtocols(
 {
 
     if(!protocols)
-    {   
+    {
 #ifdef XCB_TRL_ENABLE_DEBUG
         _XCB_MANUAL_DEBUG0("No WMprotocols to wipe? this shouldnt be possible.");
         XCBBreakPoint();
@@ -3329,7 +3342,7 @@ XCBGetWMHintsCookie(
         XCBDisplay *display,
         XCBWindow win
         )
-{ 
+{
     xcb_get_property_cookie_t cookie = xcb_icccm_get_wm_hints(display, win);
     XCBCookie ret = { .sequence = cookie.sequence };
 
@@ -3381,7 +3394,7 @@ XCBGetWMHintsReply(
         memmove(reply, data, length);
 
         if(num_elem == XCB_ICCCM_NUM_WM_SIZE_HINTS_ELEMENTS - 1)
-        {   
+        {
             /* dont ask me what this does but its a suppose to be here */
             ((xcb_icccm_wm_hints_t *)reply)->window_group = 0;
         }
@@ -3389,7 +3402,7 @@ XCBGetWMHintsReply(
 
     /* error handling */
     if(err)
-    {   
+    {
         __XValidateReply(display, NULL, err);
 USER_ERROR:
         if(reply)
@@ -3417,7 +3430,7 @@ XCBSetWMHintsCookie(
 
 XCBCookie
 XCBGetWMNameCookie(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBWindow win
         )
 {
@@ -3431,8 +3444,8 @@ XCBGetWMNameCookie(
 
 uint8_t
 XCBGetWMNameReply(
-        XCBDisplay *display, 
-        XCBCookie cookie, 
+        XCBDisplay *display,
+        XCBCookie cookie,
         XCBTextProperty *prop_return
         )
 {
@@ -3441,7 +3454,7 @@ XCBGetWMNameReply(
     u8 status = xcb_icccm_get_wm_name_reply(display, cookie1, prop_return, &err);
 
     if(err)
-    {   
+    {
         __XValidateReply(display, NULL, err);
         status = 0;
     }
@@ -3495,7 +3508,7 @@ XCBGetWMNormalHintsReply(
     u8 status = xcb_icccm_get_wm_normal_hints_reply(display, cookie1, hints_return, &err);
 
     if(err)
-    {   
+    {
         __XValidateReply(display, NULL, err);
         status = 0;
     }
@@ -3524,7 +3537,7 @@ XCBGetWMNormalHintsReplyNoFill(
         u8 no_data = !data;
 
         if(bad_format || bad_atom || no_data)
-        {   
+        {
             __XCBThrowError(display, cookie, XCBBadImplementation, X_GetProperty, XCB_NONE);
             goto USER_ERROR;
         }
@@ -3565,7 +3578,7 @@ XCBGetWMNormalHintsReplyNoFill(
     }
 
     if(err)
-    {   
+    {
         __XValidateReply(display, NULL, err);
 USER_ERROR:
         if(reply)
@@ -3578,7 +3591,7 @@ USER_ERROR:
 
 XCBCookie
 XCBGetWMClassCookie(
-        XCBDisplay *display, 
+        XCBDisplay *display,
         XCBWindow win
         )
 {
@@ -3605,7 +3618,7 @@ XCBGetWMClassReply(
     xcb_get_property_cookie_t cookie1 = { .sequence = cookie.sequence };
     memset(class_return, 0, sizeof(XCBWMClass));
     u8 status = xcb_icccm_get_wm_class_reply(display, cookie1, class_return, &err);
-    
+
     if(err)
     {
         __XValidateReply(display, NULL, err);
@@ -3626,7 +3639,7 @@ XCBWipeGetWMClass(
     _xcb_push_func(ret);
 
     if(!class)
-    {   
+    {
 #ifdef XCB_TRL_ENABLE_DEBUG
         _XCB_MANUAL_DEBUG0("No class to wipe? this shouldnt be possible.");
         XCBBreakPoint();
@@ -3635,4 +3648,58 @@ XCBWipeGetWMClass(
     }
     xcb_icccm_get_wm_class_reply_wipe(class);
     class->_reply = NULL;
+}
+
+XCBCookie
+XCBSetSelectionOwner(
+        XCBDisplay *display,
+        XCBAtom selection,
+        XCBWindow owner,
+        XCBTime time
+        )
+{
+    XCBCookie cookie = xcb_set_selection_owner(display, owner, selection, time);
+
+    _xcb_push_func(cookie);
+
+    return cookie;
+}
+
+XCBCookie
+XCBGetSelectionOwnerCookie(
+        XCBDisplay *display,
+        XCBAtom atom
+        )
+{
+    xcb_get_selection_owner_cookie_t cookie = xcb_get_selection_owner(display, atom);
+
+    XCBCookie ret = { .sequence = cookie.sequence };
+
+    _xcb_push_func(ret);
+
+    return ret;
+}
+
+XCBWindow
+XCBGetSelectionOwnerReply(
+        XCBDisplay *display,
+        XCBCookie cookie
+        )
+{
+    XCBGenericError *err = NULL;
+
+    xcb_get_selection_owner_cookie_t cookie1 = { .sequence = cookie.sequence };
+    xcb_get_selection_owner_reply_t *reply = xcb_get_selection_owner_reply(display, cookie1, &err);
+
+    XCBWindow win = XCBNone;
+
+    if(reply)
+    {
+        win = reply->owner;
+        free(reply);
+    }
+
+    __XValidateReply(display, NULL, err);
+
+    return win;
 }

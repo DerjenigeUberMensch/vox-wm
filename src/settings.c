@@ -9,6 +9,7 @@
 #include "FNotify/fnotify.h"
 
 #include "settings.h"
+#include "SCParser/parser.h"
 #include "util.h"
 #include "safebool.h"
 #include "config.h"
@@ -76,7 +77,7 @@ USSetupCFGDefaults(
         UserSettings *us
         )
 {
-    if(!us || !us->cfg)
+    if(!us || !us->holder)
     {   return;
     }
 
@@ -106,6 +107,8 @@ USInit(
 
     memset(settings_init, 0, sizeof(UserSettings));
 
+    settings_init->holder = items;
+    USSetupCFGDefaults(settings_init);
     settings_init->cfg = SCParserCreate(UserSettingsLAST);
     settings_init->use_threads = 0;
 
@@ -117,9 +120,7 @@ USInit(
 
     if(settings_init->cfg)
     {
-        settings_init->holder = items;
         USSetupCFGVars(settings_init);
-        USSetupCFGDefaults(settings_init);
         USLoad(settings_init);
     }
 }
@@ -293,7 +294,11 @@ USDefaultSetting(
         unsigned int setting
         )
 {
-    Generic ret;
+    Generic ret = {0};
+
+    if(!settings->holder)
+    {   return ret;
+    }
 
     US_LOCK_MUTEX(settings);
 
@@ -339,6 +344,10 @@ USSetSetting(
         Generic data
         )
 {
+    if(!settings->holder || setting >= UserSettingsLAST)
+    {   return;
+    }
+
     US_LOCK_MUTEX(settings);
 
     SCSetting *usdata = settings->holder;
@@ -353,13 +362,13 @@ USWipe(
         UserSettings *settings
         )
 {
-    if(!settings->cfg)
-    {   return;
+    if(settings->cfg)
+    {   SCParserDestroy(settings->cfg);
     }
 
-    SCParser *cfg = settings->cfg;
+    if(settings->use_threads)
+    {   pthread_mutex_destroy(&settings->mutex);
+    }
 
-    SCParserDestroy(cfg);
-    pthread_mutex_destroy(&settings->mutex);
     memset(settings, 0, sizeof(UserSettings));
 }

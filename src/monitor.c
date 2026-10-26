@@ -59,7 +59,7 @@ void
 attachdesktoplast(Monitor *m, Desktop *desk)
 {
     if(!m->desktops)
-    {   
+    {
         attachdesktop(m, desk);
         return;
     }
@@ -178,7 +178,7 @@ cleanupmons(void)
     m = _wm.mons;
 
     while(m)
-    {   
+    {
         mnext = m->next;
         cleanupmon(m);
         m = mnext;
@@ -232,7 +232,7 @@ desktopnumindextodesktop(Monitor *m, u16 index)
     return desk;
 }
 
-Cardinal 
+Cardinal
 dirtoemptymonl(Monitor *base)
 {
     if(!base)
@@ -429,7 +429,7 @@ dirtomon(Monitor *base, Cardinal dir)
         {   continue;
         }
 
-        i64 score = side * side * 4 + forward * forward;
+        i64 score = (i64)side * side * 4 + (i64)forward * forward;
 
         if(score < best)
         {
@@ -450,15 +450,15 @@ rectmoncount(i32 x, i32 y, i32 w, i32 h)
 
     /* TODO: GCC is complaining about something here */
     if(unlikely(x > INT16_MAX || y > INT16_MAX || w > UINT16_MAX || h > UINT16_MAX))
-    {   
+    {
         DebugError("FIXME: Overflow in rectmoncount, returning 0. x: %d, y: %d, w: %d, h: %d", x, y, w, h);
         return 0;
     }
 
 
     for(m = _wm.mons; m; m = nextmonitor(m))
-    {   
-        if(INTERSECT(x, y, w, h, m) > 0)
+    {
+        if(INTERSECTMON(x, y, w, h, m) > 0)
         {   ++count;
         }
     }
@@ -469,11 +469,11 @@ rectmoncount(i32 x, i32 y, i32 w, i32 h)
 Monitor *
 recttomon(i16 x, i16 y, u16 w, u16 h)
 {
-	Monitor *m, *r = _wm.selmon;
+	Monitor *m, *r = NULL;
 	i32 a, area = 0;
 
 	for (m = _wm.mons; m; m = m->next)
-		if ((a = INTERSECT(x, y, w, h, m)) > area) {
+		if ((a = INTERSECTMON(x, y, w, h, m)) > area) {
 			area = a;
 			r = m;
 		}
@@ -501,7 +501,7 @@ nextmonitor(Monitor *m)
     return m ? m->next : m;
 }
 
-void 
+void
 setdesktopcount(Monitor *m, uint16_t desktops)
 {
     const u8 MIN_DESKTOPS = 1;
@@ -562,15 +562,19 @@ setdesktopcount(Monitor *m, uint16_t desktops)
      * 2. Only updates changes when we are on a different mon
      */
     if(_wm.selmon && _wm.selmon == m)
-    {   updatedesktopnames();
+    {
+        updatedesktopnames();
+        updatedesktopnum();
+        updatedesktopviewport();
+        updatedesktopworkarea();
     }
 }
 
-void 
+void
 setdesktopsel(Monitor *mon, Desktop *desksel)
 {
     if(desksel->mon != mon)
-    {   
+    {
         /* TODO maybe add functionality to detach desktop or something? */
         Debug0("Cant set desktop of different monitor, FIXME");
         return;
@@ -621,7 +625,7 @@ setdesktopsel(Monitor *mon, Desktop *desksel)
     }
 }
 
-void 
+void
 setdesktopseli(Monitor *mon, uint16_t num)
 {
     Desktop *desk = mon->desktops;
@@ -636,10 +640,10 @@ setdesktopseli(Monitor *mon, uint16_t num)
     }
 }
 
-void 
+void
 setmonsel(Monitor *m)
 {
-    if(_wm.selmon == m)
+    if(!m || _wm.selmon == m)
     {   return;
     }
 
@@ -677,7 +681,7 @@ updategeom(void)
 {
 	int dirty = 0;
 
-#ifdef XINERAMA 
+#ifdef XINERAMA
     int xienabled = 0;
     int xiactive = 0;
     XCBQueryExtension *extrep = NULL;
@@ -762,7 +766,7 @@ updategeom(void)
         {
             /* get last mon */
 			for (m = _wm.mons; m && m->next; m = m->next)
-            /* this semi colon just silences clang errors, no other reasons its there 
+            /* this semi colon just silences clang errors, no other reasons its there
              * yes its for the loop above
              */
                 ;
@@ -773,12 +777,14 @@ updategeom(void)
                 Desktop *desk;
 
                 for(desk = m->desktops; desk; desk = desk->next)
-                {   
+                {
                     Client *c1;
 
                     /* move all clients in NOW deleted monitor to the first monitor desktop */
                     for(c1 = startclient(desk); c1;)
                     {
+                        dirty = 1;
+
                         Client *next = nextclient(c1);
                         setclientdesktop(c1, _wm.mons->desktops);
                         c1 = next;
@@ -798,7 +804,7 @@ updategeom(void)
 		if (!_wm.mons)
         {   _wm.mons = createmon();
         }
-		if (_wm.mons->mw != _wm.sw || _wm.mons->mh != _wm.sh) 
+		if (_wm.mons->mw != _wm.sw || _wm.mons->mh != _wm.sh)
         {
 			dirty = 1;
 			_wm.mons->mw = _wm.mons->ww = _wm.sw;
@@ -808,11 +814,13 @@ updategeom(void)
             //ASSERT(0);
 		}
 	}
-	if (dirty) 
+
+	if (dirty)
     {
-		_wm.selmon = _wm.mons;
 		_wm.selmon = wintomon(_wm.root);
+        _wm.selmon = _wm.selmon ? _wm.selmon : _wm.mons;
 	}
+
 	return dirty;
 }
 
@@ -853,7 +861,7 @@ updateclientlist(XCBWindow win, enum ClientListModes type)
         int status;
 
         if(!ASSERT(winsearch))
-        {   
+        {
             DebugWarn("Failed to get window");
             continue;
         }
@@ -881,16 +889,16 @@ updateclientlist(XCBWindow win, enum ClientListModes type)
     XCBWindow nowins = XCB_NONE;
 
     GArrayGetArray(&_wm.clients, &data, &item_len, NULL, &item_size);
-    
+
     if(!data)
-    {   
+    {
         data = &nowins;
         item_size = sizeof(XCBWindow);
         item_len = 0;
     }
 
     if(!ASSERT(item_size == sizeof(XCBWindow)))
-    {   
+    {
         DebugError("item size is incorrect size.");
         return;
     }
@@ -901,8 +909,8 @@ updateclientlist(XCBWindow win, enum ClientListModes type)
     {   Debug("%d", *(XCBWindow *)GArrayAt(&_wm.clients, i));
     }
     */
-    
-    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientList], 
+
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientList],
             XCB_ATOM_WINDOW, 32, XCBPropModeReplace, (const char *)data, item_len);
 }
 
@@ -921,6 +929,20 @@ updateclientstackinglist(void)
     {   return;
     }
 
+    /* Desktops are lowered like this in restackc make sure that DEsktop clients are below every other client */
+    for(m = _wm.mons; m; m = nextmonitor(m))
+    {
+        for(desk = m->desktops; desk; desk = nextdesktop(desk))
+        {
+            for(c = startstack(desk); c; c = nextstack(c))
+            {
+                if(ISDESKTOP(c))
+                {   GArrayInsert(&_wm.clientstacking, &c->win, GArrayStart(&_wm.clientstacking));
+                }
+            }
+        }
+    }
+
     for(m = _wm.mons; m; m = m->next)
     {
         for(desk = m->desklast; desk; desk = prevdesktop(desk))
@@ -931,6 +953,10 @@ updateclientstackinglist(void)
 
             for(c = laststack(desk); c; c = prevstack(c))
             {
+                if(ISDESKTOP(c))
+                {   continue;
+                }
+
                 status = GArrayPushBack(&_wm.clientstacking, &c->win);
 
                 /* stacking isnt that important to care about failign to pushback some clients */
@@ -944,6 +970,10 @@ updateclientstackinglist(void)
 
         for(c = laststack(desk); c; c = prevstack(c))
         {
+            if(ISDESKTOP(c))
+            {   continue;
+            }
+
             status = GArrayPushBack(&_wm.clientstacking, &c->win);
 
             /* stacking isnt that important to care about failign to pushback some clients */
@@ -958,9 +988,9 @@ updateclientstackinglist(void)
     size_t item_size = 0;
 
     GArrayGetArray(&_wm.clientstacking, &data, &item_len, NULL, &item_size);
-    
+
     if(!data)
-    {   
+    {
         XCBWindow nowins = XCB_NONE;
 
         data = &nowins;
@@ -969,7 +999,7 @@ updateclientstackinglist(void)
     }
 
     if(!ASSERT(item_size == sizeof(XCBWindow)))
-    {   
+    {
         Debug0("item size is incorrect size.");
         return;
     }
@@ -981,7 +1011,7 @@ updateclientstackinglist(void)
     }
     */
 
-    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking], 
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetClientListStacking],
             XCB_ATOM_WINDOW, 32, XCBPropModeReplace, (const char *)data, item_len);
 }
 
@@ -995,7 +1025,7 @@ updatenumlockmask(void)
     reply = xcb_get_modifier_mapping_reply(_wm.dpy, xcb_get_modifier_mapping(_wm.dpy), &err);
 
     if(err)
-    {   
+    {
         if(reply)
         {   free(reply);
         }
@@ -1025,7 +1055,7 @@ updatenumlockmask(void)
 	for(i = 0; i < 8; i++)
     {
 		for(j = 0; j < reply->keycodes_per_modifier; j++)
-        {   
+        {
             if(codes[i * reply->keycodes_per_modifier + j] == target)
             {   _wm.numlockmask = (1 << i);
             }
@@ -1040,12 +1070,18 @@ wintomon(XCBWindow win)
     i16 x, y;
     Client *c;
 
-    if(win == _wm.root && getrootptr(&x, &y)) 
-    {   return recttomon(x, y, 1, 1);
+    if(win == _wm.root && getrootptr(&x, &y))
+    {
+        Monitor *m = recttomon(x, y, 1, 1);
+
+        if(m)
+        {   return m;
+        }
     }
 
-    if ((c = wintoclient(win))) 
+    if ((c = wintoclient(win)))
     {   return c->desktop->mon;
     }
-    return _wm.selmon;
+
+    return NULL;
 }

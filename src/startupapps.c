@@ -131,8 +131,16 @@ ReadStartupApps(
             continue;
         }
 
-        if(wordexp(buff, &word, WRDE_NOCMD) != 0)
-        {   
+        memset(&word, 0, sizeof(word));
+
+        status = wordexp(buff, &word, WRDE_NOCMD);
+
+        if(status != 0)
+        {  
+            if(status == WRDE_NOSPACE) 
+            {   wordfree(&word);
+            }
+
             DebugWarn("Failed to parse %s", buff);
             continue;
         }
