@@ -46,7 +46,7 @@ static XCBKeysym WM_KEYBIND_FIND_KEYSYM_X11(const char *keysym_str)
     return XCB_NO_SYMBOL;
 }
 
-uint16_t 
+uint16_t
 WMKeybindModifierFromString(const char *mod_str)
 {
     uint16_t mod = WM_KEYBIND_FIND_MODIFIER_MASK_X11(mod_str);
@@ -58,7 +58,7 @@ WMKeybindModifierFromString(const char *mod_str)
     return XCB_NO_SYMBOL;
 }
 
-XCBKeysym 
+XCBKeysym
 WMKeybindKeysymFromString(const char *keysym_str)
 {
     XCBKeysym sym = WM_KEYBIND_FIND_KEYSYM_X11(keysym_str);
@@ -67,7 +67,7 @@ WMKeybindKeysymFromString(const char *keysym_str)
     if(sym != XCB_NO_SYMBOL)
     {   return sym;
     }
- 
+
     sym = XStringToKeysym(keysym_str);
 
     KeySym xlib_sym = sym;
@@ -82,10 +82,10 @@ WMKeybindKeysymFromString(const char *keysym_str)
 
 /*( TODO: I dont even know how this works even though I wrote it )*/
 bool
-WMKeybindHandler(u16 mod, XCBKeyCode code, enum WMKeyType type, bool is_button, const XCBGenericEvent *optional_event)
+WMKeybindHandler(u16 mod, XCBKeyCode code, enum WMKeyType type, bool is_button, const XCBEvent *optional_event)
 {
     if(!ASSERT(type == WM_INPUT_PRESS || type == WM_INPUT_RELEASE))
-    {   
+    {
         DebugError("Invalid key type: %d", type);
         return false;
     }
@@ -97,7 +97,7 @@ WMKeybindHandler(u16 mod, XCBKeyCode code, enum WMKeyType type, bool is_button, 
      * sym = XCBKeySymbolsGetKeySym(_wm.syms,  keydetail, 0);
      */
     /* This Could work MAYBE allowing for upercase and lowercase Keybinds However that would complicate things due to our ability to mask Shift
-     * sym = XCBKeySymbolsGetKeySym(_wm.syms, keydetail, cleanstate); 
+     * sym = XCBKeySymbolsGetKeySym(_wm.syms, keydetail, cleanstate);
      */
     XCBKeysym sym = XCB_NO_SYMBOL;
 
@@ -118,7 +118,7 @@ WMKeybindHandler(u16 mod, XCBKeyCode code, enum WMKeyType type, bool is_button, 
         WMKeyBind *keybind = GArrayAt(&keybind_keybinds, i);
 
         if(!ASSERT(keybind))
-        {   
+        {
             DebugError("Keybind is NULL");
             continue;
         }
@@ -139,13 +139,13 @@ WMKeybindHandler(u16 mod, XCBKeyCode code, enum WMKeyType type, bool is_button, 
             WMKey *key = GArrayAt(&keybind->keysyms, j);
 
             if(!ASSERT(key))
-            {   
+            {
                 DebugError("Key is NULL");
                 continue;
             }
 
             if(!is_button && key->sym == sym)
-            {   
+            {
                 inputfound= true;
                 key->pressed = (type == WM_INPUT_PRESS);
             }
@@ -158,13 +158,13 @@ WMKeybindHandler(u16 mod, XCBKeyCode code, enum WMKeyType type, bool is_button, 
             WMButton *button = GArrayAt(&keybind->buttons, j);
 
             if(!ASSERT(button))
-            {   
+            {
                 DebugError("Button is NULL");
                 continue;
             }
 
             if(is_button && button->button == code)
-            {   
+            {
                 inputfound= true;
                 button->pressed = (type == WM_INPUT_PRESS);
             }
@@ -205,7 +205,7 @@ WMKeybindHandler(u16 mod, XCBKeyCode code, enum WMKeyType type, bool is_button, 
         if(keybindRan)
         {
             if(!keybind->func)
-            {   
+            {
                 if(GArrayEnd(&keybind->buttons) - GArrayStart(&keybind->buttons) > 0)
                 {   /* ignore.... */
                 }
@@ -215,7 +215,7 @@ WMKeybindHandler(u16 mod, XCBKeyCode code, enum WMKeyType type, bool is_button, 
 
             }
             else
-            {   
+            {
                 /* callback may corrupt keybind */
                 WMKeyBind kb = *keybind;
 

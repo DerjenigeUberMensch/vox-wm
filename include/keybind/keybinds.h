@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 #include <X11/keysym.h>
-#include <X11/XF86keysym.h> 
+#include <X11/XF86keysym.h>
 
 #include "keybind_definitions.h"
 #include "keybind_extras.h"
@@ -32,7 +32,7 @@ WMButton
 };
 
 
-struct 
+struct
 WMKeyBind
 {
     uint16_t mod;              /* Modifier(s)                      */
@@ -40,7 +40,7 @@ WMKeyBind
     uint8_t type;              /* Press or Release                 */
     uint8_t pad0[5];
 
-    const XCBGenericEvent *ev; /* Optional XCB event              */
+    const XCBEvent *ev; /* Optional XCB event              */
 
     GArray keysyms;             /* sizeof(WMKey)                   */
     GArray buttons;             /* sizeof(WMButton)                */
@@ -75,7 +75,7 @@ int WMKeybindAdd(uint16_t xcb_modmask_modifiers, XCBKeysym keysyms[], size_t num
  * RETURN: EXIT_FAILURE on Failure
  */
 int WMKeybindRemove(uint16_t modifier_mask_x11, XCBKeysym keysyms[], size_t num_keysyms, XCBButton buttons[], size_t num_buttons);
-/* Removes all keybinds. 
+/* Removes all keybinds.
  *
  * NOTE: Adding or removing a keybind only updates the internal state, please run WMKeybindGrabKeys() after adding or removing keybinds to update the X11 state.
  *
@@ -83,7 +83,7 @@ int WMKeybindRemove(uint16_t modifier_mask_x11, XCBKeysym keysyms[], size_t num_
  */
 void WMKeybindRemoveAll(void);
 /* Destroy the keybind system and free all memory
- * 
+ *
  * This function does not return a value.
  */
 void WMKeybindDestroy(void);

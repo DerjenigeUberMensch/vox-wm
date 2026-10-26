@@ -10,7 +10,7 @@ enum WMKeyType;
  * RETURN: true if a keybind was found and handled.
  * RETURN: false if no keybind was found or if an error occurred.
  */
-bool WMKeybindHandler(u16 mod, XCBKeyCode code, enum WMKeyType type, bool is_button, const XCBGenericEvent *optional_event);
+bool WMKeybindHandler(u16 mod, XCBKeyCode code, enum WMKeyType type, bool is_button, const XCBEvent *optional_event);
 /* Try and find the keysym from the string provided.
  *
  * RETURN: XCBKeysym on Succesful string to keybind lookup.
