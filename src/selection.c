@@ -70,7 +70,7 @@ setupselection(void)
     XCBCookie versioncookie = XCBInternAtomCookie(_wm.dpy, "VERSION", 0);
     XCBCookie atompaircookie = XCBInternAtomCookie(_wm.dpy, "ATOM_PAIR", 0);
     XCBCookie managercookie = XCBInternAtomCookie(_wm.dpy, "MANAGER", 0);
-    XCBCookie multiplecookie = XCBInternAtomCookie(_wm.dpy, "WM_MULTIPLE", 0);
+    XCBCookie multiplecookie = XCBInternAtomCookie(_wm.dpy, "MULTIPLE", 0);
 
     targetsatom = XCBInternAtomReply(_wm.dpy, targetscookie);
     timestampatom = XCBInternAtomReply(_wm.dpy, timestampcookie);
