@@ -21,13 +21,13 @@ int32_t MAX_ROUNDING_ERROR(void) { return INT32_C(2); }
  * We could maybe have a timer or something that would make all configure requests apply this also.
  * Still dont know why, they do this (firefox), wouldnt it look better to do it before? IDK.
  */
-double COULDBEFLOATINGGEOM(Client *c)  
+double COULDBEFLOATINGGEOM(Client *c)
                                 {
                                     enum { ARRAY_LENGTH = 7 };
                                     enum { SCALE, WEIGHT, WEIGHT_LENGHT };
 
-                                    const double 
-                                    SCALE_SIZE_WEIGHTS_LONG[ARRAY_LENGTH][WEIGHT_LENGHT] = 
+                                    const double
+                                    SCALE_SIZE_WEIGHTS_LONG[ARRAY_LENGTH][WEIGHT_LENGHT] =
                                     {
                                         /* SCALE | MULTIPLIER */
                                         {   .95,        0      },
@@ -39,8 +39,8 @@ double COULDBEFLOATINGGEOM(Client *c)
                                         {   .10,       1       },
                                     };
 
-                                    const double 
-                                    SCALE_SIZE_WEIGHTS_SHORT[ARRAY_LENGTH][WEIGHT_LENGHT] = 
+                                    const double
+                                    SCALE_SIZE_WEIGHTS_SHORT[ARRAY_LENGTH][WEIGHT_LENGHT] =
                                     {
                                         /* SCALE | MULTIPLIER */
                                         {   .95,       .00     },
@@ -106,7 +106,7 @@ double COULDBEFLOATINGGEOM(Client *c)
 
                                     return (scorew + scoreh) / 2;
                                 }
-u32 
+u32
 __COULD__BE__FLOATING__POSITION__FITS(const Client *c, double width_ratio, double height_ratio)
 {
     const Monitor *m = c->desktop->mon;
@@ -142,8 +142,8 @@ double COULDBEFLOATINGPOSITION(Client *c)
                                     enum { ARRAY_LENGTH = 7 };
                                     enum { SCALE, WEIGHT, WEIGHT_LENGHT };
 
-                                    const double 
-                                    POSITION_WEIGHTS[ARRAY_LENGTH][WEIGHT_LENGHT] = 
+                                    const double
+                                    POSITION_WEIGHTS[ARRAY_LENGTH][WEIGHT_LENGHT] =
                                     {
                                         /* OFFSET | MULTIPLIER */
                                         {   .50,        1.25   },
@@ -173,65 +173,65 @@ double COULDBEFLOATINGPOSITION(Client *c)
 double COULDBEFLOATINGHINTS(Client *c)
                                 {
                                     double score = 100;
-                                    /* This check is mostly for (some) popup windows 
+                                    /* This check is mostly for (some) popup windows
                                      * Mainly those which dont matter, like steams startup display, but are nice to have's.
                                      */
-                                    
+
                                     /* Splash windows are like those "intro" logos they display on some applications, ex: audacity */
                                     if(ISSPLASH(c))
-                                    {   
+                                    {
                                         score *= 0.95;
                                         Debug0("Splash Window.");
                                     }
                                     /* Modal dialog boxes are just persistent dialog boxes (aka dont focus anything else as they are important) */
                                     else if(ISMODAL(c))
-                                    {   
+                                    {
                                         score *= 0.90;
                                         Debug0("Modal Window.");
                                     }
                                     /* Popup menus see above */
                                     else if(ISPOPUPMENU(c))
-                                    {   
+                                    {
                                         score *= 0.90;
                                         Debug0("Popup Menu");
                                     }
                                     /* Dialog boxes are usually floating */
                                     else if(ISDIALOG(c))
-                                    {   
+                                    {
                                         score *= 0.90;
                                         Debug0("Dialog Menu");
                                     }
                                     /* Notification boxes like "changed music" things ussualy arent too important, but should still be floating */
                                     else if(ISNOTIFICATION(c))
-                                    {   
+                                    {
                                         score *= 0.85;
                                         Debug0("Notification.");
                                     }
                                     /* These are like modal boxes but less important */
                                     else if(ISCOMBO(c))
-                                    {   
+                                    {
                                         score *= 0.85;
                                         Debug0("Combo Menu,");
                                     }
                                     /* Above windows ussually are small utility boxes, that shouldnt cover other content completly */
                                     else if(ISABOVE(c))
-                                    {   
+                                    {
                                         score *= 0.85;
                                         Debug0("AlwaysOnTop Window detected.");
                                     }
                                     /* This checks for other non dialog types that sort of work like dialog(s) if not maximized. */
                                     else if(ISUTILITY(c))
-                                    {   
+                                    {
                                         score *= 0.85;
                                         Debug0("Util Window detected, maybe picture-in-picture?");
                                     }
                                     else if(ISMAXIMIZEDVERT(c) && ISMAXIMIZEDHORZ(c))
-                                    {   
+                                    {
                                         score *= .01;
                                         Debug0("Maximized Window detected.");
                                     }
                                     else if(ISNORMAL(c))
-                                    {   
+                                    {
                                         score *= .25;
                                         Debug0("Normal Window detected.");
                                     }
@@ -245,7 +245,7 @@ double COULDBEFLOATINGHINTS(Client *c)
                                     return score;
                                 }
 
-static bool 
+static bool
 __FLOAT__TYPE__EXTRA__CHECKS(Client *c)
 {
     const char *const classname = c->classname;
@@ -287,7 +287,7 @@ __FLOAT__TYPE__IS__FLOATING(
     if(total > MAX_SCORE * .35)
     {
         if(__FLOAT__TYPE__EXTRA__CHECKS(c))
-        {   
+        {
             Debug0("FLOAT CHECK BYPASSED.");
             return true;
         }
@@ -298,8 +298,8 @@ __FLOAT__TYPE__IS__FLOATING(
 
 
 
-bool 
-SHOULDBEFLOATING(Client *c) 
+bool
+SHOULDBEFLOATING(Client *c)
                                 {
                                     /* Note dont check if ISFIXED(c) as games often set that option */
                                     const double htype = COULDBEFLOATINGHINTS(c);
@@ -309,7 +309,7 @@ SHOULDBEFLOATING(Client *c)
                                     bool ret;
 
                                     if(USGetSetting(&_cfg, UseLegacyFloatingSystem).data8[0])
-                                    {   
+                                    {
                                         ret = LEGACY_SHOULDBEFLOATING(c);
                                         (void)htype;
                                         (void)gtype;
@@ -320,7 +320,7 @@ SHOULDBEFLOATING(Client *c)
                                     }
 
                                     if(!ret)
-                                    {   
+                                    {
                                         char *name = "NULL";
 
                                         if(c->netwmname)
@@ -366,7 +366,7 @@ SHOULDCENTER(Client *c)
 
                                 /* leeway some clients calculations have roundring errors*/
                                 const int LEEWAY_PX = MAX_ROUNDING_ERROR();
-                                
+
                                 /* Monitor */
                                 bool xleeway = IN_RANGE(c->x, m->mx, LEEWAY_PX);
                                 bool yleeway = IN_RANGE(c->y, m->my, LEEWAY_PX);
@@ -406,8 +406,9 @@ u32 SHOULDMAXIMIZE(Client *c)   {
                                     }
 
                                     Monitor *m = c->desktop->mon;
+
                                     const i16 wx = m->wx;
-                                    const i16 wy = m->my;
+                                    const i16 wy = m->wy;
                                     const i16 mx = m->mx;
                                     const i16 my = m->my;
 
@@ -445,6 +446,7 @@ u32 SHOULDMAXIMIZE(Client *c)   {
 
 /* used in manage */
 u32 DOCKEDINITIAL(Client *c)    {   Monitor *m = c->desktop->mon;
+
                                     const i16 wx = m->wx;
                                     const i16 wy = m->my;
                                     const i16 mx = m->mx;
@@ -473,12 +475,12 @@ u32 DOCKEDINITIAL(Client *c)    {   Monitor *m = c->desktop->mon;
                                         ;
                                 }
 
-u32 SHOULDMANAGE(const XCBWindow window) 
+u32 SHOULDMANAGE(const XCBWindow window)
                                 {
                                     Client *c = wintoclient(window);
                                     XCBWindow already_managed_window = c ? c->win : 0;
                                     XCBWindow already_managed_decor_window = c ? c->decor->win : 0;
-                                    const XCBWindow INVALID_WINDOW[] = 
+                                    const XCBWindow INVALID_WINDOW[] =
                                     {
                                         XCB_NONE,
                                         _wm.root,
@@ -541,7 +543,7 @@ u32 CANMANAGE(XCBWindow win, bool allow_unmapped_window, XCBGetWindowAttributes 
                     enum { NO_FORMAT = 1 };
 
                     if(wastate)
-                    {   
+                    {
                         data = XCBGetWindowPropertyValue(wastate);
                         status = XCBGetWindowPropertyValueSize(wastate, &size);
                     }
@@ -566,7 +568,7 @@ u32 CANMANAGE(XCBWindow win, bool allow_unmapped_window, XCBGetWindowAttributes 
                     if(wastate)
                     {
                         if(status != NO_FORMAT && data && size >= sizeof(*data))
-                        {   
+                        {
                             if(*data != XCB_WINDOW_NORMAL_STATE && *data != XCB_WINDOW_ICONIC_STATE && !allow_unmapped_window)
                             {   goto NO_MANAGE;
                             }

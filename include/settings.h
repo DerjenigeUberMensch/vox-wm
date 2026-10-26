@@ -19,11 +19,18 @@ UserSettingType
     RefreshRate,
     SmartResizing,
     CenteringBias,
+    /* stub
+     * Terminal,
+     * Launcher,
+     */
 
     HoverFocus,
     UseDecorations,
     UseClientSideDecorations,
     PreferClientSideDecorations,
+    /* stub
+     * AllowCommandFallback,
+     */
 
     /* legacy */
     UseLegacyFloatingSystem,
@@ -92,7 +99,7 @@ UserSettingType
 typedef struct SCSetting SCSetting;
 typedef struct UserSettings UserSettings;
 
-struct 
+struct
 SCSetting
 {
     Generic default_data;
@@ -106,7 +113,7 @@ SCSetting
 };
 
 
-struct 
+struct
 UserSettings
 {
     SCParser *cfg;          /* Cfg holder                                                       */
