@@ -55,7 +55,7 @@ EWMHFlags
 /* Window map states, Widthdrawn, Iconic, Normal. */
 #define WStateFlagMapIconic     (1u << 31)
 
-enum 
+enum
 WMMapState
 {
     WMMapStateMapped,
@@ -88,17 +88,17 @@ ClientFlags
 };
 
 /* kill client type */
-enum 
-KillType 
-{ 
-    Graceful, 
-    Safedestroy, 
-    Destroy, 
+enum
+KillType
+{
+    Graceful,
+    Safedestroy,
+    Destroy,
 };
 
 /* Manage cookies */
 /* Manage cookies */
-enum 
+enum
 ManageClientProperties
 {
     ManageClientAttributes,
@@ -118,6 +118,7 @@ ManageClientProperties
     ManageClientPid,
     ManageClientIcon,
     ManageClientMotif,
+    ManageClientNetWMDesktop,
 
     ManageClientLAST
 };
@@ -166,11 +167,11 @@ struct Client
 
 
                         /* Reserved depth of monitor */
-    uint16_t strutdepth[WMStrutDirectionLAST]; 
+    uint16_t strutdepth[WMStrutDirectionLAST];
                         /* Reserved start of monitor */
-    uint16_t strutstart[WMStrutDirectionLAST]; 
+    uint16_t strutstart[WMStrutDirectionLAST];
                         /* Reserved End of monitor   */
-    uint16_t strutend[WMStrutDirectionLAST];   
+    uint16_t strutend[WMStrutDirectionLAST];
 
     XCBWindow win;      /* Client Window            */
     pid_t pid;          /* Client Pid               */
@@ -213,21 +214,23 @@ void NonNullAll applygravity(const enum XCBBitGravity gravity, int32_t *x, int32
 uint8_t NonNullAll applysizehints(Client *c, int32_t *x, int32_t *y, int32_t *width, int32_t *height, uint8_t interact);
 /* centers a client to the screen accouting for settings of course */
 void NonNullAll centerclient(Client *c);
-/* Frees Client and allocated client properties. 
+/* Frees Client and allocated client properties.
 */
 void NonNull cleanupclient(Client *c);
 /* Initializes the Clients colormap */
 void NonNullArg(1) clientinitcolormap(Client *c, XCBGetWindowAttributes *wa);
+/* Initializes the Client NetWMDesktop property from the specified XCBWindowProperty. */
+void NonNullArg(1) clientinitnetwmdesktop(Client *c, XCBWindowProperty *netwmdesktopreply);
 /* Initializes the Client decoration */
 void NonNull clientinitdecor(Client *c, uint32_t inputmask);
 /* Initializes the Clients floating status, based on clients flags/hints. _NET_WM_STATE/_NET_WM_WINDOW_TYPE */
 void NonNull clientinitfloat(Client *c);
-/* Initializes the Client geometry from the specified XCBWindowGeometry struct. 
+/* Initializes the Client geometry from the specified XCBWindowGeometry struct.
  */
 void NonNullArg(1) clientinitgeom(Client *c, XCBWindowGeometry *geometry);
 /*Initializes the Client window map state, and map iconic states. */
 void NonNullArg(1) clientinitmapstate(Client *c, XCBGetWindowAttributes *wa);
-/* Updates size hints including user specified crap 
+/* Updates size hints including user specified crap
  *
  * SEE XCB_SIZE_HINTS
  *
@@ -261,7 +264,7 @@ void FuncNullable focus(Client *c);
  * NOTE: if NULL provided first visible client in stack is choosen as focus specifier.
  */
 Client *FuncNullable focusrealize(Client *c);
-/* Grabs a win buttons. 
+/* Grabs a win buttons.
  * Basically this just allows us to receive button press/release events from windows.
  */
 void NonNull grabbuttons(Client *c, uint8_t focused);
@@ -329,7 +332,7 @@ Client *FuncNullable nextclient(Client *c);
 Client *FuncNullable nextstack(Client *c);
 /* Returns the next client in restack avaible.
  * RETURN: Client * on Success.
- * RETURN: NULL on Failure. 
+ * RETURN: NULL on Failure.
  */
 Client *FuncNullable nextrstack(Client *c);
 /* Returns the next client in focus order avaible.
@@ -372,19 +375,19 @@ Client *FuncNullable prevrstack(Client *c);
  * RETURN: NULL on Failure.
  */
 Client *FuncNullable prevvisible(Client *c);
-/* resize a client only if specified x/y/w/h is different 
+/* resize a client only if specified x/y/w/h is different
  * interact
  * {1, 0}
- * 1 -> dont confide resize to monitor dimentions 
+ * 1 -> dont confide resize to monitor dimentions
  * 0 -> confide resize within monitor dimentions
  */
 void NonNull resize(Client *c, int32_t x, int32_t y, int32_t width, int32_t height, uint8_t interact);
 /* resize a client given parametors without sizehints */
 void NonNull resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height);
-/* moves a client only if specified x/y is different 
+/* moves a client only if specified x/y is different
  * interact
  * {1, 0}
- * 1 -> dont confide resize to monitor dimentions 
+ * 1 -> dont confide resize to monitor dimentions
  * 0 -> confide resize within monitor dimentions
  */
 void NonNull resizemove(Client *c, int16_t x, int16_t y, uint8_t interact);
@@ -402,8 +405,8 @@ void NonNull setbordercolor(Client *c, uint8_t red, uint8_t green, uint8_t blue)
 void NonNull setbordercolor32(Client *c, uint32_t col);
 /* Sets the border width to the provided Client */
 void NonNull setborderwidth(Client *c, uint16_t border_width);
-/* Sets the clients desktop to the specified desktop, 
- * and cleanups any data that may have been left from the previous desktop. 
+/* Sets the clients desktop to the specified desktop,
+ * and cleanups any data that may have been left from the previous desktop.
  */
 void NonNull setclientdesktop(Client *c, struct Desktop *desktop);
 /* Sets the clients wmatom[WMState] property. */
@@ -474,7 +477,7 @@ void NonNull setfloating(Client *c, uint8_t state);
 void NonNull setfocus(Client *c);
 /* Sets the Windows Map State (Iconic/Normal), and IS hidden Flag. */
 void NonNull sethidden(Client *c, uint8_t state);
-/* Sets the keep focus state flag 
+/* Sets the keep focus state flag
  * NOTE: Client must already be in focus to work.
  */
 void NonNull setkeepfocus(Client *c, uint8_t state);
@@ -486,7 +489,7 @@ void NonNull setmaximizedhorz(Client *c, uint8_t state);
 void NonNull setshaded(Client *c, uint8_t state);
 /* Sets the Clients IS Modal Flag. */
 void NonNull setmodal(Client *c, uint8_t state);
-/* Sets override redirect flag, which disallows attaching to any linked list for a desktop 
+/* Sets override redirect flag, which disallows attaching to any linked list for a desktop
  * But still allows a client to be found using wintoclient()
  */
 void NonNull setoverrideredirect(Client *c, uint8_t state);
@@ -520,7 +523,9 @@ Client *NonNull startstack(struct Desktop *desk);
 Client *NonNull startrstack(struct Desktop *desk);
 /* Unfocuses specified client and sets to focus to root if setfocus is true */
 void FuncNullable unfocus(Client *c, uint8_t setfocus);
-/* updates a clients classname from XCBWMClass *_class 
+/* updates X to our allowed actions for the client */
+void NonNull updateallowedactions(Client *c);
+/* updates a clients classname from XCBWMClass *_class
  * No side effects on non filled _class dataw;
  */
 void NonNullArg(1) updateclass(Client *c, XCBWMClass *_class);
@@ -562,7 +567,7 @@ void NonNullArg(1) updatewindowtype(Client *c, XCBAtom wtype, uint8_t add_remove
 void NonNullArg(1) updatewindowtypes(Client *c, XCBAtom wtype[], uint32_t atomslength);
 /* Updates WM_HINTS for specified Client */
 void NonNullArg(1) updatewmhints(Client *c, XCBWMHints *hints);
-/* Returns the client if found from the specified window 
+/* Returns the client if found from the specified window
  * RETURN: Client * on Success.
  * RETURN: NULL on Failure.
  */
@@ -598,10 +603,11 @@ uint32_t NonNull ISURGENT(Client *c);
 uint32_t NonNull NEVERFOCUS(Client *c);
 /* client state */
 uint32_t NonNull NEVERHOLDFOCUS(Client *c);
+uint32_t NonNull CANFOCUS(Client *c);
 uint32_t NonNull ISVISIBLE(Client *c);
-/* 
+/*
  */
-uint32_t NonNull ISMAPPED(Client *c); 
+uint32_t NonNull ISMAPPED(Client *c);
 uint32_t NonNull SHOWDECOR(Client *c);
 uint32_t NonNull ISSELECTED(Client *c);
 

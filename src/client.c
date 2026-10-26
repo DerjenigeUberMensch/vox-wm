@@ -1,12 +1,14 @@
 #include "client.h"
 #include <string.h>
 #include <math.h> /* fabsf() */
+#include <xcb/xproto.h>
 
 #include "XCB-TRL/xcb_trl.h"
 
 #include "XCB-TRL/xcb_trl_types.h"
+#include "XCB-TRL/xcb_winutil.h"
 #include "desktop.h"
-#include"keybind/keybinds.h"
+#include "keybind/keybinds.h"
 #include "main.h"
 #include "hashing.h"
 #include "getprop.h"
@@ -32,7 +34,7 @@ extern XCBAtom motifatom;
 u16 OLDWIDTH(Client *c)         { return (c->oldw + (c->oldbw * 2)); }
 u16 OLDHEIGHT(Client *c)        { return (c->oldh + (c->oldbw * 2)); }
 u16 WIDTH(Client *c)            { return (c->w + (c->bw * 2)); }
-u16 HEIGHT(Client *c)           { return (c->h + (c->bw * 2)); } 
+u16 HEIGHT(Client *c)           { return (c->h + (c->bw * 2)); }
 /* Our custom states */
 u32 ISALWAYSONTOP(Client *c)    { return c->ewmhflags & WStateFlagAbove; }
 u32 ISALWAYSONBOTTOM(Client *c) { return c->ewmhflags & WStateFlagBelow; }
@@ -54,8 +56,8 @@ Client *REMOVECLIENTREFERENCES(Client *c)
 u32 ISURGENT(Client *c)         { return c->ewmhflags & WStateFlagDemandAttention; }
 /* flag */
 u32 NEVERFOCUS(Client *c)       { return c->ewmhflags & WStateFlagNeverFocus; }
-/* client state 
- * taken from i3, 
+/* client state
+ * taken from i3,
  * polybar kinda sucks at us grabbing their buttons, so we choose to never focus "dock" (generally statusbars) type windows.
  * What does polybar do?:
  * It used to break the whole WM, but that was mitagated from another i3 feature of replay pou32ing only the main button(s).
@@ -65,11 +67,12 @@ u32 NEVERFOCUS(Client *c)       { return c->ewmhflags & WStateFlagNeverFocus; }
  *
  */
 u32 NEVERHOLDFOCUS(Client *c)   { return (NEVERFOCUS(c) && !HASWMTAKEFOCUS(c)) || ISBAR(c); }
+u32 CANFOCUS(Client *c)         { return ISVISIBLE(c) && !NEVERHOLDFOCUS(c) && !ISDESKTOP(c); }
 
 u32 ISMAPPED(Client *c)         { return c->flags & ClientFlagMapped; }
 u32 SHOWDECOR(Client *c)        { return c->flags & ClientFlagShowDecor; }
 u32 ISSELECTED(Client *c)       { return c->desktop->sel == c; }
-        
+
 /* EWMH Window types */
 u32 ISDESKTOP(Client *c)        { return c->ewmhflags & WTypeFlagDesktop; }
 u32 ISDOCK(Client *c)           { return c->ewmhflags & WTypeFlagDock; }
@@ -110,7 +113,7 @@ u32 HASWMSAVEYOURSELF(Client *c){ return c->ewmhflags & WStateFlagWMSaveYourself
 u32 HASWMDELETEWINDOW(Client *c){ return c->ewmhflags & WStateFlagWMDeleteWindow; }
 
 /* STRUT */
-u32 HASSTRUT(Client *c)          { 
+u32 HASSTRUT(Client *c)          {
                                     int i;
 
                                     const uint16_t *strutdepth = c->strutdepth;
@@ -122,8 +125,8 @@ u32 HASSTRUT(Client *c)          {
                                     /* idk man */
                                     for(i = 0; i < WMStrutDirectionLAST; i++)
                                     {
-                                        if(strutdepth[i] && strutstart[i] < strutend[i])
-                                        {   
+                                        if(strutdepth[i] && strutstart[i] <= strutend[i])
+                                        {
                                             result = 1;
                                             break;
                                         }
@@ -206,10 +209,10 @@ applysizehints(Client *c, i32 *x, i32 *y, i32 *width, i32 *height, uint8_t inter
 
     if (interact)
     {
-        if (*x > _wm.sw) 
+        if (*x > _wm.sw)
         {   *x = _wm.sw - WIDTH(c);
         }
-        if (*y > _wm.sh) 
+        if (*y > _wm.sh)
         {   *y = _wm.sh - HEIGHT(c);
         }
         if (*x + *width + (WIDTH(c) - c->w) < 0)
@@ -224,13 +227,13 @@ applysizehints(Client *c, i32 *x, i32 *y, i32 *width, i32 *height, uint8_t inter
         if (*x >= m->wx + m->ww)
         {   *x = m->wx + m->ww - WIDTH(c);
         }
-        if (*y >= m->wy + m->wh) 
+        if (*y >= m->wy + m->wh)
         {   *y = m->wy + m->wh - HEIGHT(c);
         }
-        if (*x + *width + (WIDTH(c) - c->w) <= m->wx) 
+        if (*x + *width + (WIDTH(c) - c->w) <= m->wx)
         {   *x = m->wx;
         }
-        if (*y + *height + (HEIGHT(c) - c->h) <= m->wy) 
+        if (*y + *height + (HEIGHT(c) - c->h) <= m->wy)
         {   *y = m->wy;
         }
     }
@@ -250,7 +253,7 @@ applysizehints(Client *c, i32 *x, i32 *y, i32 *width, i32 *height, uint8_t inter
         {   *width = *height * c->maxa + 0.5;
         }
 
-        else if (*width > 0 && c->mina < (float)*height / *width) 
+        else if (*width > 0 && c->mina < (float)*height / *width)
         {   *height = *width * c->mina + 0.5;
         }
     }
@@ -264,16 +267,16 @@ applysizehints(Client *c, i32 *x, i32 *y, i32 *width, i32 *height, uint8_t inter
     if (c->incw)
     {   *width -= *width % c->incw;
     }
-    if (c->inch) 
+    if (c->inch)
     {   *height -= *height % c->inch;
     }
     /* restore base dimensions */
     *width = MAX(*width + c->basew, c->minw);
     *height = MAX(*height + c->baseh, c->minh);
-    if (c->maxw) 
+    if (c->maxw)
     {   *width = MIN(*width, c->maxw);
     }
-    if (c->maxh) 
+    if (c->maxh)
     {   *height = MIN(*height, c->maxh);
     }
 
@@ -298,7 +301,7 @@ centerclient(Client *c)
     y = m->wy + (m->wh - HEIGHT(c)) / 2;
 
     if(smartresize)
-    {   
+    {
         i32 w = c->w;
         i32 h = c->h;
 
@@ -346,6 +349,84 @@ clientinitcolormap(Client *c, XCBGetWindowAttributes *wa)
 }
 
 void
+clientinitnetwmdesktop(Client *c, XCBWindowProperty *netwmdesktopreply)
+{
+    /* desktops have special previleages */
+    if(ISDESKTOP(c))
+    {
+        Monitor *desktopmon = recttomon(c->x, c->y, c->w, c->h);
+
+        if(desktopmon)
+        {   c->desktop = desktopmon->desksel;
+        }
+
+        setsticky(c, 1);
+
+        return;
+    }
+
+    if(!netwmdesktopreply)
+    {   return;
+    }
+
+    /* window does not contain a desktop property but did ping back to say it didnt */
+    if(netwmdesktopreply->type == XCB_ATOM_NONE || netwmdesktopreply->format == 0 || netwmdesktopreply->value_len == 0)
+    {   return;
+    }
+
+    if(netwmdesktopreply->type != XCB_ATOM_CARDINAL)
+    {
+        DebugWarn("Reply is using invalid type");
+        return;
+    }
+
+    if(netwmdesktopreply->format != 32)
+    {
+        DebugWarn("Reply is using invalid format");
+        return;
+    }
+
+    if(netwmdesktopreply->value_len != 1)
+    {
+        DebugWarn("Reply is using invalid value length");
+        return;
+    }
+
+    if(netwmdesktopreply->bytes_after != 0)
+    {
+        DebugWarn("Reply has extra bytes after the expected value");
+        return;
+    }
+
+    const u32 *desktop = XCBGetPropertyValue(netwmdesktopreply);
+
+    if(!desktop)
+    {
+        DebugWarn("Failed to get desktop property value");
+        return;
+    }
+
+    const u32 deskclean = *desktop;
+
+    if(checksticky(deskclean))
+    {   setsticky(c, 1);
+    }
+    else if(deskclean <= UINT16_MAX)
+    {
+        Desktop *desk = desktopnumindextodesktop(c->desktop->mon, (u16)deskclean);
+
+        if(desk)
+        {
+            setsticky(c, 0);
+            c->desktop = desk;
+        }
+    }
+    else
+    {   DebugError("Client attempted to set an invalid desktop value");
+    }
+}
+
+void
 clientinitdecor(Client *c, u32 inputmask)
 {
     XCBSelectInput(_wm.dpy, c->decor->win, inputmask);
@@ -364,7 +445,7 @@ clientinitfloat(Client *c)
 }
 
 
-void 
+void
 clientinitgeom(Client *c, XCBWindowGeometry *wg)
 {
     /* Give initial values. */
@@ -377,7 +458,7 @@ clientinitgeom(Client *c, XCBWindowGeometry *wg)
 
     /* If we got attributes apply them. */
     if(wg)
-    {   
+    {
         /* init geometry */
         c->x = c->oldx = wg->x;
         c->y = c->oldy = wg->y;
@@ -391,7 +472,7 @@ clientinitgeom(Client *c, XCBWindowGeometry *wg)
     }
 }
 
-void 
+void
 clientinitmapstate(Client *c, XCBGetWindowAttributes *wa)
 {
     if(wa)
@@ -461,7 +542,7 @@ clientinitsizehints(Client *c, XCBSizeHints *size)
     return size->flags & (XCB_SIZE_HINT_US_SIZE|XCB_SIZE_HINT_P_SIZE|XCB_SIZE_HINT_US_POSITION|XCB_SIZE_HINT_P_POSITION);
 }
 
-void 
+void
 clientinitwtype(Client *c, XCBWindowProperty *windowtypereply)
 {
     if(windowtypereply && windowtypereply->type == XCB_ATOM_ATOM && windowtypereply->format == 32)
@@ -473,7 +554,7 @@ clientinitwtype(Client *c, XCBWindowProperty *windowtypereply)
     }
 }
 
-void 
+void
 clientinitwstate(Client *c, XCBWindowProperty *windowstatereply)
 {
     if(windowstatereply && windowstatereply->type == XCB_ATOM_ATOM && windowstatereply->format == 32)
@@ -485,10 +566,11 @@ clientinitwstate(Client *c, XCBWindowProperty *windowstatereply)
     }
 }
 
-void 
+void
 clientinittrans(Client *c, XCBWindow trans)
 {
     Client *t;
+
     if(trans && (t = wintoclient(trans)))
     {   c->desktop = t->desktop;
     }
@@ -500,9 +582,9 @@ clientinittrans(Client *c, XCBWindow trans)
 void
 configure(Client *c)
 {
-    XCBGenericEvent ev;
-    memset(&ev, 0, sizeof(XCBGenericEvent));
-    XCBConfigureNotifyEvent *ce = (XCBConfigureNotifyEvent *)&ev;
+    XCBEvent ev = {0};
+    XCBConfigureNotifyEvent *ce = &ev.xconfigure;
+
     ce->response_type = XCB_CONFIGURE_NOTIFY;
     ce->event = c->win;
     ce->window = c->win;
@@ -523,7 +605,7 @@ createclient(void)
     Client *c = calloc(1, sizeof(Client ));
     Decoration *decor = createdecoration();
     if(!c || !decor)
-    {   
+    {
         DebugWarn("Could not allocate memory for client (OutOfMemory).");
         free(c);
 
@@ -569,7 +651,7 @@ focus(Client *c)
     }
 
     if(c)
-    {   
+    {
         if(ISURGENT(c))
         {   seturgent(c, 0);
         }
@@ -584,7 +666,6 @@ focus(Client *c)
     {   unfocus(NULL, 1);
     }
 
-
     desk->sel = c;
 
     /* Debug("Attempted to Focus: [%d]", c ? c->win : 0); */
@@ -594,22 +675,32 @@ Client *
 focusrealize(Client *c)
 {
     Monitor *selmon = c ? c->desktop->mon : _wm.selmon;
-    Desktop *desk  = selmon->desksel;
 
-    if(!c || !ISVISIBLE(c) || NEVERHOLDFOCUS(c))
-    {   
-        /* NOTE IF THIS FUNCTION IS CHANGE detachfocus(), PropUpdateManage() must also be changed */
-        for(c = startfocus(desk); c && (!ISVISIBLE(c) || NEVERHOLDFOCUS(c) || ISDESKTOP(c)); c = nextfocus(c));
+    if(!ASSERT(selmon))
+    {
+        DebugError("No selected monitor found.");
+        return NULL;
+    }
+
+    Desktop *desk = selmon->desksel;
+
+    if(!c || !CANFOCUS(c))
+    {
+        for(c = startfocus(desk); c && !CANFOCUS(c); c = nextfocus(c));
     }
 
     if(c)
     {
         if(c->desktop->mon != _wm.selmon)
-        {   setmonsel(c->desktop->mon);
+        {
+            DebugLog("Switched Monitor");
+            setmonsel(c->desktop->mon);
         }
 
         if(c->desktop != _wm.selmon->desksel)
-        {   setdesktopsel(_wm.selmon, c->desktop);
+        {
+            DebugLog("Switched Desktop");
+            setdesktopsel(_wm.selmon, c->desktop);
         }
 
         detachfocus(c);
@@ -633,12 +724,13 @@ grabkeys(void)
     WMKeybindGrabKeys();
 }
 
-void 
+void
 killclient(Client *c, enum KillType type)
 {
     if(HASWMSAVEYOURSELF(c))
     {   sendprotocolevent(c, wmatom[WMSaveYourself]);
     }
+
     if(HASWMDELETEWINDOW(c) && type == Graceful)
     {   sendprotocolevent(c, wmatom[WMDeleteWindow]);
     }
@@ -662,15 +754,6 @@ killclient(Client *c, enum KillType type)
                 XCBKillClient(_wm.dpy, win);
                 break;
         }
-        XCBGenericEvent ev;
-        memset(&ev, 0, sizeof(XCBGenericEvent));
-        XCBUnmapNotifyEvent *unev = (XCBUnmapNotifyEvent *)&ev;
-        /* let event handler handle this */
-        unev->from_configure = 0;
-        unev->response_type = XCB_UNMAP_NOTIFY;
-        unev->event = _wm.root;
-        unev->window = win;
-        XCBSendEvent(_wm.dpy, _wm.root, 0, XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY, (const char *)&ev);
     }
 }
 
@@ -698,10 +781,10 @@ lastrstack(Desktop *desk)
     return desk->rlast;
 }
 
-void 
+void
 managecleanup(void *replies[ManageClientLAST])
 {
-    /* Remove *_reply from structures 
+    /* Remove *_reply from structures
      * 'Wipe'
      */
     if(replies[ManageClientClass])
@@ -737,6 +820,7 @@ managerequest(XCBWindow win, XCBCookie requests[ManageClientLAST])
     requests[ManageClientPid] = PropGetPidCookie(_wm.dpy, win);
     requests[ManageClientIcon] = PropGetIconCookie(_wm.dpy, win);
     requests[ManageClientMotif] = PropGetMotifHintsCookie(_wm.dpy, win);
+    requests[ManageClientNetWMDesktop] = XCBGetWindowPropertyCookie(_wm.dpy, win, netatom[NetWMDesktop], 0, 1, False, XCB_ATOM_CARDINAL);
 }
 
 void
@@ -760,13 +844,14 @@ managereplies(XCBCookie requests[ManageClientLAST], void *replies[ManageClientLA
     XCBWindowProperty *iconreply;
     XCBWindowProperty *wastates;
     XCBWindowProperty *motifreply;
+    XCBWindowProperty *netwmdesktopreply;
     pid_t pid = 0;
     XCBWindow trans;
     u8 transstatus;
     /* wait for replies */
     waattributes = XCBGetWindowAttributesReply(_wm.dpy, requests[ManageClientAttributes]);
     wg = XCBGetWindowGeometryReply(_wm.dpy, requests[ManageClientGeometry]);
-    transstatus = XCBGetTransientForHintReply(_wm.dpy, requests[ManageClientTransient], &trans); 
+    transstatus = XCBGetTransientForHintReply(_wm.dpy, requests[ManageClientTransient], &trans);
     wtypeunused = XCBGetWindowPropertyReply(_wm.dpy, requests[ManageClientWType]);
     stateunused = XCBGetWindowPropertyReply(_wm.dpy, requests[ManageClientWState]);
     hintstatus = XCBGetWMNormalHintsReply(_wm.dpy, requests[ManageClientSizeHint], &hints);
@@ -781,7 +866,7 @@ managereplies(XCBCookie requests[ManageClientLAST], void *replies[ManageClientLA
     wastates = XCBGetWindowPropertyReply(_wm.dpy, requests[ManageClientWMState]);
     motifreply = XCBGetWindowPropertyReply(_wm.dpy, requests[ManageClientMotif]);
     pid = XCBGetPidReply(_wm.dpy, requests[ManageClientPid]);
-
+    netwmdesktopreply = XCBGetWindowPropertyReply(_wm.dpy, requests[ManageClientNetWMDesktop]);
 
     XCBWindow *transreply = NULL;
     XCBSizeHints *sizehintsreply = NULL;
@@ -790,7 +875,7 @@ managereplies(XCBCookie requests[ManageClientLAST], void *replies[ManageClientLA
     int32_t *pidreply = NULL;
 
     if(transstatus)
-    {   
+    {
         transreply = malloc(sizeof(XCBWindow ));
         if(transreply)
         {   *transreply = trans;
@@ -804,7 +889,7 @@ managereplies(XCBCookie requests[ManageClientLAST], void *replies[ManageClientLA
         }
     }
     if(clsstatus)
-    {   
+    {
         classreply = malloc(sizeof(XCBWMClass ));
         if(classreply)
         {   *classreply = cls;
@@ -814,7 +899,7 @@ managereplies(XCBCookie requests[ManageClientLAST], void *replies[ManageClientLA
         }
     }
     if(wmprotocolsstatus)
-    {   
+    {
         wmprotocolsreply = malloc(sizeof(XCBWMProtocols ));
         if(wmprotocolsreply)
         {   *wmprotocolsreply = wmprotocols;
@@ -826,7 +911,7 @@ managereplies(XCBCookie requests[ManageClientLAST], void *replies[ManageClientLA
 
     const int PID_FAILURE = -1;
     if(pid != PID_FAILURE)
-    {   
+    {
         pidreply = malloc(sizeof(pid_t ));
         if(pidreply)
         {   *pidreply = pid;
@@ -850,6 +935,7 @@ managereplies(XCBCookie requests[ManageClientLAST], void *replies[ManageClientLA
     replies[ManageClientPid] = pidreply;
     replies[ManageClientIcon] = iconreply;
     replies[ManageClientMotif] = motifreply;
+    replies[ManageClientNetWMDesktop] = netwmdesktopreply;
 }
 
 
@@ -864,7 +950,7 @@ manage(XCBWindow win, bool allow_unmapped_window, void *replies[ManageClientLAST
     {   goto FAILURE;
     }
     if(!SHOULDMANAGE(win))
-    {   
+    {
         Debug("Cannot manage(): [%u]", win);
         goto FAILURE;
     }
@@ -884,7 +970,7 @@ manage(XCBWindow win, bool allow_unmapped_window, void *replies[ManageClientLAST
     XCBWindowProperty *stateunused = replies[ManageClientWState];
     XCBSizeHints *hints = replies[ManageClientSizeHint];
     XCBWMHints *wmh = replies[ManageClientWMHints];
-    XCBWMClass *cls = replies[ManageClientClass]; 
+    XCBWMClass *cls = replies[ManageClientClass];
     XCBWMProtocols *wmprotocols = replies[ManageClientWMProtocol];
     XCBWindowProperty *strutpreply = replies[ManageClientStrutP];
     XCBWindowProperty *strutreply = replies[ManageClientStrut];
@@ -894,6 +980,7 @@ manage(XCBWindow win, bool allow_unmapped_window, void *replies[ManageClientLAST
     XCBWindowProperty *wastatereply = replies[ManageClientWMState];
     pid_t *pid = replies[ManageClientPid];
     XCBWindowProperty *motifreply = replies[ManageClientMotif];
+    XCBWindowProperty *netwmdesktopreply = replies[ManageClientNetWMDesktop];
     XCBWindow *trans = replies[ManageClientTransient];
 
     u32 sizehints = 0;
@@ -917,22 +1004,11 @@ manage(XCBWindow win, bool allow_unmapped_window, void *replies[ManageClientLAST
 
     /* this sets up the desktop which is quite important for some operations */
     clientinitcolormap(c, waattributes);
-    clientinittrans(c, trans ? *trans : 0); 
+    clientinittrans(c, trans ? *trans : 0);
     clientinitgeom(c, wg);
     clientinitwtype(c, wtypeunused);
-
-    if(ISDESKTOP(c))
-    {   
-        Monitor *desktopmon = recttomon(c->x, c->y, c->w, c->h);
-
-        if(desktopmon)
-        {   c->desktop = desktopmon->desksel;
-        }
-
-        setsticky(c, 1);
-    }
-
     clientinitwstate(c, stateunused);
+    clientinitnetwmdesktop(c, netwmdesktopreply);
     updatewindowprotocol(c, wmprotocols);
     setfloating(c, !!trans);
     /* Custom stuff */
@@ -947,6 +1023,7 @@ manage(XCBWindow win, bool allow_unmapped_window, void *replies[ManageClientLAST
     updatemotifhints(c, motifreply);
     updateicon(c, iconreply);
     updateclientdesktop(c);
+    updateallowedactions(c);
     /* check if should be floating after, all size hints and other things are set. */
     clientinitfloat(c);
     clientinitdecor(c, inputmask);
@@ -959,9 +1036,9 @@ manage(XCBWindow win, bool allow_unmapped_window, void *replies[ManageClientLAST
 
     /* user specified position  */
     if(sizehints & (XCB_SIZE_HINT_US_POSITION))
-    {   
+    {
         if(SHOULDCENTER(c))
-        {   
+        {
             DebugLog("Ignoring Program set default position \"(%d, %d)\"", c->x, c->y);
             centerclient(c);
         }
@@ -978,7 +1055,7 @@ manage(XCBWindow win, bool allow_unmapped_window, void *replies[ManageClientLAST
         if(sizehints & XCB_SIZE_HINT_P_POSITION)
         {
             if(SHOULDCENTER(c))
-            {   
+            {
                 DebugLog("Ignoring Program set default position \"(%d, %d)\"", c->x, c->y);
                 centerclient(c);
             }
@@ -1009,7 +1086,7 @@ manage(XCBWindow win, bool allow_unmapped_window, void *replies[ManageClientLAST
     }
 
     if(ISDESKTOP(c))
-    {   
+    {
         setborderwidth(c, 0);
         setdisableborder(c, 1);
         updateborderwidth(c);
@@ -1088,8 +1165,8 @@ nextfocus(Client *c)
 
 Client *
 nexttiled(Client *c)
-{   
-    for(; c && (ISFLOATING(c) || !ISVISIBLE(c) || ISDOCK(c) || ISDESKTOP(c)); c = nextstack(c));
+{
+    for(; c && (ISFLOATING(c) || !CANFOCUS(c)); c = nextstack(c));
     return c;
 }
 
@@ -1120,7 +1197,7 @@ prevstack(Client *c)
 
 Client *
 prevrstack(Client *c)
-{   
+{
     return c ? c->rprev : c;
 }
 
@@ -1128,7 +1205,7 @@ Client *
 prevvisible(Client *c)
 {
     for(; c && !ISVISIBLE(c); c = prevstack(c));
-  
+
     return c;
 }
 
@@ -1141,7 +1218,7 @@ resize(Client *c, i32 x, i32 y, i32 width, i32 height, uint8_t interact)
     }
 }
 
-void 
+void
 resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
 {
     u32 mask = 0;
@@ -1150,7 +1227,7 @@ resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
     height = MAX(height, 1);
 
     if(c->x != x)
-    {   
+    {
         c->oldx = c->x;
         c->x = x;
         mask |= XCB_CONFIG_WINDOW_X;
@@ -1171,14 +1248,14 @@ resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
     }
 
     if(c->h != height)
-    {   
+    {
         c->oldh = c->h;
         c->h = height;
         mask |= XCB_CONFIG_WINDOW_HEIGHT;
     }
 
     XCBWindowChanges changes =
-    {   
+    {
         .x = x,
         .y = y,
         .width = width,
@@ -1186,7 +1263,7 @@ resizeclient(Client *c, int16_t x, int16_t y, uint16_t width, uint16_t height)
     };
 
     if(!mask)
-    {   
+    {
         Debug("[%u] No mask changes", c->win);
         return;
     }
@@ -1224,7 +1301,7 @@ resizemove(Client *c, int16_t x, int16_t y, uint8_t interact)
     i32 width = c->w;
     i32 height = c->h;
     if(applysizehints(c, &_x, &_y, &width, &height, interact))
-    {   
+    {
         (void)width;
         (void)height;
         resizeclient(c, _x, _y, c->w, c->h);
@@ -1234,16 +1311,18 @@ resizemove(Client *c, int16_t x, int16_t y, uint8_t interact)
 void
 sendprotocolevent(Client *c, XCBAtom proto)
 {
-    XCBGenericEvent ev;
-    memset(&ev, 0, sizeof(XCBGenericEvent));
-    XCBClientMessageEvent *cev = (XCBClientMessageEvent *)&ev;
+    XCBEvent ev = {0};
+    XCBClientMessageEvent *cev = &ev.xclient;
+
     cev->type = wmatom[WMProtocols];
     cev->response_type = XCB_CLIENT_MESSAGE;
     cev->window = c->win;
     cev->format = 32;
     cev->data.data32[0] = proto;
+    /* TODO WMTakeFocus should receive a real timestamp not XCB_CURRENT_TIME */
     cev->data.data32[1] = XCB_CURRENT_TIME;
-    XCBSendEvent(_wm.dpy, c->win, False, XCB_EVENT_MASK_STRUCTURE_NOTIFY, (const char *)&ev);
+
+    XCBSendEvent(_wm.dpy, c->win, False, XCBNoEventMask, (const char *)&ev);
 }
 
 void
@@ -1274,7 +1353,7 @@ setbordercolor(Client *c, uint8_t red, uint8_t green, uint8_t blue)
 
 void
 setbordercolor32(Client *c, uint32_t col)
-{   
+{
     const u32 mask = (UINT32_MAX ^ (((uint32_t)UINT8_MAX) << 24));
     c->bcol &= ~mask;
     c->bcol |= col & mask;
@@ -1298,7 +1377,8 @@ setclientdesktop(Client *c, Desktop *desk)
     attach(c);
     attachstack(c);
     attachfocus(c);
-    updateclientdesktop(c);
+    /* setsticky runs updateclientdesktop */
+    setsticky(c, 0);
 }
 
 void
@@ -1464,19 +1544,19 @@ setwtypemapnormal(Client *c, uint8_t state)
     setwtypemapiconic(c, !state);
 }
 
-void 
+void
 setwmtakefocus(Client *c, uint8_t state)
 {
     SETFLAG(c->ewmhflags, WStateFlagWMTakeFocus, !!state);
 }
 
-void 
+void
 setwmsaveyourself(Client *c, uint8_t state)
 {
     SETFLAG(c->ewmhflags, WStateFlagWMSaveYourself, !!state);
 }
 
-void 
+void
 setwmdeletewindow(Client *c, uint8_t state)
 {
     SETFLAG(c->ewmhflags, WStateFlagWMDeleteWindow, !!state);
@@ -1553,31 +1633,41 @@ void
 setfocus(Client *c)
 {
     if(!ISMAPPED(c))
-    {   
+    {
         Debug0("unmapped windows cannot set their focus....");
         return;
+    }
+
+    if(NEVERHOLDFOCUS(c))
+    {   return;
     }
 
     if(HASWMTAKEFOCUS(c))
     {   sendprotocolevent(c, wmatom[WMTakeFocus]);
     }
 
-    if(!NEVERHOLDFOCUS(c))
-    {
-        XCBSetInputFocus(_wm.dpy, c->win, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
-        XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow], XCB_ATOM_WINDOW, 32, XCBPropModeReplace, &c->win, 1);
-        setclientnetstate(c, netatom[NetWMStateFocused], 1);
-        SETFLAG(c->ewmhflags, WStateFlagFocused, 1);
+    /* ICCCM SAYS that
+     *
+     * NEVERFOCUS HASWMTAKEFOCUS <- never focus directly
+     * !NEVERFOCUS !HASWMTAKEFOCUS <- focus directly
+     * !NEVERFOCUS HASWMTAKEFOCUS <- both
+     */
+    if(!NEVERFOCUS(c))
+    {   XCBSetInputFocus(_wm.dpy, c->win, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
     }
+
+    XCBChangeProperty(_wm.dpy, _wm.root, netatom[NetActiveWindow], XCB_ATOM_WINDOW, 32, XCBPropModeReplace, &c->win, 1);
+    setclientnetstate(c, netatom[NetWMStateFocused], 1);
+    SETFLAG(c->ewmhflags, WStateFlagFocused, 1);
 }
 
-void 
+void
 sethidden(Client *c, uint8_t state)
 {
     SETFLAG(c->ewmhflags, WStateFlagHidden, !!state);
 }
 
-void 
+void
 setkeepfocus(Client *c, uint8_t state)
 {
     SETFLAG(c->flags, ClientFlagKeepFocus, !!state);
@@ -1613,32 +1703,34 @@ setoverrideredirect(Client *c, uint8_t state)
     SETFLAG(c->flags, ClientFlagOverrideRedirect, !!state);
 }
 
+/* TODO TEHCNICALY this is wrong since _NET_WM_STATE_STICKY and WMSticky are 2 diff flags */
 void
 setsticky(Client *c, u8 state)
 {
-    if(ISDESKTOP(c))
+    if(ISDESKTOP(c) || ISBAR(c))
     {   state = 1;
     }
 
     SETFLAG(c->ewmhflags, WStateFlagSticky, !!state);
 
+    /* if this line is removed setclientdestkop() needs to be changed */
     if(c->win && c->desktop)
     {   updateclientdesktop(c);
     }
 }
 
 void
-seturgent(Client *c, uint8_t state) 
+seturgent(Client *c, uint8_t state)
 {
     XCBCookie wmhcookie = XCBGetWMHintsCookie(_wm.dpy, c->win);
     XCBWMHints *wmh = XCBGetWMHintsReply(_wm.dpy, wmhcookie);
     SETFLAG(c->ewmhflags, WStateFlagDemandAttention, !!state);
 
     if(state)
-    {   /* set window border */   
+    {   /* set window border */
     }
     else
-    {   /* set window border */   
+    {   /* set window border */
     }
 
     if(wmh)
@@ -1745,7 +1837,7 @@ showhide(Client *c)
     y = c->y;
 
     if(!ISVISIBLE(c))
-    {   
+    {
         Cardinal side = North;
 
         if(!ISBAR(c))
@@ -1754,7 +1846,7 @@ showhide(Client *c)
 
             /* default to moving up */
             if(side == CardinalCount && moncount() > 1)
-            {   
+            {
                 side = North;
                 Debug0("No empty monitor found.");
             }
@@ -1838,7 +1930,7 @@ unfocus(Client *c, uint8_t setfocus)
     }
 
     if(setfocus)
-    {   
+    {
         XCBWindow noactivewindow = XCB_NONE;
 
         XCBSetInputFocus(_wm.dpy, _wm.root, XCB_INPUT_FOCUS_POINTER_ROOT, XCB_CURRENT_TIME);
@@ -1921,7 +2013,7 @@ unmanage(Client *c, uint8_t destroyed)
 
     /* prevent dangling pointer here woops */
     if(!destroyed)
-    {   
+    {
         XERROR_ADD_SKIP_ID(c->win);
 
         XCBUngrabButton(_wm.dpy, XCBButtonAny, XCBModMaskAny, c->win);
@@ -1932,9 +2024,13 @@ unmanage(Client *c, uint8_t destroyed)
 
         decorationrelease(c->decor, c);
         setclientstate(c, XCB_WINDOW_WITHDRAWN_STATE);
+
         XCBDeleteProperty(_wm.dpy, c->win, netatom[NetWMDesktop]);
+        XCBDeleteProperty(_wm.dpy, c->win, netatom[NetWMState]);
+        XCBDeleteProperty(_wm.dpy, c->win, netatom[NetWMAllowedActions]);
+
         XCBRemoveFromSaveSet(_wm.dpy, c->win);
-        /* TODO causes alot of errors for some reason even if its not "destroyed" */
+
     }
 
     REMOVECLIENTREFERENCES(c);
@@ -1951,7 +2047,7 @@ unmanage(Client *c, uint8_t destroyed)
     Debug("Unmanaged: [%u]", win);
 }
 
-void 
+void
 unmaximize(Client *c)
 {
     unmaximizevert(c);
@@ -1959,7 +2055,7 @@ unmaximize(Client *c)
     Debug("Umaximized: [%u]", c->win);
 }
 
-void 
+void
 unmaximizehorz(Client *c)
 {
     i32 x = c->oldx;
@@ -1968,7 +2064,7 @@ unmaximizehorz(Client *c)
     i32 h = c->h;
 
     if(DOCKEDHORZ(c))
-    {   
+    {
         /* if never maximized */
         if(WASDOCKEDHORZ(c))
         {   resize(c, x / 2, y, w / 2, h, 0);
@@ -1982,7 +2078,7 @@ unmaximizehorz(Client *c)
     }
 }
 
-void 
+void
 unmaximizevert(Client *c)
 {
     i32 x = c->x;
@@ -2005,6 +2101,45 @@ unmaximizevert(Client *c)
 }
 
 void
+updateallowedactions(Client *c)
+{
+    enum { MOVE, CHANGE_DESKTOP, CLOSE, ABOVE, BELOW, FULLSCREEN, RESIZE, MAXHORZ, MAXVERT, SHADE, STICK, ACTIONS_LAST };
+
+    XCBAtom actions[ACTIONS_LAST];
+    i32 len = 0;
+
+    if(!ISDESKTOP(c))
+    {
+        bool fixedw = c->minw && c->minw == c->maxw;
+        bool fixedh = c->minh && c->minh == c->maxh;
+
+        actions[len++] = netatom[NetWMActionMove];
+        actions[len++] = netatom[NetWMActionChangeDesktop];
+        actions[len++] = netatom[NetWMActionClose];
+        actions[len++] = netatom[NetWMActionAbove];
+        actions[len++] = netatom[NetWMActionBelow];
+        actions[len++] = netatom[NetWMActionFullscreen];
+        actions[len++] = netatom[NetWMActionShade];
+        actions[len++] = netatom[NetWMActionStick];
+
+        /* TODO ad FIXEDW and FIXEDH */
+        if(!ISFIXED(c))
+        {   actions[len++] = netatom[NetWMActionResize];
+        }
+
+        if(!fixedw)
+        {   actions[len++] = netatom[NetWMActionMaximizeHorz];
+        }
+
+        if(!fixedh)
+        {   actions[len++] = netatom[NetWMActionMaximizeVert];
+        }
+    }
+
+    XCBChangeProperty(_wm.dpy, c->win, netatom[NetWMAllowedActions], XCB_ATOM_ATOM, 32, XCBPropModeReplace, actions, len);
+}
+
+void
 updateclass(Client *c, XCBWMClass *_class)
 {
     const u32 MAX_LEN = 1024;
@@ -2016,7 +2151,7 @@ updateclass(Client *c, XCBWMClass *_class)
             const size_t CLASS_NAME_SIZE = sizeof(char) * CLASS_NAME_LEN;
             char *clsname = malloc(CLASS_NAME_SIZE);
             if(clsname)
-            {    
+            {
                 memcpy(clsname, _class->class_name, CLASS_NAME_SIZE - sizeof(char));
                 clsname[CLASS_NAME_LEN - 1] = '\0';
                 free(c->classname);
@@ -2024,7 +2159,7 @@ updateclass(Client *c, XCBWMClass *_class)
             }
         }
         if(_class->instance_name)
-        {   
+        {
             const u32 INSTANCE_NAME_LEN = strnlen(_class->instance_name, MAX_LEN) + 1;
             const size_t INSTANCE_NAME_SIZE = sizeof(char) * INSTANCE_NAME_LEN;
             char *iname = malloc(INSTANCE_NAME_SIZE);
@@ -2051,7 +2186,7 @@ updatecolormap(Client *c, XCBColormap colormap)
     c->colormap = colormap;
 }
 
-static void 
+static void
 __update_motif_decor(Client *c, uint32_t hints)
 {
     /* bit definitions for MwmHints.decorations */
@@ -2068,19 +2203,19 @@ __update_motif_decor(Client *c, uint32_t hints)
     }
 
     if(hints & DECOR_BORDER)
-    {   
+    {
         setborderwidth(c, c->oldbw);
         updateborderwidth(c);
     }
     else
-    {   
+    {
         setdisableborder(c, 0);
         setborderwidth(c, 0);
         updateborderwidth(c);
         setdisableborder(c, 1);
     }
     if(hints & DECOR_RESIZEH)
-    {   
+    {
         (void)hints;
     }
 
@@ -2117,10 +2252,10 @@ static void __update_motif_func(Client *c, int32_t hints)
     {   /* NOP */
     }
     else
-    {   /* IDK set fixed or something */       
+    {   /* IDK set fixed or something */
     }
     if(hints & FUNCS_MOVE)
-    {   /* IGNORE */   
+    {   /* IGNORE */
     }
     if(hints & FUNCS_MINIMIZE)
     {   /* IGNORE */
@@ -2136,7 +2271,7 @@ static void __update_motif_func(Client *c, int32_t hints)
 static void __update_motif_input(Client *c, int32_t hints)
 {
     /* values for MwmHints.input_mode */
-    enum ___input 
+    enum ___input
     {
         INPUT_MODELESS = 0,
         INPUT_PRIMARY_MODAL = 1,
@@ -2145,20 +2280,20 @@ static void __update_motif_input(Client *c, int32_t hints)
     };
 
     switch(hints)
-    {   
+    {
         case INPUT_PRIMARY_MODAL:
         case INPUT_SYSTEM_MODAL:
         case INPUT_FULL_MODAL:
             /* FALLTHROUGH */
-            /* TODO: Add a hash to client "class" name attribute and just make it so 1 primary window is allowed 
-             * AKA just HASH the primary class name to be urgent/active window 
+            /* TODO: Add a hash to client "class" name attribute and just make it so 1 primary window is allowed
+             * AKA just HASH the primary class name to be urgent/active window
              */
             seturgent(c, 1);
             break;
 
         case INPUT_MODELESS:
             /* FALLTHROUGH */
-        default: 
+        default:
             break;
     }
 }
@@ -2188,7 +2323,7 @@ updatemotifhints(Client *c, XCBWindowProperty *motifprop)
         uint32_t len = 0;
         XCBGetPropertyValueLength(motifprop, sizeof(MotifWmHints), &len);
         if(hints && len == 1)
-        {   
+        {
             if(hints->flags & HINTS_DECORATION)
             {   __update_motif_decor(c, hints->decorations);
             }
@@ -2244,7 +2379,7 @@ updatesizehints(Client *c, XCBSizeHints *size)
         minh = size->min_height;
     }
     else if(size->flags & XCB_SIZE_HINT_P_BASE_SIZE)
-    {   
+    {
         minw = size->base_width;
         minh = size->base_height;
     }
@@ -2255,7 +2390,7 @@ updatesizehints(Client *c, XCBSizeHints *size)
         baseh = size->base_height;
     }
     else if(size->flags & XCB_SIZE_HINT_P_MIN_SIZE)
-    {   
+    {
         basew = size->min_width;
         baseh = size->min_height;
     }
@@ -2328,6 +2463,8 @@ updatesizehints(Client *c, XCBSizeHints *size)
     c->inch = inch;
     c->incw = incw;
     c->gravity = gravity;
+
+    updateallowedactions(c);
 }
 
 void
@@ -2349,7 +2486,7 @@ updatestrut(Client *c, XCBWindowProperty *strutprop)
     }
 
     if(strutprop->type != XCB_ATOM_CARDINAL || strutprop->format != 32)
-    {   
+    {
         DebugWarn("WindowProperty Value has wrong format");
         return;
     }
@@ -2357,7 +2494,7 @@ updatestrut(Client *c, XCBWindowProperty *strutprop)
     status = XCBGetWindowPropertyValueLength(strutprop, UNIT_SIZE, &len);
 
     if(status)
-    {   
+    {
         DebugWarn("WindowProperty Value has no length");
         return;
     }
@@ -2420,7 +2557,7 @@ updatestrutp(Client *c, XCBWindowProperty *strutpprop)
     }
 
     if(strutpprop->type != XCB_ATOM_CARDINAL || strutpprop->format != 32)
-    {   
+    {
         DebugWarn("WindowProperty Value has wrong format");
         return;
     }
@@ -2428,7 +2565,7 @@ updatestrutp(Client *c, XCBWindowProperty *strutpprop)
     status = XCBGetWindowPropertyValueLength(strutpprop, UNIT_SIZE, &len);
 
     if(status)
-    {   
+    {
         DebugWarn("WindowProperty Value has no length");
         return;
     }
@@ -2494,13 +2631,13 @@ void
 updatetitle(Client *c, char *netwmname, char *wmname)
 {
     if(c->wmname != wmname)
-    {   
+    {
         free(c->wmname);
         c->wmname = NULL;
     }
 
     if(c->netwmname != netwmname)
-    {   
+    {
         free(c->netwmname);
         c->netwmname = NULL;
     }
@@ -2548,7 +2685,7 @@ updatewindowstate(Client *c, XCBAtom state, uint8_t add_remove_toggle)
     if (state == netatom[NetWMStateModal])
     {
         if(toggle)
-        {   
+        {
             setmodal(c, !ISMODAL(c));
             setwtypedialog(c, !ISDIALOG(c));
         }
@@ -2588,29 +2725,29 @@ updatewindowstate(Client *c, XCBAtom state, uint8_t add_remove_toggle)
     else if (state == netatom[NetWMStateMaximizedHorz])
     {
         if(toggle)
-        {   
+        {
             if(DOCKEDHORZ(c))
-            {   
+            {
                 unmaximizehorz(c);
                 setmaximizedhorz(c, 0);
             }
             else
-            {   
+            {
                 maximizehorz(c);
                 setmaximizedhorz(c, 1);
             }
         }
         else
-        {   
+        {
 
             if(add_remove_toggle)
-            {   
+            {
                 if(!ISMAXHORZ(c))
                 {   maximizehorz(c);
                 }
             }
             else
-            {   
+            {
                 if(ISMAXHORZ(c))
                 {   unmaximizehorz(c);
                 }
@@ -2623,12 +2760,12 @@ updatewindowstate(Client *c, XCBAtom state, uint8_t add_remove_toggle)
         if(toggle)
         {
             if(DOCKEDVERT(c))
-            {   
+            {
                 unmaximizevert(c);
                 setmaximizedvert(c, 0);
             }
             else
-            {   
+            {
                 maximizevert(c);
                 setmaximizedvert(c, 1);
             }
@@ -2636,13 +2773,13 @@ updatewindowstate(Client *c, XCBAtom state, uint8_t add_remove_toggle)
         else
         {
             if(add_remove_toggle)
-            {   
+            {
                 if(!ISMAXVERT(c))
                 {   maximizevert(c);
                 }
             }
             else
-            {   
+            {
                 if(ISMAXVERT(c))
                 {   unmaximizevert(c);
                 }
@@ -2660,7 +2797,7 @@ updatewindowstate(Client *c, XCBAtom state, uint8_t add_remove_toggle)
         }
     }
     else if (state == netatom[NetWMStateBelow])
-    {   
+    {
         /* this is a wierd state to even configure so idk */
         if(toggle)
         {   setalwaysonbottom(c, !ISALWAYSONBOTTOM(c));
@@ -2670,7 +2807,7 @@ updatewindowstate(Client *c, XCBAtom state, uint8_t add_remove_toggle)
         }
     }
     else if (state == netatom[NetWMStateSkipTaskbar])
-    {   
+    {
         if(toggle)
         {   setskiptaskbar(c, !SKIPTASKBAR(c));
         }
@@ -2729,8 +2866,8 @@ updatewindowstates(Client *c, XCBAtom states[], uint32_t atomslength)
     u32 i;
     for(i = 0; i < atomslength; ++i)
     {
-        /* Even though the wm-spec says that we should remove things that arent in the list 
-         * The client will ussually tell us in clientmessage if its important. 
+        /* Even though the wm-spec says that we should remove things that arent in the list
+         * The client will ussually tell us in clientmessage if its important.
          * It also says however that if its in the list assume its a prop so...
          */
         updatewindowstate(c, states[i], 1);
@@ -2766,7 +2903,7 @@ updatewindowtype(Client *c, XCBAtom wtype, uint8_t add_remove_toggle)
         }
     }
     else if (wtype == netatom[NetWMWindowTypeToolbar])
-    {   
+    {
         if(toggle)
         {   setwtypetoolbar(c, !ISTOOLBAR(c));
         }
@@ -2802,7 +2939,7 @@ updatewindowtype(Client *c, XCBAtom wtype, uint8_t add_remove_toggle)
         }
     }
     else if (wtype == netatom[NetWMWindowTypeDialog])
-    {   
+    {
         if(toggle)
         {   setwtypedialog(c, !ISDIALOG(c));
         }
@@ -2811,7 +2948,7 @@ updatewindowtype(Client *c, XCBAtom wtype, uint8_t add_remove_toggle)
         }
     }
     else if (wtype == netatom[NetWMWindowTypeDropdownMenu])
-    {   
+    {
         if(toggle)
         {   setwtypedropdownmenu(c, !ISDROPDOWNMENU(c));
         }
@@ -2838,7 +2975,7 @@ updatewindowtype(Client *c, XCBAtom wtype, uint8_t add_remove_toggle)
         }
     }
     else if (wtype == netatom[NetWMWindowTypeNotification])
-    { 
+    {
         if(toggle)
         {   setwtypenotification(c, !ISNOTIFICATION(c));
         }
@@ -2870,11 +3007,11 @@ updatewindowtype(Client *c, XCBAtom wtype, uint8_t add_remove_toggle)
         {   setwtypenormal(c, !ISNORMAL(c));
         }
         else
-        {   setwtypenormal(c, add_remove_toggle);   
+        {   setwtypenormal(c, add_remove_toggle);
         }
     }
     else
-    {   
+    {
         char *name = GetAtomNameQuick(_wm.dpy, wtype);
         if(name)
         {   Debug("Atom type: %s", name);
@@ -2898,10 +3035,12 @@ updatewindowtypes(Client *c, XCBAtom wtypes[], uint32_t atomslength)
 
     i32 i;
     for(i = 0; i < atomslength; ++i)
-    {   
+    {
         /* wm-spec says that we should assume anythings in the list are props so we just pass into "add" */
         updatewindowtype(c, wtypes[i], 1);
     }
+
+    updateallowedactions(c);
 }
 
 void
@@ -2914,9 +3053,11 @@ updatewmhints(Client *c, XCBWMHints *wmh)
             wmh->flags &= ~XCB_WM_HINT_URGENCY;
             XCBSetWMHintsCookie(_wm.dpy, c->win, wmh);
             /* dont put seturgent() here cause that would just undo what we did and be recursive */
+
+            SETFLAG(c->ewmhflags, WStateFlagDemandAttention, 0);
         }
         else
-        {   
+        {
             /* dont put seturgent() here cause that would just undo what we did and be recursive */
             SETFLAG(c->ewmhflags, WStateFlagDemandAttention, !!(wmh->flags & XCB_WM_HINT_URGENCY));
         }
@@ -2929,7 +3070,7 @@ updatewmhints(Client *c, XCBWMHints *wmh)
         if(wmh->flags & XCB_WM_HINT_STATE)
         {
             switch(wmh->initial_state)
-            {   
+            {
                 case XCB_WINDOW_ICONIC_STATE:
                     if(!ISMAPICONIC(c))
                     {   setwtypemapiconic(c, 1);
@@ -2975,7 +3116,7 @@ wintoclient(XCBWindow win)
             for(c = startclient(desk); c; c = nextclient(c))
             {
                 if(c->win == win || c->decor->win == win)
-                {   
+                {
                     Debug0("Found non hashed client.");
                     Debug0("Hashing...");
                     /* try and re-add it to the hasmap */
@@ -2985,7 +3126,7 @@ wintoclient(XCBWindow win)
             }
         }
     }
-  
+
     return c;
 }
 
