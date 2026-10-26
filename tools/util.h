@@ -63,7 +63,7 @@ typedef long double f128;
 
 typedef union Generic Generic;
 
-union 
+union
 Generic
 {
     void *datav[1];
@@ -128,7 +128,10 @@ Generic
 #endif
 
 #ifndef IN_RANGE
-#define IN_RANGE(X, BASE, RANGE)    ((X) >= ((BASE) - (RANGE)) && (X) <= ((BASE) + (RANGE)))
+#define IN_RANGE_I(X, BASE, RANGE)    (((i64)(X)) >= (((i64)(BASE)) - ((i64)(RANGE))) && ((i64)(X)) <= (((i64)(BASE)) + ((i64)(RANGE))))
+#define IN_RANGE_F(X, BASE, RANGE)    (((f32)(X)) >= (((f32)(BASE)) - ((f32)(RANGE))) && ((f32)(X)) <= (((f32)(BASE)) + ((f32)(RANGE))))
+#define IN_RANGE_D(X, BASE, RANGE)    (((f64)(X)) >= (((f64)(BASE)) - ((f64)(RANGE))) && ((f64)(X)) <= (((f64)(BASE)) + ((f64)(RANGE))))
+#define IN_RANGE(X, BASE, RANGE)      IN_RANGE_D(X, BASE, RANGE)
 #endif
 
 #ifndef MOD
@@ -183,7 +186,7 @@ Generic
 #endif
 
 #ifndef STATIC_ASSERT
-#define STATIC_ASSERT(cond, msg) typedef char static_assertion_##msg[(cond) ? 1 : -1]
+#define STATIC_ASSERT(cond, msg) enum { static_assertion_##msg = 1 / !!(cond) };
 #endif
 
 #ifndef GET_BOOL
@@ -193,7 +196,7 @@ Generic
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
   #define RESTRICT restrict
 #else
-  #define RESTRICT 
+  #define RESTRICT
 #endif
 
 #ifndef EXPAND
@@ -261,7 +264,7 @@ STATIC_ASSERT(0, cannot_run_debug_with_ndebug)
 
 #ifndef __FUNC__ARG__NON__NULL__
 #define __FUNC__ARG__NON__NULL__ __attribute__((nonnull(1)));
-#endif 
+#endif
 
 #ifndef __FUNC__VAR__USED__
 #define __FUNC__VAR__USED__ __attribute__((used));
@@ -321,7 +324,7 @@ STATIC_ASSERT(0, cannot_run_debug_with_ndebug)
 #endif
 
 #ifndef asm
-#define asm 
+#define asm
 #endif
 
 #ifndef __HOT__
@@ -333,35 +336,35 @@ STATIC_ASSERT(0, cannot_run_debug_with_ndebug)
 #endif
 
 #ifndef __RETURN__NEVER__NULL__
-#define __RETURN__NEVER__NULL__ 
+#define __RETURN__NEVER__NULL__
 #endif
 
 #ifndef __DEPRECATED__
-#define __DEPRECATED__ 
+#define __DEPRECATED__
 #endif
 
 #ifndef __FUNC__EXIT__POINT__
-#define __FUNC__EXIT__POINT__ 
+#define __FUNC__EXIT__POINT__
 #endif
 
 #ifndef __FUNC__ALLOC__POINT__
-#define __FUNC__ALLOC__POINT__ 
+#define __FUNC__ALLOC__POINT__
 #endif
 
 #ifndef __FUNC__ARG__ALLOC__SIZE__
-#define __FUNC__ARG__ALLOC__SIZE__  
+#define __FUNC__ARG__ALLOC__SIZE__
 #endif
 
 #ifndef __FUNC__NO__OTHER__CALL__
-#define __FUNC__NO__OTHER__CALL__ 
+#define __FUNC__NO__OTHER__CALL__
 #endif
 
 #ifndef __FUNC__ARG__NON__NULL__
-#define __FUNC__ARG__NON__NULL__ 
-#endif 
+#define __FUNC__ARG__NON__NULL__
+#endif
 
 #ifndef __FUNC__VAR__USED__
-#define __FUNC__VAR__USED__ 
+#define __FUNC__VAR__USED__
 #endif
 
 #ifndef NOINLINE
@@ -373,7 +376,7 @@ STATIC_ASSERT(0, cannot_run_debug_with_ndebug)
 #endif
 
 #ifndef __cplusplus
-#define fallthrough 
+#define fallthrough
 #endif
 
 #ifndef ASSUME
@@ -395,7 +398,7 @@ STATIC_ASSERT(0, cannot_run_debug_with_ndebug)
 #ifndef NonNullArg
 #define NonNullArg(PTRS_NON_NULL_COUNT)
 #endif
- 
+
 #ifndef NonNullAll
 #define NonNullAll
 #endif
@@ -429,12 +432,12 @@ STATIC_ASSERT(0, cannot_run_debug_with_ndebug)
 
 #endif
 
-/* Original implementation: Simon Tatham 
- * https://www.chiark.greenend.org.uk/~sgtatham/algorithms/listsort.html 
+/* Original implementation: Simon Tatham
+ * https://www.chiark.greenend.org.uk/~sgtatham/algorithms/listsort.html
  */
 /*
  * Copyright (c) 2001 Simon Tatham.
- * 
+ *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
  * files (the "Software"), to deal in the Software without
@@ -443,10 +446,10 @@ STATIC_ASSERT(0, cannot_run_debug_with_ndebug)
  * sell copies of the Software, and to permit persons to whom the
  * Software is furnished to do so, subject to the following
  * conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
  * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -712,7 +715,7 @@ int upoll_poll_mult(int *fds, int *events, int *revents, void *poll_buffer, size
 
 void _Breakpoint(void);
 
-#ifdef __linux__ 
+#ifdef __linux__
 
 #include <pthread.h>
 
