@@ -1,5 +1,5 @@
 # vox-wm
-The [vox-wm](https://github.com/DerjenigeUberMensch/vox-wm/) project was intially a mission to create a window manager that could offer the same usability that a regular desktop while being simple to the end user.  
+The [vox-wm](https://github.com/DerjenigeUberMensch/vox-wm/) project was intially a mission to create a window manager that could offer the same usability that a regular desktop while being simple to the end user.
 
 While still maintaing the window manager like feel of multiple different layouts and simpled nature behaviour.
 
@@ -7,14 +7,14 @@ While still maintaing the window manager like feel of multiple different layouts
 ![example_image_monocle](./images/example.png)
 
 ## Table of Contents
-1. [Requirements](#Requirements)  
-2. [Usage](#Usage)  
-3. [Compiling](#Compiling)  
-4. [Uninstalling](#Uninstalling)  
-5. [How to Run](#How-to-Run)
-6. [Mousebinds](#Mousebinds)
-7. [Keybinds](#Keybinds)
-8. [Troubleshoot](#Troubleshoot)  
+1. [Requirements](#requirements)
+2. [Usage](#usage)
+3. [Compiling](#compiling)
+4. [Uninstalling](#uninstalling)
+5. [How to Run](#how-to-run)
+6. [Mousebinds](#mousebinds)
+7. [Keybinds](#keybinds)
+8. [Troubleshoot](#troubleshoot)
 
 <a name="headers"/>
 
@@ -57,13 +57,12 @@ sudo pacman -S --needed dmenu xorg xorg-xinit libxcb xcb-util xcb-util-errors xc
 ```
 ### Multi Media (Optional)
 ```
-sudo pacman -S --needed pipewire-pulse pulseaudio playerctl brightnessctl
+sudo pacman -S --needed playerctl brightnessctl
 ```
 
-## Usage 
+## Usage
 To **use** the wm you must first **compile it**.
 Afterwards you must put `exec vox-wm` in your `~/.xinitrc` file. **See Below.**
-
 
 ## Compiling
 1. Clone this repository.
@@ -74,11 +73,11 @@ git clone https://github.com/DerjenigeUberMensch/vox-wm.git
 ```
 cd vox-wm
 ```
-3. Checkout the Experimental branch. (Legacy support)
+3. Download required libraries.
 ```
-git checkout origin/Experimental
+sudo pacman -S --needed dmenu xorg xorg-xinit libxcb xcb-util xcb-util-errors xcb-util-cursor xcb-util-image xcb-util-keysyms xcb-util-wm xcb-util-xrm lua && yay -S st
 ```
-4. Configure it See **[Configuration](#Configuration)** (Optional)
+4. Configure it See **[Configuration](#configuration)** (Optional)
 5. Compile using Make
 ```
 make
@@ -100,12 +99,12 @@ sudo make uninstall
 ```
 
 ## How to Run
-1. Compile, See [Compiling](#Compiling).
+1. Compile, See [Compiling](#compiling).
 2. Choose option(s) below.
-3. Locate binary 
+3. Locate binary
     - if installed should be **"vox-wm"**
     - else should be located under **"bin/release/"** folder as **"vox-wm"**
-4. For customization and helpful tips see [Configuration](#Configuration)
+4. For customization and helpful tips see [Configuration](#configuration)
 
 ### Normal Usage
 4. Put **"exec YOUR_BINARY_LOCATION"** in **~/.xinitrc** or similiar XServer configuration.
@@ -129,12 +128,55 @@ numlockx (Numlock key on)
 feh      (Background)
 
 ### Keybinds and context menus as of this version are currently locked to manually setting via compilation.
-If you know a bit of C you can change dmenu colours and some keybinds under the directory vox-wm/include/keybinds.h
+If you know a bit of C you can change dmenu colours and some keybinds under the directory `vox-wm/src/keybind/keybinds.c` *`WMKeybindInit()`* and `vox-wm/include/legacy/keybinds.h`
+
 ### Config
-config support is under ~/.config/vox-wm/vox.cfg
+
+config support is under `~/.config/vox-wm/vox.cfg`
+
+all settings (that have worked) have been supported since v2
+
+> **NOTE:** `inf` represents the maximum value supported by the underlying integer type, not actual infinity. Values exceeding this limit will produce a configuration error.
+
+|           Setting             |  Type  |      Range       |     Default      |                                                                        Description                                                                             |
+| ----------------------------- | ------ | ---------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| MFact                         | number |    0.0 - 1.0     |       0.55       | Space of main window (left) during Tiled mode in decimal percentage.                                                                                           |
+| GapRatio                      | number |    0.0 - 1.0     |       0.95       | Space for all windows to NOT use when in Tiled mode around window borders                                                                                      |
+| MCount                        | number |     0  - inf     |        1         | Number of main windows (left) during Tiled mode (MUST BE WHOLE NUMBER)                                                                                         |
+| Snap                          | number |     0  - inf     |        15        | Number of pixels before a window snaps to the desktop when dragging (MUST BE WHOLE NUMBER)                                                                     |
+| RefreshRate                   | number |    0.0 - inf     |        60        | MAX number of resize requests sent when resizing a window in FPS; 0 to disable. (MUST BE WHOLE NUMBER)                                                         |
+| SmartResizing                 |  bool  |   true / false   |       true       | Lowers window slightly due to imperfect human eye to make windows feel more centered; false to disable.                                                        |
+| CenteringBias                 | number |   0.0 - 0.0825   |       .0125      | Center bias offset in decimal percentage; see above.                                                                                                           |
+| HoverFocus                    |  bool  |   true / false   |       false      | Switch focus when hovering over a window; false to disable.                                                                                                    |
+| UseDecorations                |  bool  |   true / false   |       false      | ? This Setting is not Officially Supported and may not work ?                                                                                                  |
+| UseClientSideDecorations      |  bool  |   true / false   |       true       | Enable use of client side decorations. (This setting must be set at the start of the X session); false to disable.                                             |
+| PreferClientSideDecorations   |  bool  |   true / false   |       true       | ? This Setting only works when UseDecorations is enabled ?                                                                                                     |
+| UseLegacyFloatingSystem       |  bool  |   true / false   |       false      | Enables the use of the legacy floating system, this is meant as a fallback and is deprecated; false to disable.                                                |
+| UseAutomaticBarGeometry       |  bool  |   true / false   |       true       | Enables the use of automatic geometry quering and resizing for supported windows; false to disable                                                             |
+| BarLX                         | number |    0.0 - 1.0     |       0.00       | Horizontal position of the left bar relative to the screen width in decimal percentage.                                                                        |
+| BarLY                         | number |    0.0 - 1.0     |       0.00       | Vertical position of the left bar relative to the screen height in decimal percentage.                                                                         |
+| BarLW                         | number |    0.0 - 1.0     |       0.15       | Width of the left bar relative to the screen width in decimal percentage.                                                                                      |
+| BarLH                         | number |    0.0 - 1.0     |       1.00       | Height of the left bar relative to the screen height in decimal percentage.                                                                                    |
+| BarRX                         | number |    0.0 - 1.0     |       0.85       | Horizontal position of the right bar relative to the screen width in decimal percentage.                                                                       |
+| BarRY                         | number |    0.0 - 1.0     |       0.00       | Vertical position of the right bar relative to the screen height in decimal percentage.                                                                        |
+| BarRW                         | number |    0.0 - 1.0     |       0.15       | Width of the right bar relative to the screen width in decimal percentage.                                                                                     |
+| BarRH                         | number |    0.0 - 1.0     |       1.00       | Height of the right bar relative to the screen height in decimal percentage.                                                                                   |
+| BarTX                         | number |    0.0 - 1.0     |       0.00       | Horizontal position of the top bar relative to the screen width in decimal percentage.                                                                         |
+| BarTY                         | number |    0.0 - 1.0     |       0.00       | Vertical position of the top bar relative to the screen height in decimal percentage.                                                                          |
+| BarTW                         | number |    0.0 - 1.0     |       1.00       | Width of the top bar relative to the screen width in decimal percentage.                                                                                       |
+| BarTH                         | number |    0.0 - 1.0     |       0.15       | Height of the top bar relative to the screen height in decimal percentage.                                                                                     |
+| BarBX                         | number |    0.0 - 1.0     |       0.00       | Horizontal position of the bottom bar relative to the screen width in decimal percentage.                                                                      |
+| BarBY                         | number |    0.0 - 1.0     |       0.85       | Vertical position of the bottom bar relative to the screen height in decimal percentage.                                                                       |
+| BarBW                         | number |    0.0 - 1.0     |       1.00       | Width of the bottom bar relative to the screen width in decimal percentage.                                                                                    |
+| BarBH                         | number |    0.0 - 1.0     |       0.15       | Height of the bottom bar relative to the screen height in decimal percentage.                                                                                  |
+
 ### Startup
-startup program support is under ~/.config/vox-wm/startup.cfg
+
+startup program support is under `~/.config/vox-wm/startup.cfg`
+
 There is no syntax highlighting nor comment support in this startup file, as it is ***HIGHLY*** recommened to just use this as a alias for running a seperate shell script for example just putting ./my_shell_script.sh and just putting all the startup stuff you want in my_shell_script.sh.
+
+For a example startup file you may check out this one [here](https://github.com/DerjenigeUberMensch/dot_files/blob/main/.config/vox-wm/startup.sh)
 
 ## Mousebinds
 These are the default mousebinds currently used within vox-wm, they are not planned to change (defaults), but will be when or if a configuration is implemented.
@@ -208,9 +250,9 @@ If you have any **major** **issues** with the **current** commit you can **rever
 Or you can open an **[issue](https://github.com/DerjenigeUberMensch/vox-wm/issues)** about it.
 
 ## Planned Features
-- ~Panel that user can just click buttons or type values to configure windows (kinda like a dev panel).~ (No guranteed plans)
+- ~~Panel that user can just click buttons or type values to configure windows (kinda like a dev panel).~~ (No guranteed plans)
 - Fully Extend XCB-TRL to use other features.
-- More modularity 
+- More modularity
 - Less Complex Code Base
 - Better Documentatin (Likely when I finish implementing the usability part of the Window manager (AKA when I switch over to this.))
 
