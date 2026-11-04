@@ -32,6 +32,9 @@ This build is ***not*** fully feature ready.
 
 ## Requirements
 ### Base (Required)
+- **gcc or clang**
+- **make**
+- **git**
 - **dmenu**
 - **st**
 - **xorg**
@@ -53,7 +56,7 @@ This build is ***not*** fully feature ready.
 ## Pacman && yay
 ### Base (Required)
 ```
-sudo pacman -S --needed dmenu xorg xorg-xinit libxcb xcb-util xcb-util-errors xcb-util-cursor xcb-util-image xcb-util-keysyms xcb-util-wm xcb-util-xrm lua && yay -S st
+sudo pacman -S --needed gcc make git dmenu xorg xorg-xinit libxcb xcb-util xcb-util-errors xcb-util-cursor xcb-util-image xcb-util-keysyms xcb-util-wm xcb-util-xrm lua && yay -S st
 ```
 ### Multi Media (Optional)
 ```
@@ -75,7 +78,7 @@ cd vox-wm
 ```
 3. Download required libraries.
 ```
-sudo pacman -S --needed dmenu xorg xorg-xinit libxcb xcb-util xcb-util-errors xcb-util-cursor xcb-util-image xcb-util-keysyms xcb-util-wm xcb-util-xrm lua && yay -S st
+sudo pacman -S --needed gcc make git dmenu xorg xorg-xinit libxcb xcb-util xcb-util-errors xcb-util-cursor xcb-util-image xcb-util-keysyms xcb-util-wm xcb-util-xrm lua && yay -S st
 ```
 4. Configure it See **[Configuration](#configuration)** (Optional)
 5. Compile using Make

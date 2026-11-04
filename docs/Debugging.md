@@ -30,7 +30,7 @@ To run Xephyr you may use the command(s) below.
 **NOTE: This command may FAIL, if you have another display open, you may want to change the display number if this is the case.**
 
 ```
-export DISPLAY=:0 && Xephyr :1 -ac c 25 +xinerama -resizeable -screen 680x480 &
+export DISPLAY=:0 && Xephyr :1 -ac c 25 +xinerama -resizeable -glamor -screen 680x480 &
 ```
 ```
 export DISPLAY=:1
