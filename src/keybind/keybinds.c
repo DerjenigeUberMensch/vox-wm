@@ -38,14 +38,14 @@ GArray keybind_keybinds = GARRAY_STATIC_INITIALIZER(sizeof(WMKeyBind));
 
 int
 WMKeybindInit(void)
-{   
+{
     int status = GArrayCreateFilled(&keybind_keybinds, sizeof(WMKeyBind), 0);
 
     if(status != EXIT_SUCCESS)
     {   return EXIT_FAILURE;
     }
 
-    /* intialize the default keybinds 
+    /* intialize the default keybinds
      * These have been set since v1.0.0 and are considered the default keybinds for our wm.
      * Unforunately some keybinds werent very well thought out long term but due to backwards compatibility we will keep them as is. (cough cough SUPER+E)
      */
@@ -83,15 +83,15 @@ WMKeybindInit(void)
     WMKeybindAdd(WM_SUPER, (XCBKeysym[]){ WM_0 }, 1, NULL, 0, KeybindToggleDesktop, (Generic){ .data32i[0] = 9 }, WM_INPUT_PRESS);
 
     /* multimedia */
-    WMKeybindAdd(0, (XCBKeysym[]){ WM_AUDIO_MUTE }, 1, NULL, 0, KeybindSpawnWindow, (Generic){ .datav[0] = legacy_mute_vol }, WM_INPUT_PRESS);
-    WMKeybindAdd(0, (XCBKeysym[]){ WM_AUDIO_VOL_DOWN }, 1, NULL, 0, KeybindSpawnWindow, (Generic){ .datav[0] = legacy_down_vol }, WM_INPUT_PRESS);
-    WMKeybindAdd(0, (XCBKeysym[]){ WM_AUDIO_VOL_UP }, 1, NULL, 0, KeybindSpawnWindow, (Generic){ .datav[0] = legacy_up_vol }, WM_INPUT_PRESS);
-    WMKeybindAdd(0, (XCBKeysym[]){ WM_MON_BRIGHTNESS_DOWN }, 1, NULL, 0, KeybindSpawnWindow, (Generic){ .datav[0] = legacy_dimmer }, WM_INPUT_PRESS);
-    WMKeybindAdd(0, (XCBKeysym[]){ WM_MON_BRIGHTNESS_UP }, 1, NULL, 0, KeybindSpawnWindow, (Generic){ .datav[0] = legacy_brighter }, WM_INPUT_PRESS);
-    WMKeybindAdd(0, (XCBKeysym[]){ WM_AUDIO_PLAY }, 1, NULL, 0, KeybindSpawnWindow, (Generic){ .datav[0] = legacy_pause_vol }, WM_INPUT_PRESS);
-    WMKeybindAdd(0, (XCBKeysym[]){ WM_AUDIO_PAUSE }, 1, NULL, 0, KeybindSpawnWindow, (Generic){ .datav[0] = legacy_pause_vol }, WM_INPUT_PRESS);
-    WMKeybindAdd(0, (XCBKeysym[]){ WM_AUDIO_NEXT }, 1, NULL, 0, KeybindSpawnWindow, (Generic){ .datav[0] = legacy_next_vol }, WM_INPUT_PRESS);
-    WMKeybindAdd(0, (XCBKeysym[]){ WM_AUDIO_PREV }, 1, NULL, 0, KeybindSpawnWindow, (Generic){ .datav[0] = legacy_prev_vol }, WM_INPUT_PRESS);
+    WMKeybindAdd(XCBModMaskAny, (XCBKeysym[]){ WM_AUDIO_MUTE }, 1, NULL, 0, KeybindSpawnWindow, (Generic){ .datav[0] = legacy_mute_vol }, WM_INPUT_PRESS);
+    WMKeybindAdd(XCBModMaskAny, (XCBKeysym[]){ WM_AUDIO_VOL_DOWN }, 1, NULL, 0, KeybindSpawnWindow, (Generic){ .datav[0] = legacy_down_vol }, WM_INPUT_PRESS);
+    WMKeybindAdd(XCBModMaskAny, (XCBKeysym[]){ WM_AUDIO_VOL_UP }, 1, NULL, 0, KeybindSpawnWindow, (Generic){ .datav[0] = legacy_up_vol }, WM_INPUT_PRESS);
+    WMKeybindAdd(XCBModMaskAny, (XCBKeysym[]){ WM_MON_BRIGHTNESS_DOWN }, 1, NULL, 0, KeybindSpawnWindow, (Generic){ .datav[0] = legacy_dimmer }, WM_INPUT_PRESS);
+    WMKeybindAdd(XCBModMaskAny, (XCBKeysym[]){ WM_MON_BRIGHTNESS_UP }, 1, NULL, 0, KeybindSpawnWindow, (Generic){ .datav[0] = legacy_brighter }, WM_INPUT_PRESS);
+    WMKeybindAdd(XCBModMaskAny, (XCBKeysym[]){ WM_AUDIO_PLAY }, 1, NULL, 0, KeybindSpawnWindow, (Generic){ .datav[0] = legacy_pause_vol }, WM_INPUT_PRESS);
+    WMKeybindAdd(XCBModMaskAny, (XCBKeysym[]){ WM_AUDIO_PAUSE }, 1, NULL, 0, KeybindSpawnWindow, (Generic){ .datav[0] = legacy_pause_vol }, WM_INPUT_PRESS);
+    WMKeybindAdd(XCBModMaskAny, (XCBKeysym[]){ WM_AUDIO_NEXT }, 1, NULL, 0, KeybindSpawnWindow, (Generic){ .datav[0] = legacy_next_vol }, WM_INPUT_PRESS);
+    WMKeybindAdd(XCBModMaskAny, (XCBKeysym[]){ WM_AUDIO_PREV }, 1, NULL, 0, KeybindSpawnWindow, (Generic){ .datav[0] = legacy_prev_vol }, WM_INPUT_PRESS);
 
     WMKeybindAdd(WM_SUPER, NULL, 0, (XCBButton[]){ WM_RMB }, 1, KeybindResizeWindow, (Generic){0}, WM_INPUT_PRESS);
     WMKeybindAdd(WM_SUPER, NULL, 0, (XCBButton[]){ WM_RMB }, 1, NULL, (Generic){0}, WM_INPUT_RELEASE);
@@ -111,7 +111,7 @@ WMKeybindAdd(uint16_t xcb_modmask_modifiers, XCBKeysym keysyms[], size_t num_key
 {
     enum { ERROR = 1, ALREADY_EXISTS = -1, SUCCESS = 0 };
 
-    WMKeyBind k = 
+    WMKeyBind k =
     {
         .mod = xcb_modmask_modifiers,
         .type = type,
@@ -129,16 +129,16 @@ WMKeybindAdd(uint16_t xcb_modmask_modifiers, XCBKeysym keysyms[], size_t num_key
     status = GArrayCreateFilled(&k.buttons, sizeof(WMButton), num_buttons);
 
     if(status != EXIT_SUCCESS)
-    {   
+    {
         GArrayWipe(&k.keysyms);
         return ERROR;
     }
 
     size_t i;
-    
+
     for(i = 0; i < num_keysyms; ++i)
-    {   
-        WMKey key = 
+    {
+        WMKey key =
         {
             .sym = keysyms[i],
             .pressed = 0,
@@ -152,8 +152,8 @@ WMKeybindAdd(uint16_t xcb_modmask_modifiers, XCBKeysym keysyms[], size_t num_key
     }
 
     for(i = 0; i < num_buttons; ++i)
-    {   
-        WMButton button = 
+    {
+        WMButton button =
         {
             .button = buttons[i],
             .pressed = 0,
@@ -196,7 +196,7 @@ DESTROY:
 int
 WMKeybindRemove(uint16_t modifier_mask_x11, XCBKeysym keysyms[], size_t num_keysyms, XCBButton buttons[], size_t num_buttons)
 {
-    WMKeyBind k = 
+    WMKeyBind k =
     {
         .mod = modifier_mask_x11,
         .type = WM_INPUT_PRESS,
@@ -208,8 +208,8 @@ WMKeybindRemove(uint16_t modifier_mask_x11, XCBKeysym keysyms[], size_t num_keys
     garray_i i;
 
     for(i = 0; i < num_keysyms; ++i)
-    {   
-        WMKey key = 
+    {
+        WMKey key =
         {
             .sym = keysyms[i],
             .pressed = 0,
@@ -218,7 +218,7 @@ WMKeybindRemove(uint16_t modifier_mask_x11, XCBKeysym keysyms[], size_t num_keys
         int status = GArrayPushBack(&k.keysyms, &key);
 
         if(status != EXIT_SUCCESS)
-        {   
+        {
             GArrayWipe(&k.keysyms);
             GArrayWipe(&k.buttons);
             return EXIT_FAILURE;
@@ -226,8 +226,8 @@ WMKeybindRemove(uint16_t modifier_mask_x11, XCBKeysym keysyms[], size_t num_keys
     }
 
     for(i = 0; i < num_buttons; ++i)
-    {   
-        WMButton button = 
+    {
+        WMButton button =
         {
             .button = buttons[i],
             .pressed = 0,
@@ -236,7 +236,7 @@ WMKeybindRemove(uint16_t modifier_mask_x11, XCBKeysym keysyms[], size_t num_keys
         int status = GArrayPushBack(&k.buttons, &button);
 
         if(status != EXIT_SUCCESS)
-        {   
+        {
             GArrayWipe(&k.keysyms);
             GArrayWipe(&k.buttons);
             return EXIT_FAILURE;
@@ -257,7 +257,7 @@ WMKeybindRemove(uint16_t modifier_mask_x11, XCBKeysym keysyms[], size_t num_keys
         WMKeyBind *remove = GArrayAt(&keybind_keybinds, index);
 
         if(!ASSERT(remove))
-        {   
+        {
             DebugError("Keybind to remove is NULL");
         }
         else
@@ -281,7 +281,7 @@ void
 WMKeybindRemoveAll(void)
 {
     garray_i i;
-    
+
     for(i = GArrayStart(&keybind_keybinds); i < GArrayEnd(&keybind_keybinds); ++i)
     {
         WMKeyBind *key = GArrayAt(&keybind_keybinds, i);
@@ -302,7 +302,7 @@ WMKeybindDestroy(void)
         WMKeyBind *key = GArrayAt(&keybind_keybinds, i);
 
         if(!ASSERT(key))
-        {   
+        {
             DebugError("Key is NULL");
             continue;
         }
@@ -327,22 +327,22 @@ WMKeybindGrabKeys(void)
         WMKeyBind *key = GArrayAt(&keybind_keybinds, i);
 
         if(!ASSERT(key))
-        {   
+        {
             DebugError("key is NULL\n");
             continue;
         }
 
         /* managed by buttons */
         if(GArrayEnd(&key->buttons) - GArrayStart(&key->buttons) != 0)
-        {   
+        {
             /* TODO */
             continue;
         }
-        
+
         XCBKeyCode **codes = WM_KEYBIND_GENERATE_KEYCODES_X11(&key->keysyms);
 
         if(!codes)
-        {   
+        {
             DebugError("code is NULL\n");
             continue;
         }
@@ -352,13 +352,13 @@ WMKeybindGrabKeys(void)
             XCBKeysym *sym = GArrayAt(&key->keysyms, j);
 
             if(!ASSERT(sym))
-            {   
+            {
                 DebugError("Keysym is NULL");
                 continue;
             }
 
             if(!codes[j])
-            {   
+            {
                 DebugWarn("No keycode found for keysym %u\n", *sym);
                 continue;
             }
@@ -445,9 +445,9 @@ __grabbuttons(XCBWindow win, bool neverholdfocus, bool focused)
             for (i = 0; i < LENGTH(gbuttons); ++i)
             {
                 for (j = 0; j < LENGTH(modifiers); ++j)
-                {   
+                {
                     /* XCB_GRAB_MODE_SYNC for the keyboard beucase when tested there is one very tiny race (tested on about 255 windows quiting them all quickly)
-                     * Where the focus is lost to another client before we process the button press. 
+                     * Where the focus is lost to another client before we process the button press.
                      * Making it so more than 1 client believes it has focus.
                      * This is mostly a visual glitch but happens ocassioanly when using X
                      * So no reason to change it ASYNC since we arent managing hundreds of windows.
@@ -482,11 +482,11 @@ __grabbuttons(XCBWindow win, bool neverholdfocus, bool focused)
 
             for(k = 0; k < LENGTH(modifiers); ++k)
             {
-                XCBGrabButton(_wm.dpy, button->button, 
-                            key->mod == XCBModMaskAny ? XCBModMaskAny : key->mod | modifiers[k], 
-                            win, False, 
-                            BUTTONMASK, 
-                            XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_SYNC, 
+                XCBGrabButton(_wm.dpy, button->button,
+                            key->mod == XCBModMaskAny ? XCBModMaskAny : key->mod | modifiers[k],
+                            win, False,
+                            BUTTONMASK,
+                            XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_SYNC,
                             XCBNone, XCBNone
                 );
             }

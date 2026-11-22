@@ -10,6 +10,7 @@
 #include "XCB-TRL/xcb_trl_types.h"
 #include "keybind/keybind_definitions.h"
 #include "keybind/keybinds.h"
+#include "util.h"
 
 extern const struct KeyCodeEntry KEYBIND_MOD_TABLE[];
 extern const struct KeyCodeEntry KEYBIND_KEYCODE_TABLE[];
@@ -128,7 +129,12 @@ WMKeybindHandler(u16 mod, XCBKeyCode code, enum WMKeyType type, bool is_button, 
 
         garray_i inputlen = keylen + buttonlen;
 
-        u16 mask = CLEANMASK(keybind->mod);
+        u16 mask = keybind->mod;
+
+        if(mask != XCBModMaskAny)
+        {
+            mask = CLEANMASK(mask);
+        }
 
         i32 presscount = 0;
         bool inputfound = false;
@@ -146,7 +152,7 @@ WMKeybindHandler(u16 mod, XCBKeyCode code, enum WMKeyType type, bool is_button, 
 
             if(!is_button && key->sym == sym)
             {
-                inputfound= true;
+                inputfound = true;
                 key->pressed = (type == WM_INPUT_PRESS);
             }
 
@@ -172,7 +178,7 @@ WMKeybindHandler(u16 mod, XCBKeyCode code, enum WMKeyType type, bool is_button, 
             presscount += button->pressed;
         }
 
-        if(!inputfound || mask != mod)
+        if(!inputfound || (mask != mod && mask != XCBModMaskAny))
         {   continue;
         }
 
